@@ -1,0 +1,25 @@
+{
+  "name": "topgsm-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@gsap/react": "2.1.2",
+    "axios": "1.8.2",
+    "gsap": "3.15.0",
+    "next": "14.2.15",
+    "next-auth": "4.24.11",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "socket.io-client": "4.8.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.18"
+  }
+}

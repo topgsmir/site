@@ -1,0 +1,48 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: topgsm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: topgsm
+      POSTGRES_PASSWORD: topgsm
+      POSTGRES_DB: topgsm
+    ports:
+      - "5432:5432"
+    volumes:
+      - topgsm-postgres-data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    container_name: topgsm-api
+    depends_on:
+      - postgres
+    env_file: .env.example
+    environment:
+      API_PORT: 4000
+      DATABASE_URL: postgresql://topgsm:topgsm@postgres:5432/topgsm
+    ports:
+      - "4000:4000"
+    command: ["sh", "-c", "pnpm install --no-frozen-lockfile && pnpm -C apps/api start:prod"]
+
+  web:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/web.Dockerfile
+    container_name: topgsm-web
+    depends_on:
+      - api
+    env_file: .env.example
+    environment:
+      NEXT_PUBLIC_API_URL: http://api:4000/api
+      NEXTAUTH_URL: http://localhost:3000
+    ports:
+      - "3000:3000"
+    command: ["sh", "-c", "pnpm install --no-frozen-lockfile && pnpm -C apps/web dev --hostname 0.0.0.0"]
+
+volumes:
+  topgsm-postgres-data:
+

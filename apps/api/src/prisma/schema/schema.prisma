@@ -1,0 +1,155 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum user_role {
+  platform_admin
+  seller_admin
+  seller_staff
+  buyer
+}
+
+enum product_type {
+  digital
+  physical
+  service
+}
+
+enum order_status {
+  pending
+  paid
+  processing
+  shipped
+  delivered
+  cancelled
+}
+
+enum payout_status {
+  draft
+  requested
+  approved
+  settled
+  disputed
+}
+
+model users {
+  id         String        @id @default(uuid()) @map("id")
+  full_name  String        @map("full_name")
+  email      String        @unique @map("email")
+  role       user_role     @map("role")
+  created_at DateTime      @default(now()) @map("created_at")
+  updated_at DateTime      @default(now()) @updatedAt @map("updated_at")
+  sellers    sellers[]
+  orders     orders[]      @relation("buyer_orders")
+
+  @@map("users")
+}
+
+model sellers {
+  id            String    @id @default(uuid()) @map("id")
+  user_id       String    @unique @map("user_id")
+  shop_name     String    @map("shop_name")
+  invited       Boolean   @default(false) @map("invited")
+  approved      Boolean   @default(false) @map("approved")
+  commission    Decimal   @default(0.1) @map("commission")
+  holdback_rate Decimal   @default(0.05) @map("holdback_rate")
+  user          users     @relation(fields: [user_id], references: [id])
+  products      products[]
+  orders        orders[]
+  payouts       payout_ledger[]
+
+  @@map("sellers")
+}
+
+model products {
+  id          String       @id @default(uuid()) @map("id")
+  seller_id   String       @map("seller_id")
+  title       String       @map("title")
+  slug        String       @unique @map("slug")
+  base_price  Decimal      @map("base_price")
+  currency    String       @map("currency")
+  type        product_type @map("type")
+  status      String       @default("active") @map("status")
+  created_at  DateTime     @default(now()) @map("created_at")
+  updated_at  DateTime     @default(now()) @updatedAt @map("updated_at")
+  seller      sellers      @relation(fields: [seller_id], references: [id])
+  digital     product_digital?
+  physical    product_physical?
+  service     product_service?
+
+  @@map("products")
+}
+
+model product_digital {
+  id               String   @id @default(uuid()) @map("id")
+  product_id       String   @unique @map("product_id")
+  file_reference   String   @map("file_reference")
+  max_downloads    Int      @default(0) @map("max_downloads")
+  product          products @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@map("product_digital")
+}
+
+model product_physical {
+  id             String   @id @default(uuid()) @map("id")
+  product_id     String   @unique @map("product_id")
+  weight_grams   Int      @default(0) @map("weight_grams")
+  stock          Int      @default(0) @map("stock")
+  tracking_code  String?  @map("tracking_code")
+  delivered_at   DateTime?
+  product        products @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@map("product_physical")
+}
+
+model product_service {
+  id               String  @id @default(uuid()) @map("id")
+  product_id       String  @unique @map("product_id")
+  estimated_hours  Int     @default(1) @map("estimated_hours")
+  service_type     String  @map("service_type")
+  product          products @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@map("product_service")
+}
+
+model orders {
+  id               String       @id @default(uuid()) @map("id")
+  buyer_id         String       @map("buyer_id")
+  seller_id        String       @map("seller_id")
+  status           order_status @default(pending) @map("status")
+  currency         String       @map("currency")
+  total_amount     Decimal      @map("total_amount")
+  created_at       DateTime     @default(now()) @map("created_at")
+  updated_at       DateTime     @default(now()) @updatedAt @map("updated_at")
+  buyer            users        @relation("buyer_orders", fields: [buyer_id], references: [id])
+  seller           sellers      @relation(fields: [seller_id], references: [id])
+  payout_records   payout_ledger[] 
+
+  @@map("orders")
+}
+
+model payout_ledger {
+  id               String        @id @default(uuid()) @map("id")
+  order_id         String        @unique @map("order_id")
+  seller_id        String        @map("seller_id")
+  gross_amount     Decimal       @map("gross_amount")
+  commission_amount Decimal      @map("commission_amount")
+  holdback_amount  Decimal       @map("holdback_amount")
+  payable_amount   Decimal       @map("payable_amount")
+  currency         String        @map("currency")
+  status           payout_status @default(draft) @map("status")
+  requested_at     DateTime?
+  approved_at      DateTime?
+  settled_at       DateTime?
+  created_at       DateTime      @default(now()) @map("created_at")
+  updated_at       DateTime      @default(now()) @updatedAt @map("updated_at")
+  seller           sellers       @relation(fields: [seller_id], references: [id])
+  order            orders        @relation(fields: [order_id], references: [id])
+
+  @@map("payout_ledger")
+}
