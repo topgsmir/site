@@ -1,4 +1,3 @@
-version: "3.9"
 services:
   postgres:
     image: postgres:16-alpine
@@ -9,7 +8,7 @@ services:
       POSTGRES_PASSWORD: topgsm
       POSTGRES_DB: topgsm
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - topgsm-postgres-data:/var/lib/postgresql/data
 
@@ -22,11 +21,12 @@ services:
       - postgres
     env_file: .env.example
     environment:
+      API_HOST: 0.0.0.0
       API_PORT: 4000
       DATABASE_URL: postgresql://topgsm:topgsm@postgres:5432/topgsm
     ports:
-      - "4000:4000"
-    command: ["sh", "-c", "pnpm install --no-frozen-lockfile && pnpm -C apps/api start:prod"]
+      - "127.0.0.1:4000:4000"
+    command: ["sh", "-c", "pnpm install --no-frozen-lockfile && pnpm -C apps/api prisma:migrate && pnpm -C apps/api prisma:seed:dev && pnpm -C apps/api start:prod"]
 
   web:
     build:
@@ -37,12 +37,12 @@ services:
       - api
     env_file: .env.example
     environment:
-      NEXT_PUBLIC_API_URL: http://api:4000/api
+      API_URL: http://api:4000/api
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
       NEXTAUTH_URL: http://localhost:3000
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     command: ["sh", "-c", "pnpm install --no-frozen-lockfile && pnpm -C apps/web dev --hostname 0.0.0.0"]
 
 volumes:
   topgsm-postgres-data:
-

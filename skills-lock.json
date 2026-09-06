@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "hallmark": {
+      "source": "nutlope/hallmark",
+      "sourceType": "github",
+      "skillPath": "skills/hallmark/SKILL.md",
+      "computedHash": "6d53b2b609e05849c1dd0fc53e37daa7515089d5880c15e7e885c86e8b814e9c"
+    },
+    "postgres": {
+      "source": "timescale/pg-aiguide",
+      "sourceType": "github",
+      "skillPath": "skills/postgres/SKILL.md",
+      "computedHash": "797c6ba68706993bd3e45a43e70e0585562f082a3a79edc97588361e98f71b27"
+    },
+    "skill-creator": {
+      "source": "neondatabase/postgres-skills",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/skill-creator/SKILL.md",
+      "computedHash": "1a2f4694384cb90d19d75354975dfb654d5c4ad230041667cb4b5b898474d7df"
+    }
+  }
+}

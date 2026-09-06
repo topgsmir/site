@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "pnpm@9.9.0",
   "scripts": {
-    "dev": "pnpm --filter topgsm-api --filter topgsm-web --parallel run dev",
+    "dev": "node scripts/dev.mjs",
     "build": "pnpm -r run build",
     "lint": "pnpm -r run lint",
     "type-check": "pnpm -r run type-check"

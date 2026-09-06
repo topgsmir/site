@@ -9,4 +9,8 @@ coverage
 *.log
 *.lock
 .env
+.env.local
+.env.*.local
 tmp
+.playwright-mcp
+artifacts

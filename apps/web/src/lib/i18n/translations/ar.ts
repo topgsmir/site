@@ -22,6 +22,28 @@ export const ar = {
     payoutReview: "مراجعة المدفوعات",
     orderNotifications: "إشعارات الطلبات"
   },
+  auth: {
+    title: "تسجيل الدخول إلى حسابك",
+    registerTitle: "إنشاء حساب",
+    description: "أدخل بيانات حسابك للمتابعة.",
+    registerDescription: "أنشئ حسابًا للشراء ومتابعة طلباتك.",
+    fullName: "الاسم الكامل",
+    identifier: "البريد الإلكتروني أو اسم المستخدم",
+    email: "البريد الإلكتروني",
+    password: "كلمة المرور",
+    loginAction: "تسجيل الدخول",
+    registerAction: "إنشاء الحساب",
+    noAccount: "ليس لديك حساب؟",
+    hasAccount: "لديك حساب بالفعل؟",
+    switchToRegister: "إنشاء حساب",
+    switchToLogin: "تسجيل الدخول",
+    submitting: "يرجى الانتظار…",
+    genericError: "تعذر إكمال الطلب. حاول مرة أخرى.",
+    backHome: "العودة إلى الرئيسية",
+    logoutAction: "تسجيل الخروج",
+    loggingOut: "جارٍ تسجيل الخروج…",
+    logoutError: "تعذر تسجيل الخروج. حاول مرة أخرى."
+  },
   payment: {
     methods: {
       localBank: {

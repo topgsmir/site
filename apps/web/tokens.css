@@ -1,0 +1,90 @@
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V4 */
+/* Hallmark · tokens: TopGSM graphite · scope: shared dark interface */
+:root {
+  --font-outfit: "Outfit Variable";
+  --font-vazirmatn: "Vazirmatn Variable";
+
+  --color-dashboard-paper: oklch(97.5% 0.009 255);
+  --color-dashboard-surface: oklch(99% 0.004 255);
+  --color-dashboard-surface-raised: oklch(94.5% 0.014 255);
+  --color-dashboard-ink: oklch(22% 0.03 258);
+  --color-dashboard-ink-soft: oklch(34% 0.028 258);
+  --color-dashboard-muted: oklch(48% 0.025 258);
+  --color-dashboard-rule: oklch(66% 0.02 255);
+  --color-dashboard-rule-strong: oklch(58% 0.028 255);
+  --color-dashboard-accent: oklch(55% 0.2 256);
+  --color-dashboard-accent-ink: oklch(98% 0.006 255);
+  --color-dashboard-accent-soft: oklch(93% 0.035 256);
+  --color-dashboard-focus: oklch(51% 0.22 256);
+  --color-dashboard-error: oklch(48% 0.17 28);
+  --color-dashboard-error-soft: oklch(94% 0.035 28);
+  --color-dashboard-success: oklch(43% 0.13 157);
+  --color-dashboard-success-soft: oklch(94% 0.035 157);
+  --color-dashboard-warning: oklch(45% 0.11 75);
+  --color-dashboard-warning-soft: oklch(94% 0.04 75);
+  --color-dashboard-scrim: oklch(14% 0.025 258);
+
+  --font-dashboard-display: var(--font-outfit), var(--font-vazirmatn), sans-serif;
+  --font-dashboard-body: var(--font-outfit), var(--font-vazirmatn), sans-serif;
+
+  --space-dashboard-3xs: 0.125rem;
+  --space-dashboard-2xs: 0.25rem;
+  --space-dashboard-xs: 0.5rem;
+  --space-dashboard-sm: 0.75rem;
+  --space-dashboard-md: 1rem;
+  --space-dashboard-lg: 1.5rem;
+  --space-dashboard-xl: 2.5rem;
+  --space-dashboard-2xl: 4rem;
+  --space-dashboard-3xl: 6rem;
+
+  --text-dashboard-xs: 0.75rem;
+  --text-dashboard-sm: 0.875rem;
+  --text-dashboard-base: 1rem;
+  --text-dashboard-md: 1.25rem;
+  --text-dashboard-lg: 1.5625rem;
+  --text-dashboard-xl: 1.953rem;
+  --text-dashboard-2xl: 2.441rem;
+
+  --ease-dashboard-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-dashboard-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-dashboard-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-dashboard-micro: 120ms;
+  --dur-dashboard-short: 220ms;
+  --dur-dashboard-long: 420ms;
+  --dur-dashboard-loader: 1.5s;
+  --dur-dashboard-reduced: 150ms;
+
+  --rule-dashboard-thin: 1px;
+  --radius-dashboard-xs: 0.375rem;
+  --radius-dashboard-sm: 0.625rem;
+  --radius-dashboard-md: 0.875rem;
+  --radius-dashboard-lg: 1.25rem;
+  --radius-dashboard-round: 999px;
+
+  --z-dashboard-base: 1;
+  --z-dashboard-sticky: 200;
+  --z-dashboard-modal: 400;
+}
+
+html[data-theme="dark"] {
+  --color-dashboard-paper: oklch(14% 0.007 258);
+  --color-dashboard-surface: oklch(18% 0.008 258);
+  --color-dashboard-surface-raised: oklch(21% 0.009 258);
+  --color-dashboard-ink: oklch(94% 0.007 255);
+  --color-dashboard-ink-soft: oklch(84% 0.009 255);
+  --color-dashboard-muted: oklch(68% 0.01 255);
+  --color-dashboard-rule: oklch(50% 0.015 258);
+  --color-dashboard-rule-strong: oklch(58% 0.018 258);
+  --color-dashboard-accent: oklch(63% 0.16 256);
+  --color-dashboard-accent-strong: oklch(69% 0.145 256);
+  --color-dashboard-accent-ink: oklch(14% 0.012 258);
+  --color-dashboard-accent-soft: oklch(23% 0.035 256);
+  --color-dashboard-focus: oklch(76% 0.12 256);
+  --color-dashboard-error: oklch(72% 0.13 28);
+  --color-dashboard-error-soft: oklch(24% 0.045 28);
+  --color-dashboard-success: oklch(72% 0.11 157);
+  --color-dashboard-success-soft: oklch(23% 0.04 157);
+  --color-dashboard-warning: oklch(78% 0.1 75);
+  --color-dashboard-warning-soft: oklch(24% 0.04 75);
+  --color-dashboard-scrim: oklch(7% 0.014 258);
+}

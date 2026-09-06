@@ -2,12 +2,21 @@
   "name": "topgsm-api",
   "private": true,
   "scripts": {
-    "dev": "nest start --watch",
+    "dev": "pnpm run prisma:migrate && pnpm run prisma:seed:dev && nest start --watch",
     "build": "nest build",
     "start:prod": "node dist/main.js",
     "start": "nest start",
     "lint": "eslint \"src/**/*.{ts,js}\"",
-    "type-check": "tsc -p tsconfig.json --noEmit"
+    "test": "node --test --require ts-node/register src/modules/auth/security.spec.ts src/modules/blog/blog.service.spec.ts src/modules/coupon/coupon.spec.ts src/modules/realtime/realtime.spec.ts",
+    "test:integration": "node --test --test-concurrency=1 --require ts-node/register src/modules/auth/auth.integration.spec.ts src/modules/order/order-payout.integration.spec.ts",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "prisma:generate": "prisma generate --schema src/prisma/schema/schema.prisma",
+    "prisma:migrate": "prisma migrate deploy --schema src/prisma/schema/schema.prisma",
+    "prisma:seed": "prisma db seed --schema src/prisma/schema/schema.prisma",
+    "prisma:seed:dev": "prisma db seed --schema src/prisma/schema/schema.prisma -- --development"
+  },
+  "prisma": {
+    "seed": "ts-node src/prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "10.4.6",

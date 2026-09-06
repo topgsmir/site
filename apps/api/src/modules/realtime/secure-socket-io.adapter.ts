@@ -1,0 +1,46 @@
+import type { INestApplicationContext } from "@nestjs/common";
+import { IoAdapter } from "@nestjs/platform-socket.io";
+import type { IncomingMessage } from "node:http";
+import type { ServerOptions } from "socket.io";
+import { AuthService } from "../auth/auth.service";
+import { readSessionToken } from "../auth/session-token";
+
+export class SecureSocketIoAdapter extends IoAdapter {
+  private readonly auth: AuthService;
+
+  constructor(
+    app: INestApplicationContext,
+    private readonly allowedOrigins: string[]
+  ) {
+    super(app);
+    this.auth = app.get(AuthService);
+  }
+
+  override createIOServer(port: number, options?: ServerOptions) {
+    const allowed = new Set(this.allowedOrigins);
+    return super.createIOServer(port, {
+      ...options,
+      allowRequest: (
+        request: IncomingMessage,
+        callback: (error: string | null | undefined, success: boolean) => void
+      ) => {
+        const origin = request.headers.origin;
+        if (typeof origin !== "string" || !allowed.has(origin)) {
+          callback(null, false);
+          return;
+        }
+        void this.auth
+          .getUserFromToken(
+            readSessionToken(request.headers.cookie, request.headers.authorization)
+          )
+          .then(() => callback(null, true))
+          .catch(() => callback(null, false));
+      },
+      cors: {
+        origin: this.allowedOrigins,
+        credentials: true,
+        methods: ["GET", "POST"]
+      }
+    });
+  }
+}

@@ -1,38 +1,41 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { isLocale, t } from "@/lib/i18n";
+import { isLocale } from "@/lib/i18n";
+import { requireUser } from "@/lib/auth/server";
+import { SellerDashboard } from "@/components/seller/SellerDashboard";
 
 export const metadata: Metadata = {
-  title: "Top GSM | Seller Dashboard",
+  title: "Seller Dashboard",
   robots: {
     index: false,
     follow: false
   }
 };
 
+export const dynamic = "force-dynamic";
+
 type SellerDashboardPageProps = {
-  params: {
+  params: Promise<{
     locale: string;
-  };
+  }>;
+  searchParams?: Promise<{
+    section?: string;
+  }>;
 };
 
-export default function SellerDashboardPage({ params }: SellerDashboardPageProps) {
-  if (!isLocale(params.locale)) {
+export default async function SellerDashboardPage({ params, searchParams }: SellerDashboardPageProps) {
+  const [{ locale }, query] = await Promise.all([params, searchParams]);
+
+  if (!isLocale(locale)) {
     notFound();
   }
 
-  const locale = params.locale;
+  const user = await requireUser(locale, ["seller-admin", "seller-staff"]);
+  const requestedSection = query?.section;
+  const initialSection = requestedSection === "products" ||
+    (requestedSection === "coupons" && user.permissions?.includes("coupons_manage"))
+    ? requestedSection
+    : "overview";
 
-  return (
-    <section>
-      <h2>{t(locale, "seller.title")}</h2>
-      <div className="card">
-        <ul>
-          <li>{t(locale, "seller.products")}</li>
-          <li>{t(locale, "seller.orders")}</li>
-          <li>{t(locale, "seller.payoutRequests")}</li>
-        </ul>
-      </div>
-    </section>
-  );
+  return <SellerDashboard locale={locale} user={user} initialSection={initialSection} />;
 }

@@ -1,31 +1,95 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
-
-type CreateProductDto = {
-  sellerId: string;
-  title: string;
-  type: "digital" | "physical" | "service";
-  price: number;
-};
-
-const products: Array<CreateProductDto & { id: string }> = [];
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards
+} from "@nestjs/common";
+import type { AuthenticatedRequest } from "../auth/platform-admin.guard";
+import { PlatformAdminGuard } from "../auth/platform-admin.guard";
+import {
+  AddSellerOffersDto,
+  CreateProductDto,
+  ListProductsQueryDto,
+  UpdateSellerOfferDto
+} from "./dto/product.dto";
+import { ProductService } from "./product.service";
+import { SellerProductsGuard } from "./seller-products.guard";
 
 @Controller("products")
 export class ProductController {
+  constructor(private readonly productService: ProductService) {}
+
   @Get()
-  list() {
-    return products;
+  list(@Query() query: ListProductsQueryDto) {
+    return this.productService.listPublic(query);
+  }
+
+  @Get("mine")
+  @UseGuards(SellerProductsGuard)
+  listMine(
+    @Query() query: ListProductsQueryDto,
+    @Req() request: AuthenticatedRequest
+  ) {
+    return this.productService.listSellerListings(
+      request.sellerContext!.sellerId,
+      query
+    );
+  }
+
+  @Get("admin")
+  @UseGuards(PlatformAdminGuard)
+  listForAdmin(@Query() query: ListProductsQueryDto) {
+    return this.productService.listAdminProducts(query);
   }
 
   @Post()
-  create(@Body() body: CreateProductDto) {
-    const item = { ...body, id: `${Date.now()}` };
-    products.push(item);
-    return item;
+  @UseGuards(SellerProductsGuard)
+  create(
+    @Body() body: CreateProductDto,
+    @Req() request: AuthenticatedRequest
+  ) {
+    return this.productService.createProduct(
+      request.sellerContext!.sellerId,
+      body
+    );
   }
 
-  @Get(":id")
-  get(@Param("id") id: string) {
-    return products.find((item) => item.id === id) ?? null;
+  @Post(":productId/offers")
+  @UseGuards(SellerProductsGuard)
+  addOffers(
+    @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
+    @Body() body: AddSellerOffersDto,
+    @Req() request: AuthenticatedRequest
+  ) {
+    return this.productService.addSellerOffers(
+      request.sellerContext!.sellerId,
+      productId,
+      body
+    );
+  }
+
+  @Patch("offers/:offerId")
+  @UseGuards(SellerProductsGuard)
+  updateOffer(
+    @Param("offerId", new ParseUUIDPipe({ version: "4" })) offerId: string,
+    @Body() body: UpdateSellerOfferDto,
+    @Req() request: AuthenticatedRequest
+  ) {
+    return this.productService.updateSellerOffer(
+      request.sellerContext!.sellerId,
+      offerId,
+      body
+    );
+  }
+
+  @Get(":idOrSlug")
+  get(@Param("idOrSlug") idOrSlug: string) {
+    return this.productService.getPublic(idOrSlug);
   }
 }
-

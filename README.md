@@ -27,6 +27,13 @@ TopGSM is scaffolded as a multi-seller marketplace monorepo with:
    - `pnpm -C apps/api dev`
    - `pnpm -C apps/web dev`
 
+The API development command applies pending migrations and runs an idempotent
+local seed. It creates `admin` / `admin` only when the admin account is missing,
+so database resets do not remove local dashboard access. This development
+credential must never be used in a deployed environment. Production seeding is
+disabled unless all `BOOTSTRAP_ADMIN_*` variables are explicitly configured,
+and it rejects passwords shorter than 12 characters.
+
 ## Payment model
 
 No Stripe integration is included in v1.
@@ -34,4 +41,3 @@ All payment logic is behind:
 - `apps/api/src/integrations/payments/payment.interface.ts`
 - `apps/api/src/integrations/payments/base-payment.adapter.ts`
 - `apps/api/src/integrations/payments/providers/local-gateway/`
-

@@ -1,0 +1,30 @@
+{
+  "scannedAt": "2026-09-07",
+  "designSystem": null,
+  "fontStack": {
+    "source": "next/font/google",
+    "families": ["Outfit", "Vazirmatn"],
+    "files": ["apps/web/src/app/[locale]/layout.tsx"]
+  },
+  "palette": {
+    "source": "CSS custom properties",
+    "themes": ["light", "dark"],
+    "files": ["apps/web/src/app/globals.css"]
+  },
+  "motion": {
+    "stance": "motion-on",
+    "libraries": ["gsap", "@gsap/react"],
+    "files": ["apps/web/package.json"]
+  },
+  "spacing": {
+    "scale": null,
+    "note": "No named 4pt or 8pt spacing token scale detected."
+  },
+  "framework": {
+    "name": "Next.js",
+    "version": "14.2.15",
+    "router": "app"
+  },
+  "preserve": ["font stack", "palette", "light and dark themes"],
+  "introduce": ["dashboard macrostructure", "interaction state discipline", "responsive dashboard layout", "slop-test gates"]
+}

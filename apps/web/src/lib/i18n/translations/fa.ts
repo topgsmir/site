@@ -22,6 +22,28 @@ export const fa = {
     payoutReview: "بررسی درخواست‌های تسویه",
     orderNotifications: "اعلان‌های سفارش"
   },
+  auth: {
+    title: "ورود به حساب کاربری",
+    registerTitle: "ساخت حساب کاربری",
+    description: "برای ادامه، اطلاعات حساب خود را وارد کنید.",
+    registerDescription: "با ساخت حساب، خرید و پیگیری سفارش‌ها ساده‌تر می‌شود.",
+    fullName: "نام و نام خانوادگی",
+    identifier: "ایمیل یا نام کاربری",
+    email: "ایمیل",
+    password: "رمز عبور",
+    loginAction: "ورود",
+    registerAction: "ساخت حساب",
+    noAccount: "هنوز حساب ندارید؟",
+    hasAccount: "قبلاً حساب ساخته‌اید؟",
+    switchToRegister: "ثبت‌نام",
+    switchToLogin: "ورود",
+    submitting: "کمی صبر کنید…",
+    genericError: "امکان انجام درخواست وجود ندارد. دوباره تلاش کنید.",
+    backHome: "بازگشت به صفحه اصلی",
+    logoutAction: "خروج",
+    loggingOut: "در حال خروج…",
+    logoutError: "خروج از حساب انجام نشد. دوباره تلاش کنید."
+  },
   payment: {
     methods: {
       localBank: {
@@ -39,4 +61,3 @@ export const fa = {
     }
   }
 } as const;
-

@@ -20,11 +20,29 @@ enum product_type {
   service
 }
 
+enum product_kind {
+  simple
+  variable
+}
+
+enum product_status {
+  draft
+  active
+  archived
+}
+
+enum listing_status {
+  draft
+  active
+  archived
+}
+
 enum order_status {
   pending
   paid
   processing
   shipped
+  awaiting_confirmation
   delivered
   cancelled
 }
@@ -37,119 +55,414 @@ enum payout_status {
   disputed
 }
 
+enum seller_permission {
+  products_manage
+  blog_manage
+  coupons_manage
+  orders_manage
+  staff_manage
+  analytics_view
+  payouts_request
+}
+
+enum coupon_discount_type {
+  percentage
+  fixed
+}
+
+enum blog_post_status {
+  draft
+  published
+  archived
+}
+
 model users {
-  id         String        @id @default(uuid()) @map("id")
-  full_name  String        @map("full_name")
-  email      String        @unique @map("email")
-  role       user_role     @map("role")
-  created_at DateTime      @default(now()) @map("created_at")
-  updated_at DateTime      @default(now()) @updatedAt @map("updated_at")
-  sellers    sellers[]
-  orders     orders[]      @relation("buyer_orders")
+  id                         String               @id @default(uuid()) @map("id")
+  full_name                  String               @map("full_name")
+  username                   String?              @unique @map("username")
+  email                      String               @unique @map("email")
+  password_hash              String?              @map("password_hash")
+  role                       user_role            @map("role")
+  created_at                 DateTime             @default(now()) @map("created_at")
+  updated_at                 DateTime             @default(now()) @updatedAt @map("updated_at")
+  sellers                    sellers[]
+  orders                     orders[]             @relation("buyer_orders")
+  granted_seller_permissions seller_permissions[] @relation("permission_granter")
+  sessions                   auth_sessions[]
+  order_events               order_events[]
+  payout_events              payout_events[]
 
   @@map("users")
 }
 
+model auth_sessions {
+  id         String    @id @default(uuid()) @map("id")
+  token_hash String    @unique @map("token_hash") @db.Char(64)
+  user_id    String    @map("user_id")
+  expires_at DateTime  @map("expires_at")
+  revoked_at DateTime? @map("revoked_at")
+  created_at DateTime  @default(now()) @map("created_at")
+  user       users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, revoked_at])
+  @@index([expires_at])
+  @@map("auth_sessions")
+}
+
+model auth_rate_limits {
+  key_hash          String    @id @map("key_hash") @db.Char(64)
+  action            String    @map("action") @db.VarChar(32)
+  window_started_at DateTime  @map("window_started_at")
+  attempt_count     Int       @map("attempt_count")
+  blocked_until     DateTime? @map("blocked_until")
+  updated_at        DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@index([updated_at])
+  @@map("auth_rate_limits")
+}
+
 model sellers {
-  id            String    @id @default(uuid()) @map("id")
-  user_id       String    @unique @map("user_id")
-  shop_name     String    @map("shop_name")
-  invited       Boolean   @default(false) @map("invited")
-  approved      Boolean   @default(false) @map("approved")
-  commission    Decimal   @default(0.1) @map("commission")
-  holdback_rate Decimal   @default(0.05) @map("holdback_rate")
-  user          users     @relation(fields: [user_id], references: [id])
-  products      products[]
-  orders        orders[]
-  payouts       payout_ledger[]
+  id               String               @id @default(uuid()) @map("id")
+  user_id          String               @unique @map("user_id")
+  shop_name        String               @map("shop_name")
+  invited          Boolean              @default(false) @map("invited")
+  approved         Boolean              @default(false) @map("approved")
+  commission       Decimal              @default(0.1) @map("commission") @db.Decimal(9, 6)
+  holdback_rate    Decimal              @default(0.05) @map("holdback_rate") @db.Decimal(9, 6)
+  phone_number     String?              @map("phone_number")
+  suspended_at     DateTime?            @map("suspended_at")
+  created_at       DateTime             @default(now()) @map("created_at")
+  updated_at       DateTime             @default(now()) @updatedAt @map("updated_at")
+  user             users                @relation(fields: [user_id], references: [id])
+  created_products products[]           @relation("product_creator")
+  listings         seller_listings[]
+  orders           orders[]
+  payouts          payout_ledger[]
+  permissions      seller_permissions[]
+  blog_posts       blog_posts[]
+  coupons          coupons[]
 
   @@map("sellers")
 }
 
-model products {
-  id          String       @id @default(uuid()) @map("id")
-  seller_id   String       @map("seller_id")
-  title       String       @map("title")
-  slug        String       @unique @map("slug")
-  base_price  Decimal      @map("base_price")
-  currency    String       @map("currency")
-  type        product_type @map("type")
-  status      String       @default("active") @map("status")
-  created_at  DateTime     @default(now()) @map("created_at")
-  updated_at  DateTime     @default(now()) @updatedAt @map("updated_at")
-  seller      sellers      @relation(fields: [seller_id], references: [id])
-  digital     product_digital?
-  physical    product_physical?
-  service     product_service?
+model coupons {
+  id                  String               @id @default(uuid()) @map("id")
+  seller_id           String               @map("seller_id")
+  code                String               @map("code") @db.VarChar(32)
+  discount_type       coupon_discount_type @map("discount_type")
+  discount_value      Decimal              @map("discount_value") @db.Decimal(20, 4)
+  currency            String               @map("currency") @db.Char(3)
+  minimum_order_amount Decimal?             @map("minimum_order_amount") @db.Decimal(20, 4)
+  maximum_redemptions Int?                 @map("maximum_redemptions")
+  redeemed_count      Int                  @default(0) @map("redeemed_count")
+  starts_at           DateTime             @default(now()) @map("starts_at")
+  expires_at          DateTime?            @map("expires_at")
+  active              Boolean              @default(true) @map("active")
+  created_at          DateTime             @default(now()) @map("created_at")
+  updated_at          DateTime             @default(now()) @updatedAt @map("updated_at")
+  seller              sellers              @relation(fields: [seller_id], references: [id], onDelete: Restrict)
 
+  @@unique([seller_id, code])
+  @@index([seller_id, updated_at, id])
+  @@index([seller_id, active, starts_at, expires_at])
+  @@map("coupons")
+}
+
+model blog_posts {
+  id           String           @id @default(uuid()) @map("id")
+  seller_id    String           @map("seller_id")
+  product_id   String?          @map("product_id")
+  title        String           @map("title") @db.VarChar(200)
+  slug         String           @unique @map("slug") @db.VarChar(200)
+  excerpt      String?          @map("excerpt") @db.VarChar(500)
+  content      String           @map("content")
+  status       blog_post_status @default(draft) @map("status")
+  published_at DateTime?        @map("published_at")
+  created_at   DateTime         @default(now()) @map("created_at")
+  updated_at   DateTime         @default(now()) @updatedAt @map("updated_at")
+  seller       sellers          @relation(fields: [seller_id], references: [id], onDelete: Restrict)
+  product      products?        @relation(fields: [product_id], references: [id], onDelete: SetNull)
+
+  @@index([seller_id, updated_at, id])
+  @@index([status, published_at, id])
+  @@index([product_id])
+  @@map("blog_posts")
+}
+
+model seller_permissions {
+  seller_id     String            @map("seller_id")
+  permission    seller_permission @map("permission")
+  granted_by_id String?           @map("granted_by_id")
+  granted_at    DateTime          @default(now()) @map("granted_at")
+  seller        sellers           @relation(fields: [seller_id], references: [id], onDelete: Cascade)
+  granted_by    users?            @relation("permission_granter", fields: [granted_by_id], references: [id], onDelete: SetNull)
+
+  @@id([seller_id, permission])
+  @@index([granted_by_id])
+  @@map("seller_permissions")
+}
+
+model products {
+  id                   String             @id @default(uuid()) @map("id")
+  created_by_seller_id String             @map("created_by_seller_id")
+  title                String             @map("title") @db.VarChar(200)
+  slug                 String             @unique @map("slug") @db.VarChar(200)
+  description          String?            @map("description")
+  category             String?            @map("category") @db.VarChar(100)
+  kind                 product_kind       @default(simple) @map("kind")
+  type                 product_type       @map("type")
+  status               product_status     @default(active) @map("status")
+  created_at           DateTime           @default(now()) @map("created_at")
+  updated_at           DateTime           @default(now()) @updatedAt @map("updated_at")
+  created_by           sellers            @relation("product_creator", fields: [created_by_seller_id], references: [id], onDelete: Restrict)
+  options              product_options[]
+  variants             product_variants[]
+  listings             seller_listings[]
+  blog_posts           blog_posts[]
+
+  @@index([created_by_seller_id])
+  @@index([status, created_at, id])
   @@map("products")
 }
 
-model product_digital {
-  id               String   @id @default(uuid()) @map("id")
-  product_id       String   @unique @map("product_id")
-  file_reference   String   @map("file_reference")
-  max_downloads    Int      @default(0) @map("max_downloads")
-  product          products @relation(fields: [product_id], references: [id], onDelete: Cascade)
+model product_options {
+  id              String                  @id @default(uuid()) @map("id")
+  product_id      String                  @map("product_id")
+  name            String                  @map("name") @db.VarChar(50)
+  normalized_name String                  @map("normalized_name") @db.VarChar(50)
+  position        Int                     @map("position")
+  product         products                @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  values          product_option_values[]
 
-  @@map("product_digital")
+  @@unique([product_id, normalized_name])
+  @@unique([id, product_id])
+  @@index([product_id, position])
+  @@map("product_options")
 }
 
-model product_physical {
-  id             String   @id @default(uuid()) @map("id")
-  product_id     String   @unique @map("product_id")
-  weight_grams   Int      @default(0) @map("weight_grams")
-  stock          Int      @default(0) @map("stock")
-  tracking_code  String?  @map("tracking_code")
-  delivered_at   DateTime?
-  product        products @relation(fields: [product_id], references: [id], onDelete: Cascade)
+model product_option_values {
+  id               String                   @id @default(uuid()) @map("id")
+  option_id        String                   @map("option_id")
+  value            String                   @map("value") @db.VarChar(100)
+  normalized_value String                   @map("normalized_value") @db.VarChar(100)
+  position         Int                      @map("position")
+  option           product_options          @relation(fields: [option_id], references: [id], onDelete: Cascade)
+  variant_values   product_variant_values[]
 
-  @@map("product_physical")
+  @@unique([option_id, normalized_value])
+  @@unique([id, option_id])
+  @@index([option_id, position])
+  @@map("product_option_values")
 }
 
-model product_service {
-  id               String  @id @default(uuid()) @map("id")
-  product_id       String  @unique @map("product_id")
-  estimated_hours  Int     @default(1) @map("estimated_hours")
-  service_type     String  @map("service_type")
-  product          products @relation(fields: [product_id], references: [id], onDelete: Cascade)
+model product_variants {
+  id               String                   @id @default(uuid()) @map("id")
+  product_id       String                   @map("product_id")
+  name             String?                  @map("name") @db.VarChar(200)
+  option_signature String                   @map("option_signature") @db.Char(64)
+  created_at       DateTime                 @default(now()) @map("created_at")
+  updated_at       DateTime                 @default(now()) @updatedAt @map("updated_at")
+  product          products                 @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  option_values    product_variant_values[]
+  offers           seller_offers[]
 
-  @@map("product_service")
+  @@unique([product_id, option_signature])
+  @@index([product_id])
+  @@map("product_variants")
+}
+
+model product_variant_values {
+  variant_id      String                @map("variant_id")
+  option_id       String                @map("option_id")
+  option_value_id String                @map("option_value_id")
+  variant         product_variants      @relation(fields: [variant_id], references: [id], onDelete: Cascade)
+  option_value    product_option_values @relation(fields: [option_value_id, option_id], references: [id, option_id], onDelete: Restrict)
+
+  @@id([variant_id, option_id])
+  @@unique([variant_id, option_value_id])
+  @@index([option_value_id, option_id])
+  @@map("product_variant_values")
+}
+
+model seller_listings {
+  id         String          @id @default(uuid()) @map("id")
+  seller_id  String          @map("seller_id")
+  product_id String          @map("product_id")
+  status     listing_status  @default(active) @map("status")
+  created_at DateTime        @default(now()) @map("created_at")
+  updated_at DateTime        @default(now()) @updatedAt @map("updated_at")
+  seller     sellers         @relation(fields: [seller_id], references: [id], onDelete: Restrict)
+  product    products        @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  offers     seller_offers[]
+
+  @@unique([seller_id, product_id])
+  @@index([seller_id, status, updated_at, id])
+  @@index([product_id, status])
+  @@map("seller_listings")
+}
+
+model seller_offers {
+  id          String                 @id @default(uuid()) @map("id")
+  listing_id  String                 @map("listing_id")
+  variant_id  String                 @map("variant_id")
+  price       Decimal                @map("price") @db.Decimal(20, 4)
+  currency    String                 @map("currency") @db.Char(3)
+  seller_sku  String?                @map("seller_sku") @db.VarChar(100)
+  status      listing_status         @default(active) @map("status")
+  created_at  DateTime               @default(now()) @map("created_at")
+  updated_at  DateTime               @default(now()) @updatedAt @map("updated_at")
+  listing     seller_listings        @relation(fields: [listing_id], references: [id], onDelete: Cascade)
+  variant     product_variants       @relation(fields: [variant_id], references: [id], onDelete: Restrict)
+  digital     seller_offer_digital?
+  physical    seller_offer_physical?
+  service     seller_offer_service?
+  order_items order_items[]
+
+  @@unique([listing_id, variant_id])
+  @@unique([listing_id, seller_sku])
+  @@index([variant_id, status, price])
+  @@map("seller_offers")
+}
+
+model seller_offer_digital {
+  offer_id       String        @id @map("offer_id")
+  file_reference String        @map("file_reference") @db.VarChar(512)
+  max_downloads  Int           @default(0) @map("max_downloads")
+  offer          seller_offers @relation(fields: [offer_id], references: [id], onDelete: Cascade)
+
+  @@map("seller_offer_digital")
+}
+
+model seller_offer_physical {
+  offer_id             String        @id @map("offer_id")
+  weight_grams         Int           @default(0) @map("weight_grams")
+  stock                Int           @default(0) @map("stock")
+  legacy_tracking_code String?       @map("legacy_tracking_code")
+  legacy_delivered_at  DateTime?     @map("legacy_delivered_at")
+  offer                seller_offers @relation(fields: [offer_id], references: [id], onDelete: Cascade)
+
+  @@map("seller_offer_physical")
+}
+
+model seller_offer_service {
+  offer_id        String        @id @map("offer_id")
+  estimated_hours Int           @default(1) @map("estimated_hours")
+  service_type    String        @map("service_type") @db.VarChar(100)
+  instructions    String?       @map("instructions")
+  offer           seller_offers @relation(fields: [offer_id], references: [id], onDelete: Cascade)
+
+  @@map("seller_offer_service")
 }
 
 model orders {
-  id               String       @id @default(uuid()) @map("id")
-  buyer_id         String       @map("buyer_id")
-  seller_id        String       @map("seller_id")
-  status           order_status @default(pending) @map("status")
-  currency         String       @map("currency")
-  total_amount     Decimal      @map("total_amount")
-  created_at       DateTime     @default(now()) @map("created_at")
-  updated_at       DateTime     @default(now()) @updatedAt @map("updated_at")
-  buyer            users        @relation("buyer_orders", fields: [buyer_id], references: [id])
-  seller           sellers      @relation(fields: [seller_id], references: [id])
-  payout_records   payout_ledger[] 
+  id              String          @id @default(uuid()) @map("id")
+  buyer_id        String          @map("buyer_id")
+  seller_id       String          @map("seller_id")
+  status          order_status    @default(pending) @map("status")
+  currency        String          @map("currency") @db.Char(3)
+  total_amount    Decimal         @map("total_amount") @db.Decimal(20, 4)
+  commission_rate Decimal         @map("commission_rate") @db.Decimal(9, 6)
+  holdback_rate   Decimal         @map("holdback_rate") @db.Decimal(9, 6)
+  idempotency_key String          @map("idempotency_key") @db.Uuid
+  request_hash    String          @map("request_hash") @db.Char(64)
+  created_at      DateTime        @default(now()) @map("created_at")
+  updated_at      DateTime        @default(now()) @updatedAt @map("updated_at")
+  buyer           users           @relation("buyer_orders", fields: [buyer_id], references: [id])
+  seller          sellers         @relation(fields: [seller_id], references: [id])
+  items           order_items[]
+  events          order_events[]
+  payout_records  payout_ledger[]
 
+  @@unique([buyer_id, idempotency_key])
+  @@index([buyer_id, created_at, id])
+  @@index([seller_id, created_at, id])
   @@map("orders")
 }
 
-model payout_ledger {
-  id               String        @id @default(uuid()) @map("id")
-  order_id         String        @unique @map("order_id")
-  seller_id        String        @map("seller_id")
-  gross_amount     Decimal       @map("gross_amount")
-  commission_amount Decimal      @map("commission_amount")
-  holdback_amount  Decimal       @map("holdback_amount")
-  payable_amount   Decimal       @map("payable_amount")
-  currency         String        @map("currency")
-  status           payout_status @default(draft) @map("status")
-  requested_at     DateTime?
-  approved_at      DateTime?
-  settled_at       DateTime?
-  created_at       DateTime      @default(now()) @map("created_at")
-  updated_at       DateTime      @default(now()) @updatedAt @map("updated_at")
-  seller           sellers       @relation(fields: [seller_id], references: [id])
-  order            orders        @relation(fields: [order_id], references: [id])
+model order_items {
+  id            String        @id @default(uuid()) @map("id")
+  order_id      String        @unique @map("order_id")
+  offer_id      String        @map("offer_id")
+  product_type  product_type  @map("product_type")
+  product_title String        @map("product_title") @db.VarChar(200)
+  quantity      Int           @map("quantity")
+  unit_price    Decimal       @map("unit_price") @db.Decimal(20, 4)
+  total_amount  Decimal       @map("total_amount") @db.Decimal(20, 4)
+  order         orders        @relation(fields: [order_id], references: [id], onDelete: Restrict)
+  offer         seller_offers @relation(fields: [offer_id], references: [id], onDelete: Restrict)
 
+  @@index([offer_id])
+  @@map("order_items")
+}
+
+model order_events {
+  id              String        @id @default(uuid()) @map("id")
+  order_id        String        @map("order_id")
+  actor_user_id   String        @map("actor_user_id")
+  from_status     order_status? @map("from_status")
+  to_status       order_status  @map("to_status")
+  idempotency_key String        @map("idempotency_key") @db.Uuid
+  request_hash    String        @map("request_hash") @db.Char(64)
+  created_at      DateTime      @default(now()) @map("created_at")
+  order           orders        @relation(fields: [order_id], references: [id], onDelete: Restrict)
+  actor           users         @relation(fields: [actor_user_id], references: [id], onDelete: Restrict)
+
+  @@unique([actor_user_id, idempotency_key])
+  @@index([order_id, created_at])
+  @@map("order_events")
+}
+
+model payout_ledger {
+  id                String          @id @default(uuid()) @map("id")
+  order_id          String          @unique @map("order_id")
+  seller_id         String          @map("seller_id")
+  gross_amount      Decimal         @map("gross_amount") @db.Decimal(20, 4)
+  commission_amount Decimal         @map("commission_amount") @db.Decimal(20, 4)
+  holdback_amount   Decimal         @map("holdback_amount") @db.Decimal(20, 4)
+  payable_amount    Decimal         @map("payable_amount") @db.Decimal(20, 4)
+  currency          String          @map("currency") @db.Char(3)
+  status            payout_status   @default(draft) @map("status")
+  requested_at      DateTime?
+  approved_at       DateTime?
+  settled_at        DateTime?
+  created_at        DateTime        @default(now()) @map("created_at")
+  updated_at        DateTime        @default(now()) @updatedAt @map("updated_at")
+  seller            sellers         @relation(fields: [seller_id], references: [id])
+  order             orders          @relation(fields: [order_id], references: [id])
+  events            payout_events[]
+
+  @@index([seller_id, created_at, id])
   @@map("payout_ledger")
+}
+
+model payout_events {
+  id              String        @id @default(uuid()) @map("id")
+  payout_id       String        @map("payout_id")
+  actor_user_id   String        @map("actor_user_id")
+  from_status     payout_status @map("from_status")
+  to_status       payout_status @map("to_status")
+  idempotency_key String        @map("idempotency_key") @db.Uuid
+  request_hash    String        @map("request_hash") @db.Char(64)
+  created_at      DateTime      @default(now()) @map("created_at")
+  payout          payout_ledger @relation(fields: [payout_id], references: [id], onDelete: Restrict)
+  actor           users         @relation(fields: [actor_user_id], references: [id], onDelete: Restrict)
+
+  @@unique([actor_user_id, idempotency_key])
+  @@index([payout_id, created_at])
+  @@map("payout_events")
+}
+
+model outbox_events {
+  id           String    @id @default(uuid()) @map("id")
+  aggregate    String    @map("aggregate") @db.VarChar(32)
+  aggregate_id String    @map("aggregate_id")
+  event_type   String    @map("event_type") @db.VarChar(64)
+  dedupe_key   String    @unique @map("dedupe_key") @db.VarChar(160)
+  payload      Json      @map("payload")
+  created_at   DateTime  @default(now()) @map("created_at")
+  published_at DateTime? @map("published_at")
+  attempts     Int       @default(0) @map("attempts")
+
+  @@index([published_at, created_at])
+  @@map("outbox_events")
 }

@@ -6,20 +6,25 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "type-check": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@fontsource-variable/outfit": "5.3.0",
+    "@fontsource-variable/vazirmatn": "5.3.0",
     "@gsap/react": "2.1.2",
     "axios": "1.8.2",
     "gsap": "3.15.0",
-    "next": "14.2.15",
-    "next-auth": "4.24.11",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
+    "next": "16.3.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "socket.io-client": "4.8.1"
   },
   "devDependencies": {
-    "@types/react": "19.2.18"
+    "@types/node": "22.8.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.4"
   }
 }

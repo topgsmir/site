@@ -22,6 +22,28 @@ export const en = {
     payoutReview: "Payout review",
     orderNotifications: "Order notifications"
   },
+  auth: {
+    title: "Sign in to your account",
+    registerTitle: "Create your account",
+    description: "Enter your account details to continue.",
+    registerDescription: "Create an account to buy and track your orders.",
+    fullName: "Full name",
+    identifier: "Email or username",
+    email: "Email",
+    password: "Password",
+    loginAction: "Sign in",
+    registerAction: "Create account",
+    noAccount: "New to Top GSM?",
+    hasAccount: "Already have an account?",
+    switchToRegister: "Create an account",
+    switchToLogin: "Sign in",
+    submitting: "Please wait…",
+    genericError: "We could not complete the request. Please try again.",
+    backHome: "Back to home",
+    logoutAction: "Log out",
+    loggingOut: "Logging out…",
+    logoutError: "We could not log you out. Please try again."
+  },
   payment: {
     methods: {
       localBank: {
@@ -39,4 +61,3 @@ export const en = {
     }
   }
 } as const;
-

@@ -8,6 +8,8 @@ import { PayoutModule } from "./modules/payout/payout.module";
 import { RealtimeModule } from "./modules/realtime/realtime.module";
 import { PaymentsModule } from "./integrations/payments/payment.module";
 import { PrismaModule } from "./prisma/prisma.module";
+import { BlogModule } from "./modules/blog/blog.module";
+import { CouponModule } from "./modules/coupon/coupon.module";
 
 @Module({
   imports: [
@@ -19,6 +21,8 @@ import { PrismaModule } from "./prisma/prisma.module";
     AuthModule,
     SellerModule,
     ProductModule,
+    BlogModule,
+    CouponModule,
     OrderModule,
     PayoutModule,
     RealtimeModule,

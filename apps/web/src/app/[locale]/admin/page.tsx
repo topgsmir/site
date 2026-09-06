@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { isLocale, t } from "@/lib/i18n";
+import { isLocale } from "@/lib/i18n";
+import { requireUser } from "@/lib/auth/server";
+import { VendorManagement } from "@/components/admin/VendorManagement";
 
 export const metadata: Metadata = {
   title: "Top GSM | Admin",
@@ -10,29 +12,22 @@ export const metadata: Metadata = {
   }
 };
 
+export const dynamic = "force-dynamic";
+
 type AdminPanelPageProps = {
-  params: {
+  params: Promise<{
     locale: string;
-  };
+  }>;
 };
 
-export default function AdminPanelPage({ params }: AdminPanelPageProps) {
-  if (!isLocale(params.locale)) {
+export default async function AdminPanelPage({ params }: AdminPanelPageProps) {
+  const { locale } = await params;
+
+  if (!isLocale(locale)) {
     notFound();
   }
 
-  const locale = params.locale;
+  const user = await requireUser(locale, ["platform-admin"]);
 
-  return (
-    <section>
-      <h2>{t(locale, "admin.title")}</h2>
-      <div className="card">
-        <ul>
-          <li>{t(locale, "admin.sellerInvites")}</li>
-          <li>{t(locale, "admin.payoutReview")}</li>
-          <li>{t(locale, "admin.orderNotifications")}</li>
-        </ul>
-      </div>
-    </section>
-  );
+  return <VendorManagement locale={locale} adminName={user.fullName} />;
 }

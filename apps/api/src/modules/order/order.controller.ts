@@ -1,74 +1,71 @@
-import { Body, Controller, Get, Patch, Post, Param } from "@nestjs/common";
-import { RealtimeGateway } from "../realtime/realtime.gateway";
-import { PayoutService } from "../payout/payout.service";
-import { OrderStatus } from "@topgsm/shared-types";
-
-type CreateOrderDto = {
-  buyerId: string;
-  sellerId: string;
-  productType: "digital" | "physical" | "service";
-  amount: number;
-  currency: string;
-};
-
-type UpdateOrderStatusDto = {
-  status: OrderStatus;
-};
-
-type Order = {
-  id: string;
-  status: OrderStatus;
-  items: CreateOrderDto[];
-};
-
-const orders: Array<Order> = [];
+import {
+  Body,
+  Controller,
+  Get,
+  Ip,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards
+} from "@nestjs/common";
+import { AuthenticatedGuard } from "../auth/authenticated.guard";
+import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
+import { IdempotencyKey } from "../auth/idempotency-key.decorator";
+import type { AuthenticatedRequest } from "../auth/platform-admin.guard";
+import {
+  CreateOrderDto,
+  ListOrdersQueryDto,
+  UpdateOrderStatusDto
+} from "./dto/order.dto";
+import { OrderService } from "./order.service";
 
 @Controller("orders")
+@UseGuards(AuthenticatedGuard)
 export class OrderController {
   constructor(
-    private readonly realtime: RealtimeGateway,
-    private readonly payoutService: PayoutService
+    private readonly orders: OrderService,
+    private readonly rateLimits: AuthRateLimitService
   ) {}
 
   @Get()
-  list() {
-    return orders;
+  list(@Req() request: AuthenticatedRequest, @Query() query: ListOrdersQueryDto) {
+    return this.orders.list(request.authenticatedUser!, query);
   }
 
   @Post()
-  create(@Body() body: CreateOrderDto) {
-    const order = {
-      id: `${Date.now()}`,
-      status: "pending" as const,
-      items: [body]
-    } satisfies Order;
-
-    orders.push(order);
-    this.payoutService.recordDraft(order.id, body.sellerId, body.amount, body.currency);
-    this.realtime.emitOrderCreated(order.id, {
-      orderId: order.id,
-      status: order.status
-    });
-    return order;
+  async create(
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string,
+    @Body() body: CreateOrderDto,
+    @IdempotencyKey() idempotencyKey: string
+  ) {
+    await this.rateLimits.consumeOrderMutation(
+      request.authenticatedUser!.id,
+      clientIp
+    );
+    return this.orders.create(request.authenticatedUser!, body, idempotencyKey);
   }
 
   @Patch(":id/status")
-  updateStatus(
-    @Param("id") id: string,
-    @Body() body: UpdateOrderStatusDto
+  async updateStatus(
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string,
+    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
+    @Body() body: UpdateOrderStatusDto,
+    @IdempotencyKey() idempotencyKey: string
   ) {
-    const order = orders.find((item) => item.id === id);
-    if (!order) {
-      return { message: "order not found" };
-    }
-
-    order.status = body.status;
-    this.payoutService.updateFromOrderStatus(id, body.status);
-    this.realtime.emitOrderStatusChanged(id, {
-      orderId: id,
-      status: body.status
-    });
-
-    return order;
+    await this.rateLimits.consumeOrderMutation(
+      request.authenticatedUser!.id,
+      clientIp
+    );
+    return this.orders.transition(
+      request.authenticatedUser!,
+      id,
+      body,
+      idempotencyKey
+    );
   }
 }

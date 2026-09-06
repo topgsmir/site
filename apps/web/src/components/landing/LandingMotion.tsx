@@ -14,14 +14,6 @@ export function LandingMotion() {
     const media = gsap.matchMedia();
 
     media.add("(min-width: 761px)", () => {
-      gsap.from("[data-hero-reveal]", {
-        autoAlpha: 0,
-        y: 28,
-        duration: 0.85,
-        stagger: 0.08,
-        ease: "power3.out"
-      });
-
       const revealWords = gsap.utils.toArray<HTMLElement>("[data-reveal-word]");
       gsap.fromTo(
         revealWords,
@@ -56,6 +48,25 @@ export function LandingMotion() {
               scrub: 0.45
             },
             delay: index * 0.02
+          }
+        );
+      });
+
+      const productVisuals = gsap.utils.toArray<HTMLElement>("[data-product-visual]");
+      productVisuals.forEach((visual) => {
+        gsap.fromTo(
+          visual,
+          { scale: 0.9, opacity: 0.55 },
+          {
+            scale: 1,
+            opacity: 1,
+            ease: "none",
+            scrollTrigger: {
+              trigger: visual,
+              start: "top 92%",
+              end: "top 58%",
+              scrub: 0.5
+            }
           }
         );
       });

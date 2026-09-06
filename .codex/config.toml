@@ -1,0 +1,21 @@
+[mcp_servers.postgres]
+command = "npx.cmd"
+args = ["-y", "@microsoft/postgres-mcp", "run", "--no-telemetry"]
+cwd = "C:\\Users\\Gary\\Programming\\topgsm"
+env = { POSTGRES_MCP_DISABLE_CWD_ACCESS = "1" }
+enabled = true
+required = false
+startup_timeout_sec = 30
+tool_timeout_sec = 60
+default_tools_approval_mode = "prompt"
+enabled_tools = [
+  "postgres_mcp_list_connection_profiles",
+  "postgres_mcp_connect",
+  "postgres_mcp_disconnect",
+  "postgres_mcp_list_databases",
+  "postgres_mcp_db_context",
+  "postgres_mcp_query",
+  "postgres_mcp_modify",
+  "postgres_mcp_get_server_capabilities",
+  "postgres_mcp_get_metrics_group",
+]

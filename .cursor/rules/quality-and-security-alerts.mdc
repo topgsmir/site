@@ -1,0 +1,18 @@
+---
+description: Proactively report credible security, correctness, and engineering-quality risks
+alwaysApply: true
+---
+
+# Quality and Security Alerts
+
+While inspecting, reviewing, or changing code, proactively notify the user about credible issues encountered within the task's scope.
+
+- Flag security vulnerabilities, correctness bugs, unsafe data handling, privacy risks, authorization gaps, injection risks, secret exposure, and destructive behavior.
+- Flag meaningful departures from established language, framework, repository, accessibility, reliability, and performance best practices.
+- Do not silently expand a requested implementation into unrelated cleanup. Report out-of-scope findings separately.
+- Prioritize concrete, actionable findings over stylistic preferences or speculative concerns.
+- For each finding, state its severity, affected file and location, impact, supporting evidence, and the smallest reasonable remediation.
+- Distinguish confirmed defects from risks that require validation. Never present an assumption as a fact.
+- Mention low-severity issues only when they are likely to cause real maintenance or user impact; avoid warning fatigue.
+- If a critical or high-severity issue could make the requested change unsafe, pause before introducing or worsening it and explain the safer path.
+- If no credible issue is found, do not manufacture one or add a ceremonial warning section.
