@@ -94,4 +94,49 @@ describe("multilingual blog security", () => {
     });
   });
 
+  it("returns the current published slugs to management screens", async () => {
+    let include: unknown;
+    const prisma = {
+      blog_posts: {
+        findMany: async (input: { include: unknown }) => {
+          include = input.include;
+          return [{
+            id: "00000000-0000-4000-8000-000000000010",
+            archived_at: null,
+            seller: null,
+            routes: [
+              { locale: "fa", slug: "راهنمای-خرید" },
+              { locale: "en", slug: "buying-guide" }
+            ],
+            working_revision: {
+              status: "draft",
+              revision_number: 2,
+              optimistic_version: 1,
+              translations: [],
+              cover_asset: null,
+              category: null,
+              tags: [],
+              related_products: [],
+              moderation_note: null
+            },
+            published_at: new Date("2026-09-07T08:00:00.000Z"),
+            updated_at: new Date("2026-09-08T08:00:00.000Z")
+          }];
+        }
+      }
+    } as unknown as PrismaService;
+
+    const service = new BlogService(prisma);
+    const result = await service.listManaged(sellerActor, { limit: 20 });
+
+    assert.deepEqual(
+      (include as { routes: unknown }).routes,
+      { where: { is_current: true }, select: { locale: true, slug: true } }
+    );
+    assert.deepEqual(result.items[0]?.publicSlugs, {
+      fa: "راهنمای-خرید",
+      en: "buying-guide"
+    });
+  });
+
 });

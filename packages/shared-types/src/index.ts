@@ -188,6 +188,7 @@ export interface ManagedBlogPost {
   revision: number;
   optimisticVersion: number;
   translations: BlogTranslationDraft[];
+  publicSlugs: Partial<Record<BlogLocale, string>>;
   cover: BlogMediaAsset | null;
   category: BlogTaxonomyTerm | null;
   tags: BlogTaxonomyTerm[];
@@ -272,6 +273,7 @@ export interface AdminProductSummary {
   id: string;
   title: string;
   slug: string;
+  description: string | null;
   category: string | null;
   kind: ProductKind;
   type: ProductType;

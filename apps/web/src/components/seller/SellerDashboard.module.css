@@ -596,6 +596,12 @@
   text-underline-offset: .18em;
 }
 
+.actionUnavailable {
+  color: var(--color-dashboard-muted);
+  font-size: var(--text-dashboard-xs);
+  cursor: help;
+}
+
 .editorLayer {
   position: fixed;
   z-index: 80;

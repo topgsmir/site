@@ -69,6 +69,15 @@ export class ProductController {
     );
   }
 
+  @Patch("admin/:productId")
+  @UseGuards(PlatformAdminGuard)
+  updateForAdmin(
+    @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
+    @Body() body: UpdateProductDto
+  ) {
+    return this.productService.updateAdminProduct(productId, body);
+  }
+
   @Patch(":productId")
   @UseGuards(SellerProductsGuard)
   update(

@@ -20,6 +20,10 @@ import { hasMeaningfulRichText, validateRichText } from "./rich-text.validator";
 
 const managedInclude = Prisma.validator<Prisma.blog_postsInclude>()({
   seller: { select: { id: true, shop_name: true } },
+  routes: {
+    where: { is_current: true },
+    select: { locale: true, slug: true }
+  },
   working_revision: {
     include: {
       translations: true,
@@ -791,6 +795,9 @@ export class BlogService {
         coverAltText: item.cover_alt_text ?? "",
         content: item.content_json ?? { type: "doc", content: [] }
       })),
+      publicSlugs: Object.fromEntries(
+        post.routes.map((route) => [route.locale, route.slug])
+      ),
       cover: this.mapMedia(revision.cover_asset),
       category: revision.category ? { id: revision.category.id, translations: revision.category.translations } : null,
       tags: revision.tags.map((item) => ({ id: item.tag.id, translations: item.tag.translations })),
