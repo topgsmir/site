@@ -647,7 +647,8 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
   }, [copy.listError]);
 
   useEffect(() => {
-    void loadListings();
+    const timer = window.setTimeout(() => void loadListings(), 0);
+    return () => window.clearTimeout(timer);
   }, [loadListings]);
 
   const visibleListings = useMemo(() => {

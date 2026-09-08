@@ -1,0 +1,19 @@
+.shell { min-height: 100svh; padding: clamp(18px, 4vw, 52px); color: var(--color-dashboard-ink); background: var(--color-dashboard-paper); }
+.nav { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; max-width: 1320px; margin: 0 auto 26px; padding-bottom: 16px; border-bottom: 1px solid var(--color-dashboard-rule); }
+.nav div { display: flex; flex-wrap: wrap; gap: 8px; }
+.nav a { min-height: 44px; display: inline-flex; align-items: center; padding-inline: 14px; border: 1px solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-control); background: var(--color-dashboard-surface); font-weight: 750; white-space: nowrap; }
+.content { display: grid; gap: 26px; max-width: 1320px; margin-inline: auto; }
+.taxonomy { display: grid; gap: 18px; padding: 20px; border: 1px solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-panel); background: var(--color-dashboard-surface); }
+.taxonomy header p { margin-top: 6px; color: var(--color-dashboard-muted); line-height: 1.55; }
+.kindTabs { display: flex; gap: 5px; }
+.kindTabs button, .taxonomy button { min-height: 44px; padding-inline: 14px; border: 1px solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-control); color: var(--color-dashboard-ink); background: var(--color-dashboard-surface-raised); font-weight: 750; cursor: pointer; }
+.kindTabs button[aria-pressed="true"] { color: var(--color-dashboard-accent-ink); background: var(--color-dashboard-accent); }
+.form { display: grid; gap: 12px; }
+.form fieldset { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--color-dashboard-rule); }
+.form label { display: grid; gap: 5px; font-size: .76rem; font-weight: 700; }
+.form input { min-height: 44px; padding: 9px 11px; border: 1px solid var(--color-dashboard-rule-strong); outline: 2px solid transparent; outline-offset: 1px; border-radius: var(--radius-dashboard-control); color: var(--color-dashboard-ink); background: var(--color-dashboard-surface-raised); }
+.terms { display: grid; gap: 7px; }
+.term { display: flex; justify-content: space-between; gap: 12px; align-items: center; min-height: 50px; padding: 8px 10px; border-bottom: 1px solid var(--color-dashboard-rule); }
+.term span { color: var(--color-dashboard-muted); font-size: .76rem; }
+.shell :is(a, button, input):focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
+@media (min-width: 70rem) { .content { grid-template-columns: minmax(0, 1fr) 360px; align-items: start; } .taxonomy { position: sticky; top: 20px; } .form fieldset { grid-template-columns: 1fr; } }

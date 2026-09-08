@@ -27,7 +27,8 @@ export function ThemeToggle({ locale }: { locale: Locale }) {
   const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
-    setTheme(readTheme());
+    const timer = window.setTimeout(() => setTheme(readTheme()), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   function toggleTheme() {

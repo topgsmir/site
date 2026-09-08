@@ -10,6 +10,8 @@ import { PaymentsModule } from "./integrations/payments/payment.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { BlogModule } from "./modules/blog/blog.module";
 import { CouponModule } from "./modules/coupon/coupon.module";
+import { StaffModule } from "./modules/staff/staff.module";
+import { MediaModule } from "./modules/media/media.module";
 
 @Module({
   imports: [
@@ -19,6 +21,8 @@ import { CouponModule } from "./modules/coupon/coupon.module";
     }),
     PrismaModule,
     AuthModule,
+    StaffModule,
+    MediaModule,
     SellerModule,
     ProductModule,
     BlogModule,

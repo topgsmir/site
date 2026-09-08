@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import Image from "next/image";
 import type {
   AdminProductSummary,
   AdminProductsPage,
@@ -264,6 +265,7 @@ type VendorFormState = {
   status: VendorStatus;
   commission: string;
   holdbackRate: string;
+  blogReviewRequired: boolean;
   permissions: VendorPermission[];
 };
 
@@ -276,6 +278,7 @@ const emptyForm: VendorFormState = {
   status: "active",
   commission: "10",
   holdbackRate: "5",
+  blogReviewRequired: true,
   permissions: ["products_manage", "blog_manage", "coupons_manage", "orders_manage", "analytics_view"]
 };
 
@@ -302,6 +305,7 @@ function formFromVendor(vendor: Vendor): VendorFormState {
     status: vendor.status,
     commission: String(vendor.commission * 100),
     holdbackRate: String(vendor.holdbackRate * 100),
+    blogReviewRequired: vendor.blogReviewRequired,
     permissions: [...vendor.permissions]
   };
 }
@@ -348,7 +352,7 @@ export function VendorManagement({
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState("");
 
-  async function loadVendors() {
+  const loadVendors = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -359,9 +363,9 @@ export function VendorManagement({
     } finally {
       setLoading(false);
     }
-  }
+  }, [c.loadError]);
 
-  async function loadProducts(cursor?: string) {
+  const loadProducts = useCallback(async (cursor?: string) => {
     setProductsLoading(true);
     setProductsError("");
     try {
@@ -375,7 +379,7 @@ export function VendorManagement({
     } finally {
       setProductsLoading(false);
     }
-  }
+  }, [c.catalogLoadError]);
 
   const closePanel = useCallback(() => {
     setPanelMode(null);
@@ -384,9 +388,12 @@ export function VendorManagement({
   }, []);
 
   useEffect(() => {
-    void loadVendors();
-    void loadProducts();
-  }, []);
+    const timer = window.setTimeout(() => {
+      void loadVendors();
+      void loadProducts();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadProducts, loadVendors]);
 
   useEffect(() => {
     const sections = [
@@ -559,6 +566,7 @@ export function VendorManagement({
       status: form.status,
       commission: Number(form.commission) / 100,
       holdbackRate: Number(form.holdbackRate) / 100,
+      blogReviewRequired: form.blogReviewRequired,
       permissions: form.permissions
     };
 
@@ -605,7 +613,7 @@ export function VendorManagement({
       <a className="skip-link" href="#vendor-workspace-list">{c.skip}</a>
       <aside className="admin-rail">
         <a className="admin-brand" href={`/${locale}`} aria-label="Top GSM">
-          <img src="/brand/topgsm-logo.jpg" alt="" width="46" height="46" />
+          <Image src="/brand/topgsm-logo.jpg" alt="" width={46} height={46} />
           <span translate="no">TOP GSM</span>
         </a>
         <nav className="admin-navigation" aria-label={c.navigation}>
@@ -652,7 +660,7 @@ export function VendorManagement({
           <h1 id="vendor-title">
             {c.titleStart}{" "}
             <span className="admin-inline-mark" aria-hidden="true">
-              <img src="/brand/topgsm-logo.jpg" alt="" width="112" height="52" />
+              <Image src="/brand/topgsm-logo.jpg" alt="" width={112} height={52} />
             </span>{" "}
             <span>{c.titleEnd}</span>
           </h1>
@@ -870,6 +878,19 @@ export function VendorManagement({
                     </label>
                   ))}
                 </div>
+              </fieldset>
+
+              <fieldset className="permission-fieldset">
+                <legend>{locale === "fa" ? "سیاست انتشار وبلاگ" : locale === "ar" ? "سياسة نشر المدونة" : "Blog publishing policy"}</legend>
+                <p>{locale === "fa" ? "بررسی پیش از انتشار به‌صورت پیش‌فرض فعال است." : locale === "ar" ? "المراجعة قبل النشر مفعلة افتراضياً." : "Review before publication is enabled by default."}</p>
+                <label className="permission-option">
+                  <span>
+                    <strong>{locale === "fa" ? "نیازمند بررسی تحریریه" : locale === "ar" ? "يتطلب مراجعة التحرير" : "Require editorial review"}</strong>
+                    <small>{locale === "fa" ? "با خاموش‌کردن این گزینه، فروشنده می‌تواند مستقیم منتشر کند." : locale === "ar" ? "عند إيقافه يمكن للبائع النشر مباشرة." : "Turn off only for sellers trusted to publish directly."}</small>
+                  </span>
+                  <input type="checkbox" checked={form.blogReviewRequired} onChange={(event) => updateField("blogReviewRequired", event.target.checked)} />
+                  <i aria-hidden="true" />
+                </label>
               </fieldset>
 
               {error ? <p className="admin-notice is-error" role="alert">{error}</p> : null}

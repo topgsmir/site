@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/i18n";
 import { requireUser } from "@/lib/auth/server";
 import { VendorManagement } from "@/components/admin/VendorManagement";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Top GSM | Admin",
@@ -29,5 +30,5 @@ export default async function AdminPanelPage({ params }: AdminPanelPageProps) {
 
   const user = await requireUser(locale, ["platform-admin"]);
 
-  return <VendorManagement locale={locale} adminName={user.fullName} />;
+  return <><nav className="admin-workspace-links" aria-label="Admin workspaces"><Link href={`/${locale}/admin/blog`}>Editorial</Link><Link href={`/${locale}/admin/staff`}>Staff</Link></nav><VendorManagement locale={locale} adminName={user.fullName} /></>;
 }

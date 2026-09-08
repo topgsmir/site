@@ -1,45 +1,28 @@
 import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
-import { PlatformAdminGuard, type AuthenticatedRequest } from "../auth/platform-admin.guard";
+import { type AuthenticatedRequest } from "../auth/platform-admin.guard";
+import { PlatformPermissionGuard } from "../auth/platform-permission.guard";
+import { RequirePlatformPermission } from "../auth/platform-permission.decorator";
 import { CreateVendorDto, UpdateVendorDto } from "./dto/vendor.dto";
+import {
+  CreateSellerAgentDto,
+  CreateSellerInviteDto
+} from "./dto/seller-directory.dto";
 import { SellerService } from "./seller.service";
-
-type CreateSellerInviteDto = {
-  ownerName: string;
-  ownerEmail: string;
-  phoneNumber: string;
-};
-
-const invitedSellers: Array<CreateSellerInviteDto & { status: "invited" | "active" }> = [];
-
-type Agent = {
-  id: string;
-  name: string;
-  specialty: string;
-  rating: number;
-  phone?: string;
-  available: boolean;
-};
-
-const agents: Agent[] = [
-  { id: "nima-rasouli", name: "نیما رسولی", specialty: "کارشناس شیائومی", rating: 4.9, phone: "09925739310", available: true },
-  { id: "ali-abdi", name: "علی عبدی", specialty: "کارشناس سامسونگ", rating: 4.8, phone: "09925739311", available: true },
-  { id: "hesam-amini", name: "حسام امینی", specialty: "کارشناس عمومی", rating: 4.8, phone: "09925739313", available: false },
-  { id: "hossein-kari", name: "حسین کاری", specialty: "متخصص برندهای چینی", rating: 4.7, phone: "09925739314", available: true },
-  { id: "reza-rajabdoost", name: "رضا رجب‌دوست", specialty: "کارشناس سامسونگ", rating: 4.9, phone: "09925739320", available: true }
-];
 
 @Controller("seller")
 export class SellerController {
   constructor(private readonly sellerService: SellerService) {}
 
   @Get("vendors")
-  @UseGuards(PlatformAdminGuard)
+  @RequirePlatformPermission("vendors_manage")
+  @UseGuards(PlatformPermissionGuard)
   listVendors() {
     return this.sellerService.listVendors();
   }
 
   @Post("vendors")
-  @UseGuards(PlatformAdminGuard)
+  @RequirePlatformPermission("vendors_manage")
+  @UseGuards(PlatformPermissionGuard)
   createVendor(
     @Body() body: CreateVendorDto,
     @Req() request: AuthenticatedRequest
@@ -51,7 +34,8 @@ export class SellerController {
   }
 
   @Patch("vendors/:id")
-  @UseGuards(PlatformAdminGuard)
+  @RequirePlatformPermission("vendors_manage")
+  @UseGuards(PlatformPermissionGuard)
   updateVendor(
     @Param("id") id: string,
     @Body() body: UpdateVendorDto,
@@ -66,25 +50,33 @@ export class SellerController {
 
   @Get("agents")
   listAgents() {
-    return agents;
+    return this.sellerService.listAgents();
   }
 
   @Post("agents")
-  createAgent(@Body() body: Omit<Agent, "id">) {
-    const agent = { ...body, id: `${Date.now()}` };
-    agents.push(agent);
-    return agent;
+  @RequirePlatformPermission("vendors_manage")
+  @UseGuards(PlatformPermissionGuard)
+  createAgent(
+    @Body() body: CreateSellerAgentDto,
+    @Req() request: AuthenticatedRequest
+  ) {
+    return this.sellerService.createAgent(body, request.authenticatedUser!.id);
   }
 
   @Get("invites")
+  @RequirePlatformPermission("vendors_manage")
+  @UseGuards(PlatformPermissionGuard)
   list() {
-    return invitedSellers;
+    return this.sellerService.listInvitations();
   }
 
   @Post("invites")
-  create(@Body() body: CreateSellerInviteDto) {
-    const row = { ...body, status: "invited" as const };
-    invitedSellers.push(row);
-    return row;
+  @RequirePlatformPermission("vendors_manage")
+  @UseGuards(PlatformPermissionGuard)
+  create(
+    @Body() body: CreateSellerInviteDto,
+    @Req() request: AuthenticatedRequest
+  ) {
+    return this.sellerService.createInvitation(body, request.authenticatedUser!.id);
   }
 }

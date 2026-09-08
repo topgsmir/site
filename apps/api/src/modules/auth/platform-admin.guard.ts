@@ -21,6 +21,14 @@ export type AuthenticatedRequest = {
     sellerId: string;
     user: AppUser;
   };
+  blogActor?:
+    | { type: "platform"; user: AppUser }
+    | {
+        type: "seller";
+        sellerId: string;
+        reviewRequired: boolean;
+        user: AppUser;
+      };
 };
 
 @Injectable()

@@ -1,5 +1,5 @@
 import { NestFactory } from "@nestjs/core";
-import { ValidationPipe } from "@nestjs/common";
+import { RequestMethod, ValidationPipe } from "@nestjs/common";
 import { AppModule } from "./app.module";
 import { ConfigService } from "@nestjs/config";
 import {
@@ -27,7 +27,9 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true })
   );
-  app.setGlobalPrefix("api");
+  app.setGlobalPrefix("api", {
+    exclude: [{ path: "media/:assetId/:filename", method: RequestMethod.GET }]
+  });
   await app.listen(port, host);
 }
 

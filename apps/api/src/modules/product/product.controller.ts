@@ -11,7 +11,8 @@ import {
   UseGuards
 } from "@nestjs/common";
 import type { AuthenticatedRequest } from "../auth/platform-admin.guard";
-import { PlatformAdminGuard } from "../auth/platform-admin.guard";
+import { PlatformPermissionGuard } from "../auth/platform-permission.guard";
+import { RequirePlatformPermission } from "../auth/platform-permission.decorator";
 import {
   AddSellerOffersDto,
   CreateProductDto,
@@ -43,9 +44,15 @@ export class ProductController {
   }
 
   @Get("admin")
-  @UseGuards(PlatformAdminGuard)
+  @RequirePlatformPermission("catalog_view")
+  @UseGuards(PlatformPermissionGuard)
   listForAdmin(@Query() query: ListProductsQueryDto) {
     return this.productService.listAdminProducts(query);
+  }
+
+  @Get("sitemap")
+  sitemap() {
+    return this.productService.sitemapProjection();
   }
 
   @Post()

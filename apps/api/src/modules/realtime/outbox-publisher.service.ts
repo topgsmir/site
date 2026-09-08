@@ -78,7 +78,9 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
       typeof payload.sellerId === "string"
     ) {
       const audience = { buyerId: payload.buyerId, sellerId: payload.sellerId };
-      const { buyerId: _buyerId, sellerId: _sellerId, ...eventPayload } = payload;
+      const eventPayload = { ...payload };
+      delete eventPayload.buyerId;
+      delete eventPayload.sellerId;
       if (eventType === "order.created") {
         this.realtime.emitOrderCreated(audience, eventPayload);
       } else {
