@@ -7,6 +7,8 @@ import {
   validateSecurityConfig
 } from "./modules/auth/security-config";
 import { SecureSocketIoAdapter } from "./modules/realtime/secure-socket-io.adapter";
+import { randomUUID } from "node:crypto";
+import { ApiExceptionFilter } from "./common/http/api-exception.filter";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -22,8 +24,15 @@ async function bootstrap() {
   if (trustProxyHops > 0) {
     app.getHttpAdapter().getInstance().set("trust proxy", trustProxyHops);
   }
-  app.enableCors({ origin: allowedOrigins, credentials: true });
+  app.use((request: { requestId?: string }, response: { setHeader(name: string, value: string): void }, next: () => void) => {
+    const requestId = randomUUID();
+    request.requestId = requestId;
+    response.setHeader("X-Request-Id", requestId);
+    next();
+  });
+  app.enableCors({ origin: allowedOrigins, credentials: true, exposedHeaders: ["X-Request-Id"] });
   app.useWebSocketAdapter(new SecureSocketIoAdapter(app, allowedOrigins));
+  app.useGlobalFilters(new ApiExceptionFilter());
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true })
   );

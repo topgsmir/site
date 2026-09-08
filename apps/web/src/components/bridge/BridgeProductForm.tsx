@@ -1,6 +1,7 @@
 "use client";
 
 import type { BridgeGrantSummary } from "@topgsm/shared-types";
+import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
@@ -65,7 +66,7 @@ export function BridgeProductForm({ locale, initialGrantId }: { locale: Locale; 
   }
 
   return <div className={styles.shell}>
-    <header className={styles.header}><div><p className={styles.brand}>{c.eyebrow}</p><h1>{c.title}</h1></div><Link className={styles.link} href={`/${locale}/seller-dashboard/bridge`}>{c.back}</Link></header>
+    <header className={styles.header}><div><p className={styles.brand}>{c.eyebrow}</p><h1>{c.title}</h1></div><Link className={styles.link} href={`/${locale}/seller-dashboard/bridge` as Route}>{c.back}</Link></header>
     <main className={styles.main}>
       {!grants.length && !selected ? <p className={styles.empty}>{c.empty}</p> : null}
       {selected ? <form className={styles.form} onSubmit={submit} aria-busy={busy}>
