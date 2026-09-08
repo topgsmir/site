@@ -79,4 +79,44 @@ describe("seller blog isolation", () => {
       seller: { invited: false, approved: true, suspended_at: null }
     });
   });
+
+  it("does not update a post owned by another seller", async () => {
+    let updateCalled = false;
+    const prisma = {
+      blog_posts: {
+        findFirst: async () => null,
+        update: async () => { updateCalled = true; }
+      }
+    } as unknown as PrismaService;
+    const service = new BlogService(prisma);
+
+    await assert.rejects(service.update("seller-1", "00000000-0000-4000-8000-000000000001", {
+      title: "Changed title"
+    }), NotFoundException);
+    assert.equal(updateCalled, false);
+  });
+
+  it("keeps the original publication time when editing a published post", async () => {
+    let updateData: Record<string, unknown> | undefined;
+    const prisma = {
+      blog_posts: {
+        findFirst: async () => ({ id: "post-1", published_at: now }),
+        update: async ({ data }: { data: Record<string, unknown> }) => {
+          updateData = data;
+          return {
+            id: "post-1", title: "Updated guide", slug: "updated-guide", excerpt: null,
+            status: "published", published_at: now, created_at: now, updated_at: now, product: null
+          };
+        }
+      }
+    } as unknown as PrismaService;
+    const service = new BlogService(prisma);
+
+    await service.update("seller-1", "00000000-0000-4000-8000-000000000001", {
+      title: "  Updated   guide  ", status: "published"
+    });
+
+    assert.equal(updateData?.title, "Updated guide");
+    assert.equal(updateData?.published_at, now);
+  });
 });

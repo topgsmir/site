@@ -151,6 +151,12 @@ type DashboardCopy = {
   createError: string;
   sellerRole: string;
   moreAvailable: string;
+  actions: string;
+  editProduct: string;
+  editProductDescription: string;
+  saveChanges: string;
+  savingChanges: string;
+  updateError: string;
 };
 
 const COPY: Record<Locale, DashboardCopy> = {
@@ -238,7 +244,8 @@ const COPY: Record<Locale, DashboardCopy> = {
     formIncomplete: "Complete the required fields with valid values, then create the product.",
     createError: "The product could not be created. Review the details and try again.",
     sellerRole: "Seller account",
-    moreAvailable: "More products are available"
+    moreAvailable: "More products are available",
+    actions: "Actions", editProduct: "Edit", editProductDescription: "Update the catalog details and publication state.", saveChanges: "Save changes", savingChanges: "Saving…", updateError: "The product could not be updated. Review the details and try again."
   },
   fa: {
     brand: "TOP GSM",
@@ -324,7 +331,8 @@ const COPY: Record<Locale, DashboardCopy> = {
     formIncomplete: "فیلدهای ضروری را با مقادیر معتبر کامل کنید و دوباره محصول را بسازید.",
     createError: "محصول ساخته نشد. اطلاعات را بررسی و دوباره تلاش کنید.",
     sellerRole: "حساب فروشنده",
-    moreAvailable: "محصولات بیشتری موجود است"
+    moreAvailable: "محصولات بیشتری موجود است",
+    actions: "عملیات", editProduct: "ویرایش", editProductDescription: "مشخصات کاتالوگ و وضعیت انتشار را به‌روزرسانی کنید.", saveChanges: "ذخیره تغییرات", savingChanges: "در حال ذخیره…", updateError: "محصول به‌روزرسانی نشد. اطلاعات را بررسی و دوباره تلاش کنید."
   },
   ar: {
     brand: "TOP GSM",
@@ -410,7 +418,8 @@ const COPY: Record<Locale, DashboardCopy> = {
     formIncomplete: "أكمل الحقول المطلوبة بقيم صحيحة، ثم أنشئ المنتج.",
     createError: "تعذر إنشاء المنتج. راجع التفاصيل وحاول مرة أخرى.",
     sellerRole: "حساب البائع",
-    moreAvailable: "توجد منتجات إضافية"
+    moreAvailable: "توجد منتجات إضافية",
+    actions: "الإجراءات", editProduct: "تعديل", editProductDescription: "حدّث تفاصيل الكتالوج وحالة النشر.", saveChanges: "حفظ التغييرات", savingChanges: "جارٍ الحفظ…", updateError: "تعذر تحديث المنتج. راجع التفاصيل وحاول مجدداً."
   }
 };
 
@@ -637,6 +646,11 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
   const [listError, setListError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProductStatus | "all">("all");
+  const [editingProduct, setEditingProduct] = useState<SellerListing | null>(null);
+  const [editDraft, setEditDraft] = useState({ title: "", category: "", description: "", status: "draft" as ProductStatus });
+  const [editState, setEditState] = useState<RequestState>("idle");
+  const [editError, setEditError] = useState("");
+  const productEditorRef = useRef<HTMLElement>(null);
 
   const loadListings = useCallback(async (cursor?: string, append = false) => {
     setListState("loading");
@@ -658,10 +672,31 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
     void loadListings();
   }, [loadListings]);
 
+  useEffect(() => {
+    if (!editingProduct) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault(); setEditingProduct(null); return;
+      }
+      if (event.key !== "Tab" || !productEditorRef.current) return;
+      const focusable = Array.from(productEditorRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href]'
+      ));
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => { window.removeEventListener("keydown", onKeyDown); previousFocus?.focus(); };
+  }, [editingProduct]);
+
   const visibleListings = useMemo(() => {
     const query = search.trim().toLocaleLowerCase(locale);
     return listings.filter((listing) => {
-      const matchesStatus = statusFilter === "all" || listing.status === statusFilter;
+      const matchesStatus = statusFilter === "all" || listing.product.status === statusFilter;
       const matchesQuery = !query || [listing.product.title, listing.product.category ?? "", listing.product.slug]
         .some((value) => value.toLocaleLowerCase(locale).includes(query));
       return matchesStatus && matchesQuery;
@@ -678,6 +713,35 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
 
   function openProductPage() {
     router.push(`/${locale}/seller-dashboard/products/new` as Route);
+  }
+
+  function openProductEditor(listing: SellerListing) {
+    setEditingProduct(listing);
+    setEditDraft({
+      title: listing.product.title,
+      category: listing.product.category ?? "",
+      description: listing.product.description ?? "",
+      status: listing.product.status
+    });
+    setEditState("idle"); setEditError("");
+  }
+
+  async function updateProduct(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingProduct || editDraft.title.trim().length < 2) return;
+    setEditState("loading"); setEditError("");
+    try {
+      const response = await api.patch<SellerListing>(`/products/${editingProduct.product.id}`, {
+        title: editDraft.title.trim(),
+        category: editDraft.category.trim() || null,
+        description: editDraft.description.trim() || null,
+        status: editDraft.status
+      });
+      setListings((current) => current.map((listing) => listing.id === response.data.id ? response.data : listing));
+      setEditState("success"); setEditingProduct(null);
+    } catch (error) {
+      setEditState("error"); setEditError(requestError(error, copy.updateError));
+    }
   }
 
   const navigation: Array<{ id: DashboardSection; label: string }> = [
@@ -772,6 +836,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
                   error={listError}
                   onRetry={() => void loadListings()}
                   onAdd={openProductPage}
+                  onEdit={openProductEditor}
                 />
               </div>
             </section>
@@ -810,6 +875,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
                 emptySearch={Boolean(search.trim()) || statusFilter !== "all"}
                 onRetry={() => void loadListings()}
                 onAdd={openProductPage}
+                onEdit={openProductEditor}
               />
               {nextCursor && listState !== "loading" ? (
                 <button className={styles.loadMoreButton} type="button" onClick={() => void loadListings(nextCursor, true)}>
@@ -840,6 +906,23 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
           <span>{user.email}</span>
         </footer>
       </main>
+
+      {editingProduct ? (
+        <div className={styles.editorLayer} role="presentation">
+          <button className={styles.editorScrim} type="button" aria-label={copy.cancel} onClick={() => setEditingProduct(null)} />
+          <section ref={productEditorRef} className={styles.productEditor} role="dialog" aria-modal="true" aria-labelledby="product-editor-title">
+            <header><div><h2 id="product-editor-title">{copy.editProduct}</h2><p>{copy.editProductDescription}</p></div><button className={styles.textButton} type="button" onClick={() => setEditingProduct(null)}>{copy.cancel}</button></header>
+            <form onSubmit={updateProduct} aria-busy={editState === "loading"}>
+              <label className={styles.field}><span>{copy.title}</span><input autoFocus required minLength={2} maxLength={200} value={editDraft.title} onChange={(event) => setEditDraft((current) => ({ ...current, title: event.target.value }))} /></label>
+              <label className={styles.field}><span>{copy.category}</span><input maxLength={100} value={editDraft.category} onChange={(event) => setEditDraft((current) => ({ ...current, category: event.target.value }))} /></label>
+              <label className={styles.field}><span>{copy.description}</span><textarea maxLength={10000} value={editDraft.description} onChange={(event) => setEditDraft((current) => ({ ...current, description: event.target.value }))} /></label>
+              <label className={styles.field}><span>{copy.publishState}</span><select value={editDraft.status} onChange={(event) => setEditDraft((current) => ({ ...current, status: event.target.value as ProductStatus }))}><option value="draft">{copy.draft}</option><option value="active">{copy.active}</option><option value="pending_review">{copy.pending_review}</option><option value="archived">{copy.archived}</option></select></label>
+              {editError ? <p className={styles.inlineError} role="alert">{editError}</p> : null}
+              <footer><button className={styles.secondaryButton} type="button" onClick={() => setEditingProduct(null)}>{copy.cancel}</button><button className={styles.primaryButton} type="submit" disabled={editState === "loading"}>{editState === "loading" ? copy.savingChanges : copy.saveChanges}</button></footer>
+            </form>
+          </section>
+        </div>
+      ) : null}
 
     </div>
   );
@@ -1061,7 +1144,8 @@ function ProductList({
   error,
   emptySearch = false,
   onRetry,
-  onAdd
+  onAdd,
+  onEdit
 }: {
   copy: DashboardCopy;
   locale: Locale;
@@ -1071,6 +1155,7 @@ function ProductList({
   emptySearch?: boolean;
   onRetry: () => void;
   onAdd: () => void;
+  onEdit: (listing: SellerListing) => void;
 }) {
   if (state === "loading" && listings.length === 0) {
     return (
@@ -1110,6 +1195,7 @@ function ProductList({
             <th>{copy.offers}</th>
             <th>{copy.price}</th>
             <th>{copy.status}</th>
+            <th>{copy.actions}</th>
           </tr>
         </thead>
         <tbody>
@@ -1134,8 +1220,9 @@ function ProductList({
                 {listing.offers[0] ? `${listing.offers[0].price} ${listing.offers[0].currency}` : "—"}
               </td>
               <td data-label={copy.status}>
-                <span className={styles.statusBadge} data-status={listing.status}>{statusLabel(listing.status, copy)}</span>
+                <span className={styles.statusBadge} data-status={listing.product.status}>{statusLabel(listing.product.status, copy)}</span>
               </td>
+              <td data-label={copy.actions}>{listing.product.canEdit ? <button className={styles.textButton} type="button" onClick={() => onEdit(listing)}>{copy.editProduct}</button> : "—"}</td>
             </tr>
           ))}
         </tbody>

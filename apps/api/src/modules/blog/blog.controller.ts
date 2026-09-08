@@ -3,6 +3,8 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Req,
@@ -12,7 +14,8 @@ import type { AuthenticatedRequest } from "../auth/platform-admin.guard";
 import { BlogService } from "./blog.service";
 import {
   CreateBlogPostDto,
-  ListBlogPostsQueryDto
+  ListBlogPostsQueryDto,
+  UpdateBlogPostDto
 } from "./dto/blog-post.dto";
 import { SellerBlogGuard } from "./seller-blog.guard";
 
@@ -41,6 +44,25 @@ export class BlogController {
     @Req() request: AuthenticatedRequest
   ) {
     return this.blogService.create(request.sellerContext!.sellerId, body);
+  }
+
+  @Get("mine/:postId")
+  @UseGuards(SellerBlogGuard)
+  getMine(
+    @Param("postId", new ParseUUIDPipe({ version: "4" })) postId: string,
+    @Req() request: AuthenticatedRequest
+  ) {
+    return this.blogService.getMine(request.sellerContext!.sellerId, postId);
+  }
+
+  @Patch(":postId")
+  @UseGuards(SellerBlogGuard)
+  update(
+    @Param("postId", new ParseUUIDPipe({ version: "4" })) postId: string,
+    @Body() body: UpdateBlogPostDto,
+    @Req() request: AuthenticatedRequest
+  ) {
+    return this.blogService.update(request.sellerContext!.sellerId, postId, body);
   }
 
   @Get(":slug")
