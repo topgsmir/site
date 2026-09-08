@@ -15,6 +15,7 @@ import {
 
 export const vendorPermissions = [
   "products_manage",
+  "products_publish",
   "blog_manage",
   "coupons_manage",
   "orders_manage",

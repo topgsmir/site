@@ -35,6 +35,11 @@ export class OrderController {
     return this.orders.list(request.authenticatedUser!, query);
   }
 
+  @Get(":id")
+  get(@Req() request: AuthenticatedRequest, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string) {
+    return this.orders.get(request.authenticatedUser!, id);
+  }
+
   @Post()
   async create(
     @Req() request: AuthenticatedRequest,

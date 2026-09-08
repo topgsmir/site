@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { BridgeCheckout } from "@/components/bridge/BridgeCheckout";
+import { getCurrentUser } from "@/lib/auth/server";
 import { getDictionary, isLocale, locales, type Locale } from "@/lib/i18n";
 import { ProductPage } from "./ProductPage";
 import { getPublicProduct, type PublicProduct } from "./product.server";
@@ -29,7 +31,7 @@ function compactDescription(product: PublicProduct, locale: Locale) {
   if (source) {
     return source.length > 158 ? `${source.slice(0, 155).trimEnd()}…` : source;
   }
-  const type = copy[product.type];
+  const type = product.type === "bridge" ? "Bridge" : copy[product.type];
   return `${product.title} — ${type} ${product.category ? `· ${product.category}` : ""} | Top GSM`.replace(/\s+/g, " ");
 }
 
@@ -55,7 +57,7 @@ export async function generateMetadata({ params }: ProductRouteProps): Promise<M
   return {
     title: product.title,
     description,
-    keywords: [product.title, product.category, getDictionary(localeParam).product[product.type], "Top GSM"].filter(
+    keywords: [product.title, product.category, product.type === "bridge" ? "Bridge" : getDictionary(localeParam).product[product.type], "Top GSM"].filter(
       (value): value is string => Boolean(value)
     ),
     alternates: { canonical, languages },
@@ -113,7 +115,7 @@ function productJsonLd(product: PublicProduct, locale: Locale) {
         name: product.title,
         description,
         sku: product.id,
-        category: product.category ?? getDictionary(locale).product[product.type],
+        category: product.category ?? (product.type === "bridge" ? "Bridge" : getDictionary(locale).product[product.type]),
         url,
         offers
       },
@@ -159,6 +161,18 @@ export default async function ProductRoute({ params }: ProductRouteProps) {
   if (!product) notFound();
 
   const jsonLd = productJsonLd(product, localeParam);
+  if (product.type === "bridge") {
+    const user = await getCurrentUser();
+    return (
+      <>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+        />
+        <BridgeCheckout locale={localeParam} product={product} signedInBuyer={user?.role === "buyer"} />
+      </>
+    );
+  }
 
   return (
     <>

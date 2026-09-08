@@ -93,6 +93,7 @@ type DashboardCopy = {
   draft: string;
   active: string;
   archived: string;
+  pending_review: string;
   product: string;
   productUrl: string;
   type: string;
@@ -110,6 +111,7 @@ type DashboardCopy = {
   digital: string;
   physical: string;
   service: string;
+  bridge: string;
   sectionUnavailable: string;
   ordersUnavailable: string;
   payoutsUnavailable: string;
@@ -179,6 +181,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     draft: "Draft",
     active: "Active",
     archived: "Archived",
+    pending_review: "Pending review",
     product: "Product",
     productUrl: "Product URL",
     type: "Type",
@@ -196,6 +199,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     digital: "Download",
     physical: "Physical",
     service: "Service",
+    bridge: "Bridge service",
     sectionUnavailable: "This section is not connected yet",
     ordersUnavailable: "Seller-scoped order data must be secured before orders can appear here.",
     payoutsUnavailable: "Seller-scoped payout data must be secured before payout requests can appear here.",
@@ -263,6 +267,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     draft: "پیش‌نویس",
     active: "فعال",
     archived: "بایگانی‌شده",
+    pending_review: "در انتظار بررسی",
     product: "محصول",
     productUrl: "نشانی محصول",
     type: "نوع",
@@ -280,6 +285,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     digital: "دانلودی",
     physical: "فیزیکی",
     service: "خدمت",
+    bridge: "سرویس Bridge",
     sectionUnavailable: "این بخش هنوز متصل نشده است",
     ordersUnavailable: "پیش از نمایش سفارش‌ها، داده‌ها باید به‌صورت امن به همین فروشنده محدود شوند.",
     payoutsUnavailable: "پیش از نمایش درخواست‌های تسویه، داده‌ها باید به‌صورت امن به همین فروشنده محدود شوند.",
@@ -347,6 +353,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     draft: "مسودة",
     active: "نشط",
     archived: "مؤرشف",
+    pending_review: "بانتظار المراجعة",
     product: "المنتج",
     productUrl: "رابط المنتج",
     type: "النوع",
@@ -364,6 +371,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     digital: "تنزيل",
     physical: "مادي",
     service: "خدمة",
+    bridge: "خدمة Bridge",
     sectionUnavailable: "هذا القسم غير متصل بعد",
     ordersUnavailable: "يجب تأمين بيانات الطلبات وتقييدها بهذا البائع قبل عرضها هنا.",
     payoutsUnavailable: "يجب تأمين بيانات الدفعات وتقييدها بهذا البائع قبل عرضها هنا.",
@@ -706,6 +714,10 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
               <span>{item.label}</span>
             </button>
           ))}
+          {process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true" ? <Link className={styles.navButton} href={`/${locale}/seller-dashboard/bridge`} data-state="default">
+            <Icon name="products" />
+            <span>{locale === "fa" ? "سرویس‌های Bridge" : locale === "ar" ? "خدمات Bridge" : "Bridge services"}</span>
+          </Link> : null}
         </nav>
         <div className={styles.accountBlock}>
           <span>{copy.account}</span>

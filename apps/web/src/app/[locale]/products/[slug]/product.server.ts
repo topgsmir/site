@@ -26,7 +26,22 @@ export type PublicProduct = {
   description: string | null;
   category: string | null;
   kind: "simple" | "variable";
-  type: "digital" | "physical" | "service";
+  type: "digital" | "physical" | "service" | "bridge";
+  bridge?: {
+    fields: Array<{
+      key: string;
+      label: string;
+      type: "text" | "textarea" | "number" | "select";
+      required: boolean;
+      placeholder?: string;
+      helpText?: string;
+      minimumLength?: number;
+      maximumLength?: number;
+      options?: Array<{ value: string; label: string }>;
+    }>;
+    minimumQuantity: number;
+    maximumQuantity: number;
+  };
   options: Array<{
     id: string;
     name: string;
@@ -95,6 +110,39 @@ function hasValidFulfillment(value: Record<string, unknown>): boolean {
   return true;
 }
 
+function isBridgeField(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  if (
+    !isString(value.key) ||
+    !isString(value.label) ||
+    !["text", "textarea", "number", "select"].includes(String(value.type)) ||
+    typeof value.required !== "boolean"
+  ) {
+    return false;
+  }
+  if (value.placeholder !== undefined && !isString(value.placeholder)) return false;
+  if (value.helpText !== undefined && !isString(value.helpText)) return false;
+  if (value.minimumLength !== undefined && !isFiniteNumber(value.minimumLength)) return false;
+  if (value.maximumLength !== undefined && !isFiniteNumber(value.maximumLength)) return false;
+  return value.options === undefined || (
+    Array.isArray(value.options) &&
+    value.options.every((option) => isRecord(option) && isString(option.value) && isString(option.label))
+  );
+}
+
+function hasValidBridge(value: Record<string, unknown>): boolean {
+  if (value.type !== "bridge") return value.bridge === undefined;
+  return (
+    isRecord(value.bridge) &&
+    Array.isArray(value.bridge.fields) &&
+    value.bridge.fields.every(isBridgeField) &&
+    isFiniteNumber(value.bridge.minimumQuantity) &&
+    isFiniteNumber(value.bridge.maximumQuantity) &&
+    value.bridge.minimumQuantity >= 1 &&
+    value.bridge.maximumQuantity >= value.bridge.minimumQuantity
+  );
+}
+
 function isProductResponse(value: unknown): value is PublicProduct {
   if (!isRecord(value)) return false;
   if (
@@ -106,14 +154,14 @@ function isProductResponse(value: unknown): value is PublicProduct {
     !isString(value.createdAt) ||
     !isString(value.updatedAt) ||
     !["simple", "variable"].includes(String(value.kind)) ||
-    !["digital", "physical", "service"].includes(String(value.type)) ||
+    !["digital", "physical", "service", "bridge"].includes(String(value.type)) ||
     !Array.isArray(value.options) ||
     !Array.isArray(value.variants)
   ) {
     return false;
   }
 
-  if (!value.options.every(isProductOption)) return false;
+  if (!value.options.every(isProductOption) || !hasValidBridge(value)) return false;
 
   return value.variants.every((variant) => {
     if (

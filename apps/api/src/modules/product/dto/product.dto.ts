@@ -16,10 +16,11 @@ import {
   MinLength,
   ValidateNested
 } from "class-validator";
+import { BridgeProductBindingDto } from "../../bridge/dto/bridge.dto";
 
 export const productKinds = ["simple", "variable"] as const;
-export const productTypes = ["digital", "physical", "service"] as const;
-export const productStatuses = ["draft", "active", "archived"] as const;
+export const productTypes = ["digital", "physical", "service", "bridge"] as const;
+export const productStatuses = ["draft", "pending_review", "active", "archived"] as const;
 export const listingStatuses = ["draft", "active", "archived"] as const;
 
 type ProductKind = (typeof productKinds)[number];
@@ -220,6 +221,11 @@ export class CreateProductDto {
   @Type(() => CreateProductVariantDto)
   variants?: CreateProductVariantDto[];
 
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BridgeProductBindingDto)
+  bridge?: BridgeProductBindingDto;
+
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(100)
@@ -277,4 +283,14 @@ export class UpdateSellerOfferDto {
   @ValidateNested()
   @Type(() => ServiceFulfillmentDto)
   service?: ServiceFulfillmentDto;
+}
+
+export class ReviewProductDto {
+  @IsIn(["active", "draft"])
+  status!: "active" | "draft";
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
 }

@@ -26,5 +26,5 @@
     "router": "app"
   },
   "preserve": ["font stack", "palette", "light and dark themes", "4pt spacing scale"],
-  "introduce": ["product Split Studio macrostructure", "product structured data", "dynamic product metadata", "interaction state discipline", "responsive product layout", "slop-test gates"]
+  "introduce": ["product Split Studio macrostructure", "Bridge Catalogue macrostructure", "product structured data", "dynamic product metadata", "interaction state discipline", "responsive product and operational layouts", "slop-test gates"]
 }

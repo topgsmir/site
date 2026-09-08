@@ -1,6 +1,13 @@
 [
   {
     "date": "2026-09-08",
+    "macrostructure": "Catalogue",
+    "theme": "TopGSM Coral",
+    "enrichment": "none",
+    "brief": "Seller-owned Bridge service inventory, administration, and checkout"
+  },
+  {
+    "date": "2026-09-08",
     "macrostructure": "Split Studio",
     "theme": "Almanac",
     "enrichment": "none",

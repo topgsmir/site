@@ -23,24 +23,31 @@ export class SellerProductsGuard implements CanActivate {
       throw new ForbiddenException("Seller access is required");
     }
 
-    const seller = await this.prisma.sellers.findFirst({
+    const membership = await this.prisma.seller_memberships.findFirst({
       where: {
         user_id: user.id,
-        invited: false,
-        approved: true,
-        suspended_at: null,
-        permissions: { some: { permission: "products_manage" } }
+        active: true,
+        seller: {
+          invited: false,
+          approved: true,
+          suspended_at: null,
+          permissions: { some: { permission: "products_manage" } }
+        }
       },
-      select: { id: true }
+      select: { role: true, seller: { select: { id: true } } }
     });
 
-    if (!seller) {
+    if (!membership) {
       throw new ForbiddenException(
         "An active seller with product-management permission is required"
       );
     }
 
-    request.sellerContext = { sellerId: seller.id, user };
+    request.sellerContext = {
+      sellerId: membership.seller.id,
+      membershipRole: membership.role,
+      user
+    };
     return true;
   }
 }

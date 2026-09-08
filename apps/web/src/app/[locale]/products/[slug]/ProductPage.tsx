@@ -151,7 +151,7 @@ export function ProductPage({
     }
   }
 
-  const typeLabel = copy[product.type];
+  const typeLabel = product.type === "bridge" ? "Bridge" : copy[product.type];
   const category = product.category ?? copy.uncategorized;
   const countLabel = new Intl.NumberFormat(locale === "fa" ? "fa-IR" : locale === "ar" ? "ar" : "en").format(cartCount);
   const fulfilmentRows: Array<{ label: string; value: string }> = [];
