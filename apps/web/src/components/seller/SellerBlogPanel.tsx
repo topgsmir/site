@@ -1,10 +1,11 @@
 "use client";
 
 import axios from "axios";
-import type { BlogPostSummary, BlogPostsPage, SellerListing } from "@topgsm/shared-types";
+import type { BlogPostSummary, BlogPostsPage, SellerBlogPost, SellerListing } from "@topgsm/shared-types";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
+import { BlogPublicUrl } from "@/components/blog/BlogPublicUrl";
 import styles from "./SellerDashboard.module.css";
 
 type RequestState = "idle" | "loading" | "error" | "success";
@@ -19,7 +20,8 @@ const COPY: Record<Locale, Copy> = {
     saving: "Saving…", loadMore: "Load more", loading: "Loading posts…", empty: "No blog posts yet",
     emptyHint: "Start with a guide, repair note, or product walkthrough.", loadError: "Posts could not be loaded. Check blog access and try again.",
     createError: "The post could not be saved. Review the fields and try again.", retry: "Try again", post: "Post", product: "Product",
-    status: "Status", updated: "Updated", untitledError: "Add a title with at least two characters.", contentError: "Add article content before saving."
+    status: "Status", updated: "Updated", untitledError: "Add a title with at least two characters.", contentError: "Add article content before saving.",
+    postUrl: "Post URL", actions: "Actions", edit: "Edit", update: "Save changes", updateError: "The post could not be updated. Review the fields and try again.", loadingEditor: "Loading post…"
   },
   fa: {
     title: "وبلاگ", description: "راهنماهای کاربردی منتشر کنید و آن‌ها را به محصولات فروشگاه خود پیوند دهید.", newPost: "نوشته جدید", cancel: "انصراف",
@@ -29,7 +31,8 @@ const COPY: Record<Locale, Copy> = {
     saving: "در حال ذخیره…", loadMore: "نمایش بیشتر", loading: "در حال بارگذاری نوشته‌ها…", empty: "هنوز نوشته‌ای ندارید",
     emptyHint: "با یک راهنما، نکته تعمیر یا معرفی محصول شروع کنید.", loadError: "نوشته‌ها بارگذاری نشدند. دسترسی وبلاگ را بررسی و دوباره تلاش کنید.",
     createError: "نوشته ذخیره نشد. فیلدها را بررسی و دوباره تلاش کنید.", retry: "تلاش دوباره", post: "نوشته", product: "محصول",
-    status: "وضعیت", updated: "به‌روزرسانی", untitledError: "عنوانی با حداقل دو نویسه وارد کنید.", contentError: "پیش از ذخیره، متن مقاله را وارد کنید."
+    status: "وضعیت", updated: "به‌روزرسانی", untitledError: "عنوانی با حداقل دو نویسه وارد کنید.", contentError: "پیش از ذخیره، متن مقاله را وارد کنید.",
+    postUrl: "نشانی نوشته", actions: "عملیات", edit: "ویرایش", update: "ذخیره تغییرات", updateError: "نوشته به‌روزرسانی نشد. فیلدها را بررسی و دوباره تلاش کنید.", loadingEditor: "در حال بارگذاری نوشته…"
   },
   ar: {
     title: "المدونة", description: "انشر أدلة مفيدة واربطها بالمنتجات التي يبيعها متجرك.", newPost: "مقال جديد", cancel: "إلغاء",
@@ -39,7 +42,8 @@ const COPY: Record<Locale, Copy> = {
     saving: "جارٍ الحفظ…", loadMore: "تحميل المزيد", loading: "جارٍ تحميل المقالات…", empty: "لا توجد مقالات بعد",
     emptyHint: "ابدأ بدليل أو ملاحظة صيانة أو شرح لمنتج.", loadError: "تعذر تحميل المقالات. تحقق من صلاحية المدونة وحاول مجدداً.",
     createError: "تعذر حفظ المقال. راجع الحقول وحاول مجدداً.", retry: "إعادة المحاولة", post: "المقال", product: "المنتج",
-    status: "الحالة", updated: "آخر تحديث", untitledError: "أضف عنواناً من حرفين على الأقل.", contentError: "أضف محتوى المقال قبل الحفظ."
+    status: "الحالة", updated: "آخر تحديث", untitledError: "أضف عنواناً من حرفين على الأقل.", contentError: "أضف محتوى المقال قبل الحفظ.",
+    postUrl: "رابط المقال", actions: "الإجراءات", edit: "تعديل", update: "حفظ التغييرات", updateError: "تعذر تحديث المقال. راجع الحقول وحاول مجدداً.", loadingEditor: "جارٍ تحميل المقال…"
   }
 };
 
@@ -59,11 +63,12 @@ export function SellerBlogPanel({ locale, listings }: { locale: Locale; listings
   const [formState, setFormState] = useState<RequestState>("idle");
   const [message, setMessage] = useState("");
   const [isComposing, setIsComposing] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [excerpt, setExcerpt] = useState("");
   const [content, setContent] = useState("");
   const [relatedProductId, setRelatedProductId] = useState("");
-  const [status, setStatus] = useState<"draft" | "published">("draft");
+  const [status, setStatus] = useState<"draft" | "published" | "archived">("draft");
 
   const loadPosts = useCallback(async (cursor?: string, append = false) => {
     setListState("loading");
@@ -82,6 +87,28 @@ export function SellerBlogPanel({ locale, listings }: { locale: Locale; listings
   useEffect(() => { void loadPosts(); }, [loadPosts]);
   useEffect(() => { if (isComposing) titleRef.current?.focus(); }, [isComposing]);
 
+  function resetForm() {
+    setEditingId(null); setTitle(""); setExcerpt(""); setContent(""); setRelatedProductId(""); setStatus("draft");
+  }
+
+  function toggleComposer() {
+    setMessage(""); setFormState("idle");
+    if (isComposing) resetForm();
+    setIsComposing((current) => !current);
+  }
+
+  async function editPost(postId: string) {
+    setFormState("loading"); setMessage(copy.loadingEditor); setIsComposing(true);
+    try {
+      const response = await api.get<SellerBlogPost>(`/blog/posts/mine/${postId}`);
+      const post = response.data;
+      setEditingId(post.id); setTitle(post.title); setExcerpt(post.excerpt ?? ""); setContent(post.content);
+      setRelatedProductId(post.relatedProduct?.id ?? ""); setStatus(post.status); setMessage(""); setFormState("idle");
+    } catch (error) {
+      setMessage(requestError(error, copy.loadError)); setFormState("error"); setIsComposing(false);
+    }
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (title.trim().length < 2) {
@@ -91,15 +118,20 @@ export function SellerBlogPanel({ locale, listings }: { locale: Locale; listings
 
     setFormState("loading"); setMessage("");
     try {
-      const response = await api.post<BlogPostSummary>("/blog/posts", {
+      const payload = {
         title: title.trim(), ...(excerpt.trim() ? { excerpt: excerpt.trim() } : {}), content: content.trim(), status,
-        ...(relatedProductId ? { relatedProductId } : {})
-      });
-      setPosts((current) => [response.data, ...current]);
-      setTitle(""); setExcerpt(""); setContent(""); setRelatedProductId(""); setStatus("draft");
+        relatedProductId: relatedProductId || null
+      };
+      const response = editingId
+        ? await api.patch<BlogPostSummary>(`/blog/posts/${editingId}`, payload)
+        : await api.post<BlogPostSummary>("/blog/posts", { ...payload, relatedProductId: relatedProductId || undefined });
+      setPosts((current) => editingId
+        ? current.map((post) => post.id === response.data.id ? response.data : post)
+        : [response.data, ...current]);
+      resetForm();
       setFormState("success"); setIsComposing(false);
     } catch (error) {
-      setFormState("error"); setMessage(requestError(error, copy.createError));
+      setFormState("error"); setMessage(requestError(error, editingId ? copy.updateError : copy.createError));
     }
   }
 
@@ -109,7 +141,7 @@ export function SellerBlogPanel({ locale, listings }: { locale: Locale; listings
     <section aria-labelledby="blog-title">
       <div className={styles.blogHeading}>
         <div><h2 id="blog-title" className={styles.sectionTitle}>{copy.title}</h2><p>{copy.description}</p></div>
-        <button className={`${styles.primaryButton} ${styles.blogAction}`} type="button" onClick={() => { setMessage(""); setFormState("idle"); setIsComposing((current) => !current); }} data-state={formState} aria-expanded={isComposing}>
+        <button className={`${styles.primaryButton} ${styles.blogAction}`} type="button" onClick={toggleComposer} data-state={formState} aria-expanded={isComposing}>
           {isComposing ? copy.cancel : copy.newPost}
         </button>
       </div>
@@ -123,15 +155,15 @@ export function SellerBlogPanel({ locale, listings }: { locale: Locale; listings
           <label className={styles.field}><span>{copy.content}</span><textarea className={styles.articleField} required maxLength={50_000} value={content} onChange={(event) => setContent(event.target.value)} aria-invalid={formState === "error" && !content.trim()} data-state={formState} /><small>{formState === "error" && !content.trim() ? copy.contentError : copy.contentHint}</small></label>
           <div className={styles.blogComposerMeta}>
             <label className={styles.field}><span>{copy.relatedProduct}</span><select value={relatedProductId} onChange={(event) => setRelatedProductId(event.target.value)} data-state={formState}><option value="">{copy.noRelatedProduct}</option>{listings.map((listing) => <option key={listing.product.id} value={listing.product.id}>{listing.product.title}</option>)}</select><small> </small></label>
-            <label className={styles.field}><span>{copy.publishState}</span><select value={status} onChange={(event) => setStatus(event.target.value as "draft" | "published")} data-state={formState}><option value="draft">{copy.draft}</option><option value="published">{copy.published}</option></select><small> </small></label>
-            <button className={`${styles.primaryButton} ${styles.blogAction}`} type="submit" disabled={formState === "loading"} data-state={formState}>{formState === "loading" ? copy.saving : status === "published" ? copy.publish : copy.saveDraft}</button>
+            <label className={styles.field}><span>{copy.publishState}</span><select value={status} onChange={(event) => setStatus(event.target.value as "draft" | "published" | "archived")} data-state={formState}><option value="draft">{copy.draft}</option><option value="published">{copy.published}</option>{editingId ? <option value="archived">{copy.archived}</option> : null}</select><small> </small></label>
+            <button className={`${styles.primaryButton} ${styles.blogAction}`} type="submit" disabled={formState === "loading"} data-state={formState}>{formState === "loading" ? copy.saving : editingId ? copy.update : status === "published" ? copy.publish : copy.saveDraft}</button>
           </div>
         </form>
       ) : null}
 
       {message ? <div className={styles.notice} role="alert"><p>{message}</p>{listState === "error" ? <button className={styles.secondaryButton} type="button" onClick={() => void loadPosts()}>{copy.retry}</button> : null}</div> : null}
       {listState === "loading" && posts.length === 0 ? <div className={styles.skeleton} aria-label={copy.loading}><i /><i /><i /></div> : posts.length === 0 && listState === "success" ? <div className={styles.emptyState}><h3>{copy.empty}</h3><p>{copy.emptyHint}</p><button className={styles.secondaryButton} type="button" onClick={() => setIsComposing(true)}>{copy.newPost}</button></div> : posts.length ? (
-        <div className={styles.tableWrap}><table className={styles.productTable}><thead><tr><th>{copy.post}</th><th>{copy.product}</th><th>{copy.status}</th><th>{copy.updated}</th></tr></thead><tbody>{posts.map((post) => <tr key={post.id}><td data-label={copy.post}><strong>{post.title}</strong><small>/{post.slug}</small></td><td data-label={copy.product}>{post.relatedProduct?.title ?? "—"}</td><td data-label={copy.status}><span className={styles.statusBadge} data-status={post.status}>{copy[post.status]}</span></td><td data-label={copy.updated}>{formatDate(post.updatedAt)}</td></tr>)}</tbody></table></div>
+        <div className={styles.tableWrap}><table className={styles.productTable}><thead><tr><th>{copy.post}</th><th>{copy.postUrl}</th><th>{copy.product}</th><th>{copy.status}</th><th>{copy.updated}</th><th>{copy.actions}</th></tr></thead><tbody>{posts.map((post) => <tr key={post.id}><td data-label={copy.post}><strong>{post.title}</strong></td><td data-label={copy.postUrl}><BlogPublicUrl className={styles.productUrl} locale={locale} slug={post.slug} label={`${copy.postUrl} — ${post.title}`} /></td><td data-label={copy.product}>{post.relatedProduct?.title ?? "—"}</td><td data-label={copy.status}><span className={styles.statusBadge} data-status={post.status}>{copy[post.status]}</span></td><td data-label={copy.updated}>{formatDate(post.updatedAt)}</td><td data-label={copy.actions}><button className={styles.textButton} type="button" onClick={() => void editPost(post.id)}>{copy.edit}</button></td></tr>)}</tbody></table></div>
       ) : null}
       {nextCursor && listState !== "loading" ? <button className={styles.loadMoreButton} type="button" onClick={() => void loadPosts(nextCursor, true)}>{copy.loadMore}</button> : null}
     </section>

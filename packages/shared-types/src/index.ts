@@ -102,6 +102,7 @@ export interface SellerListing {
     kind: ProductKind;
     type: ProductType;
     status: ProductStatus;
+    canEdit: boolean;
     createdAt: string;
     updatedAt: string;
   };
@@ -132,6 +133,10 @@ export interface BlogPostSummary {
 export interface PublicBlogPost extends BlogPostSummary {
   content: string;
   author: { id: string; shopName: string };
+}
+
+export interface SellerBlogPost extends BlogPostSummary {
+  content: string;
 }
 
 export interface BlogPostsPage {

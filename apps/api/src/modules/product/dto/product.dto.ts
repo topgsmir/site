@@ -285,6 +285,29 @@ export class UpdateSellerOfferDto {
   service?: ServiceFulfillmentDto;
 }
 
+export class UpdateProductDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10_000)
+  description?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  category?: string | null;
+
+  @IsOptional()
+  @IsIn(productStatuses)
+  status?: ProductStatus;
+}
+
 export class ReviewProductDto {
   @IsIn(["active", "draft"])
   status!: "active" | "draft";

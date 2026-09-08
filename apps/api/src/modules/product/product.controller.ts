@@ -17,6 +17,7 @@ import {
   CreateProductDto,
   ListProductsQueryDto,
   ReviewProductDto,
+  UpdateProductDto,
   UpdateSellerOfferDto
 } from "./dto/product.dto";
 import { ProductService } from "./product.service";
@@ -57,6 +58,20 @@ export class ProductController {
   ) {
     return this.productService.createProduct(
       request.sellerContext!.sellerId,
+      body
+    );
+  }
+
+  @Patch(":productId")
+  @UseGuards(SellerProductsGuard)
+  update(
+    @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
+    @Body() body: UpdateProductDto,
+    @Req() request: AuthenticatedRequest
+  ) {
+    return this.productService.updateProduct(
+      request.sellerContext!.sellerId,
+      productId,
       body
     );
   }

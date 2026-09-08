@@ -7,11 +7,11 @@ const SITE_URL = (
   ?? (process.env.NODE_ENV === "development" ? "http://localhost:3000" : "https://top-gsm.ir")
 ).replace(/\/+$/, "");
 
-export function productPublicPath(locale: Locale, slug: string) {
-  return `/${locale}/products/${encodeURIComponent(slug)}`;
+export function blogPublicPath(locale: Locale, slug: string) {
+  return `/${locale}/blog/${encodeURIComponent(slug)}`;
 }
 
-export function ProductPublicUrl({
+export function BlogPublicUrl({
   locale,
   slug,
   label,
@@ -22,8 +22,7 @@ export function ProductPublicUrl({
   label: string;
   className?: string;
 }) {
-  const path = productPublicPath(locale, slug);
-  const url = `${SITE_URL}${path}`;
+  const path = blogPublicPath(locale, slug);
 
   return (
     <Link
@@ -35,7 +34,7 @@ export function ProductPublicUrl({
       title={label}
       aria-label={label}
     >
-      {url}
+      {SITE_URL}{path}
     </Link>
   );
 }

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException
@@ -8,7 +9,8 @@ import { randomUUID } from "node:crypto";
 import { PrismaService } from "../../prisma/prisma.service";
 import type {
   CreateBlogPostDto,
-  ListBlogPostsQueryDto
+  ListBlogPostsQueryDto,
+  UpdateBlogPostDto
 } from "./dto/blog-post.dto";
 
 const relatedProductSelect = {
@@ -92,6 +94,16 @@ export class BlogService {
     return this.toPage(rows, input.limit);
   }
 
+  async getMine(sellerId: string, postId: string) {
+    const post = await this.prisma.blog_posts.findFirst({
+      where: { id: postId, seller_id: sellerId },
+      select: { ...blogSummarySelect, content: true }
+    });
+    if (!post) throw new NotFoundException("Blog post was not found");
+
+    return { ...this.toSummary(post), content: post.content };
+  }
+
   async create(sellerId: string, input: CreateBlogPostDto) {
     if (input.relatedProductId) {
       const listing = await this.prisma.seller_listings.findFirst({
@@ -134,6 +146,45 @@ export class BlogService {
       }
       throw error;
     }
+  }
+
+  async update(sellerId: string, postId: string, input: UpdateBlogPostDto) {
+    if (!Object.values(input).some((value) => value !== undefined)) {
+      throw new BadRequestException("At least one blog post field is required");
+    }
+
+    if (input.relatedProductId) {
+      const listing = await this.prisma.seller_listings.findFirst({
+        where: { seller_id: sellerId, product_id: input.relatedProductId },
+        select: { id: true }
+      });
+      if (!listing) {
+        throw new NotFoundException("Related seller product was not found");
+      }
+    }
+
+    const current = await this.prisma.blog_posts.findFirst({
+      where: { id: postId, seller_id: sellerId },
+      select: { id: true, published_at: true }
+    });
+    if (!current) throw new NotFoundException("Blog post was not found");
+
+    const post = await this.prisma.blog_posts.update({
+      where: { id: current.id },
+      data: {
+        ...(input.title === undefined ? {} : { title: this.cleanLine(input.title) }),
+        ...(input.excerpt === undefined ? {} : { excerpt: this.cleanOptional(input.excerpt ?? undefined) }),
+        ...(input.content === undefined ? {} : { content: input.content.normalize("NFKC").trim() }),
+        ...(input.relatedProductId === undefined ? {} : { product_id: input.relatedProductId }),
+        ...(input.status === undefined ? {} : {
+          status: input.status,
+          published_at: input.status === "published" ? current.published_at ?? new Date() : null
+        })
+      },
+      select: blogSummarySelect
+    });
+
+    return this.toSummary(post);
   }
 
   private toPage(rows: BlogSummaryRecord[], limit: number) {

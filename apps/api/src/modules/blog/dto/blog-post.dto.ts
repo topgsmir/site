@@ -58,3 +58,30 @@ export class CreateBlogPostDto {
   @IsUUID("4")
   relatedProductId?: string;
 }
+
+export class UpdateBlogPostDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  excerpt?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(50_000)
+  content?: string;
+
+  @IsOptional()
+  @IsIn(["draft", "published", "archived"])
+  status?: "draft" | "published" | "archived";
+
+  @IsOptional()
+  @IsUUID("4")
+  relatedProductId?: string | null;
+}
