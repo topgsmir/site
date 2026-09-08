@@ -87,6 +87,8 @@ export const en = {
     supportTitle: "Not sure this matches your device?",
     supportBody: "Check the title, variant and seller before adding the product. A specialist can help when the fit is unclear.",
     contactSupport: "Contact support",
+    openingSupport: "Opening support…",
+    supportError: "Support could not be opened. Please try again.",
     footerDescription: "Specialist files, tools and services for mobile repair professionals.",
     itemCount: "items in cart",
     notFoundTitle: "Product not found",
