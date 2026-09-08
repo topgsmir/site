@@ -7,7 +7,7 @@
     "start:prod": "node dist/main.js",
     "start": "nest start",
     "lint": "eslint \"src/**/*.{ts,js}\"",
-    "test": "node --test --require ts-node/register src/modules/auth/security.spec.ts src/modules/bridge/bridge-security.spec.ts src/modules/bridge/bridge-adapters.spec.ts src/modules/blog/blog.service.spec.ts src/modules/coupon/coupon.spec.ts src/modules/realtime/realtime.spec.ts",
+    "test": "node --test --require ts-node/register src/modules/auth/security.spec.ts src/modules/bridge/bridge-security.spec.ts src/modules/bridge/bridge-adapters.spec.ts src/modules/blog/blog.service.spec.ts src/modules/coupon/coupon.spec.ts src/modules/goghdi/goghdi.spec.ts src/modules/realtime/realtime.spec.ts",
     "test:integration": "node --test --test-concurrency=1 --require ts-node/register src/modules/auth/auth.integration.spec.ts src/modules/order/order-payout.integration.spec.ts",
     "type-check": "tsc -p tsconfig.json --noEmit",
     "prisma:generate": "prisma generate --schema src/prisma/schema/schema.prisma",

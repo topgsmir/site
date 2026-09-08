@@ -3,13 +3,20 @@
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { getDictionary, Locale } from "@/lib/i18n";
+import {
+  GoghdiAuthenticationRequiredError,
+  goghdiEnabled,
+  openGoghdiProductTicket
+} from "@/lib/goghdi/goghdi";
 import type { PublicProduct, PublicProductOffer, PublicProductVariant } from "./product.server";
 import styles from "./ProductPage.module.css";
 
 type ProductCopy = ReturnType<typeof getDictionary>["product"];
 type ButtonState = "idle" | "loading" | "success" | "error";
+type SupportState = "idle" | "loading" | "error";
 type CartItem = { productId: string; offerId: string; quantity: number };
 
 type SelectableOffer = PublicProductOffer & {
@@ -102,11 +109,13 @@ export function ProductPage({
   locale: Locale;
   copy: ProductCopy;
 }) {
+  const router = useRouter();
   const offers = useMemo(() => flattenOffers(product, copy), [copy, product]);
   const firstAvailableOffer = offers.find((offer) => offer.physical?.inStock !== false) ?? offers[0];
   const [selectedOfferId, setSelectedOfferId] = useState(firstAvailableOffer?.id ?? "");
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
   const [cartCount, setCartCount] = useState(0);
+  const [supportState, setSupportState] = useState<SupportState>("idle");
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const selectedOffer = offers.find((offer) => offer.id === selectedOfferId) ?? firstAvailableOffer;
   const unavailable = !selectedOffer || selectedOffer.physical?.inStock === false;
@@ -148,6 +157,21 @@ export function ProductPage({
       resetTimer.current = setTimeout(() => setButtonState("idle"), 2500);
     } catch {
       setButtonState("error");
+    }
+  }
+
+  async function openProductSupport() {
+    if (supportState === "loading") return;
+    setSupportState("loading");
+    try {
+      await openGoghdiProductTicket(product.id);
+      setSupportState("idle");
+    } catch (error) {
+      if (error instanceof GoghdiAuthenticationRequiredError) {
+        router.push(`/${locale}/login`);
+        return;
+      }
+      setSupportState("error");
     }
   }
 
@@ -298,7 +322,19 @@ export function ProductPage({
             <h2 id="support-title">{copy.supportTitle}</h2>
             <p>{copy.supportBody}</p>
           </div>
-          <a href="tel:09925739312">{copy.contactSupport}<span aria-hidden="true">↗</span></a>
+          {goghdiEnabled ? (
+            <button
+              type="button"
+              onClick={() => void openProductSupport()}
+              disabled={supportState === "loading"}
+            >
+              {supportState === "loading" ? copy.openingSupport : copy.contactSupport}
+              <span aria-hidden="true">↗</span>
+            </button>
+          ) : (
+            <a href="tel:09925739312">{copy.contactSupport}<span aria-hidden="true">↗</span></a>
+          )}
+          {supportState === "error" ? <p className={styles.supportError} role="alert">{copy.supportError}</p> : null}
         </section>
       </main>
 
