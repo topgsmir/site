@@ -12,6 +12,7 @@ import { BlogModule } from "./modules/blog/blog.module";
 import { CouponModule } from "./modules/coupon/coupon.module";
 import { BridgeModule } from "./modules/bridge/bridge.module";
 import { SmsModule } from "./modules/sms/sms.module";
+import { GoghdiModule } from "./modules/goghdi/goghdi.module";
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { SmsModule } from "./modules/sms/sms.module";
     OrderModule,
     PayoutModule,
     RealtimeModule,
+    GoghdiModule,
     PaymentsModule
   ]
 })
