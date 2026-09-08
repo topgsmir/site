@@ -1,8 +1,8 @@
 {
-  "scannedAt": "2026-09-07",
+  "scannedAt": "2026-09-08",
   "designSystem": null,
   "fontStack": {
-    "source": "next/font/google",
+    "source": "@fontsource variable packages",
     "families": ["Outfit", "Vazirmatn"],
     "files": ["apps/web/src/app/[locale]/layout.tsx"]
   },
@@ -17,14 +17,14 @@
     "files": ["apps/web/package.json"]
   },
   "spacing": {
-    "scale": null,
-    "note": "No named 4pt or 8pt spacing token scale detected."
+    "scale": "4pt",
+    "note": "Named dashboard and product spacing tokens are defined in apps/web/tokens.css."
   },
   "framework": {
     "name": "Next.js",
-    "version": "14.2.15",
+    "version": "16.3.4",
     "router": "app"
   },
-  "preserve": ["font stack", "palette", "light and dark themes"],
-  "introduce": ["dashboard macrostructure", "interaction state discipline", "responsive dashboard layout", "slop-test gates"]
+  "preserve": ["font stack", "palette", "light and dark themes", "4pt spacing scale"],
+  "introduce": ["product Split Studio macrostructure", "product structured data", "dynamic product metadata", "interaction state discipline", "responsive product layout", "slop-test gates"]
 }
