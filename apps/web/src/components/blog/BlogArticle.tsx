@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import type { Route } from "next";
 import type { PublicBlogPost } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
 import { BlogFooter, BlogHeader } from "./BlogChrome";
@@ -16,8 +17,8 @@ export function BlogArticle({ locale, post }: { locale: Locale; post: PublicBlog
       <BlogHeader locale={locale} />
       <main id="article-content" className="long-document">
         <nav className="article-breadcrumbs" aria-label="Breadcrumb">
-          <Link href={`/${locale}/blog`}>{locale === "fa" ? "مقالات" : locale === "ar" ? "المقالات" : "Journal"}</Link>
-          {post.category ? <><span aria-hidden="true">/</span><Link href={`/${locale}/blog/category/${post.category.slug}`}>{post.category.name}</Link></> : null}
+          <Link href={`/${locale}/blog` as Route}>{locale === "fa" ? "مقالات" : locale === "ar" ? "المقالات" : "Journal"}</Link>
+          {post.category ? <><span aria-hidden="true">/</span><Link href={`/${locale}/blog/category/${post.category.slug}` as Route}>{post.category.name}</Link></> : null}
         </nav>
         <article>
           <header className="article-header">
@@ -38,7 +39,7 @@ export function BlogArticle({ locale, post }: { locale: Locale; post: PublicBlog
             <header><p>RELATED / {String(post.relatedProducts.length).padStart(2, "0")}</p><h2 id="related-products-title">{locale === "fa" ? "محصولات مرتبط با این راهنما" : locale === "ar" ? "منتجات مرتبطة بهذا الدليل" : "Products related to this guide"}</h2></header>
             <div>
               {post.relatedProducts.map((product) => (
-                <Link key={product.id} href={`/${locale}/products/${product.slug}`}>
+                <Link key={product.id} href={`/${locale}/products/${product.slug}` as Route}>
                   <strong>{product.title}</strong>
                   <span>{product.startingPrices[0] ? `${product.startingPrices[0].price} ${product.startingPrices[0].currency}` : locale === "fa" ? "مشاهده پیشنهادها" : "View offers"}</span>
                 </Link>

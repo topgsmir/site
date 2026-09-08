@@ -153,6 +153,8 @@ type DashboardCopy = {
   moreAvailable: string;
   actions: string;
   editProduct: string;
+  sharedProduct: string;
+  sharedProductHint: string;
   editProductDescription: string;
   saveChanges: string;
   savingChanges: string;
@@ -245,7 +247,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     createError: "The product could not be created. Review the details and try again.",
     sellerRole: "Seller account",
     moreAvailable: "More products are available",
-    actions: "Actions", editProduct: "Edit", editProductDescription: "Update the catalog details and publication state.", saveChanges: "Save changes", savingChanges: "Saving…", updateError: "The product could not be updated. Review the details and try again."
+    actions: "Actions", editProduct: "Edit", sharedProduct: "Shared catalog", sharedProductHint: "Only the seller who created this shared catalog product can edit its details.", editProductDescription: "Update the catalog details and publication state.", saveChanges: "Save changes", savingChanges: "Saving…", updateError: "The product could not be updated. Review the details and try again."
   },
   fa: {
     brand: "TOP GSM",
@@ -332,7 +334,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     createError: "محصول ساخته نشد. اطلاعات را بررسی و دوباره تلاش کنید.",
     sellerRole: "حساب فروشنده",
     moreAvailable: "محصولات بیشتری موجود است",
-    actions: "عملیات", editProduct: "ویرایش", editProductDescription: "مشخصات کاتالوگ و وضعیت انتشار را به‌روزرسانی کنید.", saveChanges: "ذخیره تغییرات", savingChanges: "در حال ذخیره…", updateError: "محصول به‌روزرسانی نشد. اطلاعات را بررسی و دوباره تلاش کنید."
+    actions: "عملیات", editProduct: "ویرایش", sharedProduct: "کاتالوگ مشترک", sharedProductHint: "فقط فروشنده‌ای که این محصول مشترک را ساخته است می‌تواند مشخصات آن را ویرایش کند.", editProductDescription: "مشخصات کاتالوگ و وضعیت انتشار را به‌روزرسانی کنید.", saveChanges: "ذخیره تغییرات", savingChanges: "در حال ذخیره…", updateError: "محصول به‌روزرسانی نشد. اطلاعات را بررسی و دوباره تلاش کنید."
   },
   ar: {
     brand: "TOP GSM",
@@ -419,7 +421,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     createError: "تعذر إنشاء المنتج. راجع التفاصيل وحاول مرة أخرى.",
     sellerRole: "حساب البائع",
     moreAvailable: "توجد منتجات إضافية",
-    actions: "الإجراءات", editProduct: "تعديل", editProductDescription: "حدّث تفاصيل الكتالوج وحالة النشر.", saveChanges: "حفظ التغييرات", savingChanges: "جارٍ الحفظ…", updateError: "تعذر تحديث المنتج. راجع التفاصيل وحاول مجدداً."
+    actions: "الإجراءات", editProduct: "تعديل", sharedProduct: "كتالوج مشترك", sharedProductHint: "يمكن فقط للبائع الذي أنشأ منتج الكتالوج المشترك تعديل تفاصيله.", editProductDescription: "حدّث تفاصيل الكتالوج وحالة النشر.", saveChanges: "حفظ التغييرات", savingChanges: "جارٍ الحفظ…", updateError: "تعذر تحديث المنتج. راجع التفاصيل وحاول مجدداً."
   }
 };
 
@@ -888,7 +890,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
 
           {section === "coupons" ? <SellerCoupons locale={locale} /> : null}
 
-          {section === "blog" ? <SellerBlogPanel locale={locale} listings={listings} /> : null}
+          {section === "blog" ? <SellerBlogPanel locale={locale} /> : null}
 
           {section === "orders" || section === "payouts" ? (
             <section className={styles.unavailable} aria-labelledby="unavailable-title">
@@ -1223,7 +1225,17 @@ function ProductList({
               <td data-label={copy.status}>
                 <span className={styles.statusBadge} data-status={listing.product.status}>{statusLabel(listing.product.status, copy)}</span>
               </td>
-              <td data-label={copy.actions}>{listing.product.canEdit ? <button className={styles.textButton} type="button" onClick={() => onEdit(listing)}>{copy.editProduct}</button> : "—"}</td>
+              <td data-label={copy.actions}>
+                {listing.product.canEdit ? (
+                  <button className={styles.textButton} type="button" onClick={() => onEdit(listing)}>
+                    {copy.editProduct}
+                  </button>
+                ) : (
+                  <span className={styles.actionUnavailable} title={copy.sharedProductHint}>
+                    {copy.sharedProduct}
+                  </span>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

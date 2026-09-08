@@ -10,6 +10,7 @@ import Link from "next/link";
 import type {
   AdminProductSummary,
   AdminProductsPage,
+  ProductStatus,
   Vendor,
   VendorPermission,
   VendorStatus
@@ -109,7 +110,19 @@ const copy = {
     listings: "Listings",
     catalogEmpty: "No products have been created yet.",
     catalogLoadError: "Products could not be loaded. Refresh and try again.",
-    loadMore: "Load more"
+    loadMore: "Load more",
+    editProduct: "Edit product",
+    editProductHint: "Update the shared catalog record. Changes affect every seller listing for this product.",
+    productTitle: "Product title",
+    category: "Category",
+    description: "Description",
+    publishState: "Publication state",
+    statusDraft: "Draft",
+    statusPendingReview: "Pending review",
+    statusPublished: "Published",
+    statusArchived: "Archived",
+    productUpdated: "Product updated successfully.",
+    productUpdateError: "The product could not be updated."
   },
   fa: {
     admin: "مدیر پلتفرم",
@@ -187,7 +200,19 @@ const copy = {
     listings: "فهرست‌ها",
     catalogEmpty: "هنوز محصولی ساخته نشده است.",
     catalogLoadError: "محصولات بارگذاری نشدند. صفحه را تازه کنید.",
-    loadMore: "بارگذاری بیشتر"
+    loadMore: "بارگذاری بیشتر",
+    editProduct: "ویرایش محصول",
+    editProductHint: "رکورد مشترک کاتالوگ را ویرایش کنید. تغییرات روی فهرست همه فروشندگان این محصول اعمال می‌شود.",
+    productTitle: "عنوان محصول",
+    category: "دسته‌بندی",
+    description: "توضیحات",
+    publishState: "وضعیت انتشار",
+    statusDraft: "پیش‌نویس",
+    statusPendingReview: "در انتظار بررسی",
+    statusPublished: "منتشرشده",
+    statusArchived: "بایگانی‌شده",
+    productUpdated: "محصول با موفقیت به‌روزرسانی شد.",
+    productUpdateError: "محصول به‌روزرسانی نشد."
   },
   ar: {
     admin: "مدير المنصة",
@@ -265,7 +290,19 @@ const copy = {
     listings: "القوائم",
     catalogEmpty: "لم يتم إنشاء أي منتج بعد.",
     catalogLoadError: "تعذر تحميل المنتجات. حدّث الصفحة وحاول مجدداً.",
-    loadMore: "تحميل المزيد"
+    loadMore: "تحميل المزيد",
+    editProduct: "تعديل المنتج",
+    editProductHint: "حدّث سجل الكتالوج المشترك. تؤثر التغييرات على قوائم جميع البائعين لهذا المنتج.",
+    productTitle: "اسم المنتج",
+    category: "الفئة",
+    description: "الوصف",
+    publishState: "حالة النشر",
+    statusDraft: "مسودة",
+    statusPendingReview: "قيد المراجعة",
+    statusPublished: "منشور",
+    statusArchived: "مؤرشف",
+    productUpdated: "تم تحديث المنتج بنجاح.",
+    productUpdateError: "تعذر تحديث المنتج."
   }
 } as const;
 
@@ -282,6 +319,13 @@ type VendorFormState = {
   holdbackRate: string;
   blogReviewRequired: boolean;
   permissions: VendorPermission[];
+};
+
+type ProductFormState = {
+  title: string;
+  category: string;
+  description: string;
+  status: ProductStatus;
 };
 
 const emptyForm: VendorFormState = {
@@ -368,6 +412,16 @@ export function VendorManagement({
   const [productsCursor, setProductsCursor] = useState<string | null>(null);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState("");
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [productForm, setProductForm] = useState<ProductFormState>({
+    title: "",
+    category: "",
+    description: "",
+    status: "draft"
+  });
+  const [productSubmitting, setProductSubmitting] = useState(false);
+  const [productMessage, setProductMessage] = useState("");
+  const [productError, setProductError] = useState("");
 
   const loadVendors = useCallback(async () => {
     setLoading(true);
@@ -540,6 +594,53 @@ export function VendorManagement({
         ? current.permissions.filter((item) => item !== permission)
         : [...current.permissions, permission]
     }));
+  }
+
+  function openProductEditor(product: AdminProductSummary) {
+    setEditingProductId(product.id);
+    setProductForm({
+      title: product.title,
+      category: product.category ?? "",
+      description: product.description ?? "",
+      status: product.status
+    });
+    setProductMessage("");
+    setProductError("");
+  }
+
+  function updateProductField<K extends keyof ProductFormState>(
+    field: K,
+    value: ProductFormState[K]
+  ) {
+    setProductForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function submitProduct(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingProductId || productSubmitting) return;
+    setProductSubmitting(true);
+    setProductMessage("");
+    setProductError("");
+    try {
+      const response = await api.patch<AdminProductSummary>(
+        `/products/admin/${editingProductId}`,
+        {
+          title: productForm.title,
+          category: productForm.category || null,
+          description: productForm.description || null,
+          status: productForm.status
+        }
+      );
+      setProducts((current) => current.map((product) =>
+        product.id === response.data.id ? response.data : product
+      ));
+      setEditingProductId(null);
+      setProductMessage(c.productUpdated);
+    } catch (requestError) {
+      setProductError(requestMessage(requestError, c.productUpdateError));
+    } finally {
+      setProductSubmitting(false);
+    }
   }
 
   async function submitVendor(event: React.FormEvent<HTMLFormElement>) {
@@ -775,6 +876,8 @@ export function VendorManagement({
           </div>
         </header>
         {productsError ? <p className="admin-notice is-error" role="alert">{productsError}</p> : null}
+        {productError ? <p className="admin-notice is-error" role="alert">{productError}</p> : null}
+        {productMessage ? <p className="admin-notice" role="status">{productMessage}</p> : null}
         {!productsLoading && !products.length ? <p className="vendor-empty">{c.catalogEmpty}</p> : null}
         {products.length ? (
           <div className="admin-product-list">
@@ -794,6 +897,78 @@ export function VendorManagement({
                   <div><dt>{c.listings}</dt><dd>{product.listingCount}</dd></div>
                   <div><dt>{c.status}</dt><dd>{product.status}</dd></div>
                 </dl>
+                <button
+                  className="admin-secondary-button admin-product-edit"
+                  type="button"
+                  aria-expanded={editingProductId === product.id}
+                  aria-controls={`admin-product-editor-${product.id}`}
+                  onClick={() => editingProductId === product.id
+                    ? setEditingProductId(null)
+                    : openProductEditor(product)}
+                >
+                  {editingProductId === product.id ? c.cancel : c.editProduct}
+                </button>
+                {editingProductId === product.id ? (
+                  <form
+                    className="admin-product-edit-form"
+                    id={`admin-product-editor-${product.id}`}
+                    onSubmit={submitProduct}
+                  >
+                    <p>{c.editProductHint}</p>
+                    <label className="vendor-field">
+                      <span>{c.productTitle}</span>
+                      <input
+                        autoFocus
+                        required
+                        minLength={2}
+                        maxLength={200}
+                        value={productForm.title}
+                        onChange={(event) => updateProductField("title", event.target.value)}
+                      />
+                    </label>
+                    <label className="vendor-field">
+                      <span>{c.category}</span>
+                      <input
+                        maxLength={100}
+                        value={productForm.category}
+                        onChange={(event) => updateProductField("category", event.target.value)}
+                      />
+                    </label>
+                    <label className="vendor-field admin-product-description">
+                      <span>{c.description}</span>
+                      <textarea
+                        maxLength={10000}
+                        value={productForm.description}
+                        onChange={(event) => updateProductField("description", event.target.value)}
+                      />
+                    </label>
+                    <label className="vendor-field">
+                      <span>{c.publishState}</span>
+                      <select
+                        value={productForm.status}
+                        onChange={(event) => updateProductField("status", event.target.value as ProductStatus)}
+                      >
+                        <option value="draft">{c.statusDraft}</option>
+                        <option value="pending_review">{c.statusPendingReview}</option>
+                        <option value="active">{c.statusPublished}</option>
+                        <option value="archived">{c.statusArchived}</option>
+                      </select>
+                    </label>
+                    <footer>
+                      <button
+                        className="admin-secondary-button"
+                        type="button"
+                        disabled={productSubmitting}
+                        onClick={() => setEditingProductId(null)}
+                      >
+                        {c.cancel}
+                      </button>
+                      <button className="admin-primary-button" type="submit" disabled={productSubmitting}>
+                        {productSubmitting ? c.saving : c.save}
+                      </button>
+                    </footer>
+                  </form>
+                ) : null}
               </article>
             ))}
           </div>
