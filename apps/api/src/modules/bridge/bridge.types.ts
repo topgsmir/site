@@ -38,4 +38,3 @@ export interface BridgeProviderAdapter {
     input: { providerReference: string; kind: BridgeServiceKind }
   ): Promise<BridgeResult>;
 }
-

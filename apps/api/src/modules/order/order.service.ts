@@ -332,7 +332,7 @@ export class OrderService {
         const current = await transaction.orders.findFirst({
           where: {
             id: orderId,
-            ...(actor.role === "platform-admin"
+            ...(this.hasPlatformPermission(actor, "orders_manage")
               ? {}
               : actor.role === "buyer"
                 ? { buyer_id: actor.id }
@@ -405,7 +405,7 @@ export class OrderService {
   }
 
   private async scope(actor: AppUser): Promise<Prisma.ordersWhereInput> {
-    if (actor.role === "platform-admin") return {};
+    if (this.hasPlatformPermission(actor, "orders_manage")) return {};
     if (actor.role === "buyer") return { buyer_id: actor.id };
     const sellerId = await this.sellerIdFor(actor, "orders_manage");
     return { seller_id: sellerId ?? "" };
@@ -415,7 +415,7 @@ export class OrderService {
     actor: AppUser,
     permission: "orders_manage" | "payouts_request"
   ) {
-    if (actor.role === "platform-admin" || actor.role === "buyer") return null;
+    if (this.hasPlatformPermission(actor, "orders_manage") || actor.role === "buyer") return null;
     if (actor.role !== "seller-admin" && actor.role !== "seller-staff") {
       throw new ForbiddenException("Seller access is required");
     }
@@ -443,7 +443,7 @@ export class OrderService {
     productType: product_type
   ) {
     let allowed = false;
-    if (actor.role === "platform-admin") {
+    if (this.hasPlatformPermission(actor, "orders_manage")) {
       allowed = to === "cancelled" && from !== "cancelled" && from !== "delivered";
     } else if (actor.role === "buyer") {
       allowed =
@@ -483,6 +483,14 @@ export class OrderService {
         }
       }
     }
+  }
+
+  private hasPlatformPermission(actor: AppUser, permission: "orders_manage") {
+    return (
+      actor.role === "platform-admin" ||
+      (actor.role === "platform-staff" &&
+        actor.platformPermissions?.includes(permission) === true)
+    );
   }
 
   private assertSameRequest(stored: string, incoming: string) {

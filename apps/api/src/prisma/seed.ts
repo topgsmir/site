@@ -12,15 +12,6 @@ const prisma = new PrismaService();
 const auth = new AuthService(prisma);
 
 function readAdminConfig(): AdminSeedConfig | null {
-  if (process.argv.includes("--development")) {
-    return {
-      email: "admin@topgsm.local",
-      fullName: "Local Admin",
-      password: "admin",
-      username: "admin"
-    };
-  }
-
   const values = {
     email: process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase(),
     fullName: process.env.BOOTSTRAP_ADMIN_FULL_NAME?.trim(),

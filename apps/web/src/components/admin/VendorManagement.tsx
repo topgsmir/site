@@ -39,6 +39,8 @@ const copy = {
     overview: "Overview",
     vendors: "Vendors",
     catalog: "Product catalog",
+    editorial: "Editorial",
+    staff: "Platform staff",
     account: "Account",
     greeting: "Good to see you",
     skip: "Skip to vendor workspace",
@@ -115,6 +117,8 @@ const copy = {
     overview: "نمای کلی",
     vendors: "فروشنده‌ها",
     catalog: "کاتالوگ محصولات",
+    editorial: "تحریریه",
+    staff: "کارکنان پلتفرم",
     account: "حساب کاربری",
     greeting: "خوش آمدید",
     skip: "رفتن به مدیریت فروشنده‌ها",
@@ -191,6 +195,8 @@ const copy = {
     overview: "نظرة عامة",
     vendors: "البائعون",
     catalog: "كتالوج المنتجات",
+    editorial: "التحرير",
+    staff: "فريق المنصة",
     account: "الحساب",
     greeting: "مرحباً بعودتك",
     skip: "انتقل إلى إدارة البائعين",
@@ -274,6 +280,7 @@ type VendorFormState = {
   status: VendorStatus;
   commission: string;
   holdbackRate: string;
+  blogReviewRequired: boolean;
   permissions: VendorPermission[];
 };
 
@@ -286,6 +293,7 @@ const emptyForm: VendorFormState = {
   status: "active",
   commission: "10",
   holdbackRate: "5",
+  blogReviewRequired: true,
   permissions: ["products_manage", "products_publish", "blog_manage", "coupons_manage", "orders_manage", "analytics_view"]
 };
 
@@ -313,6 +321,7 @@ function formFromVendor(vendor: Vendor): VendorFormState {
     status: vendor.status,
     commission: String(vendor.commission * 100),
     holdbackRate: String(vendor.holdbackRate * 100),
+    blogReviewRequired: vendor.blogReviewRequired,
     permissions: [...vendor.permissions]
   };
 }
@@ -547,6 +556,7 @@ export function VendorManagement({
       status: form.status,
       commission: Number(form.commission) / 100,
       holdbackRate: Number(form.holdbackRate) / 100,
+      blogReviewRequired: form.blogReviewRequired,
       permissions: form.permissions
     };
 
@@ -604,6 +614,14 @@ export function VendorManagement({
           >
             <ProductsIcon />
             <span>{c.catalog}</span>
+          </Link>
+          <Link href={`/${locale}/admin/blog` as Route}>
+            <ProductsIcon />
+            <span>{c.editorial}</span>
+          </Link>
+          <Link href={`/${locale}/admin/staff` as Route}>
+            <VendorsIcon />
+            <span>{c.staff}</span>
           </Link>
           {process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true" ? (
             <Link href={`/${locale}/admin/bridge` as Route}>
@@ -850,6 +868,19 @@ export function VendorManagement({
                     </label>
                   ))}
                 </div>
+              </fieldset>
+
+              <fieldset className="permission-fieldset">
+                <legend>{locale === "fa" ? "سیاست انتشار وبلاگ" : locale === "ar" ? "سياسة نشر المدونة" : "Blog publishing policy"}</legend>
+                <p>{locale === "fa" ? "بررسی پیش از انتشار به‌صورت پیش‌فرض فعال است." : locale === "ar" ? "المراجعة قبل النشر مفعلة افتراضياً." : "Review before publication is enabled by default."}</p>
+                <label className="permission-option">
+                  <span>
+                    <strong>{locale === "fa" ? "نیازمند بررسی تحریریه" : locale === "ar" ? "يتطلب مراجعة التحرير" : "Require editorial review"}</strong>
+                    <small>{locale === "fa" ? "با خاموش‌کردن این گزینه، فروشنده می‌تواند مستقیم منتشر کند." : locale === "ar" ? "عند إيقافه يمكن للبائع النشر مباشرة." : "Turn off only for sellers trusted to publish directly."}</small>
+                  </span>
+                  <input type="checkbox" checked={form.blogReviewRequired} onChange={(event) => updateField("blogReviewRequired", event.target.checked)} />
+                  <i aria-hidden="true" />
+                </label>
               </fieldset>
 
               {error ? <p className="admin-notice is-error" role="alert">{error}</p> : null}

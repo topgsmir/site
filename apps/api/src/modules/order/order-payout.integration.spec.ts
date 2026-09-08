@@ -77,6 +77,13 @@ before(async () => {
         }
       }
     });
+    await transaction.seller_memberships.create({
+      data: {
+        seller_id: seller.id,
+        user_id: sellerUser.id,
+        role: "admin"
+      }
+    });
     const product = await transaction.products.create({
       data: {
         created_by_seller_id: seller.id,

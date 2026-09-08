@@ -8,6 +8,10 @@ import type { Vendor, VendorStatus } from "@topgsm/shared-types";
 import { AuthService } from "../auth/auth.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import type { CreateVendorDto, UpdateVendorDto } from "./dto/vendor.dto";
+import type {
+  CreateSellerAgentDto,
+  CreateSellerInviteDto
+} from "./dto/seller-directory.dto";
 
 @Injectable()
 export class SellerService {
@@ -27,6 +31,78 @@ export class SellerService {
     });
 
     return sellers.map((seller) => this.toVendor(seller));
+  }
+
+  async listAgents() {
+    const agents = await this.prisma.seller_agents.findMany({
+      orderBy: [{ available: "desc" }, { name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        specialty: true,
+        rating: true,
+        phone: true,
+        available: true
+      }
+    });
+    return agents.map((agent) => ({ ...agent, rating: Number(agent.rating) }));
+  }
+
+  async createAgent(input: CreateSellerAgentDto, actorUserId: string) {
+    const agent = await this.prisma.seller_agents.create({
+      data: {
+        name: input.name.trim(),
+        specialty: input.specialty.trim(),
+        rating: input.rating,
+        phone: input.phone?.trim() || null,
+        available: input.available,
+        created_by_user_id: actorUserId
+      },
+      select: {
+        id: true,
+        name: true,
+        specialty: true,
+        rating: true,
+        phone: true,
+        available: true
+      }
+    });
+    return { ...agent, rating: Number(agent.rating) };
+  }
+
+  listInvitations() {
+    return this.prisma.seller_invitations.findMany({
+      orderBy: [{ created_at: "desc" }, { id: "desc" }],
+      select: {
+        id: true,
+        owner_name: true,
+        owner_email: true,
+        phone_number: true,
+        status: true,
+        created_at: true
+      }
+    });
+  }
+
+  async createInvitation(input: CreateSellerInviteDto, actorUserId: string) {
+    try {
+      return await this.prisma.seller_invitations.create({
+        data: {
+          owner_name: input.ownerName.trim(),
+          owner_email: input.ownerEmail.trim().toLowerCase(),
+          phone_number: input.phoneNumber.trim(),
+          created_by_user_id: actorUserId
+        }
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new ConflictException("This seller already has an active invitation");
+      }
+      throw error;
+    }
   }
 
   async createVendor(input: CreateVendorDto, adminUserId: string) {
@@ -51,6 +127,7 @@ export class SellerService {
             phone_number: input.phoneNumber?.trim() || null,
             commission: input.commission,
             holdback_rate: input.holdbackRate,
+            blog_review_required: input.blogReviewRequired ?? true,
             ...status
           }
         });
@@ -129,6 +206,9 @@ export class SellerService {
             ...(input.holdbackRate !== undefined
               ? { holdback_rate: input.holdbackRate }
               : {}),
+            ...(input.blogReviewRequired !== undefined
+              ? { blog_review_required: input.blogReviewRequired }
+              : {}),
             ...(input.status ? this.statusData(input.status) : {})
           }
         });
@@ -204,6 +284,7 @@ export class SellerService {
     suspended_at: Date | null;
     commission: Prisma.Decimal;
     holdback_rate: Prisma.Decimal;
+    blog_review_required: boolean;
     created_at: Date;
     updated_at: Date;
     user: { full_name: string; email: string };
@@ -225,6 +306,7 @@ export class SellerService {
       status,
       commission: Number(seller.commission),
       holdbackRate: Number(seller.holdback_rate),
+      blogReviewRequired: seller.blog_review_required,
       permissions: seller.permissions.map((item) => item.permission),
       productCount: seller._count.listings,
       orderCount: seller._count.orders,

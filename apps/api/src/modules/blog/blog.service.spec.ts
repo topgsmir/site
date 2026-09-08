@@ -1,122 +1,97 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
-import { NotFoundException } from "@nestjs/common";
+import { BadRequestException } from "@nestjs/common";
 import type { PrismaService } from "../../prisma/prisma.service";
+import type { BlogActor } from "./blog-manage.guard";
 import { BlogService } from "./blog.service";
+import { validateRichText } from "./rich-text.validator";
 
-const now = new Date("2026-09-07T12:00:00.000Z");
+const sellerActor: BlogActor = {
+  type: "seller",
+  sellerId: "00000000-0000-4000-8000-000000000001",
+  reviewRequired: true,
+  user: {
+    id: "00000000-0000-4000-8000-000000000002",
+    fullName: "Seller",
+    email: "seller@example.com",
+    role: "seller-admin",
+    permissions: ["blog_manage"]
+  }
+};
 
-describe("seller blog isolation", () => {
-  it("rejects a related product outside the seller catalog", async () => {
-    let createCalled = false;
-    const prisma = {
-      seller_listings: { findFirst: async () => null },
-      blog_posts: { create: async () => { createCalled = true; } }
-    } as unknown as PrismaService;
-    const service = new BlogService(prisma);
-
-    await assert.rejects(service.create("seller-1", {
-      title: "Repair guide",
-      content: "Safe repair steps",
-      status: "draft",
-      relatedProductId: "00000000-0000-4000-8000-000000000001"
-    }), NotFoundException);
-    assert.equal(createCalled, false);
+describe("multilingual blog security", () => {
+  it("rejects raw HTML nodes and unsafe link protocols", () => {
+    assert.throws(
+      () => validateRichText({ type: "doc", content: [{ type: "html", text: "<script />" }] }),
+      BadRequestException
+    );
+    assert.throws(
+      () => validateRichText({
+        type: "doc",
+        content: [{
+          type: "paragraph",
+          content: [{ type: "text", text: "open", marks: [{ type: "link", attrs: { href: "javascript:alert(1)" } }] }]
+        }]
+      }),
+      BadRequestException
+    );
   });
 
-  it("derives ownership, slug, and publication time on the server", async () => {
-    let createData: Record<string, unknown> | undefined;
-    const prisma = {
-      seller_listings: { findFirst: async () => ({ id: "listing-1" }) },
-      blog_posts: {
-        create: async ({ data }: { data: Record<string, unknown> }) => {
-          createData = data;
-          return {
-            id: data.id,
-            title: data.title,
-            slug: data.slug,
-            excerpt: null,
-            status: data.status,
-            published_at: data.published_at,
-            created_at: now,
-            updated_at: now,
-            product: null
-          };
-        }
-      }
-    } as unknown as PrismaService;
-    const service = new BlogService(prisma);
-
-    const post = await service.create("seller-1", {
-      title: "  Screen   repair  ",
-      content: "Instructions",
-      status: "published"
+  it("accepts allowlisted content and extracts same-origin media ids", () => {
+    const result = validateRichText({
+      type: "doc",
+      content: [{
+        type: "paragraph",
+        content: [{ type: "image", attrs: { src: "/media/00000000-0000-4000-8000-000000000003/md.webp" } }]
+      }]
     });
-
-    assert.equal(createData?.seller_id, "seller-1");
-    assert.equal(createData?.title, "Screen repair");
-    assert.match(String(createData?.slug), /^screen-repair-[0-9a-f]{8}$/);
-    assert.ok(createData?.published_at instanceof Date);
-    assert.equal(post.status, "published");
+    assert.deepEqual(result.mediaIds, ["00000000-0000-4000-8000-000000000003"]);
   });
 
-  it("keeps public reads limited to published posts by active sellers", async () => {
-    let findArguments: Record<string, unknown> | undefined;
+  it("scopes seller product search to active listings", async () => {
+    let where: unknown;
     const prisma = {
-      blog_posts: {
-        findMany: async (args: Record<string, unknown>) => {
-          findArguments = args;
+      products: {
+        findMany: async (input: { where: unknown }) => {
+          where = input.where;
           return [];
         }
       }
     } as unknown as PrismaService;
     const service = new BlogService(prisma);
-
-    await service.listPublic({ limit: 20 });
-    assert.deepEqual(findArguments?.where, {
-      status: "published",
-      published_at: { not: null },
-      seller: { invited: false, approved: true, suspended_at: null }
+    await service.productOptions(sellerActor, { limit: 20 });
+    assert.deepEqual(where, {
+      status: "active",
+      listings: {
+        some: {
+          seller_id: sellerActor.sellerId,
+          status: "active"
+        }
+      }
     });
   });
 
-  it("does not update a post owned by another seller", async () => {
-    let updateCalled = false;
+  it("public listings exclude archives and suspended sellers", async () => {
+    let where: unknown;
     const prisma = {
       blog_posts: {
-        findFirst: async () => null,
-        update: async () => { updateCalled = true; }
-      }
-    } as unknown as PrismaService;
-    const service = new BlogService(prisma);
-
-    await assert.rejects(service.update("seller-1", "00000000-0000-4000-8000-000000000001", {
-      title: "Changed title"
-    }), NotFoundException);
-    assert.equal(updateCalled, false);
-  });
-
-  it("keeps the original publication time when editing a published post", async () => {
-    let updateData: Record<string, unknown> | undefined;
-    const prisma = {
-      blog_posts: {
-        findFirst: async () => ({ id: "post-1", published_at: now }),
-        update: async ({ data }: { data: Record<string, unknown> }) => {
-          updateData = data;
-          return {
-            id: "post-1", title: "Updated guide", slug: "updated-guide", excerpt: null,
-            status: "published", published_at: now, created_at: now, updated_at: now, product: null
-          };
+        findMany: async (input: { where: unknown }) => {
+          where = input.where;
+          return [];
         }
       }
     } as unknown as PrismaService;
     const service = new BlogService(prisma);
-
-    await service.update("seller-1", "00000000-0000-4000-8000-000000000001", {
-      title: "  Updated   guide  ", status: "published"
+    await service.listPublic("fa", { limit: 20 });
+    assert.deepEqual(where, {
+      archived_at: null,
+      published_revision_id: { not: null },
+      OR: [
+        { seller_id: null },
+        { seller: { approved: true, invited: false, suspended_at: null } }
+      ],
+      published_revision: { translations: { some: { locale: "fa" } } }
     });
-
-    assert.equal(updateData?.title, "Updated guide");
-    assert.equal(updateData?.published_at, now);
   });
+
 });

@@ -91,7 +91,7 @@ export function BuyerBridgeOrder({ locale, orderId }: { locale: Locale; orderId:
   }, [c.error, orderId]);
 
   useEffect(() => {
-    void load();
+    const frame = window.requestAnimationFrame(() => void load());
     const socket = getSocket();
     const onUpdate = (payload: { orderId?: string }) => {
       if (payload.orderId === orderId) void load();
@@ -99,6 +99,7 @@ export function BuyerBridgeOrder({ locale, orderId }: { locale: Locale; orderId:
     socket.on("order.status.updated", onUpdate);
     const timer = window.setInterval(() => void load(), 15_000);
     return () => {
+      window.cancelAnimationFrame(frame);
       socket.off("order.status.updated", onUpdate);
       window.clearInterval(timer);
     };

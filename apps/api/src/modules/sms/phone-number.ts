@@ -8,4 +8,3 @@ export function normalizeIranianPhone(input: string) {
   if (!/^09\d{9}$/.test(national)) throw new BadRequestException("Iranian mobile number is invalid");
   return `+98${national.slice(1)}`;
 }
-

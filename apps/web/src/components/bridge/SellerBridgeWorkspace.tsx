@@ -70,7 +70,10 @@ export function SellerBridgeWorkspace({ locale }: { locale: Locale }) {
     finally { setLoading(false); }
   }, [c.error]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => void load());
+    return () => window.cancelAnimationFrame(frame);
+  }, [load]);
 
   async function createConnection(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

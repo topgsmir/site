@@ -69,4 +69,3 @@ export class OtpService {
     return createHmac("sha256", secret).update(`${id}:${phone}:${code}`).digest("hex");
   }
 }
-

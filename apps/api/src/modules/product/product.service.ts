@@ -14,7 +14,6 @@ import type {
   AddSellerOffersDto,
   CreateProductDto,
   CreateProductOfferDto,
-  CreateProductVariantDto,
   ListProductsQueryDto,
   UpdateProductDto,
   UpdateSellerOfferDto
@@ -154,6 +153,17 @@ type ProductPlan = {
 @Injectable()
 export class ProductService {
   constructor(private readonly prisma: PrismaService, private readonly config: ConfigService) {}
+
+  sitemapProjection() {
+    return this.prisma.products.findMany({
+      where: {
+        status: "active",
+        variants: { some: { offers: { some: activeOfferWhere } } }
+      },
+      orderBy: [{ updated_at: "desc" }, { id: "desc" }],
+      select: { slug: true, updated_at: true }
+    });
+  }
 
   async listPublic(input: ListProductsQueryDto) {
     const products = await this.prisma.products.findMany({

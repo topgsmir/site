@@ -1,171 +1,73 @@
 "use client";
 
 import axios from "axios";
-import type { BlogPostSummary, BlogPostsPage, SellerBlogPost, SellerListing } from "@topgsm/shared-types";
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import type { Route } from "next";
+import { useRouter } from "next/navigation";
+import type { ManagedBlogPost, SellerListing } from "@topgsm/shared-types";
+import { useCallback, useEffect, useState } from "react";
 import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
-import { BlogPublicUrl } from "@/components/blog/BlogPublicUrl";
 import styles from "./SellerDashboard.module.css";
 
-type RequestState = "idle" | "loading" | "error" | "success";
-type Copy = Record<string, string>;
+const COPY = {
+  en: { title: "Editorial workspace", description: "Draft in Persian, English, and Arabic. Published articles keep their previous URL live while a revision is reviewed.", newPost: "New article", load: "Loading articles…", empty: "No articles yet", emptyHint: "Create a draft, add all three translations, then submit it for publication.", retry: "Try again", error: "Articles could not be loaded.", open: "Open editor", updated: "Updated", draft: "Draft", pending_review: "In review", published: "Published", rejected: "Changes requested" },
+  fa: { title: "فضای تحریریه", description: "نسخه‌های فارسی، انگلیسی و عربی را بنویسید. هنگام بررسی ویرایش جدید، نشانی نسخه منتشرشده همچنان فعال می‌ماند.", newPost: "مقاله جدید", load: "در حال بارگذاری مقاله‌ها…", empty: "هنوز مقاله‌ای ندارید", emptyHint: "یک پیش‌نویس بسازید، هر سه زبان را کامل کنید و برای انتشار بفرستید.", retry: "تلاش دوباره", error: "مقاله‌ها بارگذاری نشدند.", open: "بازکردن ویرایشگر", updated: "به‌روزرسانی", draft: "پیش‌نویس", pending_review: "در حال بررسی", published: "منتشرشده", rejected: "نیازمند اصلاح" },
+  ar: { title: "مساحة التحرير", description: "اكتب النسخ الفارسية والإنجليزية والعربية. يبقى رابط النسخة المنشورة فعالاً أثناء مراجعة التعديل.", newPost: "مقال جديد", load: "جارٍ تحميل المقالات…", empty: "لا توجد مقالات بعد", emptyHint: "أنشئ مسودة وأكمل اللغات الثلاث ثم أرسلها للنشر.", retry: "إعادة المحاولة", error: "تعذر تحميل المقالات.", open: "فتح المحرر", updated: "آخر تحديث", draft: "مسودة", pending_review: "قيد المراجعة", published: "منشور", rejected: "بحاجة إلى تعديل" }
+} as const;
 
-const COPY: Record<Locale, Copy> = {
-  en: {
-    title: "Blog", description: "Publish useful guides and connect them to products your shop sells.", newPost: "New post", cancel: "Cancel",
-    postTitle: "Post title", excerpt: "Short summary", excerptHint: "Optional. Used in blog lists and previews.", content: "Article",
-    contentHint: "Write plain text or Markdown. Raw HTML is not rendered.", relatedProduct: "Related product", noRelatedProduct: "No related product",
-    publishState: "Save as", draft: "Draft", published: "Published", archived: "Archived", saveDraft: "Save draft", publish: "Publish post",
-    saving: "Saving…", loadMore: "Load more", loading: "Loading posts…", empty: "No blog posts yet",
-    emptyHint: "Start with a guide, repair note, or product walkthrough.", loadError: "Posts could not be loaded. Check blog access and try again.",
-    createError: "The post could not be saved. Review the fields and try again.", retry: "Try again", post: "Post", product: "Product",
-    status: "Status", updated: "Updated", untitledError: "Add a title with at least two characters.", contentError: "Add article content before saving.",
-    postUrl: "Post URL", actions: "Actions", edit: "Edit", update: "Save changes", updateError: "The post could not be updated. Review the fields and try again.", loadingEditor: "Loading post…"
-  },
-  fa: {
-    title: "وبلاگ", description: "راهنماهای کاربردی منتشر کنید و آن‌ها را به محصولات فروشگاه خود پیوند دهید.", newPost: "نوشته جدید", cancel: "انصراف",
-    postTitle: "عنوان نوشته", excerpt: "خلاصه کوتاه", excerptHint: "اختیاری؛ در فهرست و پیش‌نمایش وبلاگ نمایش داده می‌شود.", content: "متن مقاله",
-    contentHint: "متن ساده یا Markdown بنویسید. HTML خام نمایش داده نمی‌شود.", relatedProduct: "محصول مرتبط", noRelatedProduct: "بدون محصول مرتبط",
-    publishState: "ذخیره به‌عنوان", draft: "پیش‌نویس", published: "منتشرشده", archived: "بایگانی‌شده", saveDraft: "ذخیره پیش‌نویس", publish: "انتشار نوشته",
-    saving: "در حال ذخیره…", loadMore: "نمایش بیشتر", loading: "در حال بارگذاری نوشته‌ها…", empty: "هنوز نوشته‌ای ندارید",
-    emptyHint: "با یک راهنما، نکته تعمیر یا معرفی محصول شروع کنید.", loadError: "نوشته‌ها بارگذاری نشدند. دسترسی وبلاگ را بررسی و دوباره تلاش کنید.",
-    createError: "نوشته ذخیره نشد. فیلدها را بررسی و دوباره تلاش کنید.", retry: "تلاش دوباره", post: "نوشته", product: "محصول",
-    status: "وضعیت", updated: "به‌روزرسانی", untitledError: "عنوانی با حداقل دو نویسه وارد کنید.", contentError: "پیش از ذخیره، متن مقاله را وارد کنید.",
-    postUrl: "نشانی نوشته", actions: "عملیات", edit: "ویرایش", update: "ذخیره تغییرات", updateError: "نوشته به‌روزرسانی نشد. فیلدها را بررسی و دوباره تلاش کنید.", loadingEditor: "در حال بارگذاری نوشته…"
-  },
-  ar: {
-    title: "المدونة", description: "انشر أدلة مفيدة واربطها بالمنتجات التي يبيعها متجرك.", newPost: "مقال جديد", cancel: "إلغاء",
-    postTitle: "عنوان المقال", excerpt: "ملخص قصير", excerptHint: "اختياري. يظهر في قوائم المدونة والمعاينات.", content: "المقال",
-    contentHint: "اكتب نصاً عادياً أو Markdown. لا يتم عرض HTML الخام.", relatedProduct: "المنتج المرتبط", noRelatedProduct: "بدون منتج مرتبط",
-    publishState: "حفظ كـ", draft: "مسودة", published: "منشور", archived: "مؤرشف", saveDraft: "حفظ المسودة", publish: "نشر المقال",
-    saving: "جارٍ الحفظ…", loadMore: "تحميل المزيد", loading: "جارٍ تحميل المقالات…", empty: "لا توجد مقالات بعد",
-    emptyHint: "ابدأ بدليل أو ملاحظة صيانة أو شرح لمنتج.", loadError: "تعذر تحميل المقالات. تحقق من صلاحية المدونة وحاول مجدداً.",
-    createError: "تعذر حفظ المقال. راجع الحقول وحاول مجدداً.", retry: "إعادة المحاولة", post: "المقال", product: "المنتج",
-    status: "الحالة", updated: "آخر تحديث", untitledError: "أضف عنواناً من حرفين على الأقل.", contentError: "أضف محتوى المقال قبل الحفظ.",
-    postUrl: "رابط المقال", actions: "الإجراءات", edit: "تعديل", update: "حفظ التغييرات", updateError: "تعذر تحديث المقال. راجع الحقول وحاول مجدداً.", loadingEditor: "جارٍ تحميل المقال…"
-  }
-};
-
-function requestError(error: unknown, fallback: string) {
-  if (!axios.isAxiosError(error)) return fallback;
-  const message = error.response?.data?.message;
-  if (Array.isArray(message)) return message.join(" ");
-  return typeof message === "string" ? message : fallback;
-}
-
-export function SellerBlogPanel({ locale, listings }: { locale: Locale; listings: SellerListing[] }) {
+export function SellerBlogPanel({
+  locale,
+  editBase = "seller-dashboard/blog"
+}: {
+  locale: Locale;
+  listings?: SellerListing[];
+  editBase?: string;
+}) {
   const copy = COPY[locale];
-  const titleRef = useRef<HTMLInputElement>(null);
-  const [posts, setPosts] = useState<BlogPostSummary[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [listState, setListState] = useState<RequestState>("loading");
-  const [formState, setFormState] = useState<RequestState>("idle");
-  const [message, setMessage] = useState("");
-  const [isComposing, setIsComposing] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [title, setTitle] = useState("");
-  const [excerpt, setExcerpt] = useState("");
-  const [content, setContent] = useState("");
-  const [relatedProductId, setRelatedProductId] = useState("");
-  const [status, setStatus] = useState<"draft" | "published" | "archived">("draft");
+  const router = useRouter();
+  const [posts, setPosts] = useState<ManagedBlogPost[]>([]);
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [creating, setCreating] = useState(false);
 
-  const loadPosts = useCallback(async (cursor?: string, append = false) => {
-    setListState("loading");
-    setMessage("");
+  const load = useCallback(async () => {
+    setState("loading");
     try {
-      const response = await api.get<BlogPostsPage>("/blog/posts/mine", { params: { limit: 20, ...(cursor ? { cursor } : {}) } });
-      setPosts((current) => append ? [...current, ...response.data.items] : response.data.items);
-      setNextCursor(response.data.nextCursor);
-      setListState("success");
-    } catch (error) {
-      setMessage(requestError(error, copy.loadError));
-      setListState("error");
-    }
-  }, [copy.loadError]);
+      const response = await api.get<{ items: ManagedBlogPost[] }>("/blog/manage/posts", { params: { limit: 30 } });
+      setPosts(response.data.items);
+      setState("ready");
+    } catch { setState("error"); }
+  }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
-  useEffect(() => { void loadPosts(); }, [loadPosts]);
-  useEffect(() => { if (isComposing) titleRef.current?.focus(); }, [isComposing]);
-
-  function resetForm() {
-    setEditingId(null); setTitle(""); setExcerpt(""); setContent(""); setRelatedProductId(""); setStatus("draft");
-  }
-
-  function toggleComposer() {
-    setMessage(""); setFormState("idle");
-    if (isComposing) resetForm();
-    setIsComposing((current) => !current);
-  }
-
-  async function editPost(postId: string) {
-    setFormState("loading"); setMessage(copy.loadingEditor); setIsComposing(true);
+  async function create() {
+    setCreating(true);
     try {
-      const response = await api.get<SellerBlogPost>(`/blog/posts/mine/${postId}`);
-      const post = response.data;
-      setEditingId(post.id); setTitle(post.title); setExcerpt(post.excerpt ?? ""); setContent(post.content);
-      setRelatedProductId(post.relatedProduct?.id ?? ""); setStatus(post.status); setMessage(""); setFormState("idle");
+      const response = await api.post<ManagedBlogPost>("/blog/manage/posts", {});
+      router.push(`/${locale}/${editBase}/${response.data.id}` as Route);
     } catch (error) {
-      setMessage(requestError(error, copy.loadError)); setFormState("error"); setIsComposing(false);
-    }
+      setState("error");
+      if (axios.isAxiosError(error)) console.error(error.response?.data?.message);
+    } finally { setCreating(false); }
   }
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (title.trim().length < 2) {
-      setFormState("error"); setMessage(copy.untitledError); titleRef.current?.focus(); return;
-    }
-    if (!content.trim()) { setFormState("error"); setMessage(copy.contentError); return; }
-
-    setFormState("loading"); setMessage("");
-    try {
-      const payload = {
-        title: title.trim(), ...(excerpt.trim() ? { excerpt: excerpt.trim() } : {}), content: content.trim(), status,
-        relatedProductId: relatedProductId || null
-      };
-      const response = editingId
-        ? await api.patch<BlogPostSummary>(`/blog/posts/${editingId}`, payload)
-        : await api.post<BlogPostSummary>("/blog/posts", { ...payload, relatedProductId: relatedProductId || undefined });
-      setPosts((current) => editingId
-        ? current.map((post) => post.id === response.data.id ? response.data : post)
-        : [response.data, ...current]);
-      resetForm();
-      setFormState("success"); setIsComposing(false);
-    } catch (error) {
-      setFormState("error"); setMessage(requestError(error, editingId ? copy.updateError : copy.createError));
-    }
-  }
-
-  const formatDate = (value: string) => new Intl.DateTimeFormat(locale === "fa" ? "fa-IR" : locale === "ar" ? "ar" : "en", { dateStyle: "medium" }).format(new Date(value));
-
+  const format = (value: string) => new Intl.DateTimeFormat(locale === "fa" ? "fa-IR" : locale, { dateStyle: "medium" }).format(new Date(value));
   return (
     <section aria-labelledby="blog-title">
       <div className={styles.blogHeading}>
         <div><h2 id="blog-title" className={styles.sectionTitle}>{copy.title}</h2><p>{copy.description}</p></div>
-        <button className={`${styles.primaryButton} ${styles.blogAction}`} type="button" onClick={toggleComposer} data-state={formState} aria-expanded={isComposing}>
-          {isComposing ? copy.cancel : copy.newPost}
-        </button>
+        <button className={styles.primaryButton} type="button" onClick={() => void create()} disabled={creating}>{creating ? "…" : copy.newPost}</button>
       </div>
-
-      {isComposing ? (
-        <form className={styles.blogComposer} onSubmit={submit} noValidate>
-          <div className={styles.blogComposerLead}>
-            <label className={styles.field}><span>{copy.postTitle}</span><input ref={titleRef} required minLength={2} maxLength={200} value={title} onChange={(event) => setTitle(event.target.value)} aria-invalid={formState === "error" && title.trim().length < 2} data-state={formState} /><small>{formState === "error" && title.trim().length < 2 ? copy.untitledError : " "}</small></label>
-            <label className={styles.field}><span>{copy.excerpt}</span><textarea maxLength={500} value={excerpt} onChange={(event) => setExcerpt(event.target.value)} data-state={formState} /><small>{copy.excerptHint}</small></label>
-          </div>
-          <label className={styles.field}><span>{copy.content}</span><textarea className={styles.articleField} required maxLength={50_000} value={content} onChange={(event) => setContent(event.target.value)} aria-invalid={formState === "error" && !content.trim()} data-state={formState} /><small>{formState === "error" && !content.trim() ? copy.contentError : copy.contentHint}</small></label>
-          <div className={styles.blogComposerMeta}>
-            <label className={styles.field}><span>{copy.relatedProduct}</span><select value={relatedProductId} onChange={(event) => setRelatedProductId(event.target.value)} data-state={formState}><option value="">{copy.noRelatedProduct}</option>{listings.map((listing) => <option key={listing.product.id} value={listing.product.id}>{listing.product.title}</option>)}</select><small> </small></label>
-            <label className={styles.field}><span>{copy.publishState}</span><select value={status} onChange={(event) => setStatus(event.target.value as "draft" | "published" | "archived")} data-state={formState}><option value="draft">{copy.draft}</option><option value="published">{copy.published}</option>{editingId ? <option value="archived">{copy.archived}</option> : null}</select><small> </small></label>
-            <button className={`${styles.primaryButton} ${styles.blogAction}`} type="submit" disabled={formState === "loading"} data-state={formState}>{formState === "loading" ? copy.saving : editingId ? copy.update : status === "published" ? copy.publish : copy.saveDraft}</button>
-          </div>
-        </form>
-      ) : null}
-
-      {message ? <div className={styles.notice} role="alert"><p>{message}</p>{listState === "error" ? <button className={styles.secondaryButton} type="button" onClick={() => void loadPosts()}>{copy.retry}</button> : null}</div> : null}
-      {listState === "loading" && posts.length === 0 ? <div className={styles.skeleton} aria-label={copy.loading}><i /><i /><i /></div> : posts.length === 0 && listState === "success" ? <div className={styles.emptyState}><h3>{copy.empty}</h3><p>{copy.emptyHint}</p><button className={styles.secondaryButton} type="button" onClick={() => setIsComposing(true)}>{copy.newPost}</button></div> : posts.length ? (
-        <div className={styles.tableWrap}><table className={styles.productTable}><thead><tr><th>{copy.post}</th><th>{copy.postUrl}</th><th>{copy.product}</th><th>{copy.status}</th><th>{copy.updated}</th><th>{copy.actions}</th></tr></thead><tbody>{posts.map((post) => <tr key={post.id}><td data-label={copy.post}><strong>{post.title}</strong></td><td data-label={copy.postUrl}><BlogPublicUrl className={styles.productUrl} locale={locale} slug={post.slug} label={`${copy.postUrl} — ${post.title}`} /></td><td data-label={copy.product}>{post.relatedProduct?.title ?? "—"}</td><td data-label={copy.status}><span className={styles.statusBadge} data-status={post.status}>{copy[post.status]}</span></td><td data-label={copy.updated}>{formatDate(post.updatedAt)}</td><td data-label={copy.actions}><button className={styles.textButton} type="button" onClick={() => void editPost(post.id)}>{copy.edit}</button></td></tr>)}</tbody></table></div>
-      ) : null}
-      {nextCursor && listState !== "loading" ? <button className={styles.loadMoreButton} type="button" onClick={() => void loadPosts(nextCursor, true)}>{copy.loadMore}</button> : null}
+      {state === "loading" ? <div className={styles.skeleton} aria-label={copy.load}><i /><i /><i /></div> : null}
+      {state === "error" ? <div className={styles.notice} role="alert"><p>{copy.error}</p><button className={styles.secondaryButton} type="button" onClick={() => void load()}>{copy.retry}</button></div> : null}
+      {state === "ready" && posts.length === 0 ? <div className={styles.emptyState}><h3>{copy.empty}</h3><p>{copy.emptyHint}</p><button className={styles.secondaryButton} type="button" onClick={() => void create()}>{copy.newPost}</button></div> : null}
+      {posts.length ? <div className={styles.tableWrap}><table className={styles.productTable}><thead><tr><th>{copy.title}</th><th>Status</th><th>{copy.updated}</th><th /></tr></thead><tbody>{posts.map((post) => {
+        const translation = post.translations.find((item) => item.locale === locale) ?? post.translations[0];
+        return <tr key={post.id}><td data-label={copy.title}><strong>{translation?.title || copy.empty}</strong><small>r{post.revision} · v{post.optimisticVersion}</small></td><td data-label="Status"><span className={styles.statusBadge} data-status={post.state}>{copy[post.state]}</span>{post.moderationNote ? <small>{post.moderationNote}</small> : null}</td><td data-label={copy.updated}>{format(post.updatedAt)}</td><td><Link className={styles.secondaryButton} href={`/${locale}/${editBase}/${post.id}` as Route}>{copy.open}</Link></td></tr>;
+      })}</tbody></table></div> : null}
     </section>
   );
 }

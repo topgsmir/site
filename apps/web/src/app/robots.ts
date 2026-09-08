@@ -1,11 +1,12 @@
 import type { MetadataRoute } from "next";
+import { generateSitemaps, SITEMAP_SITE_URL } from "./sitemap";
 
-export default function robots(): MetadataRoute.Robots {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://top-gsm.ir";
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const partitions = await generateSitemaps();
 
   return {
     rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/*/admin", "/*/seller-dashboard"] },
-    sitemap: `${siteUrl}/sitemap.xml`,
-    host: siteUrl
+    sitemap: partitions.map(({ id }) => `${SITEMAP_SITE_URL}/sitemap/${id}.xml`),
+    host: SITEMAP_SITE_URL
   };
 }

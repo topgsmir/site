@@ -2,6 +2,7 @@ import { Type } from "class-transformer";
 import {
   ArrayUnique,
   IsArray,
+  IsBoolean,
   IsEmail,
   IsEnum,
   IsNumber,
@@ -73,6 +74,10 @@ export class CreateVendorDto {
   @ArrayUnique()
   @IsEnum(vendorPermissions, { each: true })
   permissions!: VendorPermission[];
+
+  @IsOptional()
+  @IsBoolean()
+  blogReviewRequired?: boolean;
 }
 
 export class UpdateVendorDto {
@@ -127,4 +132,8 @@ export class UpdateVendorDto {
   @ArrayUnique()
   @IsEnum(vendorPermissions, { each: true })
   permissions?: VendorPermission[];
+
+  @IsOptional()
+  @IsBoolean()
+  blogReviewRequired?: boolean;
 }

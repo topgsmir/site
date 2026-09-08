@@ -64,4 +64,3 @@ export class DhruNewAdapter implements BridgeProviderAdapter {
     });
   }
 }
-

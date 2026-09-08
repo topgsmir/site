@@ -31,8 +31,14 @@ export class RealtimeGateway implements OnGatewayConnection {
       );
 
       await client.join(`user:${user.id}`);
-      if (user.role === "platform-admin") {
-        await client.join("platform-admin");
+      if (user.role === "platform-admin" || user.role === "platform-staff") {
+        const permissions = new Set(user.platformPermissions ?? []);
+        if (user.role === "platform-admin" || permissions.has("orders_manage")) {
+          await client.join("platform:orders");
+        }
+        if (user.role === "platform-admin" || permissions.has("payouts_manage")) {
+          await client.join("platform:payouts");
+        }
       } else if (user.role === "seller-admin" || user.role === "seller-staff") {
         const membership = await this.prisma.seller_memberships.findFirst({
           where: {
@@ -72,7 +78,7 @@ export class RealtimeGateway implements OnGatewayConnection {
     this.server
       .to(`seller:${sellerId}:payouts`)
       .emit("payout.status.updated", payload);
-    this.server.to("platform-admin").emit("payout.status.updated", payload);
+    this.server.to("platform:payouts").emit("payout.status.updated", payload);
   }
 
   private emitToOrderAudience(
@@ -82,6 +88,6 @@ export class RealtimeGateway implements OnGatewayConnection {
   ) {
     this.server.to(`user:${audience.buyerId}`).emit(event, payload);
     this.server.to(`seller:${audience.sellerId}:orders`).emit(event, payload);
-    this.server.to("platform-admin").emit(event, payload);
+    this.server.to("platform:orders").emit(event, payload);
   }
 }

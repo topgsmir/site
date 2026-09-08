@@ -86,4 +86,3 @@ export class DhruLegacyAdapter implements BridgeProviderAdapter {
     });
   }
 }
-

@@ -5,7 +5,12 @@ import {
   UnauthorizedException
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
-import type { AppUser, Role, VendorPermission } from "@topgsm/shared-types";
+import type {
+  AppUser,
+  PlatformPermission,
+  Role,
+  VendorPermission
+} from "@topgsm/shared-types";
 import {
   createHash,
   randomBytes,
@@ -27,10 +32,16 @@ type StoredUser = {
   id: string;
   full_name: string;
   email: string;
-  role: "platform_admin" | "seller_admin" | "seller_staff" | "buyer";
+  role:
+    | "platform_admin"
+    | "platform_staff"
+    | "seller_admin"
+    | "seller_staff"
+    | "buyer";
   sellers?: Array<{
     permissions: Array<{ permission: VendorPermission }>;
   }>;
+  platform_permissions?: Array<{ permission: PlatformPermission }>;
   seller_memberships?: Array<{
     active: boolean;
     seller: { permissions: Array<{ permission: VendorPermission }> };
@@ -79,6 +90,7 @@ export class AuthService {
           where: { email: identifier },
           include: {
             sellers: { include: { permissions: true } },
+            platform_permissions: true,
             seller_memberships: { include: { seller: { include: { permissions: true } } } }
           }
         })
@@ -86,6 +98,7 @@ export class AuthService {
           where: { username: identifier },
           include: {
             sellers: { include: { permissions: true } },
+            platform_permissions: true,
             seller_memberships: { include: { seller: { include: { permissions: true } } } }
           }
         });
@@ -121,6 +134,7 @@ export class AuthService {
             sellers: {
               select: { permissions: { select: { permission: true } } }
             },
+            platform_permissions: { select: { permission: true } },
             seller_memberships: {
               where: { active: true },
               select: {
@@ -168,6 +182,7 @@ export class AuthService {
       where: { id: userId },
       include: {
         sellers: { include: { permissions: true } },
+        platform_permissions: true,
         seller_memberships: {
           include: { seller: { include: { permissions: true } } }
         }
@@ -227,6 +242,17 @@ export class AuthService {
       (item) => item.permission
     );
     if (permissions) publicUser.permissions = permissions;
+    publicUser.isPlatformOwner = user.role === "platform_admin";
+    publicUser.platformPermissions =
+      user.role === "platform_admin"
+        ? [
+            "vendors_manage",
+            "catalog_view",
+            "orders_manage",
+            "payouts_manage",
+            "blog_manage"
+          ]
+        : (user.platform_permissions?.map((item) => item.permission) ?? []);
     return publicUser;
   }
 

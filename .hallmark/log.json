@@ -19,5 +19,12 @@
     "theme": "TopGSM Cobalt",
     "enrichment": "none",
     "brief": "Seller operations dashboard with section navigation and product creation"
+  },
+  {
+    "date": "2026-09-08",
+    "macrostructure": "Ecosystem Index + Long Document",
+    "theme": "TopGSM Technical Editorial",
+    "enrichment": "uploaded cover imagery",
+    "brief": "Localized public blog index, long-form article, taxonomy, seller-author, and product discovery surfaces"
   }
 ]

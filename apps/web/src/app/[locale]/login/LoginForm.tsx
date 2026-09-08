@@ -5,6 +5,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Locale } from "@/lib/i18n";
+import type { PlatformPermission } from "@topgsm/shared-types";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
@@ -30,7 +31,8 @@ type AuthCopy = {
 };
 
 type AuthUser = {
-  role: "platform-admin" | "seller-admin" | "seller-staff" | "buyer";
+  role: "platform-admin" | "platform-staff" | "seller-admin" | "seller-staff" | "buyer";
+  platformPermissions?: PlatformPermission[];
 };
 
 type LoginFormProps = {
@@ -43,6 +45,10 @@ function destinationFor(user: AuthUser, locale: Locale, nextPath?: string) {
   const fallback =
     user.role === "platform-admin"
       ? `/${locale}/admin`
+      : user.role === "platform-staff"
+        ? user.platformPermissions?.includes("blog_manage")
+          ? `/${locale}/admin/blog`
+          : `/${locale}/admin`
       : user.role === "seller-admin" || user.role === "seller-staff"
         ? `/${locale}/seller-dashboard`
         : `/${locale}`;
@@ -50,12 +56,12 @@ function destinationFor(user: AuthUser, locale: Locale, nextPath?: string) {
   if (!nextPath?.startsWith(`/${locale}/`) || nextPath.includes("://")) {
     return fallback;
   }
-  if (nextPath.startsWith(`/${locale}/admin`) && user.role !== "platform-admin") {
+  if (nextPath.startsWith(`/${locale}/admin`) && !["platform-admin", "platform-staff"].includes(user.role)) {
     return fallback;
   }
   if (
     nextPath.startsWith(`/${locale}/seller-dashboard`) &&
-    !["platform-admin", "seller-admin", "seller-staff"].includes(user.role)
+    !["platform-admin", "platform-staff", "seller-admin", "seller-staff"].includes(user.role)
   ) {
     return fallback;
   }
