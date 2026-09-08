@@ -714,7 +714,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
               <span>{item.label}</span>
             </button>
           ))}
-          {process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true" ? <Link className={styles.navButton} href={`/${locale}/seller-dashboard/bridge`} data-state="default">
+          {process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true" ? <Link className={styles.navButton} href={`/${locale}/seller-dashboard/bridge` as Route} data-state="default">
             <Icon name="products" />
             <span>{locale === "fa" ? "سرویس‌های Bridge" : locale === "ar" ? "خدمات Bridge" : "Bridge services"}</span>
           </Link> : null}
