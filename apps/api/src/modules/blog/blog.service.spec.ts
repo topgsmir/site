@@ -93,4 +93,5 @@ describe("multilingual blog security", () => {
       published_revision: { translations: { some: { locale: "fa" } } }
     });
   });
+
 });

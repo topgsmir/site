@@ -15,6 +15,7 @@ import type {
   CreateProductDto,
   CreateProductOfferDto,
   ListProductsQueryDto,
+  UpdateProductDto,
   UpdateSellerOfferDto
 } from "./dto/product.dto";
 
@@ -54,6 +55,7 @@ const variantOptionSelect = {
 
 const sellerListingSelect = Prisma.validator<Prisma.seller_listingsSelect>()({
   id: true,
+  seller_id: true,
   status: true,
   created_at: true,
   updated_at: true,
@@ -69,6 +71,7 @@ const sellerListingSelect = Prisma.validator<Prisma.seller_listingsSelect>()({
       status: true,
       created_at: true,
       updated_at: true,
+      created_by_seller_id: true,
       bridge_binding: {
         select: {
           mode: true,
@@ -551,6 +554,46 @@ export class ProductService {
     return this.getSellerListingByProduct(sellerId, plan.productId);
   }
 
+  async updateProduct(
+    sellerId: string,
+    productId: string,
+    input: UpdateProductDto
+  ) {
+    if (!Object.values(input).some((value) => value !== undefined)) {
+      throw new BadRequestException("At least one product field is required");
+    }
+
+    const seller = await this.prisma.sellers.findUnique({
+      where: { id: sellerId },
+      select: { permissions: { select: { permission: true } } }
+    });
+    if (!seller) throw new NotFoundException("Seller was not found");
+
+    const product = await this.prisma.products.findFirst({
+      where: { id: productId, created_by_seller_id: sellerId },
+      select: { id: true, status: true }
+    });
+    if (!product) throw new NotFoundException("Seller product was not found");
+
+    const mayPublish = seller.permissions.some((item) => item.permission === "products_publish");
+    const requestedStatus = input.status;
+    const nextStatus = requestedStatus === undefined
+      ? product.status === "active" && !mayPublish ? "pending_review" : undefined
+      : requestedStatus === "active" && !mayPublish ? "pending_review" : requestedStatus;
+
+    await this.prisma.products.update({
+      where: { id: product.id },
+      data: {
+        ...(input.title === undefined ? {} : { title: this.clean(input.title) }),
+        ...(input.description === undefined ? {} : { description: this.cleanOptional(input.description ?? undefined) }),
+        ...(input.category === undefined ? {} : { category: this.cleanOptional(input.category ?? undefined) }),
+        ...(nextStatus === undefined ? {} : { status: nextStatus })
+      }
+    });
+
+    return this.getSellerListingByProduct(sellerId, product.id);
+  }
+
   async reviewProduct(
     productId: string,
     reviewerId: string,
@@ -1013,6 +1056,7 @@ export class ProductService {
         kind: listing.product.kind,
         type: listing.product.type,
         status: listing.product.status,
+        canEdit: listing.product.created_by_seller_id === listing.seller_id,
         createdAt: listing.product.created_at.toISOString(),
         updatedAt: listing.product.updated_at.toISOString(),
         ...(listing.product.bridge_binding

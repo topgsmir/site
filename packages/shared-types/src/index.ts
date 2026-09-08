@@ -102,6 +102,7 @@ export interface SellerListing {
     kind: ProductKind;
     type: ProductType;
     status: ProductStatus;
+    canEdit: boolean;
     createdAt: string;
     updatedAt: string;
   };
@@ -222,6 +223,10 @@ export interface PublicBlogPost extends BlogPostSummary {
   author: { id: string | null; name: string; type: "editorial" | "seller" };
   relatedProducts: RelatedProductSummary[];
   alternateSlugs: Record<BlogLocale, string>;
+}
+
+export interface SellerBlogPost extends BlogPostSummary {
+  content: string;
 }
 
 export interface BlogPostsPage {

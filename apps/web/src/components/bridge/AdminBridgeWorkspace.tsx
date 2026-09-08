@@ -4,6 +4,7 @@ import type { AdminProductsPage, BridgeConnectionSummary, BridgeFieldDefinition 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api/client";
+import { safeApiError, type SafeApiErrorCopy } from "@/lib/api/error";
 import type { Locale } from "@/lib/i18n";
 import styles from "./BridgeWorkspace.module.css";
 
@@ -17,6 +18,45 @@ const COPY = {
   ar: { brand: "إدارة Bridge", title: "اعتمد الخدمة، لا بيانات الدخول.", intro: "افحص صحة الحساب المقنّعة وامنح كل خدمة على حدة وراجع المنتجات قبل ظهورها في المتجر.", back: "لوحة الإدارة", filter: "ابحث بالبائع أو الخدمة", connections: "الاتصالات", services: "الخدمات المتزامنة", products: "مراجعة المنتجات", refunds: "طلبات الاسترداد", grant: "منح الوصول", revoke: "إلغاء الوصول", archive: "أرشفة المنتجات المرتبطة", manual: "إبقاؤها متاحة يدوياً", approve: "اعتماد", draft: "إعادة إلى المسودة", no: "لا يوجد ما يحتاج للمراجعة.", fields: "حقول", linked: "منتجات مرتبطة", reason: "سبب المراجعة", confirm: "تأكيد الإلغاء", cancel: "إلغاء", refund: "تنفيذ الاسترداد المعتمد", error: "تعذر إكمال الطلب." }
 } as const;
 
+const ERROR_COPY: Record<Locale, SafeApiErrorCopy> = {
+  en: {
+    fallback: "The request could not be completed.",
+    network: "The API could not be reached. Make sure the API server is running.",
+    auth: "Your session has expired. Sign in again.",
+    forbidden: "You do not have permission to perform this action.",
+    validation: "The request is invalid. Review the submitted information.",
+    unavailable: "The service is temporarily unavailable. Check the API and database configuration.",
+    rateLimited: "Too many requests were sent. Wait briefly and try again.",
+    conflict: "The item changed before this action completed. Refresh and try again.",
+    notFound: "The requested item no longer exists.",
+    reference: "Reference"
+  },
+  fa: {
+    fallback: "انجام درخواست ممکن نبود.",
+    network: "ارتباط با API برقرار نشد. مطمئن شوید سرور API در حال اجراست.",
+    auth: "نشست شما پایان یافته است. دوباره وارد شوید.",
+    forbidden: "برای انجام این کار دسترسی لازم را ندارید.",
+    validation: "اطلاعات درخواست معتبر نیست. ورودی‌ها را بررسی کنید.",
+    unavailable: "سرویس موقتاً در دسترس نیست. تنظیمات API و پایگاه داده را بررسی کنید.",
+    rateLimited: "درخواست‌های زیادی ارسال شده است. کمی صبر کنید و دوباره تلاش کنید.",
+    conflict: "این مورد هم‌زمان تغییر کرده است. صفحه را تازه‌سازی و دوباره تلاش کنید.",
+    notFound: "مورد درخواستی دیگر وجود ندارد.",
+    reference: "شناسه پیگیری"
+  },
+  ar: {
+    fallback: "تعذر إكمال الطلب.",
+    network: "تعذر الاتصال بواجهة API. تأكد من تشغيل خادم API.",
+    auth: "انتهت جلستك. سجل الدخول مرة أخرى.",
+    forbidden: "ليست لديك صلاحية لتنفيذ هذا الإجراء.",
+    validation: "بيانات الطلب غير صالحة. راجع المعلومات المدخلة.",
+    unavailable: "الخدمة غير متاحة مؤقتاً. تحقق من إعدادات API وقاعدة البيانات.",
+    rateLimited: "تم إرسال طلبات كثيرة. انتظر قليلاً ثم حاول مجدداً.",
+    conflict: "تم تغيير العنصر أثناء تنفيذ الإجراء. حدّث الصفحة وحاول مجدداً.",
+    notFound: "العنصر المطلوب لم يعد موجوداً.",
+    reference: "رقم التتبع"
+  }
+};
+
 export function AdminBridgeWorkspace({ locale }: { locale: Locale }) {
   const c = COPY[locale];
   const [connections, setConnections] = useState<AdminConnection[]>([]);
@@ -27,16 +67,16 @@ export function AdminBridgeWorkspace({ locale }: { locale: Locale }) {
   const [revoke, setRevoke] = useState<AdminService | null>(null);
   const [action, setAction] = useState<"archive" | "manual">("archive");
   const [busy, setBusy] = useState(""); const [error, setError] = useState("");
-  const load = useCallback(async () => { try { const [a,b,p,r] = await Promise.all([api.get<AdminConnection[]>("/bridge/admin/connections"), api.get<AdminService[]>("/bridge/admin/services"), api.get<AdminProductsPage>("/products/admin?limit=50"), api.get<Refund[]>("/bridge/admin/refund-requests")]); setConnections(a.data); setServices(b.data); setProducts(p.data.items.filter((item) => item.status === "pending_review")); setRefunds(r.data); } catch { setError(c.error); } }, [c.error]);
+  const load = useCallback(async () => { try { const [a,b,p,r] = await Promise.all([api.get<AdminConnection[]>("/bridge/admin/connections"), api.get<AdminService[]>("/bridge/admin/services"), api.get<AdminProductsPage>("/products/admin?limit=50"), api.get<Refund[]>("/bridge/admin/refund-requests")]); setConnections(a.data); setServices(b.data); setProducts(p.data.items.filter((item) => item.status === "pending_review")); setRefunds(r.data); setError(""); } catch (requestError) { setError(safeApiError(requestError, ERROR_COPY[locale])); } }, [locale]);
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => void load());
     return () => window.cancelAnimationFrame(frame);
   }, [load]);
   const visible = useMemo(() => { const n=query.trim().toLowerCase(); return n ? services.filter((s) => `${s.name} ${s.seller.shopName} ${s.connection.name}`.toLowerCase().includes(n)) : services; }, [query, services]);
-  async function serviceAction(service: AdminService) { setBusy(service.id); setError(""); try { if (!service.grant || service.grant.status === "revoked") await api.post("/bridge/admin/grants", { serviceId: service.id }); else setRevoke(service); if (!service.grant || service.grant.status === "revoked") await load(); } catch { setError(c.error); } finally { setBusy(""); } }
-  async function confirmRevoke() { if (!revoke?.grant) return; setBusy(revoke.id); try { await api.post(`/bridge/admin/grants/${revoke.grant.id}/revoke`, { productAction: action }); setRevoke(null); await load(); } catch { setError(c.error); } finally { setBusy(""); } }
-  async function review(id: string, status: "active" | "draft") { setBusy(id); try { await api.patch(`/products/admin/${id}/review`, { status, reason: status === "draft" ? c.reason : undefined }); await load(); } catch { setError(c.error); } finally { setBusy(""); } }
-  async function refund(item: Refund) { const attempt=item.order_item.order.payment_attempts[0]; if (!attempt) return; setBusy(item.id); try { await api.post(`/payments/admin/${attempt.id}/refund`, { reason: "Approved Bridge fulfillment refund request" }); await load(); } catch { setError(c.error); } finally { setBusy(""); } }
+  async function serviceAction(service: AdminService) { setBusy(service.id); setError(""); try { if (!service.grant || service.grant.status === "revoked") await api.post("/bridge/admin/grants", { serviceId: service.id }); else setRevoke(service); if (!service.grant || service.grant.status === "revoked") await load(); } catch (requestError) { setError(safeApiError(requestError, ERROR_COPY[locale])); } finally { setBusy(""); } }
+  async function confirmRevoke() { if (!revoke?.grant) return; setBusy(revoke.id); try { await api.post(`/bridge/admin/grants/${revoke.grant.id}/revoke`, { productAction: action }); setRevoke(null); await load(); } catch (requestError) { setError(safeApiError(requestError, ERROR_COPY[locale])); } finally { setBusy(""); } }
+  async function review(id: string, status: "active" | "draft") { setBusy(id); try { await api.patch(`/products/admin/${id}/review`, { status, reason: status === "draft" ? c.reason : undefined }); await load(); } catch (requestError) { setError(safeApiError(requestError, ERROR_COPY[locale])); } finally { setBusy(""); } }
+  async function refund(item: Refund) { const attempt=item.order_item.order.payment_attempts[0]; if (!attempt) return; setBusy(item.id); try { await api.post(`/payments/admin/${attempt.id}/refund`, { reason: "Approved Bridge fulfillment refund request" }); await load(); } catch (requestError) { setError(safeApiError(requestError, ERROR_COPY[locale])); } finally { setBusy(""); } }
 
   return <div className={styles.shell}><header className={styles.header}><div><p className={styles.brand}>{c.brand}</p><h1>{c.title}</h1></div><div><p>{c.intro}</p><Link className={styles.link} href={`/${locale}/admin`}>{c.back}</Link></div></header><main className={styles.main}>
     {error ? <p className={styles.error} role="alert">{error}</p> : null}

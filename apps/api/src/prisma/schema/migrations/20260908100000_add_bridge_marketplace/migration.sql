@@ -38,13 +38,11 @@ ALTER TABLE "seller_memberships" ADD CONSTRAINT "seller_memberships_user_id_fkey
   FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- Existing seller owners remain administrators. Existing product managers keep
--- their current ability to publish until an administrator explicitly removes it.
+-- their current seller membership relationship. The products_publish permission
+-- backfill is intentionally deferred to the next migration: PostgreSQL does not
+-- permit using a newly-added enum value until the adding transaction commits.
 INSERT INTO "seller_memberships" ("seller_id", "user_id", "role")
 SELECT "id", "user_id", 'admin'::"seller_membership_role" FROM "sellers"
-ON CONFLICT DO NOTHING;
-INSERT INTO "seller_permissions" ("seller_id", "permission", "granted_by_id")
-SELECT "seller_id", 'products_publish'::"seller_permission", "granted_by_id"
-FROM "seller_permissions" WHERE "permission" = 'products_manage'
 ON CONFLICT DO NOTHING;
 
 CREATE TABLE "product_review_events" (

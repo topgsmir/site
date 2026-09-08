@@ -40,3 +40,17 @@ All payment logic is behind:
 - `apps/api/src/integrations/payments/payment.interface.ts`
 - `apps/api/src/integrations/payments/base-payment.adapter.ts`
 - `apps/api/src/integrations/payments/providers/local-gateway/`
+
+## Goghdi support chat
+
+The storefront can load Goghdi Browser SDK 1.1.1 as a lazy ES module and open
+an authenticated product-specific support ticket from product pages. Set the
+SDK, tenant, API, and widget `NEXT_PUBLIC_GOGHDI_*` values shown in
+`.env.example` (the socket URL is optional), then configure
+`GOGHDI_TENANT_SECRET` only on the API service. The optional
+`GOGHDI_SUPPORT_DEPARTMENT` must match a department configured in Goghdi.
+
+The API never returns the tenant secret or signs caller-controlled ticket
+objects. `POST /api/goghdi/product-ticket` requires a valid TopGSM session,
+accepts only a product UUID, verifies that the product is active, constructs
+the allowed Goghdi payload, and returns that payload with its HMAC signature.

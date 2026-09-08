@@ -6,6 +6,7 @@ import "../globals.css";
 import "../blog.css";
 import { getDirection, isLocale, locales } from "@/lib/i18n";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { GoghdiWidget } from "@/components/goghdi/GoghdiWidget";
 
 type LocaleLayoutProps = Readonly<{
   children: React.ReactNode;
@@ -74,6 +75,7 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
       </head>
       <body>
         {children}
+        <GoghdiWidget />
         <ThemeToggle locale={locale} />
       </body>
     </html>
