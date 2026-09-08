@@ -17,7 +17,14 @@ function target() {
 describe("blog author permission matrix", () => {
   it("carries the seller review policy into the authorized actor", async () => {
     const authentication = { authenticate: async () => ({ id: "user", fullName: "Seller", email: "s@example.com", role: "seller-admin" }) } as unknown as RequestAuthenticationService;
-    const prisma = { sellers: { findFirst: async () => ({ id: "seller", blog_review_required: true }) } } as unknown as PrismaService;
+    const prisma = {
+      seller_memberships: {
+        findFirst: async () => ({
+          role: "admin",
+          seller: { id: "seller", blog_review_required: true }
+        })
+      }
+    } as unknown as PrismaService;
     const guard = new BlogManageGuard(authentication, prisma);
     const value = target();
     assert.equal(await guard.canActivate(value.context), true);
@@ -27,11 +34,16 @@ describe("blog author permission matrix", () => {
       reviewRequired: true,
       user: { id: "user", fullName: "Seller", email: "s@example.com", role: "seller-admin" }
     });
+    assert.deepEqual(value.request.sellerContext, {
+      sellerId: "seller",
+      membershipRole: "admin",
+      user: { id: "user", fullName: "Seller", email: "s@example.com", role: "seller-admin" }
+    });
   });
 
   it("rejects sellers without an active database permission row", async () => {
     const authentication = { authenticate: async () => ({ id: "user", fullName: "Seller", email: "s@example.com", role: "seller-staff" }) } as unknown as RequestAuthenticationService;
-    const prisma = { sellers: { findFirst: async () => null } } as unknown as PrismaService;
+    const prisma = { seller_memberships: { findFirst: async () => null } } as unknown as PrismaService;
     const guard = new BlogManageGuard(authentication, prisma);
     await assert.rejects(guard.canActivate(target().context), ForbiddenException);
   });

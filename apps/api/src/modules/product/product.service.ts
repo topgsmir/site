@@ -1,10 +1,12 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
+import { ConfigService } from "@nestjs/config";
 import { createHash, randomUUID } from "node:crypto";
 import { PrismaService } from "../../prisma/prisma.service";
 import type {
@@ -16,13 +18,30 @@ import type {
   UpdateSellerOfferDto
 } from "./dto/product.dto";
 
-const activeOfferWhere = {
+const activeOfferWhere: Prisma.seller_offersWhereInput = {
   status: "active",
   listing: {
     status: "active",
-    seller: { invited: false, approved: true, suspended_at: null }
+    seller: { invited: false, approved: true, suspended_at: null },
+    product: {
+      OR: [
+        { type: { not: "bridge" } },
+        {
+          type: "bridge",
+          bridge_binding: {
+            is: {
+              schema_review_needed: false,
+              OR: [
+                { grant: { status: "active", service: { available: true, connection: { status: "active" } } } },
+                { mode: "manual", grant: { status: "revoked" } }
+              ]
+            }
+          }
+        }
+      ]
+    }
   }
-} as const;
+};
 
 const variantOptionSelect = {
   option_value: {
@@ -49,7 +68,18 @@ const sellerListingSelect = Prisma.validator<Prisma.seller_listingsSelect>()({
       type: true,
       status: true,
       created_at: true,
-      updated_at: true
+      updated_at: true,
+      bridge_binding: {
+        select: {
+          mode: true,
+          minimum_quantity: true,
+          maximum_quantity: true,
+          field_labels: true,
+          accepted_schema_hash: true,
+          schema_review_needed: true,
+          grant: { select: { id: true, status: true, service: { select: { id: true, name: true, field_schema: true, schema_hash: true, available: true } } } }
+        }
+      }
     }
   },
   offers: {
@@ -119,7 +149,7 @@ type ProductPlan = {
 
 @Injectable()
 export class ProductService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly config: ConfigService) {}
 
   sitemapProjection() {
     return this.prisma.products.findMany({
@@ -136,6 +166,7 @@ export class ProductService {
     const products = await this.prisma.products.findMany({
       where: {
         status: "active",
+        ...(this.bridgeEnabled() ? {} : { type: { not: "bridge" as const } }),
         variants: { some: { offers: { some: activeOfferWhere } } }
       },
       ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
@@ -211,6 +242,7 @@ export class ProductService {
     const product = await this.prisma.products.findFirst({
       where: {
         status: "active",
+        ...(this.bridgeEnabled() ? {} : { type: { not: "bridge" as const } }),
         OR: [{ id: idOrSlug }, { slug: idOrSlug }],
         variants: { some: { offers: { some: activeOfferWhere } } }
       },
@@ -224,6 +256,14 @@ export class ProductService {
         type: true,
         created_at: true,
         updated_at: true,
+        bridge_binding: {
+          select: {
+            minimum_quantity: true,
+            maximum_quantity: true,
+            field_labels: true,
+            grant: { select: { service: { select: { field_schema: true } } } }
+          }
+        },
         options: {
           orderBy: [{ position: "asc" }, { id: "asc" }],
           select: {
@@ -280,6 +320,18 @@ export class ProductService {
       category: product.category,
       kind: product.kind,
       type: product.type,
+      ...(product.bridge_binding
+        ? {
+            bridge: {
+              fields: this.applyFieldLabels(
+                product.bridge_binding.grant.service.field_schema,
+                product.bridge_binding.field_labels
+              ),
+              minimumQuantity: product.bridge_binding.minimum_quantity,
+              maximumQuantity: product.bridge_binding.maximum_quantity
+            }
+          }
+        : {}),
       options: product.options.map((option) => ({
         id: option.id,
         name: option.name,
@@ -382,7 +434,20 @@ export class ProductService {
   }
 
   async createProduct(sellerId: string, input: CreateProductDto) {
+    if (input.type === "bridge" && !this.bridgeEnabled()) throw new ConflictException("Bridge is not enabled");
+    if (input.type !== "bridge" && input.bridge) {
+      throw new BadRequestException("Only Bridge products may define a Bridge binding");
+    }
     const plan = this.buildProductPlan(input);
+    const seller = await this.prisma.sellers.findUnique({
+      where: { id: sellerId },
+      select: { permissions: { select: { permission: true } } }
+    });
+    if (!seller) throw new NotFoundException("Seller was not found");
+    const mayPublish = seller.permissions.some((item) => item.permission === "products_publish");
+    const requestedStatus = input.status ?? "active";
+    const productStatus = requestedStatus === "active" && !mayPublish ? "pending_review" : requestedStatus;
+    const bridgeGrant = input.type === "bridge" ? await this.validateBridgeInput(sellerId, input) : null;
 
     try {
       await this.prisma.$transaction(async (transaction) => {
@@ -396,9 +461,23 @@ export class ProductService {
             category: this.cleanOptional(input.category),
             kind: input.kind,
             type: input.type,
-            status: input.status ?? "active"
+            status: productStatus
           }
         });
+
+        if (bridgeGrant && input.bridge) {
+          await transaction.bridge_product_bindings.create({
+            data: {
+              product_id: plan.productId,
+              grant_id: bridgeGrant.id,
+              mode: input.bridge.mode,
+              minimum_quantity: input.bridge.minimumQuantity,
+              maximum_quantity: input.bridge.maximumQuantity,
+              field_labels: input.bridge.fieldLabels as unknown as Prisma.InputJsonValue,
+              accepted_schema_hash: bridgeGrant.service.schema_hash
+            }
+          });
+        }
 
         if (plan.options.length) {
           await transaction.product_options.createMany({
@@ -472,6 +551,38 @@ export class ProductService {
     return this.getSellerListingByProduct(sellerId, plan.productId);
   }
 
+  async reviewProduct(
+    productId: string,
+    reviewerId: string,
+    status: "active" | "draft",
+    reason?: string
+  ) {
+    const current = await this.prisma.products.findUnique({
+      where: { id: productId },
+      select: { id: true, status: true, bridge_binding: { select: { schema_review_needed: true } } }
+    });
+    if (!current) throw new NotFoundException("Product was not found");
+    if (current.status !== "pending_review") {
+      throw new ConflictException("Only pending products can be reviewed");
+    }
+    if (status === "active" && current.bridge_binding?.schema_review_needed) {
+      throw new ConflictException("The seller must accept the current provider schema first");
+    }
+    await this.prisma.$transaction([
+      this.prisma.products.update({ where: { id: current.id }, data: { status } }),
+      this.prisma.product_review_events.create({
+        data: {
+          product_id: current.id,
+          reviewer_id: reviewerId,
+          from_status: current.status,
+          to_status: status,
+          reason: this.cleanOptional(reason)
+        }
+      })
+    ]);
+    return { id: current.id, status, reason: this.cleanOptional(reason) };
+  }
+
   async addSellerOffers(
     sellerId: string,
     productId: string,
@@ -487,10 +598,28 @@ export class ProductService {
           select: {
             id: true,
             type: true,
+            created_by_seller_id: true,
+            bridge_binding: {
+              select: {
+                schema_review_needed: true,
+                grant: { select: { status: true, seller_id: true, service: { select: { available: true, connection: { select: { status: true } } } } } }
+              }
+            },
             variants: { select: { id: true } }
           }
         });
         if (!product) throw new NotFoundException("Product was not found");
+        if (product.type === "bridge") {
+          const binding = product.bridge_binding;
+          if (
+            product.created_by_seller_id !== sellerId || !binding ||
+            binding.grant.seller_id !== sellerId || binding.grant.status !== "active" ||
+            !binding.grant.service.available || binding.grant.service.connection.status !== "active" ||
+            binding.schema_review_needed
+          ) {
+            throw new ForbiddenException("This Bridge product cannot accept seller offers");
+          }
+        }
 
         const variantIds = new Set(product.variants.map((variant) => variant.id));
         for (const offer of input.offers) {
@@ -771,7 +900,7 @@ export class ProductService {
     transaction: Prisma.TransactionClient,
     listingId: string,
     variantId: string,
-    productType: "digital" | "physical" | "service",
+    productType: "digital" | "physical" | "service" | "bridge",
     input: CreateProductOfferDto | AddSellerOfferDto
   ) {
     this.assertFulfillment(productType, input);
@@ -812,11 +941,13 @@ export class ProductService {
           instructions: this.cleanOptional(input.service.instructions)
         }
       });
+    } else if (productType === "bridge") {
+      await transaction.seller_offer_bridge.create({ data: { offer_id: offer.id } });
     }
   }
 
   private assertFulfillment(
-    productType: "digital" | "physical" | "service",
+    productType: "digital" | "physical" | "service" | "bridge",
     input: {
       digital?: unknown;
       physical?: unknown;
@@ -828,6 +959,12 @@ export class ProductService {
       input.physical ? "physical" : null,
       input.service ? "service" : null
     ].filter(Boolean);
+    if (productType === "bridge") {
+      if (details.length !== 0) {
+        throw new BadRequestException("Bridge offers cannot override provider fulfillment data");
+      }
+      return;
+    }
     if (details.length !== 1 || details[0] !== productType) {
       throw new BadRequestException(
         `Exactly one ${productType} fulfillment object is required`
@@ -877,7 +1014,24 @@ export class ProductService {
         type: listing.product.type,
         status: listing.product.status,
         createdAt: listing.product.created_at.toISOString(),
-        updatedAt: listing.product.updated_at.toISOString()
+        updatedAt: listing.product.updated_at.toISOString(),
+        ...(listing.product.bridge_binding
+          ? {
+              bridge: {
+                grantId: listing.product.bridge_binding.grant.id,
+                serviceId: listing.product.bridge_binding.grant.service.id,
+                serviceName: listing.product.bridge_binding.grant.service.name,
+                grantStatus: listing.product.bridge_binding.grant.status,
+                mode: listing.product.bridge_binding.mode,
+                minimumQuantity: listing.product.bridge_binding.minimum_quantity,
+                maximumQuantity: listing.product.bridge_binding.maximum_quantity,
+                schemaReviewNeeded: listing.product.bridge_binding.schema_review_needed,
+                acceptedSchemaHash: listing.product.bridge_binding.accepted_schema_hash,
+                currentSchemaHash: listing.product.bridge_binding.grant.service.schema_hash,
+                fieldLabels: listing.product.bridge_binding.field_labels
+              }
+            }
+          : {})
       },
       offers: listing.offers.map((offer) => ({
         id: offer.id,
@@ -971,8 +1125,59 @@ export class ProductService {
       'SET CONSTRAINTS "seller_offers_fulfillment_check", ' +
         '"seller_offer_digital_fulfillment_check", ' +
         '"seller_offer_physical_fulfillment_check", ' +
-        '"seller_offer_service_fulfillment_check" IMMEDIATE'
+        '"seller_offer_service_fulfillment_check", ' +
+        '"seller_offer_bridge_fulfillment_check" IMMEDIATE'
     );
+  }
+
+  private async validateBridgeInput(sellerId: string, input: CreateProductDto) {
+    if (!input.bridge) throw new BadRequestException("Bridge products require a Bridge fulfillment object");
+    if (input.bridge.minimumQuantity > input.bridge.maximumQuantity) {
+      throw new BadRequestException("Minimum quantity cannot exceed maximum quantity");
+    }
+    const grant = await this.prisma.bridge_service_grants.findFirst({
+      where: {
+        id: input.bridge.grantId,
+        seller_id: sellerId,
+        status: "active",
+        service: { available: true, connection: { status: "active" } }
+      },
+      include: { service: true }
+    });
+    if (!grant) throw new ForbiddenException("An active Bridge service grant is required");
+    const fields = this.jsonArray(grant.service.field_schema);
+    const keys = new Set(fields.map((item) => typeof item.key === "string" ? item.key : ""));
+    const labelKeys = new Set<string>();
+    for (const label of input.bridge.fieldLabels) {
+      if (!keys.has(label.key)) throw new BadRequestException(`Unknown Bridge field label key: ${label.key}`);
+      if (labelKeys.has(label.key)) throw new BadRequestException(`Duplicate Bridge field label key: ${label.key}`);
+      labelKeys.add(label.key);
+    }
+    if (grant.service.kind === "file" && input.bridge.mode === "automatic") {
+      throw new BadRequestException("File services require manual fulfillment in this release");
+    }
+    return grant;
+  }
+
+  private applyFieldLabels(schema: Prisma.JsonValue, rawLabels: Prisma.JsonValue) {
+    const labels = new Map(
+      this.jsonArray(rawLabels).map((item) => [String(item.key ?? ""), item])
+    );
+    return this.jsonArray(schema).map((item) => {
+      const override = labels.get(String(item.key ?? ""));
+      return {
+        ...item,
+        ...(override?.label ? { label: String(override.label) } : {}),
+        ...(override?.placeholder ? { placeholder: String(override.placeholder) } : {}),
+        ...(override?.helpText ? { helpText: String(override.helpText) } : {})
+      };
+    });
+  }
+
+  private jsonArray(value: Prisma.JsonValue): Array<Record<string, Prisma.JsonValue>> {
+    return Array.isArray(value)
+      ? value.filter((item): item is Record<string, Prisma.JsonValue> => Boolean(item) && typeof item === "object" && !Array.isArray(item))
+      : [];
   }
 
   private signature(value: string) {
@@ -1001,5 +1206,9 @@ export class ProductService {
     if (value === undefined) return null;
     const cleaned = this.clean(value);
     return cleaned || null;
+  }
+
+  private bridgeEnabled() {
+    return this.config.get<string>("BRIDGE_FEATURE_ENABLED") === "true";
   }
 }

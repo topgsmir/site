@@ -40,16 +40,16 @@ export class RealtimeGateway implements OnGatewayConnection {
           await client.join("platform:payouts");
         }
       } else if (user.role === "seller-admin" || user.role === "seller-staff") {
-        const seller = await this.prisma.sellers.findFirst({
+        const membership = await this.prisma.seller_memberships.findFirst({
           where: {
             user_id: user.id,
-            invited: false,
-            approved: true,
-            suspended_at: null
+            active: true,
+            seller: { invited: false, approved: true, suspended_at: null }
           },
-          select: { id: true, permissions: { select: { permission: true } } }
+          select: { seller: { select: { id: true, permissions: { select: { permission: true } } } } }
         });
-        if (seller) {
+        if (membership) {
+          const seller = membership.seller;
           const permissions = new Set(
             seller.permissions.map((item) => item.permission)
           );

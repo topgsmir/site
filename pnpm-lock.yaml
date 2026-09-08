@@ -38,6 +38,9 @@ importers:
       '@topgsm/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
+      bcryptjs:
+        specifier: 3.0.2
+        version: 3.0.2
       class-transformer:
         specifier: 0.5.1
         version: 0.5.1
@@ -1477,6 +1480,10 @@ packages:
   baseline-browser-mapping@2.11.21:
     resolution: {integrity: sha512-uh8vpY/1/YyFkunIDFH/12p7/7VdPKA1hejMVEbdkEaWnUz0Hesvx5EbiU6XxjyHZIOju+ZMbQJkRh+es3/spQ==}
     engines: {node: '>=6.0.0'}
+    hasBin: true
+
+  bcryptjs@3.0.2:
+    resolution: {integrity: sha512-k38b3XOZKv60C4E2hVsXTolJWfkGRMbILBIe2IBITXciy5bOsTKot5kDrf3ZfufQtQOUN5mXceUEpU1rTl9Uog==}
     hasBin: true
 
   binary-extensions@2.3.0:
@@ -4965,6 +4972,8 @@ snapshots:
   base64id@2.0.0: {}
 
   baseline-browser-mapping@2.11.21: {}
+
+  bcryptjs@3.0.2: {}
 
   binary-extensions@2.3.0: {}
 

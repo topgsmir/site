@@ -19,6 +19,7 @@ enum product_type {
   digital
   physical
   service
+  bridge
 }
 
 enum product_kind {
@@ -28,6 +29,7 @@ enum product_kind {
 
 enum product_status {
   draft
+  pending_review
   active
   archived
 }
@@ -58,12 +60,87 @@ enum payout_status {
 
 enum seller_permission {
   products_manage
+  products_publish
   blog_manage
   coupons_manage
   orders_manage
   staff_manage
   analytics_view
   payouts_request
+}
+
+enum seller_membership_role {
+  admin
+  staff
+}
+
+enum bridge_provider {
+  dhru_legacy
+  dhru_new
+  webx
+}
+
+enum bridge_connection_status {
+  active
+  inactive
+  error
+}
+
+enum bridge_service_kind {
+  imei
+  server
+  file
+}
+
+enum bridge_grant_status {
+  active
+  revoked
+}
+
+enum bridge_fulfillment_mode {
+  automatic
+  manual
+}
+
+enum bridge_fulfillment_status {
+  waiting_payment
+  queued
+  submitting
+  submitted
+  polling
+  manual_required
+  succeeded
+  failed
+  refund_requested
+  refunded
+}
+
+enum payment_attempt_status {
+  created
+  pending
+  succeeded
+  failed
+  refunded
+}
+
+enum otp_status {
+  pending
+  consumed
+  expired
+}
+
+enum notification_status {
+  pending
+  sending
+  sent
+  failed
+}
+
+enum outbox_delivery_status {
+  pending
+  processing
+  delivered
+  failed
 }
 
 enum coupon_discount_type {
@@ -115,10 +192,12 @@ model users {
   username                     String?                      @unique @map("username")
   email                        String                       @unique @map("email")
   password_hash                String?                      @map("password_hash")
+  phone_number                 String?                      @unique @map("phone_number") @db.VarChar(16)
   role                         user_role                    @map("role")
   created_at                   DateTime                     @default(now()) @map("created_at")
   updated_at                   DateTime                     @default(now()) @updatedAt @map("updated_at")
   sellers                      sellers[]
+  seller_memberships           seller_memberships[]
   orders                       orders[]                     @relation("buyer_orders")
   granted_seller_permissions   seller_permissions[]         @relation("permission_granter")
   sessions                     auth_sessions[]
@@ -134,6 +213,9 @@ model users {
   blog_media                   blog_media_assets[]
   created_seller_agents        seller_agents[]              @relation("seller_agent_creator")
   created_seller_invites       seller_invitations[]         @relation("seller_invitation_creator")
+  granted_bridge_services      bridge_service_grants[]      @relation("bridge_granter")
+  reviewed_products            product_review_events[]      @relation("product_reviewer")
+  bridge_data_accesses         bridge_data_access_audits[]
 
   @@map("users")
 }
@@ -199,20 +281,20 @@ model auth_rate_limits {
 }
 
 model sellers {
-  id                   String               @id @default(uuid()) @map("id")
-  user_id              String               @unique @map("user_id")
-  shop_name            String               @map("shop_name")
-  invited              Boolean              @default(false) @map("invited")
-  approved             Boolean              @default(false) @map("approved")
-  commission           Decimal              @default(0.1) @map("commission") @db.Decimal(9, 6)
-  holdback_rate        Decimal              @default(0.05) @map("holdback_rate") @db.Decimal(9, 6)
-  phone_number         String?              @map("phone_number")
-  suspended_at         DateTime?            @map("suspended_at")
-  blog_review_required Boolean              @default(true) @map("blog_review_required")
-  created_at           DateTime             @default(now()) @map("created_at")
-  updated_at           DateTime             @default(now()) @updatedAt @map("updated_at")
-  user                 users                @relation(fields: [user_id], references: [id])
-  created_products     products[]           @relation("product_creator")
+  id                   String                  @id @default(uuid()) @map("id")
+  user_id              String                  @unique @map("user_id")
+  shop_name            String                  @map("shop_name")
+  invited              Boolean                 @default(false) @map("invited")
+  approved             Boolean                 @default(false) @map("approved")
+  commission           Decimal                 @default(0.1) @map("commission") @db.Decimal(9, 6)
+  holdback_rate        Decimal                 @default(0.05) @map("holdback_rate") @db.Decimal(9, 6)
+  phone_number         String?                 @map("phone_number")
+  suspended_at         DateTime?               @map("suspended_at")
+  blog_review_required Boolean                 @default(true) @map("blog_review_required")
+  created_at           DateTime                @default(now()) @map("created_at")
+  updated_at           DateTime                @default(now()) @updatedAt @map("updated_at")
+  user                 users                   @relation(fields: [user_id], references: [id])
+  created_products     products[]              @relation("product_creator")
   listings             seller_listings[]
   orders               orders[]
   payouts              payout_ledger[]
@@ -220,6 +302,9 @@ model sellers {
   blog_posts           blog_posts[]
   blog_media           blog_media_assets[]
   coupons              coupons[]
+  memberships          seller_memberships[]
+  bridge_connections   bridge_connections[]
+  bridge_grants        bridge_service_grants[]
 
   @@map("sellers")
 }
@@ -254,6 +339,21 @@ model seller_invitations {
   @@unique([owner_email, status])
   @@index([created_at, id])
   @@map("seller_invitations")
+}
+
+model seller_memberships {
+  seller_id  String                 @map("seller_id")
+  user_id    String                 @map("user_id")
+  role       seller_membership_role @map("role")
+  active     Boolean                @default(true) @map("active")
+  created_at DateTime               @default(now()) @map("created_at")
+  updated_at DateTime               @default(now()) @updatedAt @map("updated_at")
+  seller     sellers                @relation(fields: [seller_id], references: [id], onDelete: Cascade)
+  user       users                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@id([seller_id, user_id])
+  @@index([user_id, active])
+  @@map("seller_memberships")
 }
 
 model coupons {
@@ -528,10 +628,27 @@ model products {
   listings             seller_listings[]
   blog_posts           blog_posts[]             @relation("legacy_blog_product")
   blog_revisions       blog_revision_products[]
+  bridge_binding       bridge_product_bindings?
+  review_events        product_review_events[]
 
   @@index([created_by_seller_id])
   @@index([status, created_at, id])
   @@map("products")
+}
+
+model product_review_events {
+  id          String         @id @default(uuid()) @map("id")
+  product_id  String         @map("product_id")
+  reviewer_id String         @map("reviewer_id")
+  from_status product_status @map("from_status")
+  to_status   product_status @map("to_status")
+  reason      String?        @map("reason") @db.VarChar(500)
+  created_at  DateTime       @default(now()) @map("created_at")
+  product     products       @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  reviewer    users          @relation("product_reviewer", fields: [reviewer_id], references: [id], onDelete: Restrict)
+
+  @@index([product_id, created_at])
+  @@map("product_review_events")
 }
 
 model product_options {
@@ -625,6 +742,7 @@ model seller_offers {
   digital     seller_offer_digital?
   physical    seller_offer_physical?
   service     seller_offer_service?
+  bridge      seller_offer_bridge?
   order_items order_items[]
 
   @@unique([listing_id, variant_id])
@@ -663,24 +781,32 @@ model seller_offer_service {
   @@map("seller_offer_service")
 }
 
+model seller_offer_bridge {
+  offer_id String        @id @map("offer_id")
+  offer    seller_offers @relation(fields: [offer_id], references: [id], onDelete: Cascade)
+
+  @@map("seller_offer_bridge")
+}
+
 model orders {
-  id              String          @id @default(uuid()) @map("id")
-  buyer_id        String          @map("buyer_id")
-  seller_id       String          @map("seller_id")
-  status          order_status    @default(pending) @map("status")
-  currency        String          @map("currency") @db.Char(3)
-  total_amount    Decimal         @map("total_amount") @db.Decimal(20, 4)
-  commission_rate Decimal         @map("commission_rate") @db.Decimal(9, 6)
-  holdback_rate   Decimal         @map("holdback_rate") @db.Decimal(9, 6)
-  idempotency_key String          @map("idempotency_key") @db.Uuid
-  request_hash    String          @map("request_hash") @db.Char(64)
-  created_at      DateTime        @default(now()) @map("created_at")
-  updated_at      DateTime        @default(now()) @updatedAt @map("updated_at")
-  buyer           users           @relation("buyer_orders", fields: [buyer_id], references: [id])
-  seller          sellers         @relation(fields: [seller_id], references: [id])
-  items           order_items[]
-  events          order_events[]
-  payout_records  payout_ledger[]
+  id               String             @id @default(uuid()) @map("id")
+  buyer_id         String             @map("buyer_id")
+  seller_id        String             @map("seller_id")
+  status           order_status       @default(pending) @map("status")
+  currency         String             @map("currency") @db.Char(3)
+  total_amount     Decimal            @map("total_amount") @db.Decimal(20, 4)
+  commission_rate  Decimal            @map("commission_rate") @db.Decimal(9, 6)
+  holdback_rate    Decimal            @map("holdback_rate") @db.Decimal(9, 6)
+  idempotency_key  String             @map("idempotency_key") @db.Uuid
+  request_hash     String             @map("request_hash") @db.Char(64)
+  created_at       DateTime           @default(now()) @map("created_at")
+  updated_at       DateTime           @default(now()) @updatedAt @map("updated_at")
+  buyer            users              @relation("buyer_orders", fields: [buyer_id], references: [id])
+  seller           sellers            @relation(fields: [seller_id], references: [id])
+  items            order_items[]
+  events           order_events[]
+  payout_records   payout_ledger[]
+  payment_attempts payment_attempts[]
 
   @@unique([buyer_id, idempotency_key])
   @@index([buyer_id, created_at, id])
@@ -689,16 +815,17 @@ model orders {
 }
 
 model order_items {
-  id            String        @id @default(uuid()) @map("id")
-  order_id      String        @unique @map("order_id")
-  offer_id      String        @map("offer_id")
-  product_type  product_type  @map("product_type")
-  product_title String        @map("product_title") @db.VarChar(200)
-  quantity      Int           @map("quantity")
-  unit_price    Decimal       @map("unit_price") @db.Decimal(20, 4)
-  total_amount  Decimal       @map("total_amount") @db.Decimal(20, 4)
-  order         orders        @relation(fields: [order_id], references: [id], onDelete: Restrict)
-  offer         seller_offers @relation(fields: [offer_id], references: [id], onDelete: Restrict)
+  id                 String               @id @default(uuid()) @map("id")
+  order_id           String               @unique @map("order_id")
+  offer_id           String               @map("offer_id")
+  product_type       product_type         @map("product_type")
+  product_title      String               @map("product_title") @db.VarChar(200)
+  quantity           Int                  @map("quantity")
+  unit_price         Decimal              @map("unit_price") @db.Decimal(20, 4)
+  total_amount       Decimal              @map("total_amount") @db.Decimal(20, 4)
+  order              orders               @relation(fields: [order_id], references: [id], onDelete: Restrict)
+  offer              seller_offers        @relation(fields: [offer_id], references: [id], onDelete: Restrict)
+  bridge_fulfillment bridge_fulfillments?
 
   @@index([offer_id])
   @@map("order_items")
@@ -762,16 +889,230 @@ model payout_events {
 }
 
 model outbox_events {
-  id           String    @id @default(uuid()) @map("id")
-  aggregate    String    @map("aggregate") @db.VarChar(32)
-  aggregate_id String    @map("aggregate_id")
-  event_type   String    @map("event_type") @db.VarChar(64)
-  dedupe_key   String    @unique @map("dedupe_key") @db.VarChar(160)
-  payload      Json      @map("payload")
-  created_at   DateTime  @default(now()) @map("created_at")
-  published_at DateTime? @map("published_at")
-  attempts     Int       @default(0) @map("attempts")
+  id           String              @id @default(uuid()) @map("id")
+  aggregate    String              @map("aggregate") @db.VarChar(32)
+  aggregate_id String              @map("aggregate_id")
+  event_type   String              @map("event_type") @db.VarChar(64)
+  dedupe_key   String              @unique @map("dedupe_key") @db.VarChar(160)
+  payload      Json                @map("payload")
+  created_at   DateTime            @default(now()) @map("created_at")
+  published_at DateTime?           @map("published_at")
+  attempts     Int                 @default(0) @map("attempts")
+  deliveries   outbox_deliveries[]
 
   @@index([published_at, created_at])
   @@map("outbox_events")
+}
+
+model outbox_deliveries {
+  event_id        String                 @map("event_id")
+  consumer        String                 @map("consumer") @db.VarChar(64)
+  status          outbox_delivery_status @default(pending) @map("status")
+  attempts        Int                    @default(0) @map("attempts")
+  next_attempt_at DateTime               @default(now()) @map("next_attempt_at")
+  locked_at       DateTime?              @map("locked_at")
+  last_error      String?                @map("last_error") @db.VarChar(200)
+  delivered_at    DateTime?              @map("delivered_at")
+  event           outbox_events          @relation(fields: [event_id], references: [id], onDelete: Cascade)
+
+  @@id([event_id, consumer])
+  @@index([consumer, status, next_attempt_at])
+  @@map("outbox_deliveries")
+}
+
+model bridge_connections {
+  id                 String                   @id @default(uuid()) @map("id")
+  seller_id          String                   @map("seller_id")
+  name               String                   @map("name") @db.VarChar(100)
+  provider           bridge_provider          @map("provider")
+  base_url           String                   @map("base_url") @db.VarChar(500)
+  encrypted_username String                   @map("encrypted_username")
+  encrypted_api_key  String                   @map("encrypted_api_key")
+  encryption_key_id  String                   @map("encryption_key_id") @db.VarChar(32)
+  status             bridge_connection_status @default(inactive) @map("status")
+  last_tested_at     DateTime?                @map("last_tested_at")
+  last_synced_at     DateTime?                @map("last_synced_at")
+  last_error_code    String?                  @map("last_error_code") @db.VarChar(64)
+  created_at         DateTime                 @default(now()) @map("created_at")
+  updated_at         DateTime                 @default(now()) @updatedAt @map("updated_at")
+  seller             sellers                  @relation(fields: [seller_id], references: [id], onDelete: Cascade)
+  services           bridge_services[]
+
+  @@unique([seller_id, name])
+  @@index([seller_id, status, updated_at, id])
+  @@map("bridge_connections")
+}
+
+model bridge_services {
+  id                  String                 @id @default(uuid()) @map("id")
+  connection_id       String                 @map("connection_id")
+  external_service_id String                 @map("external_service_id") @db.VarChar(160)
+  name                String                 @map("name") @db.VarChar(255)
+  group_name          String?                @map("group_name") @db.VarChar(160)
+  kind                bridge_service_kind    @map("kind")
+  field_schema        Json                   @map("field_schema")
+  schema_hash         String                 @map("schema_hash") @db.Char(64)
+  available           Boolean                @default(true) @map("available")
+  provider_metadata   Json?                  @map("provider_metadata")
+  last_synced_at      DateTime               @default(now()) @map("last_synced_at")
+  created_at          DateTime               @default(now()) @map("created_at")
+  updated_at          DateTime               @default(now()) @updatedAt @map("updated_at")
+  connection          bridge_connections     @relation(fields: [connection_id], references: [id], onDelete: Cascade)
+  grant               bridge_service_grants?
+
+  @@unique([connection_id, external_service_id])
+  @@index([connection_id, available, updated_at, id])
+  @@map("bridge_services")
+}
+
+model bridge_service_grants {
+  id            String                    @id @default(uuid()) @map("id")
+  seller_id     String                    @map("seller_id")
+  service_id    String                    @unique @map("service_id")
+  status        bridge_grant_status       @default(active) @map("status")
+  granted_by_id String                    @map("granted_by_id")
+  granted_at    DateTime                  @default(now()) @map("granted_at")
+  revoked_at    DateTime?                 @map("revoked_at")
+  seller        sellers                   @relation(fields: [seller_id], references: [id], onDelete: Cascade)
+  service       bridge_services           @relation(fields: [service_id], references: [id], onDelete: Cascade)
+  granted_by    users                     @relation("bridge_granter", fields: [granted_by_id], references: [id], onDelete: Restrict)
+  bindings      bridge_product_bindings[]
+  fulfillments  bridge_fulfillments[]
+
+  @@index([seller_id, status, granted_at, id])
+  @@map("bridge_service_grants")
+}
+
+model bridge_product_bindings {
+  product_id           String                  @id @map("product_id")
+  grant_id             String                  @map("grant_id")
+  mode                 bridge_fulfillment_mode @map("mode")
+  minimum_quantity     Int                     @default(1) @map("minimum_quantity")
+  maximum_quantity     Int                     @default(100) @map("maximum_quantity")
+  field_labels         Json                    @map("field_labels")
+  accepted_schema_hash String                  @map("accepted_schema_hash") @db.Char(64)
+  schema_review_needed Boolean                 @default(false) @map("schema_review_needed")
+  created_at           DateTime                @default(now()) @map("created_at")
+  updated_at           DateTime                @default(now()) @updatedAt @map("updated_at")
+  product              products                @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  grant                bridge_service_grants   @relation(fields: [grant_id], references: [id], onDelete: Restrict)
+
+  @@index([grant_id, mode])
+  @@map("bridge_product_bindings")
+}
+
+model bridge_fulfillments {
+  id                       String                        @id @default(uuid()) @map("id")
+  order_item_id            String                        @unique @map("order_item_id")
+  grant_id                 String                        @map("grant_id")
+  mode                     bridge_fulfillment_mode       @map("mode")
+  status                   bridge_fulfillment_status     @default(waiting_payment) @map("status")
+  encrypted_input          String                        @map("encrypted_input")
+  encrypted_result         String?                       @map("encrypted_result")
+  encryption_key_id        String                        @map("encryption_key_id") @db.VarChar(32)
+  result_encryption_key_id String?                       @map("result_encryption_key_id") @db.VarChar(32)
+  schema_snapshot          Json                          @map("schema_snapshot")
+  provider_reference       String?                       @map("provider_reference") @db.VarChar(255)
+  submit_attempts          Int                           @default(0) @map("submit_attempts")
+  manual_retry_count       Int                           @default(0) @map("manual_retry_count")
+  next_attempt_at          DateTime?                     @map("next_attempt_at")
+  locked_at                DateTime?                     @map("locked_at")
+  locked_by                String?                       @map("locked_by") @db.VarChar(100)
+  last_error_code          String?                       @map("last_error_code") @db.VarChar(64)
+  submitted_at             DateTime?                     @map("submitted_at")
+  completed_at             DateTime?                     @map("completed_at")
+  created_at               DateTime                      @default(now()) @map("created_at")
+  updated_at               DateTime                      @default(now()) @updatedAt @map("updated_at")
+  order_item               order_items                   @relation(fields: [order_item_id], references: [id], onDelete: Restrict)
+  grant                    bridge_service_grants         @relation(fields: [grant_id], references: [id], onDelete: Restrict)
+  attempts                 bridge_fulfillment_attempts[]
+  data_accesses            bridge_data_access_audits[]
+
+  @@index([status, next_attempt_at, locked_at])
+  @@index([grant_id, created_at, id])
+  @@map("bridge_fulfillments")
+}
+
+model bridge_fulfillment_attempts {
+  id             String              @id @default(uuid()) @map("id")
+  fulfillment_id String              @map("fulfillment_id")
+  action         String              @map("action") @db.VarChar(32)
+  request_hash   String              @map("request_hash") @db.Char(64)
+  outcome        String              @map("outcome") @db.VarChar(32)
+  error_code     String?             @map("error_code") @db.VarChar(64)
+  created_at     DateTime            @default(now()) @map("created_at")
+  fulfillment    bridge_fulfillments @relation(fields: [fulfillment_id], references: [id], onDelete: Cascade)
+
+  @@index([fulfillment_id, created_at])
+  @@map("bridge_fulfillment_attempts")
+}
+
+model bridge_data_access_audits {
+  id             String              @id @default(uuid()) @map("id")
+  fulfillment_id String              @map("fulfillment_id")
+  user_id        String              @map("user_id")
+  access_kind    String              @map("access_kind") @db.VarChar(32)
+  accessed_at    DateTime            @default(now()) @map("accessed_at")
+  fulfillment    bridge_fulfillments @relation(fields: [fulfillment_id], references: [id], onDelete: Restrict)
+  user           users               @relation(fields: [user_id], references: [id], onDelete: Restrict)
+
+  @@index([fulfillment_id, accessed_at])
+  @@index([user_id, accessed_at])
+  @@map("bridge_data_access_audits")
+}
+
+model payment_attempts {
+  id              String                 @id @default(uuid()) @map("id")
+  order_id        String                 @map("order_id")
+  provider        String                 @map("provider") @db.VarChar(32)
+  status          payment_attempt_status @default(created) @map("status")
+  amount          Decimal                @map("amount") @db.Decimal(20, 4)
+  currency        String                 @map("currency") @db.Char(3)
+  idempotency_key String                 @map("idempotency_key") @db.Uuid
+  authority       String?                @unique @map("authority") @db.VarChar(64)
+  provider_ref_id String?                @unique @map("provider_ref_id") @db.VarChar(100)
+  failure_code    String?                @map("failure_code") @db.VarChar(64)
+  verified_at     DateTime?              @map("verified_at")
+  refunded_at     DateTime?              @map("refunded_at")
+  created_at      DateTime               @default(now()) @map("created_at")
+  updated_at      DateTime               @default(now()) @updatedAt @map("updated_at")
+  order           orders                 @relation(fields: [order_id], references: [id], onDelete: Restrict)
+
+  @@unique([order_id, idempotency_key])
+  @@index([order_id, status, created_at])
+  @@map("payment_attempts")
+}
+
+model otp_challenges {
+  id           String     @id @default(uuid()) @map("id")
+  phone_number String     @map("phone_number") @db.VarChar(16)
+  code_hash    String     @map("code_hash") @db.Char(64)
+  status       otp_status @default(pending) @map("status")
+  attempts     Int        @default(0) @map("attempts")
+  expires_at   DateTime   @map("expires_at")
+  consumed_at  DateTime?  @map("consumed_at")
+  created_at   DateTime   @default(now()) @map("created_at")
+
+  @@index([phone_number, status, created_at])
+  @@index([expires_at])
+  @@map("otp_challenges")
+}
+
+model sms_deliveries {
+  id              String              @id @default(uuid()) @map("id")
+  dedupe_key      String              @unique @map("dedupe_key") @db.VarChar(160)
+  recipient       String              @map("recipient") @db.VarChar(16)
+  template        String              @map("template") @db.VarChar(64)
+  parameters      Json                @map("parameters")
+  status          notification_status @default(pending) @map("status")
+  attempts        Int                 @default(0) @map("attempts")
+  next_attempt_at DateTime            @default(now()) @map("next_attempt_at")
+  locked_at       DateTime?           @map("locked_at")
+  last_error      String?             @map("last_error") @db.VarChar(200)
+  sent_at         DateTime?           @map("sent_at")
+  created_at      DateTime            @default(now()) @map("created_at")
+  updated_at      DateTime            @default(now()) @updatedAt @map("updated_at")
+
+  @@index([status, next_attempt_at, locked_at])
+  @@map("sms_deliveries")
 }

@@ -1,10 +1,12 @@
 "use client";
 
+import type { Route } from "next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Image from "next/image";
+import Link from "next/link";
 import type {
   AdminProductSummary,
   AdminProductsPage,
@@ -21,6 +23,7 @@ gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 const permissionOrder: VendorPermission[] = [
   "products_manage",
+  "products_publish",
   "blog_manage",
   "coupons_manage",
   "orders_manage",
@@ -36,6 +39,8 @@ const copy = {
     overview: "Overview",
     vendors: "Vendors",
     catalog: "Product catalog",
+    editorial: "Editorial",
+    staff: "Platform staff",
     account: "Account",
     greeting: "Good to see you",
     skip: "Skip to vendor workspace",
@@ -83,6 +88,8 @@ const copy = {
     statusSuspended: "Suspended",
     productsManage: "Manage products",
     productsManageHint: "Create, edit, publish, and archive listings.",
+    productsPublish: "Publish without review",
+    productsPublishHint: "Allow new and edited products to become public immediately.",
     blogManage: "Manage blog posts",
     blogManageHint: "Create and publish seller-authored blog posts.",
     couponsManage: "Manage coupons",
@@ -110,6 +117,8 @@ const copy = {
     overview: "نمای کلی",
     vendors: "فروشنده‌ها",
     catalog: "کاتالوگ محصولات",
+    editorial: "تحریریه",
+    staff: "کارکنان پلتفرم",
     account: "حساب کاربری",
     greeting: "خوش آمدید",
     skip: "رفتن به مدیریت فروشنده‌ها",
@@ -157,6 +166,8 @@ const copy = {
     statusSuspended: "تعلیق‌شده",
     productsManage: "مدیریت محصولات",
     productsManageHint: "ساخت، ویرایش، انتشار و بایگانی محصولات.",
+    productsPublish: "انتشار بدون بررسی",
+    productsPublishHint: "محصول جدید یا ویرایش‌شده را بلافاصله عمومی کنید.",
     blogManage: "مدیریت نوشته‌های وبلاگ",
     blogManageHint: "ساخت و انتشار نوشته‌های وبلاگ فروشنده.",
     couponsManage: "مدیریت کدهای تخفیف",
@@ -184,6 +195,8 @@ const copy = {
     overview: "نظرة عامة",
     vendors: "البائعون",
     catalog: "كتالوج المنتجات",
+    editorial: "التحرير",
+    staff: "فريق المنصة",
     account: "الحساب",
     greeting: "مرحباً بعودتك",
     skip: "انتقل إلى إدارة البائعين",
@@ -231,6 +244,8 @@ const copy = {
     statusSuspended: "موقوف",
     productsManage: "إدارة المنتجات",
     productsManageHint: "إنشاء القوائم وتعديلها ونشرها وأرشفتها.",
+    productsPublish: "النشر دون مراجعة",
+    productsPublishHint: "السماح بنشر المنتجات الجديدة والمعدلة فوراً.",
     blogManage: "إدارة مقالات المدونة",
     blogManageHint: "إنشاء ونشر مقالات المدونة الخاصة بالبائع.",
     couponsManage: "إدارة القسائم",
@@ -279,7 +294,7 @@ const emptyForm: VendorFormState = {
   commission: "10",
   holdbackRate: "5",
   blogReviewRequired: true,
-  permissions: ["products_manage", "blog_manage", "coupons_manage", "orders_manage", "analytics_view"]
+  permissions: ["products_manage", "products_publish", "blog_manage", "coupons_manage", "orders_manage", "analytics_view"]
 };
 
 const permissionCopy: Record<
@@ -287,6 +302,7 @@ const permissionCopy: Record<
   { title: keyof Copy; hint: keyof Copy }
 > = {
   products_manage: { title: "productsManage", hint: "productsManageHint" },
+  products_publish: { title: "productsPublish", hint: "productsPublishHint" },
   blog_manage: { title: "blogManage", hint: "blogManageHint" },
   coupons_manage: { title: "couponsManage", hint: "couponsManageHint" },
   orders_manage: { title: "ordersManage", hint: "ordersManageHint" },
@@ -327,10 +343,12 @@ function requestMessage(error: unknown, fallback: string) {
 
 export function VendorManagement({
   locale,
-  adminName
+  adminName,
+  section
 }: {
   locale: Locale;
   adminName: string;
+  section: "overview" | "vendors" | "products";
 }) {
   const c = copy[locale];
   const root = useRef<HTMLElement>(null);
@@ -346,7 +364,6 @@ export function VendorManagement({
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [activeSection, setActiveSection] = useState<"overview" | "vendors" | "products">("overview");
   const [products, setProducts] = useState<AdminProductSummary[]>([]);
   const [productsCursor, setProductsCursor] = useState<string | null>(null);
   const [productsLoading, setProductsLoading] = useState(true);
@@ -388,39 +405,12 @@ export function VendorManagement({
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void loadVendors();
-      void loadProducts();
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [loadProducts, loadVendors]);
-
-  useEffect(() => {
-    const sections = [
-      document.getElementById("admin-overview"),
-      document.getElementById("vendor-workspace-list"),
-      document.getElementById("admin-product-catalog")
-    ].filter((section): section is HTMLElement => section !== null);
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0];
-        if (visible) {
-          setActiveSection(
-            visible.target.id === "admin-overview"
-              ? "overview"
-              : visible.target.id === "vendor-workspace-list"
-                ? "vendors"
-                : "products"
-          );
-        }
-      },
-      { rootMargin: "-20% 0px -55%", threshold: [0, 0.2, 0.5] }
-    );
-    sections.forEach((section) => observer.observe(section));
-    return () => observer.disconnect();
-  }, []);
+    const loadFrame = window.requestAnimationFrame(() => {
+      if (section === "overview" || section === "vendors") void loadVendors();
+      if (section === "products") void loadProducts();
+    });
+    return () => window.cancelAnimationFrame(loadFrame);
+  }, [loadProducts, loadVendors, section]);
 
   useEffect(() => {
     if (!panelMode) return;
@@ -595,52 +585,50 @@ export function VendorManagement({
     return c.statusInvited;
   }
 
-  function navigateTo(section: "overview" | "vendors" | "products") {
-    setActiveSection(section);
-    const targetId = section === "overview"
-      ? "admin-overview"
-      : section === "vendors"
-        ? "vendor-workspace-list"
-        : "admin-product-catalog";
-    document.getElementById(targetId)?.scrollIntoView({
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-      block: "start"
-    });
-  }
-
   return (
     <div className="admin-dashboard-shell">
-      <a className="skip-link" href="#vendor-workspace-list">{c.skip}</a>
+      <a className="skip-link" href="#admin-content">{c.skip}</a>
       <aside className="admin-rail">
-        <a className="admin-brand" href={`/${locale}`} aria-label="Top GSM">
+        <Link className="admin-brand" href={`/${locale}`} aria-label="Top GSM">
           <Image src="/brand/topgsm-logo.jpg" alt="" width={46} height={46} />
           <span translate="no">TOP GSM</span>
-        </a>
+        </Link>
         <nav className="admin-navigation" aria-label={c.navigation}>
-          <button
-            type="button"
-            aria-current={activeSection === "overview" ? "page" : undefined}
-            onClick={() => navigateTo("overview")}
+          <Link
+            href={`/${locale}/admin`}
+            aria-current={section === "overview" ? "page" : undefined}
           >
             <OverviewIcon />
             <span>{c.overview}</span>
-          </button>
-          <button
-            type="button"
-            aria-current={activeSection === "vendors" ? "page" : undefined}
-            onClick={() => navigateTo("vendors")}
+          </Link>
+          <Link
+            href={`/${locale}/admin/vendors` as Route}
+            aria-current={section === "vendors" ? "page" : undefined}
           >
             <VendorsIcon />
             <span>{c.vendors}</span>
-          </button>
-          <button
-            type="button"
-            aria-current={activeSection === "products" ? "page" : undefined}
-            onClick={() => navigateTo("products")}
+          </Link>
+          <Link
+            href={`/${locale}/admin/products` as Route}
+            aria-current={section === "products" ? "page" : undefined}
           >
             <ProductsIcon />
             <span>{c.catalog}</span>
-          </button>
+          </Link>
+          <Link href={`/${locale}/admin/blog` as Route}>
+            <ProductsIcon />
+            <span>{c.editorial}</span>
+          </Link>
+          <Link href={`/${locale}/admin/staff` as Route}>
+            <VendorsIcon />
+            <span>{c.staff}</span>
+          </Link>
+          {process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true" ? (
+            <Link href={`/${locale}/admin/bridge` as Route}>
+              <ProductsIcon />
+              <span>Bridge</span>
+            </Link>
+          ) : null}
         </nav>
         <div className="admin-rail-account">
           <span>{c.account}</span>
@@ -652,9 +640,10 @@ export function VendorManagement({
         </div>
       </aside>
 
-      <main className="admin-shell" ref={root}>
+      <main className="admin-shell" id="admin-content" ref={root}>
 
-      <section className="admin-hero" id="admin-overview" aria-labelledby="vendor-title">
+      {section === "overview" ? <>
+      <section className="admin-hero" aria-labelledby="vendor-title">
         <div>
           <p>{c.greeting}, {adminName}</p>
           <h1 id="vendor-title">
@@ -686,8 +675,9 @@ export function VendorManagement({
           <strong>{restrictedCount}</strong>
         </article>
       </section>
+      </> : null}
 
-      <section className="vendor-workspace grid-flow-dense" id="vendor-workspace-list" data-vendor-workspace>
+      {section === "vendors" ? <section className="vendor-workspace grid-flow-dense" data-vendor-workspace>
         <aside className="vendor-workspace-intro" data-admin-summary>
           <h2>{c.workspace}</h2>
           <p>{c.workspaceHint}</p>
@@ -775,9 +765,9 @@ export function VendorManagement({
             );
           })}
         </div>
-      </section>
+      </section> : null}
 
-      <section className="admin-product-catalog" id="admin-product-catalog" aria-labelledby="admin-products-title">
+      {section === "products" ? <section className="admin-product-catalog" aria-labelledby="admin-products-title">
         <header>
           <div>
             <h2 id="admin-products-title">{c.catalog}</h2>
@@ -813,7 +803,7 @@ export function VendorManagement({
             {c.loadMore}
           </button>
         ) : null}
-      </section>
+      </section> : null}
 
       {panelMode ? (
         <div className="vendor-panel-layer" role="presentation">

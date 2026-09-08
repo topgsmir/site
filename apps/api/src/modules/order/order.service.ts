@@ -3,12 +3,16 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
-  NotFoundException
+  NotFoundException,
+  Optional,
+  ServiceUnavailableException
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { Prisma, order_status, product_type } from "@prisma/client";
 import type { AppUser } from "@topgsm/shared-types";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { PrismaService } from "../../prisma/prisma.service";
+import { CredentialCryptoService } from "../bridge/credential-crypto.service";
 import type {
   CreateOrderDto,
   ListOrdersQueryDto,
@@ -34,7 +38,10 @@ const orderSelect = Prisma.validator<Prisma.ordersSelect>()({
       product_title: true,
       quantity: true,
       unit_price: true,
-      total_amount: true
+      total_amount: true,
+      bridge_fulfillment: {
+        select: { id: true, mode: true, status: true, last_error_code: true, completed_at: true, encrypted_input: true, encryption_key_id: true, encrypted_result: true, result_encryption_key_id: true }
+      }
     }
   }
 });
@@ -43,7 +50,11 @@ type OrderRecord = Prisma.ordersGetPayload<{ select: typeof orderSelect }>;
 
 @Injectable()
 export class OrderService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly crypto?: CredentialCryptoService,
+    @Optional() private readonly config?: ConfigService
+  ) {}
 
   async list(actor: AppUser, input: ListOrdersQueryDto) {
     const where = await this.scope(actor);
@@ -63,17 +74,29 @@ export class OrderService {
     });
     const hasMore = rows.length > input.limit;
     const page = hasMore ? rows.slice(0, input.limit) : rows;
+    await this.auditBridgeAccess(actor.id, page, "list");
     return {
       items: page.map((order) => this.map(order)),
       nextCursor: hasMore ? page.at(-1)?.id ?? null : null
     };
   }
 
+  async get(actor: AppUser, orderId: string) {
+    const where = await this.scope(actor);
+    const order = await this.prisma.orders.findFirst({ where: { ...where, id: orderId }, select: orderSelect });
+    if (!order) throw new NotFoundException("Order was not found");
+    await this.auditBridgeAccess(actor.id, [order], "detail");
+    return this.map(order);
+  }
+
   async create(actor: AppUser, input: CreateOrderDto, idempotencyKey: string) {
     if (actor.role !== "buyer") {
       throw new ForbiddenException("Only buyers can create orders");
     }
-    const requestHash = this.hash({ offerId: input.offerId, quantity: input.quantity });
+    const normalizedBridgeFields = (input.bridgeFields ?? [])
+      .map((item) => ({ key: item.key.trim(), value: item.value.normalize("NFKC").trim() }))
+      .sort((left, right) => left.key.localeCompare(right.key));
+    const requestHash = this.hash({ offerId: input.offerId, quantity: input.quantity, bridgeFields: normalizedBridgeFields });
 
     try {
       const order = await this.serializable(async (transaction) => {
@@ -120,12 +143,41 @@ export class OrderService {
                     holdback_rate: true
                   }
                 },
-                product: { select: { title: true, type: true } }
+                product: {
+                  select: {
+                    title: true,
+                    type: true,
+                    bridge_binding: {
+                      select: {
+                        mode: true,
+                        minimum_quantity: true,
+                        maximum_quantity: true,
+                        accepted_schema_hash: true,
+                        schema_review_needed: true,
+                        grant: {
+                          select: {
+                            id: true,
+                            status: true,
+                            service: { select: { field_schema: true, schema_hash: true, available: true, connection: { select: { status: true } } } }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
               }
             }
           }
         });
         if (!offer) throw new NotFoundException("Offer was not found");
+
+        if (offer.listing.product.type === "bridge" && this.config?.get<string>("BRIDGE_FEATURE_ENABLED") !== "true") throw new ServiceUnavailableException("Bridge is not enabled");
+        const bridgePlan = offer.listing.product.type === "bridge"
+          ? this.prepareBridgeFulfillment(offer.listing.product.bridge_binding, input.quantity, normalizedBridgeFields)
+          : null;
+        if (offer.listing.product.type !== "bridge" && normalizedBridgeFields.length) {
+          throw new BadRequestException("Only Bridge orders accept provider fields");
+        }
 
         const currency = offer.currency.trim();
         if (currency !== "IRR" || !offer.price.isInteger()) {
@@ -172,7 +224,22 @@ export class OrderService {
                 product_title: offer.listing.product.title,
                 quantity: input.quantity,
                 unit_price: offer.price,
-                total_amount: gross
+                total_amount: gross,
+                ...(bridgePlan
+                  ? {
+                      bridge_fulfillment: {
+                        create: {
+                          id: bridgePlan.id,
+                          grant_id: bridgePlan.grantId,
+                          mode: bridgePlan.mode,
+                          status: "waiting_payment",
+                          encrypted_input: bridgePlan.encryptedInput,
+                          encryption_key_id: bridgePlan.keyId,
+                          schema_snapshot: bridgePlan.schema as Prisma.InputJsonValue
+                        }
+                      }
+                    }
+                  : {})
               }
             },
             payout_records: {
@@ -352,18 +419,21 @@ export class OrderService {
     if (actor.role !== "seller-admin" && actor.role !== "seller-staff") {
       throw new ForbiddenException("Seller access is required");
     }
-    const seller = await this.prisma.sellers.findFirst({
+    const membership = await this.prisma.seller_memberships.findFirst({
       where: {
         user_id: actor.id,
-        invited: false,
-        approved: true,
-        suspended_at: null,
-        permissions: { some: { permission } }
+        active: true,
+        seller: {
+          invited: false,
+          approved: true,
+          suspended_at: null,
+          permissions: { some: { permission } }
+        }
       },
-      select: { id: true }
+      select: { seller: { select: { id: true } } }
     });
-    if (!seller) throw new ForbiddenException(`Active seller ${permission} permission is required`);
-    return seller.id;
+    if (!membership) throw new ForbiddenException(`Active seller ${permission} permission is required`);
+    return membership.seller.id;
   }
 
   private assertTransition(
@@ -453,10 +523,101 @@ export class OrderService {
         productTitle: item.product_title,
         quantity: item.quantity,
         unitPrice: item.unit_price.toString(),
-        totalAmount: item.total_amount.toString()
+        totalAmount: item.total_amount.toString(),
+        ...(item.bridge_fulfillment
+          ? {
+              bridge: {
+                id: item.bridge_fulfillment.id,
+                mode: item.bridge_fulfillment.mode,
+                status: item.bridge_fulfillment.status,
+                errorCode: item.bridge_fulfillment.last_error_code,
+                completedAt: item.bridge_fulfillment.completed_at?.toISOString() ?? null,
+                input: this.decryptBridgeValue(item.bridge_fulfillment.encrypted_input, item.bridge_fulfillment.encryption_key_id, `bridge-fulfillment:${item.bridge_fulfillment.id}:input`),
+                result: item.bridge_fulfillment.encrypted_result && item.bridge_fulfillment.result_encryption_key_id
+                  ? this.decryptBridgeValue(item.bridge_fulfillment.encrypted_result, item.bridge_fulfillment.result_encryption_key_id, `bridge-fulfillment:${item.bridge_fulfillment.id}:result`)
+                  : null
+              }
+            }
+          : {})
       })),
       createdAt: order.created_at.toISOString(),
       updatedAt: order.updated_at.toISOString()
     };
+  }
+
+  private decryptBridgeValue(ciphertext: string, keyId: string, purpose: string) {
+    if (!this.crypto) return null;
+    try { return JSON.parse(this.crypto.decrypt(ciphertext, keyId, purpose)) as unknown; }
+    catch { return null; }
+  }
+
+  private async auditBridgeAccess(userId: string, orders: OrderRecord[], accessKind: "list" | "detail") {
+    const fulfillmentIds = orders.flatMap((order) => order.items.map((item) => item.bridge_fulfillment?.id).filter((id): id is string => Boolean(id)));
+    if (fulfillmentIds.length) await this.prisma.bridge_data_access_audits.createMany({ data: fulfillmentIds.map((fulfillmentId) => ({ fulfillment_id: fulfillmentId, user_id: userId, access_kind: accessKind })) });
+  }
+
+  private prepareBridgeFulfillment(
+    binding: {
+      mode: "automatic" | "manual";
+      minimum_quantity: number;
+      maximum_quantity: number;
+      accepted_schema_hash: string;
+      schema_review_needed: boolean;
+      grant: {
+        id: string;
+        status: "active" | "revoked";
+        service: {
+          field_schema: Prisma.JsonValue;
+          schema_hash: string;
+          available: boolean;
+          connection: { status: "active" | "inactive" | "error" };
+        };
+      };
+    } | null,
+    quantity: number,
+    values: Array<{ key: string; value: string }>
+  ) {
+    if (!binding || binding.schema_review_needed || (binding.mode === "automatic" && (
+      binding.grant.status !== "active" || !binding.grant.service.available ||
+      binding.grant.service.connection.status !== "active" ||
+      binding.accepted_schema_hash !== binding.grant.service.schema_hash
+    ))) {
+      throw new ConflictException("Bridge service is currently unavailable");
+    }
+    if (quantity < binding.minimum_quantity || quantity > binding.maximum_quantity) {
+      throw new BadRequestException(`Quantity must be between ${binding.minimum_quantity} and ${binding.maximum_quantity}`);
+    }
+    const schema = this.jsonArray(binding.grant.service.field_schema);
+    const supplied = new Map(values.map((item) => [item.key, item.value]));
+    const allowed = new Set(schema.map((item) => String(item.key ?? "")));
+    for (const key of supplied.keys()) {
+      if (!allowed.has(key)) throw new BadRequestException(`Unknown Bridge field: ${key}`);
+    }
+    const validated: Record<string, string> = {};
+    for (const definition of schema) {
+      const key = String(definition.key ?? "");
+      const value = supplied.get(key) ?? "";
+      if (definition.required === true && !value) throw new BadRequestException(`${key} is required`);
+      const minimumLength = Number(definition.minimumLength ?? 0);
+      const maximumLength = Number(definition.maximumLength ?? 5000);
+      if (value.length < minimumLength || value.length > maximumLength) throw new BadRequestException(`${key} has an invalid length`);
+      if (definition.type === "number" && value && !/^-?\d+(?:\.\d+)?$/.test(value)) throw new BadRequestException(`${key} must be numeric`);
+      if (definition.type === "select" && value) {
+        const options = Array.isArray(definition.options) ? definition.options : [];
+        const choices = new Set(options.map((option) => option && typeof option === "object" && !Array.isArray(option) ? String(option.value ?? "") : ""));
+        if (!choices.has(value)) throw new BadRequestException(`${key} is not an allowed choice`);
+      }
+      if (value) validated[key] = value;
+    }
+    const id = randomUUID();
+    if (!this.crypto) throw new ConflictException("Bridge encryption is unavailable");
+    const encrypted = this.crypto.encrypt(JSON.stringify({ fields: validated, quantity }), `bridge-fulfillment:${id}:input`);
+    return { id, grantId: binding.grant.id, mode: binding.mode, schema, encryptedInput: encrypted.ciphertext, keyId: encrypted.keyId };
+  }
+
+  private jsonArray(value: Prisma.JsonValue): Array<Record<string, Prisma.JsonValue>> {
+    return Array.isArray(value)
+      ? value.filter((item): item is Record<string, Prisma.JsonValue> => Boolean(item) && typeof item === "object" && !Array.isArray(item))
+      : [];
   }
 }

@@ -44,10 +44,9 @@ describe("realtime tenant isolation", () => {
       })
     } as unknown as AuthService;
     const prisma = {
-      sellers: {
+      seller_memberships: {
         findFirst: async () => ({
-          id: "seller-1",
-          permissions: [{ permission: "orders_manage" }]
+          seller: { id: "seller-1", permissions: [{ permission: "orders_manage" }] }
         })
       }
     } as unknown as PrismaService;

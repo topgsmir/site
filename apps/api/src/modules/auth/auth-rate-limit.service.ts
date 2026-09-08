@@ -85,6 +85,25 @@ export class AuthRateLimitService {
     await this.consumeSensitiveMutation("media", userId, clientIp, 30, 90);
   }
 
+  async consumeOtp(phoneNumber: string, clientIp: string) {
+    await this.consume({
+      action: "otp",
+      scope: "ip",
+      value: this.normalizeIp(clientIp),
+      limit: 20,
+      windowSeconds: 60 * 60,
+      blockSeconds: 60 * 60
+    });
+    await this.consume({
+      action: "otp",
+      scope: "phone",
+      value: phoneNumber,
+      limit: 5,
+      windowSeconds: 60 * 60,
+      blockSeconds: 60 * 60
+    });
+  }
+
   private async consumeSensitiveMutation(
     action: "order" | "payout" | "media",
     userId: string,

@@ -31,25 +31,38 @@ export class BlogManageGuard implements CanActivate {
     if (user.role !== "seller-admin" && user.role !== "seller-staff") {
       throw new ForbiddenException("Blog management access is required");
     }
-    const seller = await this.prisma.sellers.findFirst({
+    const membership = await this.prisma.seller_memberships.findFirst({
       where: {
         user_id: user.id,
-        invited: false,
-        approved: true,
-        suspended_at: null,
-        permissions: { some: { permission: "blog_manage" } }
+        active: true,
+        seller: {
+          invited: false,
+          approved: true,
+          suspended_at: null,
+          permissions: { some: { permission: "blog_manage" } }
+        }
       },
-      select: { id: true, blog_review_required: true }
+      select: {
+        role: true,
+        seller: { select: { id: true, blog_review_required: true } }
+      }
     });
-    if (!seller) {
+
+    if (!membership) {
       throw new ForbiddenException(
         "An active seller with blog-management permission is required"
       );
     }
     request.blogActor = {
       type: "seller",
-      sellerId: seller.id,
-      reviewRequired: seller.blog_review_required,
+      sellerId: membership.seller.id,
+      reviewRequired: membership.seller.blog_review_required,
+      user
+    };
+
+    request.sellerContext = {
+      sellerId: membership.seller.id,
+      membershipRole: membership.role,
       user
     };
     return true;

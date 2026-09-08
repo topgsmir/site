@@ -3,7 +3,7 @@ import { SERVER_API_BASE } from "@/lib/api/server";
 import { locales } from "@/lib/i18n";
 
 export const SITEMAP_CHUNK_SIZE = 45_000;
-export const SITEMAP_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://top-gsm.ir";
+export const SITEMAP_SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://top-gsm.ir").replace(/\/+$/, "");
 
 type ProductRow = { slug: string; updated_at: string };
 type BlogRow = { locale: "fa" | "en" | "ar"; slug: string; post: { updated_at: string } };
@@ -23,41 +23,52 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
     fetch(`${SERVER_API_BASE}/blog/public/sitemap`, { next: { revalidate: 3600 } })
       .then((response) => response.ok ? response.json() as Promise<BlogProjection> : EMPTY_BLOG)
   ]).catch(() => [[], EMPTY_BLOG] as [ProductRow[], BlogProjection]);
+
   return [
     ...locales.flatMap((locale) => [
       {
         url: `${SITEMAP_SITE_URL}/${locale}`,
         changeFrequency: "daily" as const,
         priority: locale === "fa" ? 1 : 0.8,
-        alternates: { languages: Object.fromEntries(locales.map((code) => [code, `${SITEMAP_SITE_URL}/${code}`])) }
+        alternates: {
+          languages: Object.fromEntries([
+            ...locales.map((code) => [code, `${SITEMAP_SITE_URL}/${code}`]),
+            ["x-default", `${SITEMAP_SITE_URL}/fa`]
+          ])
+        }
       },
       {
         url: `${SITEMAP_SITE_URL}/${locale}/blog`,
         changeFrequency: "daily" as const,
         priority: 0.8,
-        alternates: { languages: Object.fromEntries(locales.map((code) => [code, `${SITEMAP_SITE_URL}/${code}/blog`])) }
+        alternates: {
+          languages: Object.fromEntries([
+            ...locales.map((code) => [code, `${SITEMAP_SITE_URL}/${code}/blog`]),
+            ["x-default", `${SITEMAP_SITE_URL}/fa/blog`]
+          ])
+        }
       }
     ]),
     ...products.map((product) => ({
-      url: `${SITEMAP_SITE_URL}/fa/products/${product.slug}`,
+      url: `${SITEMAP_SITE_URL}/fa/products/${encodeURIComponent(product.slug)}`,
       lastModified: new Date(product.updated_at),
       changeFrequency: "weekly" as const,
       priority: 0.7
     })),
     ...blog.posts.map((post) => ({
-      url: `${SITEMAP_SITE_URL}/${post.locale}/blog/${post.slug}`,
+      url: `${SITEMAP_SITE_URL}/${post.locale}/blog/${encodeURIComponent(post.slug)}`,
       lastModified: new Date(post.post.updated_at),
       changeFrequency: "weekly" as const,
       priority: 0.65
     })),
     ...blog.categories.map((category) => ({
-      url: `${SITEMAP_SITE_URL}/${category.locale}/blog/category/${category.slug}`,
+      url: `${SITEMAP_SITE_URL}/${category.locale}/blog/category/${encodeURIComponent(category.slug)}`,
       lastModified: new Date(category.category.updated_at),
       changeFrequency: "weekly" as const,
       priority: 0.45
     })),
     ...blog.tags.map((tag) => ({
-      url: `${SITEMAP_SITE_URL}/${tag.locale}/blog/tag/${tag.slug}`,
+      url: `${SITEMAP_SITE_URL}/${tag.locale}/blog/tag/${encodeURIComponent(tag.slug)}`,
       lastModified: new Date(tag.tag.updated_at),
       changeFrequency: "weekly" as const,
       priority: 0.4
@@ -73,7 +84,10 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
 
 export async function generateSitemaps() {
   const rows = await getSitemapEntries();
-  return Array.from({ length: Math.max(1, Math.ceil(rows.length / SITEMAP_CHUNK_SIZE)) }, (_, id) => ({ id }));
+  return Array.from(
+    { length: Math.max(1, Math.ceil(rows.length / SITEMAP_CHUNK_SIZE)) },
+    (_, id) => ({ id })
+  );
 }
 
 export default async function sitemap({ id }: { id: Promise<number> }): Promise<MetadataRoute.Sitemap> {

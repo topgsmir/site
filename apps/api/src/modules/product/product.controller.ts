@@ -10,13 +10,14 @@ import {
   Req,
   UseGuards
 } from "@nestjs/common";
-import type { AuthenticatedRequest } from "../auth/platform-admin.guard";
+import { PlatformAdminGuard, type AuthenticatedRequest } from "../auth/platform-admin.guard";
 import { PlatformPermissionGuard } from "../auth/platform-permission.guard";
 import { RequirePlatformPermission } from "../auth/platform-permission.decorator";
 import {
   AddSellerOffersDto,
   CreateProductDto,
   ListProductsQueryDto,
+  ReviewProductDto,
   UpdateSellerOfferDto
 } from "./dto/product.dto";
 import { ProductService } from "./product.service";
@@ -64,6 +65,21 @@ export class ProductController {
     return this.productService.createProduct(
       request.sellerContext!.sellerId,
       body
+    );
+  }
+
+  @Patch("admin/:productId/review")
+  @UseGuards(PlatformAdminGuard)
+  review(
+    @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
+    @Body() body: ReviewProductDto,
+    @Req() request: AuthenticatedRequest
+  ) {
+    return this.productService.reviewProduct(
+      productId,
+      request.authenticatedUser!.id,
+      body.status,
+      body.reason
     );
   }
 
