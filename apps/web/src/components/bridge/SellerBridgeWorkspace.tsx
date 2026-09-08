@@ -1,6 +1,7 @@
 "use client";
 
 import type { BridgeConnectionSummary, BridgeGrantSummary } from "@topgsm/shared-types";
+import type { Route } from "next";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api } from "@/lib/api/client";
@@ -139,7 +140,7 @@ export function SellerBridgeWorkspace({ locale }: { locale: Locale }) {
             <article className={styles.card} key={grant.id}>
               <div className={styles.cardHead}><div><h3>{grant.service.name}</h3><p className={styles.muted}>{grant.service.groupName ?? grant.service.kind}</p></div><span className={styles.status} data-tone={grant.service.available ? "good" : "warn"}>{grant.service.available ? "active" : "unavailable"}</span></div>
               <div><strong>{c.fields}</strong><ul className={styles.fields}>{grant.service.fields.map((field) => <li key={field.key}>{field.label}{field.required ? " *" : ""}</li>)}</ul></div>
-              <Link className={styles.button} href={`/${locale}/seller-dashboard/bridge/products/new?grant=${grant.id}`}>{c.create}</Link>
+              <Link className={styles.button} href={`/${locale}/seller-dashboard/bridge/products/new?grant=${grant.id}` as Route}>{c.create}</Link>
             </article>
           ))}</div> : <p className={styles.empty}>{c.noGrants}</p>}
         </section>
