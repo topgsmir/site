@@ -23,24 +23,31 @@ export class SellerCouponsGuard implements CanActivate {
       throw new ForbiddenException("Seller access is required");
     }
 
-    const seller = await this.prisma.sellers.findFirst({
+    const membership = await this.prisma.seller_memberships.findFirst({
       where: {
         user_id: user.id,
-        invited: false,
-        approved: true,
-        suspended_at: null,
-        permissions: { some: { permission: "coupons_manage" } }
+        active: true,
+        seller: {
+          invited: false,
+          approved: true,
+          suspended_at: null,
+          permissions: { some: { permission: "coupons_manage" } }
+        }
       },
-      select: { id: true }
+      select: { role: true, seller: { select: { id: true } } }
     });
 
-    if (!seller) {
+    if (!membership) {
       throw new ForbiddenException(
         "An active seller with coupon-management permission is required"
       );
     }
 
-    request.sellerContext = { sellerId: seller.id, user };
+    request.sellerContext = {
+      sellerId: membership.seller.id,
+      membershipRole: membership.role,
+      user
+    };
     return true;
   }
 }

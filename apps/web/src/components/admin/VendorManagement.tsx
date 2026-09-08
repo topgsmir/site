@@ -15,11 +15,13 @@ import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { ProductPublicUrl } from "@/components/product/ProductPublicUrl";
+import Link from "next/link";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 const permissionOrder: VendorPermission[] = [
   "products_manage",
+  "products_publish",
   "blog_manage",
   "coupons_manage",
   "orders_manage",
@@ -82,6 +84,8 @@ const copy = {
     statusSuspended: "Suspended",
     productsManage: "Manage products",
     productsManageHint: "Create, edit, publish, and archive listings.",
+    productsPublish: "Publish without review",
+    productsPublishHint: "Allow new and edited products to become public immediately.",
     blogManage: "Manage blog posts",
     blogManageHint: "Create and publish seller-authored blog posts.",
     couponsManage: "Manage coupons",
@@ -156,6 +160,8 @@ const copy = {
     statusSuspended: "تعلیق‌شده",
     productsManage: "مدیریت محصولات",
     productsManageHint: "ساخت، ویرایش، انتشار و بایگانی محصولات.",
+    productsPublish: "انتشار بدون بررسی",
+    productsPublishHint: "محصول جدید یا ویرایش‌شده را بلافاصله عمومی کنید.",
     blogManage: "مدیریت نوشته‌های وبلاگ",
     blogManageHint: "ساخت و انتشار نوشته‌های وبلاگ فروشنده.",
     couponsManage: "مدیریت کدهای تخفیف",
@@ -230,6 +236,8 @@ const copy = {
     statusSuspended: "موقوف",
     productsManage: "إدارة المنتجات",
     productsManageHint: "إنشاء القوائم وتعديلها ونشرها وأرشفتها.",
+    productsPublish: "النشر دون مراجعة",
+    productsPublishHint: "السماح بنشر المنتجات الجديدة والمعدلة فوراً.",
     blogManage: "إدارة مقالات المدونة",
     blogManageHint: "إنشاء ونشر مقالات المدونة الخاصة بالبائع.",
     couponsManage: "إدارة القسائم",
@@ -276,7 +284,7 @@ const emptyForm: VendorFormState = {
   status: "active",
   commission: "10",
   holdbackRate: "5",
-  permissions: ["products_manage", "blog_manage", "coupons_manage", "orders_manage", "analytics_view"]
+  permissions: ["products_manage", "products_publish", "blog_manage", "coupons_manage", "orders_manage", "analytics_view"]
 };
 
 const permissionCopy: Record<
@@ -284,6 +292,7 @@ const permissionCopy: Record<
   { title: keyof Copy; hint: keyof Copy }
 > = {
   products_manage: { title: "productsManage", hint: "productsManageHint" },
+  products_publish: { title: "productsPublish", hint: "productsPublishHint" },
   blog_manage: { title: "blogManage", hint: "blogManageHint" },
   coupons_manage: { title: "couponsManage", hint: "couponsManageHint" },
   orders_manage: { title: "ordersManage", hint: "ordersManageHint" },
@@ -617,6 +626,10 @@ export function VendorManagement({
             <OverviewIcon />
             <span>{c.overview}</span>
           </button>
+          {process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true" ? <Link href={`/${locale}/admin/bridge`}>
+            <ProductsIcon />
+            <span>Bridge</span>
+          </Link> : null}
           <button
             type="button"
             aria-current={activeSection === "vendors" ? "page" : undefined}

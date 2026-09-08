@@ -1,6 +1,6 @@
-export type ProductType = "digital" | "physical" | "service";
+export type ProductType = "digital" | "physical" | "service" | "bridge";
 export type ProductKind = "simple" | "variable";
-export type ProductStatus = "draft" | "active" | "archived";
+export type ProductStatus = "draft" | "pending_review" | "active" | "archived";
 export type SellerListingStatus = "draft" | "active" | "archived";
 
 export interface ProductOptionSelection {
@@ -51,6 +51,7 @@ export interface PublicProduct {
   category: string | null;
   kind: ProductKind;
   type: ProductType;
+  bridge?: PublicBridgeProduct;
   options: Array<{
     id: string;
     name: string;
@@ -211,12 +212,71 @@ export interface AppUser {
 
 export type VendorPermission =
   | "products_manage"
+  | "products_publish"
   | "blog_manage"
   | "coupons_manage"
   | "orders_manage"
   | "staff_manage"
   | "analytics_view"
   | "payouts_request";
+
+export type BridgeProvider = "dhru_legacy" | "dhru_new" | "webx";
+export type BridgeConnectionStatus = "active" | "inactive" | "error";
+export type BridgeServiceKind = "imei" | "server" | "file";
+export type BridgeGrantStatus = "active" | "revoked";
+export type BridgeFulfillmentMode = "automatic" | "manual";
+
+export interface BridgeFieldDefinition {
+  key: string;
+  type: "text" | "textarea" | "number" | "select";
+  required: boolean;
+  label: string;
+  placeholder?: string;
+  helpText?: string;
+  minimumLength?: number;
+  maximumLength?: number;
+  options?: Array<{ value: string; label: string }>;
+}
+
+export interface PublicBridgeProduct {
+  fields: BridgeFieldDefinition[];
+  minimumQuantity: number;
+  maximumQuantity: number;
+}
+
+export interface BridgeConnectionSummary {
+  id: string;
+  name: string;
+  provider: BridgeProvider;
+  baseUrl: string;
+  status: BridgeConnectionStatus;
+  usernameHint: string;
+  hasApiKey: boolean;
+  lastTestedAt: string | null;
+  lastSyncedAt: string | null;
+  lastErrorCode: string | null;
+}
+
+export interface BridgeServiceSummary {
+  id: string;
+  connectionId: string;
+  externalServiceId: string;
+  name: string;
+  groupName: string | null;
+  kind: BridgeServiceKind;
+  available: boolean;
+  fields: BridgeFieldDefinition[];
+  schemaHash: string;
+}
+
+export interface BridgeGrantSummary {
+  id: string;
+  status: BridgeGrantStatus;
+  service: BridgeServiceSummary;
+  linkedProductCount: number;
+  grantedAt: string;
+  revokedAt: string | null;
+}
 
 export type VendorStatus = "invited" | "active" | "suspended";
 

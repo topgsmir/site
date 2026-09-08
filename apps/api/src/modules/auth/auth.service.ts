@@ -31,6 +31,10 @@ type StoredUser = {
   sellers?: Array<{
     permissions: Array<{ permission: VendorPermission }>;
   }>;
+  seller_memberships?: Array<{
+    active: boolean;
+    seller: { permissions: Array<{ permission: VendorPermission }> };
+  }>;
 };
 
 @Injectable()
@@ -73,11 +77,17 @@ export class AuthService {
     const user = identifier.includes("@")
       ? await this.prisma.users.findUnique({
           where: { email: identifier },
-          include: { sellers: { include: { permissions: true } } }
+          include: {
+            sellers: { include: { permissions: true } },
+            seller_memberships: { include: { seller: { include: { permissions: true } } } }
+          }
         })
       : await this.prisma.users.findUnique({
           where: { username: identifier },
-          include: { sellers: { include: { permissions: true } } }
+          include: {
+            sellers: { include: { permissions: true } },
+            seller_memberships: { include: { seller: { include: { permissions: true } } } }
+          }
         });
     const passwordMatches = await this.verifyPassword(
       input.password,
@@ -110,6 +120,13 @@ export class AuthService {
             role: true,
             sellers: {
               select: { permissions: { select: { permission: true } } }
+            },
+            seller_memberships: {
+              where: { active: true },
+              select: {
+                active: true,
+                seller: { select: { permissions: { select: { permission: true } } } }
+              }
             }
           }
         }
@@ -144,6 +161,20 @@ export class AuthService {
 
   createPasswordHash(password: string) {
     return this.hashPassword(password);
+  }
+
+  async createSessionForUser(userId: string) {
+    const user = await this.prisma.users.findUnique({
+      where: { id: userId },
+      include: {
+        sellers: { include: { permissions: true } },
+        seller_memberships: {
+          include: { seller: { include: { permissions: true } } }
+        }
+      }
+    });
+    if (!user) throw new UnauthorizedException("Account was not found");
+    return this.createSession(this.prisma, user);
   }
 
   private async createSession(
@@ -189,7 +220,10 @@ export class AuthService {
       email: user.email,
       role: user.role.replaceAll("_", "-") as Role
     };
-    const permissions = user.sellers?.[0]?.permissions.map(
+    const permissionRecords =
+      user.seller_memberships?.find((item) => item.active)?.seller.permissions ??
+      user.sellers?.[0]?.permissions;
+    const permissions = permissionRecords?.map(
       (item) => item.permission
     );
     if (permissions) publicUser.permissions = permissions;

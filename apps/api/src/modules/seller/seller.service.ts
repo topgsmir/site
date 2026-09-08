@@ -54,6 +54,9 @@ export class SellerService {
             ...status
           }
         });
+        await transaction.seller_memberships.create({
+          data: { seller_id: seller.id, user_id: user.id, role: "admin" }
+        });
 
         if (input.permissions.length) {
           await transaction.seller_permissions.createMany({

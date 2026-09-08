@@ -22,6 +22,10 @@
   --color-dashboard-success-soft: oklch(94% 0.035 157);
   --color-dashboard-warning: oklch(45% 0.11 75);
   --color-dashboard-warning-soft: oklch(94% 0.04 75);
+  --color-bridge-accent: oklch(55% 0.17 35);
+  --color-bridge-accent-strong: oklch(47% 0.17 35);
+  --color-bridge-accent-soft: oklch(94% 0.035 35);
+  --color-bridge-accent-ink: oklch(98% 0.006 35);
   --color-dashboard-scrim: oklch(14% 0.025 258);
 
   --font-dashboard-display: var(--font-outfit), var(--font-vazirmatn), sans-serif;
@@ -86,5 +90,9 @@ html[data-theme="dark"] {
   --color-dashboard-success-soft: oklch(23% 0.04 157);
   --color-dashboard-warning: oklch(78% 0.1 75);
   --color-dashboard-warning-soft: oklch(24% 0.04 75);
+  --color-bridge-accent: oklch(72% 0.13 35);
+  --color-bridge-accent-strong: oklch(79% 0.11 35);
+  --color-bridge-accent-soft: oklch(24% 0.045 35);
+  --color-bridge-accent-ink: oklch(14% 0.014 35);
   --color-dashboard-scrim: oklch(7% 0.014 258);
 }

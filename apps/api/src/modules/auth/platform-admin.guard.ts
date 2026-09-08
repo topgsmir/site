@@ -19,6 +19,7 @@ export type AuthenticatedRequest = {
   authenticatedUser?: AppUser;
   sellerContext?: {
     sellerId: string;
+    membershipRole: "admin" | "staff";
     user: AppUser;
   };
 };
