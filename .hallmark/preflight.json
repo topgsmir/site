@@ -1,8 +1,30 @@
 {
-  "date": "2026-09-08",
-  "framework": "Next.js 16 App Router",
-  "fonts": ["Outfit Variable", "Vazirmatn Variable"],
-  "palette": "TopGSM dashboard OKLCH tokens",
-  "motion": "GSAP available; restrained for operational UI",
-  "spacing": "4px-based dashboard scale"
+  "scannedAt": "2026-09-08",
+  "designSystem": null,
+  "fontStack": {
+    "source": "@fontsource variable packages",
+    "families": ["Outfit", "Vazirmatn"],
+    "files": ["apps/web/src/app/[locale]/layout.tsx"]
+  },
+  "palette": {
+    "source": "CSS custom properties",
+    "themes": ["light", "dark"],
+    "files": ["apps/web/src/app/globals.css"]
+  },
+  "motion": {
+    "stance": "motion-on",
+    "libraries": ["gsap", "@gsap/react"],
+    "files": ["apps/web/package.json"]
+  },
+  "spacing": {
+    "scale": "4pt",
+    "note": "Named dashboard and product spacing tokens are defined in apps/web/tokens.css."
+  },
+  "framework": {
+    "name": "Next.js",
+    "version": "16.3.4",
+    "router": "app"
+  },
+  "preserve": ["font stack", "palette", "light and dark themes", "4pt spacing scale"],
+  "introduce": ["product Split Studio macrostructure", "Bridge Catalogue macrostructure", "product structured data", "dynamic product metadata", "interaction state discipline", "responsive product and operational layouts", "slop-test gates"]
 }

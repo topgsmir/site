@@ -1,9 +1,12 @@
 "use client";
 
+import type { Route } from "next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import Image from "next/image";
+import Link from "next/link";
 import type {
   AdminProductSummary,
   AdminProductsPage,
@@ -15,7 +18,6 @@ import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { ProductPublicUrl } from "@/components/product/ProductPublicUrl";
-import Link from "next/link";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -332,10 +334,12 @@ function requestMessage(error: unknown, fallback: string) {
 
 export function VendorManagement({
   locale,
-  adminName
+  adminName,
+  section
 }: {
   locale: Locale;
   adminName: string;
+  section: "overview" | "vendors" | "products";
 }) {
   const c = copy[locale];
   const root = useRef<HTMLElement>(null);
@@ -351,13 +355,12 @@ export function VendorManagement({
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [activeSection, setActiveSection] = useState<"overview" | "vendors" | "products">("overview");
   const [products, setProducts] = useState<AdminProductSummary[]>([]);
   const [productsCursor, setProductsCursor] = useState<string | null>(null);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState("");
 
-  async function loadVendors() {
+  const loadVendors = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -368,9 +371,9 @@ export function VendorManagement({
     } finally {
       setLoading(false);
     }
-  }
+  }, [c.loadError]);
 
-  async function loadProducts(cursor?: string) {
+  const loadProducts = useCallback(async (cursor?: string) => {
     setProductsLoading(true);
     setProductsError("");
     try {
@@ -384,7 +387,7 @@ export function VendorManagement({
     } finally {
       setProductsLoading(false);
     }
-  }
+  }, [c.catalogLoadError]);
 
   const closePanel = useCallback(() => {
     setPanelMode(null);
@@ -393,36 +396,12 @@ export function VendorManagement({
   }, []);
 
   useEffect(() => {
-    void loadVendors();
-    void loadProducts();
-  }, []);
-
-  useEffect(() => {
-    const sections = [
-      document.getElementById("admin-overview"),
-      document.getElementById("vendor-workspace-list"),
-      document.getElementById("admin-product-catalog")
-    ].filter((section): section is HTMLElement => section !== null);
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0];
-        if (visible) {
-          setActiveSection(
-            visible.target.id === "admin-overview"
-              ? "overview"
-              : visible.target.id === "vendor-workspace-list"
-                ? "vendors"
-                : "products"
-          );
-        }
-      },
-      { rootMargin: "-20% 0px -55%", threshold: [0, 0.2, 0.5] }
-    );
-    sections.forEach((section) => observer.observe(section));
-    return () => observer.disconnect();
-  }, []);
+    const loadFrame = window.requestAnimationFrame(() => {
+      if (section === "overview" || section === "vendors") void loadVendors();
+      if (section === "products") void loadProducts();
+    });
+    return () => window.cancelAnimationFrame(loadFrame);
+  }, [loadProducts, loadVendors, section]);
 
   useEffect(() => {
     if (!panelMode) return;
@@ -596,56 +575,42 @@ export function VendorManagement({
     return c.statusInvited;
   }
 
-  function navigateTo(section: "overview" | "vendors" | "products") {
-    setActiveSection(section);
-    const targetId = section === "overview"
-      ? "admin-overview"
-      : section === "vendors"
-        ? "vendor-workspace-list"
-        : "admin-product-catalog";
-    document.getElementById(targetId)?.scrollIntoView({
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-      block: "start"
-    });
-  }
-
   return (
     <div className="admin-dashboard-shell">
-      <a className="skip-link" href="#vendor-workspace-list">{c.skip}</a>
+      <a className="skip-link" href="#admin-content">{c.skip}</a>
       <aside className="admin-rail">
-        <a className="admin-brand" href={`/${locale}`} aria-label="Top GSM">
-          <img src="/brand/topgsm-logo.jpg" alt="" width="46" height="46" />
+        <Link className="admin-brand" href={`/${locale}`} aria-label="Top GSM">
+          <Image src="/brand/topgsm-logo.jpg" alt="" width={46} height={46} />
           <span translate="no">TOP GSM</span>
-        </a>
+        </Link>
         <nav className="admin-navigation" aria-label={c.navigation}>
-          <button
-            type="button"
-            aria-current={activeSection === "overview" ? "page" : undefined}
-            onClick={() => navigateTo("overview")}
+          <Link
+            href={`/${locale}/admin`}
+            aria-current={section === "overview" ? "page" : undefined}
           >
             <OverviewIcon />
             <span>{c.overview}</span>
-          </button>
-          {process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true" ? <Link href={`/${locale}/admin/bridge`}>
-            <ProductsIcon />
-            <span>Bridge</span>
-          </Link> : null}
-          <button
-            type="button"
-            aria-current={activeSection === "vendors" ? "page" : undefined}
-            onClick={() => navigateTo("vendors")}
+          </Link>
+          <Link
+            href={`/${locale}/admin/vendors` as Route}
+            aria-current={section === "vendors" ? "page" : undefined}
           >
             <VendorsIcon />
             <span>{c.vendors}</span>
-          </button>
-          <button
-            type="button"
-            aria-current={activeSection === "products" ? "page" : undefined}
-            onClick={() => navigateTo("products")}
+          </Link>
+          <Link
+            href={`/${locale}/admin/products` as Route}
+            aria-current={section === "products" ? "page" : undefined}
           >
             <ProductsIcon />
             <span>{c.catalog}</span>
-          </button>
+          </Link>
+          {process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true" ? (
+            <Link href={`/${locale}/admin/bridge` as Route}>
+              <ProductsIcon />
+              <span>Bridge</span>
+            </Link>
+          ) : null}
         </nav>
         <div className="admin-rail-account">
           <span>{c.account}</span>
@@ -657,15 +622,16 @@ export function VendorManagement({
         </div>
       </aside>
 
-      <main className="admin-shell" ref={root}>
+      <main className="admin-shell" id="admin-content" ref={root}>
 
-      <section className="admin-hero" id="admin-overview" aria-labelledby="vendor-title">
+      {section === "overview" ? <>
+      <section className="admin-hero" aria-labelledby="vendor-title">
         <div>
           <p>{c.greeting}, {adminName}</p>
           <h1 id="vendor-title">
             {c.titleStart}{" "}
             <span className="admin-inline-mark" aria-hidden="true">
-              <img src="/brand/topgsm-logo.jpg" alt="" width="112" height="52" />
+              <Image src="/brand/topgsm-logo.jpg" alt="" width={112} height={52} />
             </span>{" "}
             <span>{c.titleEnd}</span>
           </h1>
@@ -691,8 +657,9 @@ export function VendorManagement({
           <strong>{restrictedCount}</strong>
         </article>
       </section>
+      </> : null}
 
-      <section className="vendor-workspace grid-flow-dense" id="vendor-workspace-list" data-vendor-workspace>
+      {section === "vendors" ? <section className="vendor-workspace grid-flow-dense" data-vendor-workspace>
         <aside className="vendor-workspace-intro" data-admin-summary>
           <h2>{c.workspace}</h2>
           <p>{c.workspaceHint}</p>
@@ -780,9 +747,9 @@ export function VendorManagement({
             );
           })}
         </div>
-      </section>
+      </section> : null}
 
-      <section className="admin-product-catalog" id="admin-product-catalog" aria-labelledby="admin-products-title">
+      {section === "products" ? <section className="admin-product-catalog" aria-labelledby="admin-products-title">
         <header>
           <div>
             <h2 id="admin-products-title">{c.catalog}</h2>
@@ -818,7 +785,7 @@ export function VendorManagement({
             {c.loadMore}
           </button>
         ) : null}
-      </section>
+      </section> : null}
 
       {panelMode ? (
         <div className="vendor-panel-layer" role="presentation">
