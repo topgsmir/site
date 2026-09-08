@@ -526,7 +526,7 @@ html[data-theme="dark"] .product-visual-4 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
 }
-.admin-navigation button {
+.admin-navigation a {
   display: flex;
   min-width: 0;
   min-height: 44px;
@@ -546,12 +546,12 @@ html[data-theme="dark"] .product-visual-4 {
   cursor: pointer;
   transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease;
 }
-.admin-navigation button[aria-current="page"] {
+.admin-navigation a[aria-current="page"] {
   border-color: color-mix(in srgb, var(--signal) 28%, var(--line));
   color: var(--signal-dark);
   background: var(--signal-soft);
 }
-.admin-navigation button:focus-visible { outline-color: var(--signal); }
+.admin-navigation a:focus-visible { outline-color: var(--signal); }
 .admin-navigation svg {
   width: 18px;
   height: 18px;
@@ -704,7 +704,6 @@ html[data-theme="dark"] .product-visual-4 {
   align-items: start;
   padding-top: clamp(40px, 5vw, 64px);
 }
-#admin-overview, #vendor-workspace-list, #admin-product-catalog { scroll-margin-top: 24px; }
 .vendor-workspace-intro { grid-column: span 3; min-width: 0; }
 .vendor-workspace-intro h2 { max-width: 300px; min-width: 0; overflow-wrap: anywhere; font-size: clamp(1.65rem, 2.4vw, 2.65rem); line-height: 1; letter-spacing: -0.04em; }
 [dir="rtl"] .vendor-workspace-intro h2 { letter-spacing: -0.025em; }
@@ -848,7 +847,7 @@ html[data-theme="dark"] .product-visual-4 {
 .panel-grid .card p { margin-top: 10px; color: var(--muted); line-height: 1.65; }
 
 @media (hover: hover) and (pointer: fine) {
-  .admin-navigation button:hover { color: var(--ink); background: var(--field-surface); }
+  .admin-navigation a:hover { color: var(--ink); background: var(--field-surface); }
   .admin-primary-button:hover { background: var(--signal-bright); }
   .logout-button:hover { border-color: var(--ink); background: var(--paper-bright); }
   .vendor-manage-button:hover { color: var(--on-signal); background: var(--ink); }
