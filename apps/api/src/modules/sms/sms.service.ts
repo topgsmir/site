@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../../prisma/client";
 import { randomUUID } from "node:crypto";
 import { PrismaService } from "../../prisma/prisma.service";
 import { CredentialCryptoService } from "../bridge/credential-crypto.service";

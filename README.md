@@ -19,13 +19,45 @@ TopGSM is scaffolded as a multi-seller marketplace monorepo with:
 
 ## Setup
 
-1. Copy `.env.example` to `.env` and set values.
-2. Install dependencies:
-   - `pnpm install`
-3. Start DB first and then APIs/UI:
+1. Activate Node 24.20.0 (the latest LTS release).
+2. Enable the pinned package manager:
+   - `corepack enable`
+   - `corepack install --global pnpm@12.3.4`
+3. Copy `.env.example` to `.env` and set values.
+4. Bootstrap dependencies and generated code:
+   - `pnpm bootstrap`
+5. Verify the worktree:
+   - `pnpm run doctor`
+6. Start DB first and then APIs/UI:
    - `docker compose up -d postgres`
    - `pnpm -C apps/api dev`
    - `pnpm -C apps/web dev`
+
+`pnpm bootstrap` performs a frozen, non-interactive install from pnpm's shared
+content store, generates the Prisma client, verifies the lockfile did not
+change, and runs the worktree doctor. Do not copy `node_modules` from another
+worktree; each worktree must create its own lightweight links.
+
+## Worktrees
+
+Create a feature worktree from the latest `origin/main` and bootstrap it in one
+command:
+
+```bash
+pnpm worktree:create -- codex/my-feature
+```
+
+Pass a second argument to choose the destination path. The default is a sibling
+directory derived from the branch name. For a long-running feature branch,
+commit or stash local changes and periodically run:
+
+```bash
+pnpm worktree:sync
+```
+
+That command fetches `origin/main`, merges it into the clean feature branch,
+and reruns the deterministic bootstrap. Secrets belong in ignored local env
+files or the environment's secret manager, never in committed configuration.
 
 The API development command applies pending migrations and runs an idempotent
 local seed. It creates `admin` / `admin` only when the admin account is missing,
@@ -55,3 +87,22 @@ The API never returns the tenant secret or signs caller-controlled ticket
 objects. `POST /api/goghdi/product-ticket` requires a valid TopGSM session,
 accepts only a product UUID, verifies that the product is active, constructs
 the allowed Goghdi payload, and returns that payload with its HMAC signature.
+
+## Tests
+
+The repository requires Node 24.20.0 and pnpm 12.3.4. Run the fast unit suite
+and its separate full-project type-check with:
+
+```sh
+pnpm run type-check
+pnpm run test
+```
+
+Integration tests require a migrated, dedicated PostgreSQL database whose name
+contains a standalone `test` segment, such as `topgsm_test`. They fail closed
+instead of connecting to a development or production database:
+
+```sh
+NODE_ENV=test DATABASE_URL=postgresql://topgsm:topgsm@localhost:5432/topgsm_test pnpm --filter topgsm-api prisma:migrate
+NODE_ENV=test DATABASE_URL=postgresql://topgsm:topgsm@localhost:5432/topgsm_test pnpm run test:integration
+```

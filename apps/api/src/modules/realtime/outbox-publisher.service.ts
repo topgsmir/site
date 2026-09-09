@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../../prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { RealtimeGateway } from "./realtime.gateway";
 

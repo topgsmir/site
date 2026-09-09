@@ -1,24 +1,30 @@
 import { BadGatewayException, Injectable } from "@nestjs/common";
-import { hashSync } from "bcryptjs";
 import { SafeHttpService } from "../safe-http.service";
 import type { BridgeCredentials, BridgeProviderAdapter, BridgeResult, BridgeSubmitInput, NormalizedBridgeService } from "../bridge.types";
 import { array, field, record, string } from "./provider-utils";
+import { WebxAuthKeyService } from "./webx-auth-key.service";
 
 @Injectable()
 export class WebxAdapter implements BridgeProviderAdapter {
-  constructor(private readonly http: SafeHttpService) {}
+  constructor(
+    private readonly http: SafeHttpService,
+    private readonly authKeys: WebxAuthKeyService
+  ) {}
 
   async testConnection(credentials: BridgeCredentials) {
     await this.call(credentials, "");
   }
 
   async listServices(credentials: BridgeCredentials) {
+    const authKey = await this.authKeys.create(credentials);
     const routes = [
       { route: "imei-services", kind: "imei" as const },
       { route: "server-services", kind: "server" as const },
       { route: "file-services", kind: "file" as const }
     ];
-    const results = await Promise.allSettled(routes.map(({ route }) => this.call(credentials, route)));
+    const results = await Promise.allSettled(
+      routes.map(({ route }) => this.call(credentials, route, {}, authKey))
+    );
     const services: NormalizedBridgeService[] = [];
     for (let index = 0; index < results.length; index += 1) {
       const result = results[index];
@@ -69,14 +75,19 @@ export class WebxAdapter implements BridgeProviderAdapter {
     return { status, providerReference: input.providerReference, result: response, ...(status === "failed" ? { diagnosticCode: "PROVIDER_REJECTED" } : {}) };
   }
 
-  private call(credentials: BridgeCredentials, route: string, init: RequestInit = {}) {
+  private async call(
+    credentials: BridgeCredentials,
+    route: string,
+    init: RequestInit = {},
+    authKey?: string
+  ) {
     const body = init.body instanceof URLSearchParams ? init.body : new URLSearchParams();
     if (init.method === "POST") body.set("username", credentials.username);
     const query = init.method === "POST" ? "" : `${route.includes("?") ? "&" : "?"}username=${encodeURIComponent(credentials.username)}`;
     return this.http.request(credentials.baseUrl, `/api/${route}${query}`, {
       ...init,
       headers: {
-        "Auth-Key": hashSync(`${credentials.username}${credentials.apiKey}`, 10),
+        "Auth-Key": authKey ?? await this.authKeys.create(credentials),
         ...(init.method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
         ...init.headers
       },

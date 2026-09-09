@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../../prisma/client";
 import { createHmac, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuthService } from "../auth/auth.service";

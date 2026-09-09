@@ -68,7 +68,10 @@ export function AdminBridgeWorkspace({ locale }: { locale: Locale }) {
   const [action, setAction] = useState<"archive" | "manual">("archive");
   const [busy, setBusy] = useState(""); const [error, setError] = useState("");
   const load = useCallback(async () => { try { const [a,b,p,r] = await Promise.all([api.get<AdminConnection[]>("/bridge/admin/connections"), api.get<AdminService[]>("/bridge/admin/services"), api.get<AdminProductsPage>("/products/admin?limit=50"), api.get<Refund[]>("/bridge/admin/refund-requests")]); setConnections(a.data); setServices(b.data); setProducts(p.data.items.filter((item) => item.status === "pending_review")); setRefunds(r.data); setError(""); } catch (requestError) { setError(safeApiError(requestError, ERROR_COPY[locale])); } }, [locale]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const loadFrame = window.requestAnimationFrame(() => void load());
+    return () => window.cancelAnimationFrame(loadFrame);
+  }, [load]);
   const visible = useMemo(() => { const n=query.trim().toLowerCase(); return n ? services.filter((s) => `${s.name} ${s.seller.shopName} ${s.connection.name}`.toLowerCase().includes(n)) : services; }, [query, services]);
   async function serviceAction(service: AdminService) { setBusy(service.id); setError(""); try { if (!service.grant || service.grant.status === "revoked") await api.post("/bridge/admin/grants", { serviceId: service.id }); else setRevoke(service); if (!service.grant || service.grant.status === "revoked") await load(); } catch (requestError) { setError(safeApiError(requestError, ERROR_COPY[locale])); } finally { setBusy(""); } }
   async function confirmRevoke() { if (!revoke?.grant) return; setBusy(revoke.id); try { await api.post(`/bridge/admin/grants/${revoke.grant.id}/revoke`, { productAction: action }); setRevoke(null); await load(); } catch (requestError) { setError(safeApiError(requestError, ERROR_COPY[locale])); } finally { setBusy(""); } }

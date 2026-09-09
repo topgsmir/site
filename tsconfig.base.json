@@ -8,14 +8,12 @@
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
     "paths": {
-      "@topgsm/shared-types": ["packages/shared-types/src"],
-      "@topgsm/shared-types/*": ["packages/shared-types/src/*"],
-      "@topgsm/shared-config/*": ["packages/shared-config/src/*"],
-      "@topgsm/db-client": ["packages/db-client/src"],
-      "@topgsm/db-client/*": ["packages/db-client/src/*"]
+      "@topgsm/shared-types": ["./packages/shared-types/src"],
+      "@topgsm/shared-types/*": ["./packages/shared-types/src/*"],
+      "@topgsm/shared-config/*": ["./packages/shared-config/src/*"],
+      "@topgsm/db-client": ["./packages/db-client/src"],
+      "@topgsm/db-client/*": ["./packages/db-client/src/*"]
     }
   }
 }
-

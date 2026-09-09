@@ -1,8 +1,9 @@
-FROM node:20-alpine
+FROM node:24.20.0-alpine
 WORKDIR /usr/src/app
-COPY . .
-RUN npm install -g pnpm && pnpm install --no-frozen-lockfile
-RUN pnpm -C apps/api prisma generate
+RUN corepack enable && corepack install --global pnpm@12.3.4
+RUN chown node:node /usr/src/app
+USER node
+COPY --chown=node:node . .
+RUN pnpm install --frozen-lockfile
 RUN pnpm -C apps/api build
 CMD ["pnpm", "-C", "apps/api", "start:prod"]
-

@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import type { bridge_provider } from "@prisma/client";
+import type { bridge_provider } from "../../prisma/client";
 import { DhruLegacyAdapter } from "./providers/dhru-legacy.adapter";
 import { DhruNewAdapter } from "./providers/dhru-new.adapter";
 import { WebxAdapter } from "./providers/webx.adapter";

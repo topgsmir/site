@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../../prisma/client";
 import { createHash, randomUUID } from "node:crypto";
 import { PrismaService } from "../../prisma/prisma.service";
 import type { BridgeCredentials } from "./bridge.types";
@@ -8,11 +8,11 @@ import { CredentialCryptoService } from "./credential-crypto.service";
 import { PublicUrlService } from "./public-url.service";
 import type { CreateBridgeConnectionDto, RotateBridgeConnectionDto } from "./dto/bridge.dto";
 
-const connectionSelect = Prisma.validator<Prisma.bridge_connectionsSelect>()({
+const connectionSelect = {
   id: true, name: true, provider: true, base_url: true, status: true,
   encrypted_username: true, last_tested_at: true, last_synced_at: true,
   last_error_code: true, created_at: true, updated_at: true
-});
+} satisfies Prisma.bridge_connectionsSelect;
 
 @Injectable()
 export class BridgeService {

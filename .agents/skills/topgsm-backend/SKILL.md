@@ -9,8 +9,9 @@ Treat security, correctness, data integrity, and operational safety as part of t
 
 ## Project context
 
-- The API is NestJS 10 and TypeScript under `apps/api/src`.
-- Persistence is PostgreSQL through Prisma 5; the schema and migrations are under `apps/api/src/prisma/schema`.
+- The API is NestJS 12 under `apps/api/src`. Type-checking uses the TypeScript 7 native CLI, while the `typescript` package remains aliased to TypeScript 6 for tools that require the programmatic compiler API; do not remove that compatibility alias until those consumers support TypeScript 7. Treat the package manifests as the source of truth for exact patch versions.
+- Persistence is PostgreSQL through Prisma 7 and its PostgreSQL driver adapter. The schema and migrations are under `apps/api/src/prisma/schema`, while datasource and seed configuration live in `apps/api/prisma.config.ts`.
+- Prisma generates TypeScript into `apps/api/src/generated/prisma`. Import its runtime and types through `apps/api/src/prisma/client.ts`, not directly from `@prisma/client` or generated internals.
 - The API serves a multi-seller marketplace with platform admins, seller admins/staff, and buyers.
 - High-risk domains are authentication, seller isolation, orders, payments, payouts, digital delivery, and realtime events.
 - Shared compile-time contracts live in `packages/shared-types`, but HTTP and socket inputs still require runtime validation.
@@ -44,6 +45,7 @@ controller or gateway -> application service -> Prisma/provider adapter
 - Gateways authenticate connections/messages and delegate. They do not broadcast private data globally.
 - Services enforce business invariants and resource-level authorization close to the query or mutation.
 - Prisma access stays in services or focused repositories when query complexity justifies one.
+- Define reusable Prisma selections with object literals that `satisfy` the generated `Prisma.<model>Select` type. Prisma 7 no longer provides `Prisma.validator`.
 - Provider-specific payment behavior stays behind the payment adapter boundary.
 - Feature modules own their controllers, services, guards, DTOs, and tests.
 
@@ -114,12 +116,14 @@ Cover success, invalid input, unauthenticated, wrong role, cross-tenant access, 
 Run the narrowest relevant checks, then the API checks when practical:
 
 ```bash
-pnpm --filter topgsm-api type-check
-pnpm --filter topgsm-api lint
-pnpm --filter topgsm-api build
+pnpm --filter topgsm-api run prisma:generate
+pnpm --filter topgsm-api run type-check
+pnpm --filter topgsm-api run lint
+pnpm --filter topgsm-api run test
+pnpm --filter topgsm-api run build
 ```
 
-Run focused tests when test tooling exists. If it does not, report that gap and do not claim runtime behavior was tested. For Prisma changes, generate the client, inspect the migration SQL, test against a disposable database, and document rollout/rollback considerations.
+The unit-test script compiles the API before running Node's test runner so Prisma 7's generated `.js` import specifiers resolve against compiled output. Do not switch these tests back to direct ts-node source loading. Run focused tests when test tooling exists; if it does not, report that gap and do not claim runtime behavior was tested. For Prisma changes, generate the client, inspect the migration SQL, test against a disposable database, and document rollout/rollback considerations.
 
 ## Handling existing problems
 

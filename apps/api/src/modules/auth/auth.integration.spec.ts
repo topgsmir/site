@@ -4,7 +4,9 @@ import { createHash, randomUUID } from "node:crypto";
 import { AuthRateLimitService } from "./auth-rate-limit.service";
 import { AuthService } from "./auth.service";
 import { PrismaService } from "../../prisma/prisma.service";
+import { assertDedicatedTestDatabase } from "../../test/test-database";
 
+assertDedicatedTestDatabase();
 const prisma = new PrismaService();
 const auth = new AuthService(prisma);
 const rateLimits = new AuthRateLimitService(prisma);

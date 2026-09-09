@@ -5,7 +5,9 @@ import type { AppUser } from "@topgsm/shared-types";
 import { PrismaService } from "../../prisma/prisma.service";
 import { OrderService } from "./order.service";
 import { PayoutService } from "../payout/payout.service";
+import { assertDedicatedTestDatabase } from "../../test/test-database";
 
+assertDedicatedTestDatabase();
 const prisma = new PrismaService();
 const orders = new OrderService(prisma);
 const payouts = new PayoutService(prisma);
@@ -75,6 +77,13 @@ before(async () => {
             ]
           }
         }
+      }
+    });
+    await transaction.seller_memberships.create({
+      data: {
+        seller_id: seller.id,
+        user_id: sellerUser.id,
+        role: "admin"
       }
     });
     const product = await transaction.products.create({

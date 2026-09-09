@@ -1,14 +1,32 @@
 {
   "name": "topgsm",
   "private": true,
-  "packageManager": "pnpm@9.9.0",
+  "packageManager": "pnpm@12.3.4",
+  "engines": {
+    "node": "24.20.0",
+    "pnpm": "12.3.4"
+  },
   "scripts": {
+    "preinstall": "node scripts/verify-toolchain.mjs",
+    "postinstall": "node scripts/generate-prisma.mjs",
+    "bootstrap": "node scripts/worktree-bootstrap.mjs",
+    "doctor": "node scripts/worktree-doctor.mjs",
+    "prisma:generate": "node scripts/generate-prisma.mjs",
+    "worktree:create": "node scripts/worktree-create.mjs",
+    "worktree:sync": "node scripts/worktree-sync.mjs",
     "dev": "node scripts/dev.mjs",
-    "build": "pnpm -r run build",
-    "lint": "pnpm -r run lint",
-    "type-check": "pnpm -r run type-check"
+    "build": "node scripts/run-pnpm.mjs -r run build",
+    "lint": "node scripts/run-pnpm.mjs -r run lint",
+    "type-check": "node scripts/run-pnpm.mjs -r run type-check",
+    "test": "node scripts/run-pnpm.mjs --filter topgsm-api test",
+    "test:integration": "node scripts/run-pnpm.mjs --filter topgsm-api test:integration",
+    "check": "node scripts/run-pnpm.mjs run type-check && node scripts/run-pnpm.mjs run lint && node scripts/run-pnpm.mjs run test"
   },
   "devDependencies": {
-    "typescript": "5.7.2"
+    "@eslint/js": "10.0.1",
+    "@typescript/native": "npm:typescript@7.0.2",
+    "eslint": "10.10.0",
+    "typescript-eslint": "8.70.0",
+    "typescript": "npm:@typescript/typescript6@6.0.2"
   }
 }

@@ -655,7 +655,8 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
   }, [copy.listError]);
 
   useEffect(() => {
-    void loadListings();
+    const loadFrame = window.requestAnimationFrame(() => void loadListings());
+    return () => window.cancelAnimationFrame(loadFrame);
   }, [loadListings]);
 
   const visibleListings = useMemo(() => {

@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../../prisma/client";
 import type { PrismaService } from "../../prisma/prisma.service";
 import { CouponService } from "./coupon.service";
 

@@ -79,7 +79,10 @@ export function SellerBlogPanel({ locale, listings }: { locale: Locale; listings
     }
   }, [copy.loadError]);
 
-  useEffect(() => { void loadPosts(); }, [loadPosts]);
+  useEffect(() => {
+    const loadFrame = window.requestAnimationFrame(() => void loadPosts());
+    return () => window.cancelAnimationFrame(loadFrame);
+  }, [loadPosts]);
   useEffect(() => { if (isComposing) titleRef.current?.focus(); }, [isComposing]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {

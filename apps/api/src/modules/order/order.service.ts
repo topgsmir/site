@@ -8,7 +8,7 @@ import {
   ServiceUnavailableException
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { Prisma, order_status, product_type } from "@prisma/client";
+import { Prisma, order_status, product_type } from "../../prisma/client";
 import type { AppUser } from "@topgsm/shared-types";
 import { createHash, randomUUID } from "node:crypto";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -19,7 +19,7 @@ import type {
   UpdateOrderStatusDto
 } from "./dto/order.dto";
 
-const orderSelect = Prisma.validator<Prisma.ordersSelect>()({
+const orderSelect = {
   id: true,
   buyer_id: true,
   seller_id: true,
@@ -44,7 +44,7 @@ const orderSelect = Prisma.validator<Prisma.ordersSelect>()({
       }
     }
   }
-});
+} satisfies Prisma.ordersSelect;
 
 type OrderRecord = Prisma.ordersGetPayload<{ select: typeof orderSelect }>;
 
@@ -442,7 +442,7 @@ export class OrderService {
     to: UpdateOrderStatusDto["status"],
     productType: product_type
   ) {
-    let allowed = false;
+    let allowed: boolean;
     if (actor.role === "platform-admin") {
       allowed = to === "cancelled" && from !== "cancelled" && from !== "delivered";
     } else if (actor.role === "buyer") {

@@ -16,10 +16,11 @@ export class SecureSocketIoAdapter extends IoAdapter {
     this.auth = app.get(AuthService);
   }
 
-  override createIOServer(port: number, options?: ServerOptions) {
+  override createIOServer(port: number, options?: Partial<ServerOptions>) {
     const allowed = new Set(this.allowedOrigins);
-    return super.createIOServer(port, {
+    const secureOptions = {
       ...options,
+      path: options?.path ?? "/socket.io",
       allowRequest: (
         request: IncomingMessage,
         callback: (error: string | null | undefined, success: boolean) => void
@@ -41,6 +42,10 @@ export class SecureSocketIoAdapter extends IoAdapter {
         credentials: true,
         methods: ["GET", "POST"]
       }
-    });
+    } satisfies Partial<ServerOptions>;
+
+    // Nest 12 declares this parameter as ServerOptions, while Socket.IO's
+    // constructor intentionally accepts Partial<ServerOptions> and fills defaults.
+    return super.createIOServer(port, secureOptions as ServerOptions);
   }
 }

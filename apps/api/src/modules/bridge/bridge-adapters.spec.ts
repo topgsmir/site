@@ -1,9 +1,11 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
+import { compare } from "bcryptjs";
 import type { SafeHttpService } from "./safe-http.service";
 import { DhruLegacyAdapter } from "./providers/dhru-legacy.adapter";
 import { DhruNewAdapter } from "./providers/dhru-new.adapter";
 import { WebxAdapter } from "./providers/webx.adapter";
+import { WebxAuthKeyService } from "./providers/webx-auth-key.service";
 
 const credentials = { baseUrl: "https://provider.example", username: "seller", apiKey: "secret-api-key" };
 function httpWith(handler: (path: string, init: RequestInit) => unknown) {
@@ -33,10 +35,36 @@ describe("Bridge provider contracts", () => {
   });
 
   it("normalizes WebX main fields and service kind fixtures", async () => {
-    const adapter = new WebxAdapter(httpWith((path) => path.includes("imei-services") ? [{ id: 7, name: "Device history", main_field: { key: "device", label: "IMEI", type: "text", required: true } }] : []));
+    let signatureCount = 0;
+    const authKeys = {
+      create: async () => {
+        signatureCount += 1;
+        return "fixture-auth-key";
+      }
+    } as WebxAuthKeyService;
+    const adapter = new WebxAdapter(
+      httpWith((path, init) => {
+        assert.equal((init.headers as Record<string, string>)["Auth-Key"], "fixture-auth-key");
+        return path.includes("imei-services")
+          ? [{ id: 7, name: "Device history", main_field: { key: "device", label: "IMEI", type: "text", required: true } }]
+          : [];
+      }),
+      authKeys
+    );
     const [service] = await adapter.listServices(credentials);
+    assert.equal(signatureCount, 1);
     assert.equal(service.externalId, "7");
     assert.equal(service.kind, "imei");
     assert.deepEqual(service.fields.map((field) => field.key), ["device"]);
+  });
+
+  it("creates an asynchronous WebX auth key without exposing the provider secret", async () => {
+    const authKeys = new WebxAuthKeyService();
+    const pending = authKeys.create(credentials);
+    assert.ok(pending instanceof Promise);
+
+    const authKey = await pending;
+    assert.equal(authKey.includes(credentials.apiKey), false);
+    assert.equal(await compare(`${credentials.username}${credentials.apiKey}`, authKey), true);
   });
 });

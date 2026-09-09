@@ -1,21 +1,29 @@
-import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
+import eslint from "@eslint/js";
+import nextPlugin from "@next/eslint-plugin-next";
+import reactHooks from "eslint-plugin-react-hooks";
+import tseslint from "typescript-eslint";
 
-export default defineConfig([
-  ...nextVitals,
-  ...nextTs,
+export default tseslint.config(
   {
-    // Existing client dashboards load their API state on mount. Keep the new
-    // React 19 advisory visible without blocking the framework migration.
-    rules: {
-      "react-hooks/set-state-in-effect": "warn"
-    }
+    ignores: [".next/**", "out/**", "build/**", "next-env.d.ts"]
   },
-  globalIgnores([
-    ".next/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts"
-  ])
-]);
+  eslint.configs.recommended,
+  ...tseslint.configs.recommended,
+  {
+    files: ["**/*.{js,mjs,cjs,ts,tsx}"],
+    plugins: {
+      "@next/next": nextPlugin,
+      "react-hooks": reactHooks
+    },
+    rules: {
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs["core-web-vitals"].rules,
+      ...reactHooks.configs.flat.recommended.rules
+    },
+    settings: {
+      next: {
+        rootDir: "."
+      }
+    }
+  }
+);

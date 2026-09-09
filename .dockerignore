@@ -1,0 +1,14 @@
+.git
+.gitignore
+.pnpm-store
+**/node_modules
+**/dist
+**/build
+**/.next
+**/coverage
+**/*.log
+**/*.tsbuildinfo
+**/.env
+**/.env.*
+artifacts
+tmp

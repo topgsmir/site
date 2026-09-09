@@ -4,7 +4,7 @@ import {
   Injectable,
   UnauthorizedException
 } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../../prisma/client";
 import type { AppUser, Role, VendorPermission } from "@topgsm/shared-types";
 import {
   createHash,

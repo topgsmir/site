@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import type { Locale } from "@/lib/i18n";
 
 type Theme = "light" | "dark";
+
+const storageKey = "topgsm-theme";
+const themeChangeEvent = "topgsm:theme-change";
 
 const labels: Record<Locale, { dark: string; light: string }> = {
   fa: { dark: "فعال کردن حالت تاریک", light: "فعال کردن حالت روشن" },
@@ -23,23 +26,39 @@ function applyTheme(theme: Theme) {
     ?.setAttribute("content", theme === "dark" ? "#080d16" : "#f4f7fb");
 }
 
-export function ThemeToggle({ locale }: { locale: Locale }) {
-  const [theme, setTheme] = useState<Theme>("light");
+function getServerTheme(): Theme {
+  return "light";
+}
 
-  useEffect(() => {
-    setTheme(readTheme());
-  }, []);
+function subscribeToTheme(onStoreChange: () => void) {
+  function handleStorage(event: StorageEvent) {
+    if (event.key !== storageKey) return;
+    applyTheme(event.newValue === "dark" ? "dark" : "light");
+    onStoreChange();
+  }
+
+  window.addEventListener("storage", handleStorage);
+  window.addEventListener(themeChangeEvent, onStoreChange);
+  return () => {
+    window.removeEventListener("storage", handleStorage);
+    window.removeEventListener(themeChangeEvent, onStoreChange);
+  };
+}
+
+export function ThemeToggle({ locale }: { locale: Locale }) {
+  const theme = useSyncExternalStore(subscribeToTheme, readTheme, getServerTheme);
 
   function toggleTheme() {
     const nextTheme: Theme = theme === "dark" ? "light" : "dark";
     applyTheme(nextTheme);
-    setTheme(nextTheme);
 
     try {
-      localStorage.setItem("topgsm-theme", nextTheme);
+      localStorage.setItem(storageKey, nextTheme);
     } catch {
       // The visual preference still applies when storage is unavailable.
     }
+
+    window.dispatchEvent(new Event(themeChangeEvent));
   }
 
   const isDark = theme === "dark";

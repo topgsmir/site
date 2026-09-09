@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException
 } from "@nestjs/common";
-import { Prisma, payout_status } from "@prisma/client";
+import { Prisma, payout_status } from "../../prisma/client";
 import type { AppUser } from "@topgsm/shared-types";
 import { createHash } from "node:crypto";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -13,7 +13,7 @@ import type {
   SetPayoutStatusDto
 } from "./dto/payout.dto";
 
-const payoutSelect = Prisma.validator<Prisma.payout_ledgerSelect>()({
+const payoutSelect = {
   id: true,
   order_id: true,
   seller_id: true,
@@ -30,7 +30,7 @@ const payoutSelect = Prisma.validator<Prisma.payout_ledgerSelect>()({
   updated_at: true,
   seller: { select: { shop_name: true } },
   order: { select: { status: true } }
-});
+} satisfies Prisma.payout_ledgerSelect;
 
 type PayoutRecord = Prisma.payout_ledgerGetPayload<{ select: typeof payoutSelect }>;
 

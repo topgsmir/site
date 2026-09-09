@@ -169,7 +169,8 @@ export function SellerCoupons({ locale }: { locale: Locale }) {
   }, [c.loadError]);
 
   useEffect(() => {
-    void load();
+    const loadFrame = window.requestAnimationFrame(() => void load());
+    return () => window.cancelAnimationFrame(loadFrame);
   }, [load]);
 
   function update<K extends keyof CouponDraft>(key: K, value: CouponDraft[K]) {

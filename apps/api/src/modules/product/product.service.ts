@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException
 } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../../prisma/client";
 import { ConfigService } from "@nestjs/config";
 import { createHash, randomUUID } from "node:crypto";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -14,7 +14,6 @@ import type {
   AddSellerOffersDto,
   CreateProductDto,
   CreateProductOfferDto,
-  CreateProductVariantDto,
   ListProductsQueryDto,
   UpdateSellerOfferDto
 } from "./dto/product.dto";
@@ -53,7 +52,7 @@ const variantOptionSelect = {
   }
 } as const;
 
-const sellerListingSelect = Prisma.validator<Prisma.seller_listingsSelect>()({
+const sellerListingSelect = {
   id: true,
   status: true,
   created_at: true,
@@ -113,7 +112,7 @@ const sellerListingSelect = Prisma.validator<Prisma.seller_listingsSelect>()({
       }
     }
   }
-});
+} satisfies Prisma.seller_listingsSelect;
 
 type SellerListingRecord = Prisma.seller_listingsGetPayload<{
   select: typeof sellerListingSelect;

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { api } from "@/lib/api/client";
 import type { Locale } from "@/lib/i18n";
 import styles from "./BridgeWorkspace.module.css";
@@ -18,7 +18,7 @@ export function BridgeCheckout({ locale, product, signedInBuyer }: { locale: Loc
   const c=COPY[locale]; const offers=product.variants.flatMap((variant)=>variant.offers.map((offer)=>({...offer,variantName:variant.name})));
   const [offerId,setOfferId]=useState(offers[0]?.id ?? ""); const [quantity,setQuantity]=useState(product.bridge?.minimumQuantity ?? 1); const [fields,setFields]=useState<Record<string,string>>({});
   const [otp,setOtp]=useState(signedInBuyer); const [challenge,setChallenge]=useState(""); const [phone,setPhone]=useState(""); const [busy,setBusy]=useState(false); const [error,setError]=useState("");
-  const offer=offers.find((item)=>item.id===offerId); const total=useMemo(()=>offer ? (BigInt(offer.price)*BigInt(quantity)).toLocaleString(locale) : "—",[offer,quantity,locale]);
+  const offer=offers.find((item)=>item.id===offerId); const total=offer ? (BigInt(offer.price)*BigInt(quantity)).toLocaleString(locale) : "—";
   async function placeOrder() { if(!offer) return; const orderKey=crypto.randomUUID(); const order=await api.post<{id:string}>("/orders",{offerId:offer.id,quantity,bridgeFields:Object.entries(fields).map(([key,value])=>({key,value}))},{headers:{"Idempotency-Key":orderKey}}); const payment=await api.post<{paymentUrl:string}>("/payments/zarinpal",{orderId:order.data.id},{headers:{"Idempotency-Key":crypto.randomUUID()}}); window.location.assign(payment.data.paymentUrl); }
   async function submit(event:FormEvent<HTMLFormElement>) { event.preventDefault(); setBusy(true); setError(""); try { if(!otp){ const form=new FormData(event.currentTarget); if(!challenge){ const result=await api.post<{challengeId:string}>("/auth/otp/request",{phoneNumber:phone}); setChallenge(result.data.challengeId); setBusy(false); return; } await api.post("/auth/otp/verify",{phoneNumber:phone,challengeId:challenge,code:form.get("code"),fullName:form.get("fullName"),email:form.get("email")}); setOtp(true); } await placeOrder(); } catch { setError(c.error); setBusy(false); } }
   if(!product.bridge || !offer) return <div className={styles.shell}><p className={styles.empty}>{c.unavailable}</p></div>;

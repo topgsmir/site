@@ -1,0 +1,9 @@
+{
+  "name": "TopGSM Node 24 LTS",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "user": "node",
+  "install": "node scripts/worktree-bootstrap.mjs"
+}

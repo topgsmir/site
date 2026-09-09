@@ -3,11 +3,11 @@ import {
   ConflictException,
   Injectable
 } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../../prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import type { CreateCouponDto, ListCouponsQueryDto } from "./dto/coupon.dto";
 
-const couponSelect = Prisma.validator<Prisma.couponsSelect>()({
+const couponSelect = {
   id: true,
   code: true,
   discount_type: true,
@@ -21,7 +21,7 @@ const couponSelect = Prisma.validator<Prisma.couponsSelect>()({
   active: true,
   created_at: true,
   updated_at: true
-});
+} satisfies Prisma.couponsSelect;
 
 type CouponRecord = Prisma.couponsGetPayload<{ select: typeof couponSelect }>;
 

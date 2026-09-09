@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException
 } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../../prisma/client";
 import { randomUUID } from "node:crypto";
 import { PrismaService } from "../../prisma/prisma.service";
 import type {
@@ -17,7 +17,7 @@ const relatedProductSelect = {
   slug: true
 } as const;
 
-const blogSummarySelect = Prisma.validator<Prisma.blog_postsSelect>()({
+const blogSummarySelect = {
   id: true,
   title: true,
   slug: true,
@@ -27,7 +27,7 @@ const blogSummarySelect = Prisma.validator<Prisma.blog_postsSelect>()({
   created_at: true,
   updated_at: true,
   product: { select: relatedProductSelect }
-});
+} satisfies Prisma.blog_postsSelect;
 
 type BlogSummaryRecord = Prisma.blog_postsGetPayload<{
   select: typeof blogSummarySelect;
