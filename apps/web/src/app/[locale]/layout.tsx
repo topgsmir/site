@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import "@fontsource-variable/outfit";
 import "@fontsource-variable/vazirmatn";
 import "../globals.css";
+import "../blog.css";
 import { getDirection, isLocale, locales } from "@/lib/i18n";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { GoghdiWidget } from "@/components/goghdi/GoghdiWidget";

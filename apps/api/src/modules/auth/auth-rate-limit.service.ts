@@ -81,6 +81,10 @@ export class AuthRateLimitService {
     await this.consumeSensitiveMutation("payout", userId, clientIp, 20, 60);
   }
 
+  async consumeMediaUpload(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("media", userId, clientIp, 30, 90);
+  }
+
   async consumeOtp(phoneNumber: string, clientIp: string) {
     await this.consume({
       action: "otp",
@@ -101,7 +105,7 @@ export class AuthRateLimitService {
   }
 
   private async consumeSensitiveMutation(
-    action: "order" | "payout",
+    action: "order" | "payout" | "media",
     userId: string,
     clientIp: string,
     accountLimit: number,

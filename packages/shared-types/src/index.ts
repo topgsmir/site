@@ -102,6 +102,7 @@ export interface SellerListing {
     kind: ProductKind;
     type: ProductType;
     status: ProductStatus;
+    canEdit: boolean;
     createdAt: string;
     updatedAt: string;
   };
@@ -115,7 +116,89 @@ export interface SellerListingsPage {
   nextCursor: string | null;
 }
 
-export type BlogPostStatus = "draft" | "published" | "archived";
+export type BlogLocale = "fa" | "en" | "ar";
+export type BlogWorkflowState =
+  | "draft"
+  | "pending_review"
+  | "published"
+  | "rejected";
+
+export interface RichTextDocument {
+  type: "doc";
+  content?: RichTextNode[];
+}
+
+export interface RichTextNode {
+  type: string;
+  attrs?: Record<string, unknown>;
+  marks?: Array<{ type: string; attrs?: Record<string, unknown> }>;
+  content?: RichTextNode[];
+  text?: string;
+}
+
+export interface BlogTranslationDraft {
+  locale: BlogLocale;
+  title: string;
+  slug: string;
+  excerpt: string;
+  seoTitle: string;
+  seoDescription: string;
+  coverAltText: string;
+  content: RichTextDocument;
+}
+
+export interface BlogMediaVariant {
+  name: string;
+  url: string;
+  width: number;
+  height: number;
+}
+
+export interface BlogMediaAsset {
+  id: string;
+  kind: "cover" | "inline";
+  width: number;
+  height: number;
+  variants: BlogMediaVariant[];
+}
+
+export interface BlogTaxonomyTranslation {
+  locale: BlogLocale;
+  name: string;
+  slug: string;
+}
+
+export interface BlogTaxonomyTerm {
+  id: string;
+  translations: BlogTaxonomyTranslation[];
+}
+
+export interface RelatedProductSummary {
+  id: string;
+  title: string;
+  slug: string;
+  startingPrices: ProductStartingPrice[];
+}
+
+export interface ManagedBlogPost {
+  id: string;
+  state: BlogWorkflowState;
+  archivedAt: string | null;
+  seller: { id: string; shopName: string } | null;
+  revision: number;
+  optimisticVersion: number;
+  translations: BlogTranslationDraft[];
+  publicSlugs: Partial<Record<BlogLocale, string>>;
+  cover: BlogMediaAsset | null;
+  category: BlogTaxonomyTerm | null;
+  tags: BlogTaxonomyTerm[];
+  relatedProducts: RelatedProductSummary[];
+  moderationNote: string | null;
+  publishedAt: string | null;
+  updatedAt: string;
+}
+
+export type BlogPostStatus = BlogWorkflowState | "archived";
 
 export interface BlogPostSummary {
   id: string;
@@ -123,20 +206,44 @@ export interface BlogPostSummary {
   slug: string;
   excerpt: string | null;
   status: BlogPostStatus;
-  relatedProduct: { id: string; title: string; slug: string } | null;
+  locale?: BlogLocale;
+  cover?: BlogMediaAsset | null;
+  author?: { id: string | null; name: string; type: "editorial" | "seller" };
+  category?: { id: string; name: string; slug: string } | null;
+  tags?: Array<{ id: string; name: string; slug: string }>;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface PublicBlogPost extends BlogPostSummary {
+  content: RichTextDocument;
+  seoTitle: string;
+  seoDescription: string;
+  coverAltText: string;
+  author: { id: string | null; name: string; type: "editorial" | "seller" };
+  relatedProducts: RelatedProductSummary[];
+  alternateSlugs: Record<BlogLocale, string>;
+}
+
+export interface SellerBlogPost extends BlogPostSummary {
   content: string;
-  author: { id: string; shopName: string };
 }
 
 export interface BlogPostsPage {
   items: BlogPostSummary[];
   nextCursor: string | null;
+}
+
+export interface PublicBlogCollection {
+  id: string;
+  kind: "category" | "tag" | "seller";
+  name: string;
+  alternateSlugs: Record<BlogLocale, string>;
+}
+
+export interface BlogCollectionPage extends BlogPostsPage {
+  collection: PublicBlogCollection;
 }
 
 export type CouponDiscountType = "percentage" | "fixed";
@@ -166,6 +273,7 @@ export interface AdminProductSummary {
   id: string;
   title: string;
   slug: string;
+  description: string | null;
   category: string | null;
   kind: ProductKind;
   type: ProductType;
@@ -198,6 +306,7 @@ export type PayoutStatus =
 
 export type Role =
   | "platform-admin"
+  | "platform-staff"
   | "seller-admin"
   | "seller-staff"
   | "buyer";
@@ -208,7 +317,16 @@ export interface AppUser {
   email: string;
   role: Role;
   permissions?: VendorPermission[];
+  isPlatformOwner?: boolean;
+  platformPermissions?: PlatformPermission[];
 }
+
+export type PlatformPermission =
+  | "vendors_manage"
+  | "catalog_view"
+  | "orders_manage"
+  | "payouts_manage"
+  | "blog_manage";
 
 export type VendorPermission =
   | "products_manage"
@@ -289,6 +407,7 @@ export interface Vendor {
   status: VendorStatus;
   commission: number;
   holdbackRate: number;
+  blogReviewRequired: boolean;
   permissions: VendorPermission[];
   productCount: number;
   orderCount: number;

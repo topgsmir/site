@@ -22,6 +22,14 @@ export type AuthenticatedRequest = {
     membershipRole: "admin" | "staff";
     user: AppUser;
   };
+  blogActor?:
+    | { type: "platform"; user: AppUser }
+    | {
+        type: "seller";
+        sellerId: string;
+        reviewRequired: boolean;
+        user: AppUser;
+      };
 };
 
 @Injectable()

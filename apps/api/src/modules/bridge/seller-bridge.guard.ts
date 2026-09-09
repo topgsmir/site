@@ -26,4 +26,3 @@ export class SellerBridgeGuard implements CanActivate {
     return true;
   }
 }
-

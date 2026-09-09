@@ -10,13 +10,15 @@ import {
   Req,
   UseGuards
 } from "@nestjs/common";
-import type { AuthenticatedRequest } from "../auth/platform-admin.guard";
-import { PlatformAdminGuard } from "../auth/platform-admin.guard";
+import { PlatformAdminGuard, type AuthenticatedRequest } from "../auth/platform-admin.guard";
+import { PlatformPermissionGuard } from "../auth/platform-permission.guard";
+import { RequirePlatformPermission } from "../auth/platform-permission.decorator";
 import {
   AddSellerOffersDto,
   CreateProductDto,
   ListProductsQueryDto,
   ReviewProductDto,
+  UpdateProductDto,
   UpdateSellerOfferDto
 } from "./dto/product.dto";
 import { ProductService } from "./product.service";
@@ -44,9 +46,15 @@ export class ProductController {
   }
 
   @Get("admin")
-  @UseGuards(PlatformAdminGuard)
+  @RequirePlatformPermission("catalog_view")
+  @UseGuards(PlatformPermissionGuard)
   listForAdmin(@Query() query: ListProductsQueryDto) {
     return this.productService.listAdminProducts(query);
+  }
+
+  @Get("sitemap")
+  sitemap() {
+    return this.productService.sitemapProjection();
   }
 
   @Post()
@@ -57,6 +65,29 @@ export class ProductController {
   ) {
     return this.productService.createProduct(
       request.sellerContext!.sellerId,
+      body
+    );
+  }
+
+  @Patch("admin/:productId")
+  @UseGuards(PlatformAdminGuard)
+  updateForAdmin(
+    @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
+    @Body() body: UpdateProductDto
+  ) {
+    return this.productService.updateAdminProduct(productId, body);
+  }
+
+  @Patch(":productId")
+  @UseGuards(SellerProductsGuard)
+  update(
+    @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
+    @Body() body: UpdateProductDto,
+    @Req() request: AuthenticatedRequest
+  ) {
+    return this.productService.updateProduct(
+      request.sellerContext!.sellerId,
+      productId,
       body
     );
   }

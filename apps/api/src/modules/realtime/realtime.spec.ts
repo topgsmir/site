@@ -56,6 +56,22 @@ describe("realtime tenant isolation", () => {
     assert.deepEqual(client.rooms, ["user:user-1", "seller:seller-1:orders"]);
   });
 
+  it("does not join order or payout rooms for blog-only platform staff", async () => {
+    const auth = {
+      getUserFromToken: async () => ({
+        id: "editor-1",
+        fullName: "Editor",
+        email: "editor@example.com",
+        role: "platform-staff",
+        platformPermissions: ["blog_manage"]
+      })
+    } as unknown as AuthService;
+    const gateway = new RealtimeGateway(auth, {} as PrismaService);
+    const client = socketFor({ authorization: "Bearer opaque" });
+    await gateway.handleConnection(client.socket);
+    assert.deepEqual(client.rooms, ["user:editor-1"]);
+  });
+
   it("emits order events only to buyer, seller, and platform rooms", () => {
     const emissions: Array<{ room: string; event: string }> = [];
     const gateway = new RealtimeGateway({} as AuthService, {} as PrismaService);
@@ -72,7 +88,7 @@ describe("realtime tenant isolation", () => {
     assert.deepEqual(emissions, [
       { room: "user:buyer-1", event: "order.status.updated" },
       { room: "seller:seller-1:orders", event: "order.status.updated" },
-      { room: "platform-admin", event: "order.status.updated" }
+      { room: "platform:orders", event: "order.status.updated" }
     ]);
     assert.ok(emissions.every((entry) => entry.room !== "global"));
   });

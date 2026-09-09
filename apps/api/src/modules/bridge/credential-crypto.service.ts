@@ -61,4 +61,3 @@ export class CredentialCryptoService {
     return result;
   }
 }
-

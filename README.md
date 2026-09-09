@@ -60,11 +60,10 @@ and reruns the deterministic bootstrap. Secrets belong in ignored local env
 files or the environment's secret manager, never in committed configuration.
 
 The API development command applies pending migrations and runs an idempotent
-local seed. It creates `admin` / `admin` only when the admin account is missing,
-so database resets do not remove local dashboard access. This development
-credential must never be used in a deployed environment. Production seeding is
-disabled unless all `BOOTSTRAP_ADMIN_*` variables are explicitly configured,
-and it rejects passwords shorter than 12 characters.
+owner seed. No default credential is created. To bootstrap the protected platform
+owner, configure all four `BOOTSTRAP_ADMIN_*` variables; passwords shorter than
+12 characters are rejected. Once the owner exists, remove those bootstrap values
+from the runtime environment.
 
 ## Payment model
 

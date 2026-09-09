@@ -6,6 +6,7 @@ import { AuthRateLimitService } from "./auth-rate-limit.service";
 import { AuthenticatedGuard } from "./authenticated.guard";
 import { BrowserMutationGuard } from "./browser-mutation.guard";
 import { PlatformAdminGuard } from "./platform-admin.guard";
+import { PlatformPermissionGuard } from "./platform-permission.guard";
 import { RequestAuthenticationService } from "./request-authentication.service";
 
 @Module({
@@ -16,6 +17,7 @@ import { RequestAuthenticationService } from "./request-authentication.service";
     AuthenticatedGuard,
     BrowserMutationGuard,
     PlatformAdminGuard,
+    PlatformPermissionGuard,
     RequestAuthenticationService,
     { provide: APP_GUARD, useExisting: BrowserMutationGuard }
   ],
@@ -24,6 +26,7 @@ import { RequestAuthenticationService } from "./request-authentication.service";
     AuthRateLimitService,
     AuthenticatedGuard,
     PlatformAdminGuard,
+    PlatformPermissionGuard,
     RequestAuthenticationService
   ]
 })

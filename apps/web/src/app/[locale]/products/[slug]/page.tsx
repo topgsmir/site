@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BridgeCheckout } from "@/components/bridge/BridgeCheckout";
 import { getCurrentUser } from "@/lib/auth/server";
-import { getDictionary, isLocale, locales, type Locale } from "@/lib/i18n";
+import { getDictionary, isLocale, type Locale } from "@/lib/i18n";
 import { ProductPage } from "./ProductPage";
 import { getPublicProduct, type PublicProduct } from "./product.server";
 
@@ -21,8 +21,8 @@ const openGraphLocales: Record<Locale, string> = {
   ar: "ar_SA"
 };
 
-function absoluteProductUrl(locale: Locale, slug: string) {
-  return `${SITE_URL}/${locale}/products/${encodeURIComponent(slug)}`;
+function canonicalProductUrl(slug: string) {
+  return `${SITE_URL}/fa/products/${encodeURIComponent(slug)}`;
 }
 
 function compactDescription(product: PublicProduct, locale: Locale) {
@@ -48,27 +48,26 @@ export async function generateMetadata({ params }: ProductRouteProps): Promise<M
   }
 
   const description = compactDescription(product, localeParam);
-  const canonical = absoluteProductUrl(localeParam, product.slug);
-  const languages = Object.fromEntries([
-    ...locales.map((locale) => [locale, absoluteProductUrl(locale, product.slug)]),
-    ["x-default", absoluteProductUrl("fa", product.slug)]
-  ]);
+  const canonical = canonicalProductUrl(product.slug);
+  const indexable = localeParam === "fa";
 
   return {
     title: product.title,
     description,
-    keywords: [product.title, product.category, product.type === "bridge" ? "Bridge" : getDictionary(localeParam).product[product.type], "Top GSM"].filter(
-      (value): value is string => Boolean(value)
-    ),
-    alternates: { canonical, languages },
+    keywords: [
+      product.title,
+      product.category,
+      product.type === "bridge" ? "Bridge" : getDictionary(localeParam).product[product.type],
+      "Top GSM"
+    ].filter((value): value is string => Boolean(value)),
+    alternates: { canonical },
     openGraph: {
       type: "website",
       url: canonical,
       siteName: "Top GSM",
       title: product.title,
       description,
-      locale: openGraphLocales[localeParam],
-      alternateLocale: locales.filter((locale) => locale !== localeParam).map((locale) => openGraphLocales[locale])
+      locale: openGraphLocales[localeParam]
     },
     twitter: {
       card: "summary_large_image",
@@ -76,10 +75,10 @@ export async function generateMetadata({ params }: ProductRouteProps): Promise<M
       description
     },
     robots: {
-      index: true,
+      index: indexable,
       follow: true,
       googleBot: {
-        index: true,
+        index: indexable,
         follow: true,
         "max-image-preview": "large",
         "max-snippet": -1,
@@ -90,7 +89,7 @@ export async function generateMetadata({ params }: ProductRouteProps): Promise<M
 }
 
 function productJsonLd(product: PublicProduct, locale: Locale) {
-  const url = absoluteProductUrl(locale, product.slug);
+  const url = canonicalProductUrl(product.slug);
   const description = compactDescription(product, locale);
   const offers = product.variants.flatMap((variant) =>
     variant.offers.map((offer) => ({

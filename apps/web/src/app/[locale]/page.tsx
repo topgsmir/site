@@ -29,35 +29,16 @@ const metadataByLocale = {
   }
 } as const;
 
-const fallbackProducts: HomepageProduct[] = [
-  { id: "iphone-x-battery", slug: "iphone-x-battery-connector-resistance", title: "مقادیر مقاومت کانکتور باتری iPhone X", type: "digital", category: "مقادیر مقاومت", price: 89000, currency: "IRR" },
-  { id: "xiaomi-mi-10s", slug: "xiaomi-mi-10s-china-to-global", title: "فایل کانورت چین به گلوبال Xiaomi Mi 10S", type: "digital", category: "فایل فلش", price: 149000, currency: "IRR" },
-  { id: "infinix-hot-20i", slug: "infinix-hot-20i-light-ways", title: "مسیر بک‌لایت Infinix Hot 20i X665C", type: "digital", category: "مسیر برد", price: 59000, currency: "IRR" },
-  { id: "infinix-hot-40", slug: "infinix-hot-40-pro-light-ways", title: "مسیر نور صفحه Infinix Hot 40 Pro X6837", type: "digital", category: "مسیر برد", price: 59000, currency: "IRR" },
-  { id: "cypher-c20-frp", slug: "cypher-c20-frp-removal", title: "آموزش حذف FRP گوشی Cypher C20", type: "digital", category: "آموزش FRP", price: 119000, currency: "IRR" },
-  { id: "samsung-unlock", slug: "samsung-network-unlock", title: "آنلاک شبکه سامسونگ سریع و آنلاین", type: "service", category: "خدمات سامسونگ", price: 490000, currency: "IRR" },
-  { id: "oxygen", slug: "oxygen-forensic-detective", title: "فعال‌سازی Oxygen Forensic Detective", type: "service", category: "لایسنس نرم‌افزار", price: 1890000, currency: "IRR" },
-  { id: "ufed", slug: "ufed-license-activation", title: "فعال‌سازی و تمدید لایسنس UFED", type: "service", category: "لایسنس و باکس", price: 2490000, currency: "IRR" }
-];
-
-const fallbackAgents: HomepageAgent[] = [
-  { id: "nima-rasouli", name: "نیما رسولی", specialty: "کارشناس شیائومی", rating: 4.9, phone: "09925739310", available: true },
-  { id: "ali-abdi", name: "علی عبدی", specialty: "کارشناس سامسونگ", rating: 4.8, phone: "09925739311", available: true },
-  { id: "hesam-amini", name: "حسام امینی", specialty: "کارشناس عمومی", rating: 4.8, phone: "09925739313", available: false },
-  { id: "hossein-kari", name: "حسین کاری", specialty: "متخصص برندهای چینی", rating: 4.7, phone: "09925739314", available: true },
-  { id: "reza-rajabdoost", name: "رضا رجب‌دوست", specialty: "کارشناس سامسونگ", rating: 4.9, phone: "09925739320", available: true }
-];
-
 type HomePageProps = { params: Promise<{ locale: string }> };
 
-async function fetchCollection<T>(path: string, fallback: T[]): Promise<T[]> {
+async function fetchCollection<T>(path: string): Promise<T[]> {
   try {
     const response = await fetch(`${SERVER_API_BASE}${path}`, { next: { revalidate: 60 } });
-    if (!response.ok) return fallback;
+    if (!response.ok) return [];
     const value: unknown = await response.json();
-    return Array.isArray(value) && value.length ? (value as T[]) : fallback;
+    return Array.isArray(value) ? (value as T[]) : [];
   } catch {
-    return fallback;
+    return [];
   }
 }
 
@@ -99,8 +80,8 @@ export default async function HomePage({ params }: HomePageProps) {
   if (!isLocale(locale)) notFound();
 
   const [products, agents, user] = await Promise.all([
-    fetchCollection<HomepageProduct>("/products", fallbackProducts),
-    fetchCollection<HomepageAgent>("/seller/agents", fallbackAgents),
+    fetchCollection<HomepageProduct>("/products"),
+    fetchCollection<HomepageAgent>("/seller/agents"),
     getCurrentUser()
   ]);
 
@@ -120,12 +101,7 @@ export default async function HomePage({ params }: HomePageProps) {
         name: "Top GSM",
         url: siteUrl,
         inLanguage: locale,
-        publisher: { "@id": `${siteUrl}/#organization` },
-        potentialAction: {
-          "@type": "SearchAction",
-          target: `${siteUrl}/${locale}/search?q={search_term_string}`,
-          "query-input": "required name=search_term_string"
-        }
+        publisher: { "@id": `${siteUrl}/#organization` }
       },
       {
         "@type": "ItemList",

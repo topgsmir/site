@@ -15,6 +15,7 @@ import type {
   CreateProductDto,
   CreateProductOfferDto,
   ListProductsQueryDto,
+  UpdateProductDto,
   UpdateSellerOfferDto
 } from "./dto/product.dto";
 
@@ -54,6 +55,7 @@ const variantOptionSelect = {
 
 const sellerListingSelect = {
   id: true,
+  seller_id: true,
   status: true,
   created_at: true,
   updated_at: true,
@@ -69,6 +71,7 @@ const sellerListingSelect = {
       status: true,
       created_at: true,
       updated_at: true,
+      created_by_seller_id: true,
       bridge_binding: {
         select: {
           mode: true,
@@ -114,6 +117,24 @@ const sellerListingSelect = {
   }
 } satisfies Prisma.seller_listingsSelect;
 
+const adminProductSelect = {
+  id: true,
+  title: true,
+  slug: true,
+  description: true,
+  category: true,
+  kind: true,
+  type: true,
+  status: true,
+  created_at: true,
+  updated_at: true,
+  _count: { select: { listings: true } }
+} satisfies Prisma.productsSelect;
+
+type AdminProductRecord = Prisma.productsGetPayload<{
+  select: typeof adminProductSelect;
+}>;
+
 type SellerListingRecord = Prisma.seller_listingsGetPayload<{
   select: typeof sellerListingSelect;
 }>;
@@ -150,6 +171,17 @@ type ProductPlan = {
 @Injectable()
 export class ProductService {
   constructor(private readonly prisma: PrismaService, private readonly config: ConfigService) {}
+
+  sitemapProjection() {
+    return this.prisma.products.findMany({
+      where: {
+        status: "active",
+        variants: { some: { offers: { some: activeOfferWhere } } }
+      },
+      orderBy: [{ updated_at: "desc" }, { id: "desc" }],
+      select: { slug: true, updated_at: true }
+    });
+  }
 
   async listPublic(input: ListProductsQueryDto) {
     const products = await this.prisma.products.findMany({
@@ -389,37 +421,36 @@ export class ProductService {
       ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
       take: input.limit + 1,
       orderBy: [{ updated_at: "desc" }, { id: "desc" }],
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        category: true,
-        kind: true,
-        type: true,
-        status: true,
-        created_at: true,
-        updated_at: true,
-        _count: { select: { listings: true } }
-      }
+      select: adminProductSelect
     });
     const hasMore = products.length > input.limit;
     const page = hasMore ? products.slice(0, input.limit) : products;
 
     return {
-      items: page.map((product) => ({
-        id: product.id,
-        title: product.title,
-        slug: product.slug,
-        category: product.category,
-        kind: product.kind,
-        type: product.type,
-        status: product.status,
-        listingCount: product._count.listings,
-        createdAt: product.created_at.toISOString(),
-        updatedAt: product.updated_at.toISOString()
-      })),
+      items: page.map((product) => this.toAdminProduct(product)),
       nextCursor: hasMore ? page.at(-1)?.id ?? null : null
     };
+  }
+
+  async updateAdminProduct(productId: string, input: UpdateProductDto) {
+    this.assertProductUpdate(input);
+
+    try {
+      const product = await this.prisma.products.update({
+        where: { id: productId },
+        data: this.productUpdateData(input),
+        select: adminProductSelect
+      });
+      return this.toAdminProduct(product);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2025"
+      ) {
+        throw new NotFoundException("Product was not found");
+      }
+      throw error;
+    }
   }
 
   async createProduct(sellerId: string, input: CreateProductDto) {
@@ -538,6 +569,42 @@ export class ProductService {
     }
 
     return this.getSellerListingByProduct(sellerId, plan.productId);
+  }
+
+  async updateProduct(
+    sellerId: string,
+    productId: string,
+    input: UpdateProductDto
+  ) {
+    this.assertProductUpdate(input);
+
+    const seller = await this.prisma.sellers.findUnique({
+      where: { id: sellerId },
+      select: { permissions: { select: { permission: true } } }
+    });
+    if (!seller) throw new NotFoundException("Seller was not found");
+
+    const product = await this.prisma.products.findFirst({
+      where: { id: productId, created_by_seller_id: sellerId },
+      select: { id: true, status: true }
+    });
+    if (!product) throw new NotFoundException("Seller product was not found");
+
+    const mayPublish = seller.permissions.some((item) => item.permission === "products_publish");
+    const requestedStatus = input.status;
+    const nextStatus = requestedStatus === undefined
+      ? product.status === "active" && !mayPublish ? "pending_review" : undefined
+      : requestedStatus === "active" && !mayPublish ? "pending_review" : requestedStatus;
+
+    await this.prisma.products.update({
+      where: { id: product.id },
+      data: {
+        ...this.productUpdateData(input),
+        ...(nextStatus === undefined ? {} : { status: nextStatus })
+      }
+    });
+
+    return this.getSellerListingByProduct(sellerId, product.id);
   }
 
   async reviewProduct(
@@ -1002,6 +1069,7 @@ export class ProductService {
         kind: listing.product.kind,
         type: listing.product.type,
         status: listing.product.status,
+        canEdit: listing.product.created_by_seller_id === listing.seller_id,
         createdAt: listing.product.created_at.toISOString(),
         updatedAt: listing.product.updated_at.toISOString(),
         ...(listing.product.bridge_binding
@@ -1082,6 +1150,41 @@ export class ProductService {
       }))
       .sort((left, right) => left.position - right.position)
       .map(({ name, value }) => ({ name, value }));
+  }
+
+  private toAdminProduct(product: AdminProductRecord) {
+    return {
+      id: product.id,
+      title: product.title,
+      slug: product.slug,
+      description: product.description,
+      category: product.category,
+      kind: product.kind,
+      type: product.type,
+      status: product.status,
+      listingCount: product._count.listings,
+      createdAt: product.created_at.toISOString(),
+      updatedAt: product.updated_at.toISOString()
+    };
+  }
+
+  private assertProductUpdate(input: UpdateProductDto) {
+    if (!Object.values(input).some((value) => value !== undefined)) {
+      throw new BadRequestException("At least one product field is required");
+    }
+  }
+
+  private productUpdateData(input: UpdateProductDto): Prisma.productsUpdateInput {
+    return {
+      ...(input.title === undefined ? {} : { title: this.clean(input.title) }),
+      ...(input.description === undefined
+        ? {}
+        : { description: this.cleanOptional(input.description ?? undefined) }),
+      ...(input.category === undefined
+        ? {}
+        : { category: this.cleanOptional(input.category ?? undefined) }),
+      ...(input.status === undefined ? {} : { status: input.status })
+    };
   }
 
   private rethrowWriteError(error: unknown): never {

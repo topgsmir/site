@@ -137,7 +137,7 @@ export class PayoutService {
     input: SetPayoutStatusDto,
     idempotencyKey: string
   ) {
-    if (actor.role !== "platform-admin") {
+    if (!this.hasPlatformPayoutPermission(actor)) {
       throw new ForbiddenException("Platform administrator access is required");
     }
     const requestHash = this.hash({ payoutId, status: input.status });
@@ -256,7 +256,7 @@ export class PayoutService {
   }
 
   private async sellerScope(actor: AppUser) {
-    if (actor.role === "platform-admin") return null;
+    if (this.hasPlatformPayoutPermission(actor)) return null;
     if (actor.role === "buyer") throw new ForbiddenException("Payout access is not allowed");
     return this.requiredSeller(actor);
   }
@@ -286,6 +286,14 @@ export class PayoutService {
       (from === "requested" && (to === "approved" || to === "disputed")) ||
       (from === "approved" && (to === "settled" || to === "disputed"));
     if (!allowed) throw new ConflictException(`Transition from ${from} to ${to} is not allowed`);
+  }
+
+  private hasPlatformPayoutPermission(actor: AppUser) {
+    return (
+      actor.role === "platform-admin" ||
+      (actor.role === "platform-staff" &&
+        actor.platformPermissions?.includes("payouts_manage") === true)
+    );
   }
 
   private async serializable<T>(

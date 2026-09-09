@@ -12,4 +12,3 @@ export class VerifyOtpDto extends RequestOtpDto {
   @IsOptional() @IsString() @MinLength(2) @MaxLength(120) fullName?: string;
   @IsOptional() @IsEmail() @MaxLength(254) email?: string;
 }
-

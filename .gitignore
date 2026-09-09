@@ -17,3 +17,4 @@ apps/api/src/generated/
 tmp
 .playwright-mcp
 artifacts
+.pnpm-store/

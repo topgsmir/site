@@ -1,3 +1,5 @@
+import type { Route } from "next";
+import Link from "next/link";
 import type { Locale } from "@/lib/i18n";
 
 const SITE_URL = (
@@ -23,5 +25,17 @@ export function ProductPublicUrl({
   const path = productPublicPath(locale, slug);
   const url = `${SITE_URL}${path}`;
 
-  return <span className={className} dir="ltr" title={label}>{url}</span>;
+  return (
+    <Link
+      className={className}
+      href={path as Route}
+      target="_blank"
+      rel="noopener noreferrer"
+      dir="ltr"
+      title={label}
+      aria-label={label}
+    >
+      {url}
+    </Link>
+  );
 }

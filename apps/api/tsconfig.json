@@ -11,6 +11,7 @@
     "skipLibCheck": true,
     "sourceMap": true,
     "target": "ES2022",
+    "types": ["node", "multer"],
     "paths": {
       "@/*": ["./src/*"]
     }

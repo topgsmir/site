@@ -19,4 +19,3 @@ export class BridgeProviderService {
     throw new BadRequestException("Unsupported Bridge provider");
   }
 }
-

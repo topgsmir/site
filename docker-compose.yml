@@ -24,6 +24,9 @@ services:
       API_HOST: 0.0.0.0
       API_PORT: 4000
       DATABASE_URL: postgresql://topgsm:topgsm@postgres:5432/topgsm
+      MEDIA_ROOT: /var/lib/topgsm/media
+    volumes:
+      - topgsm-media-data:/var/lib/topgsm/media
     ports:
       - "127.0.0.1:4000:4000"
     command: ["sh", "-c", "pnpm -C apps/api prisma:migrate && pnpm -C apps/api prisma:seed:dev && pnpm -C apps/api start:prod"]
@@ -46,3 +49,4 @@ services:
 
 volumes:
   topgsm-postgres-data:
+  topgsm-media-data:

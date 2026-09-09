@@ -60,6 +60,7 @@ type LandingCopy = {
   availableText: string;
   unavailableText: string;
   callText: string;
+  emptyExperts: string;
   productsTitle: string;
   productsBody: string;
   viewAll: string;
@@ -92,17 +93,17 @@ const copyByLocale: Record<Locale, LandingCopy> = {
       { label: "لایسنس و اکتیو باکس", href: "#services" },
       { label: "کارشناسان", href: "#agents" }
     ],
-    heroKicker: "از سال ۱۳۹۳، کنار تعمیرکاران ایران",
+    heroKicker: "برای تعمیرکاران موبایل ایران",
     heroTitleLead: "هر چیزی که برای تعمیر موبایل لازم دارید؛",
     heroTitleAccent: "یک‌جا و مطمئن.",
     heroBody: "فایل تست‌شده، آموزش کاربردی، لایسنس ابزار و پشتیبانی آنلاین را سریع پیدا کنید و مستقیم از متخصص همان حوزه کمک بگیرید.",
     primaryAction: "جست‌وجوی محصولات",
     secondaryAction: "درخواست پشتیبانی",
     liveDesk: "میز پشتیبانی آنلاین",
-    responseLabel: "میانگین شروع پاسخ",
-    responseValue: "کمتر از ۵ دقیقه",
-    completedLabel: "وضعیت سرویس‌ها",
-    completedValue: "فعال و در دسترس",
+    responseLabel: "مسیر پشتیبانی",
+    responseValue: "بر اساس نوع درخواست",
+    completedLabel: "حوزه خدمات",
+    completedValue: "فایل، آموزش و سرویس",
     servicesTitle: "مسیر کوتاه‌تر تا حل مشکل",
     servicesBody: "سرویس موردنیازتان را انتخاب کنید؛ ادامه کار را متخصص همان بخش پیگیری می‌کند.",
     serviceCards: [
@@ -115,6 +116,7 @@ const copyByLocale: Record<Locale, LandingCopy> = {
     availableText: "آنلاین",
     unavailableText: "در حال پاسخ‌گویی",
     callText: "تماس با کارشناس",
+    emptyExperts: "هنوز کارشناسی برای نمایش منتشر نشده است.",
     productsTitle: "تازه‌ترین فایل‌ها و آموزش‌ها",
     productsBody: "محصولات این بخش مستقیم از فروشگاه بارگذاری می‌شوند و همیشه تازه‌اند.",
     viewAll: "مشاهده همه محصولات",
@@ -122,10 +124,10 @@ const copyByLocale: Record<Locale, LandingCopy> = {
     whyTitle: "برای تعمیرکار ساخته شده، نه برای پیچیده‌تر کردن کار.",
     whyWords: ["فایل‌های", "کنترل‌شده،", "پاسخ‌گویی", "تخصصی", "و", "پیگیری", "شفاف؛", "تا", "وقت", "شما", "صرف", "تعمیر", "شود،", "نه", "جست‌وجو."],
     trust: [
-      { value: "+۱۲", description: "سال تجربه در بازار تعمیرات موبایل" },
-      { value: "+۲۰", description: "کارشناس نرم‌افزار، سخت‌افزار و فروش" },
-      { value: "۲۴/۷", description: "ثبت سفارش و دسترسی به فایل‌ها" },
-      { value: "QC", description: "کنترل کیفیت سرویس‌های حساس" }
+      { value: "فایل", description: "محتوای تخصصی برای مدل و مسئله مشخص" },
+      { value: "خدمت", description: "مسیر روشن برای ثبت و پیگیری درخواست" },
+      { value: "حساب", description: "دسترسی به سفارش‌ها و فایل‌های خریداری‌شده" },
+      { value: "فروشنده", description: "مدیریت محصول و محتوای تخصصی" }
     ],
     ctaTitle: "مشکل دستگاه را بنویسید؛ مسیر حل را پیدا می‌کنیم.",
     ctaBody: "اگر نمی‌دانید کدام فایل یا سرویس مناسب است، قبل از خرید از کارشناس بپرسید.",
@@ -150,17 +152,17 @@ const copyByLocale: Record<Locale, LandingCopy> = {
       { label: "Licenses", href: "#services" },
       { label: "Specialists", href: "#agents" }
     ],
-    heroKicker: "Supporting repair professionals since 2014",
+    heroKicker: "Built for mobile repair professionals",
     heroTitleLead: "Everything mobile repair needs,",
     heroTitleAccent: "in one trusted place.",
     heroBody: "Find verified files, practical training, tool licenses, and direct support from the right specialist.",
     primaryAction: "Search products",
     secondaryAction: "Get support",
     liveDesk: "Live support desk",
-    responseLabel: "Average first response",
-    responseValue: "Under 5 minutes",
-    completedLabel: "Service status",
-    completedValue: "Online and available",
+    responseLabel: "Support route",
+    responseValue: "Matched to the request",
+    completedLabel: "Coverage",
+    completedValue: "Files, training, services",
     servicesTitle: "A shorter route to the fix",
     servicesBody: "Choose the service you need and a specialist in that field will take it from there.",
     serviceCards: [
@@ -173,6 +175,7 @@ const copyByLocale: Record<Locale, LandingCopy> = {
     availableText: "Online",
     unavailableText: "Currently assisting",
     callText: "Call specialist",
+    emptyExperts: "No specialist profiles have been published yet.",
     productsTitle: "Latest files and training",
     productsBody: "This collection is loaded directly from the marketplace and stays current.",
     viewAll: "View all products",
@@ -180,10 +183,10 @@ const copyByLocale: Record<Locale, LandingCopy> = {
     whyTitle: "Built for repair professionals, not to add more friction.",
     whyWords: ["Verified", "files,", "specialist", "answers,", "and", "clear", "tracking", "keep", "your", "time", "focused", "on", "the", "repair."],
     trust: [
-      { value: "12+", description: "years in the mobile repair market" },
-      { value: "20+", description: "software, hardware, and sales specialists" },
-      { value: "24/7", description: "ordering and file access" },
-      { value: "QC", description: "quality checks for sensitive services" }
+      { value: "Files", description: "specialist content for a specific model and issue" },
+      { value: "Service", description: "a clear route to submit and track a request" },
+      { value: "Account", description: "access to orders and purchased downloads" },
+      { value: "Seller", description: "tools for products and specialist publishing" }
     ],
     ctaTitle: "Describe the device issue. We will find the right route.",
     ctaBody: "If you are unsure which file or service fits, ask a specialist before buying.",
@@ -208,17 +211,17 @@ const copyByLocale: Record<Locale, LandingCopy> = {
       { label: "التراخيص", href: "#services" },
       { label: "المتخصصون", href: "#agents" }
     ],
-    heroKicker: "مع متخصصي الصيانة منذ 2014",
+    heroKicker: "مصمم لمتخصصي صيانة الجوال",
     heroTitleLead: "كل ما تحتاجه لصيانة الجوال،",
     heroTitleAccent: "في مكان واحد موثوق.",
     heroBody: "اعثر على ملفات موثوقة وتدريب عملي وتراخيص أدوات ودعم مباشر من المتخصص المناسب.",
     primaryAction: "ابحث في المنتجات",
     secondaryAction: "اطلب الدعم",
     liveDesk: "مكتب الدعم المباشر",
-    responseLabel: "متوسط بدء الرد",
-    responseValue: "أقل من 5 دقائق",
-    completedLabel: "حالة الخدمات",
-    completedValue: "متاحة الآن",
+    responseLabel: "مسار الدعم",
+    responseValue: "حسب نوع الطلب",
+    completedLabel: "مجال الخدمات",
+    completedValue: "ملفات وتدريب وخدمات",
     servicesTitle: "طريق أقصر إلى الحل",
     servicesBody: "اختر الخدمة التي تحتاجها وسيتابعها متخصص القسم.",
     serviceCards: [
@@ -231,6 +234,7 @@ const copyByLocale: Record<Locale, LandingCopy> = {
     availableText: "متصل",
     unavailableText: "يجيب على طلب آخر",
     callText: "اتصل بالمتخصص",
+    emptyExperts: "لم يُنشر أي ملف لمتخصص بعد.",
     productsTitle: "أحدث الملفات والدروس",
     productsBody: "تُحمّل هذه المجموعة مباشرة من المتجر وتبقى محدثة.",
     viewAll: "عرض كل المنتجات",
@@ -238,10 +242,10 @@ const copyByLocale: Record<Locale, LandingCopy> = {
     whyTitle: "مصمم للمتخصص، لا لتعقيد عمله.",
     whyWords: ["ملفات", "موثوقة،", "إجابات", "متخصصة", "ومتابعة", "واضحة", "لتبقى", "مركزاً", "على", "الصيانة."],
     trust: [
-      { value: "+12", description: "عاماً في سوق صيانة الجوال" },
-      { value: "+20", description: "متخصصاً في البرمجيات والعتاد والمبيعات" },
-      { value: "24/7", description: "للطلب والوصول إلى الملفات" },
-      { value: "QC", description: "لفحص جودة الخدمات الحساسة" }
+      { value: "ملفات", description: "محتوى متخصص لموديل ومشكلة محددين" },
+      { value: "خدمة", description: "مسار واضح لتسجيل الطلب ومتابعته" },
+      { value: "حساب", description: "الوصول إلى الطلبات والملفات المشتراة" },
+      { value: "بائع", description: "أدوات لإدارة المنتجات والمحتوى المتخصص" }
     ],
     ctaTitle: "اكتب مشكلة الجهاز وسنجد مسار الحل.",
     ctaBody: "إذا لم تعرف الملف أو الخدمة المناسبة، اسأل المتخصص قبل الشراء.",
@@ -255,13 +259,6 @@ const copyByLocale: Record<Locale, LandingCopy> = {
 };
 
 const trustedTools = ["OXYGEN", "UFED", "MD-NEXT", "SAMSUNG", "XIAOMI", "APPLE", "MEDIATEK"];
-
-const fallbackAgents: HomepageAgent[] = [
-  { id: "nima", name: "نیما رسولی", specialty: "کارشناس شیائومی", rating: 4.9, available: true },
-  { id: "ali", name: "علی عبدی", specialty: "کارشناس سامسونگ", rating: 4.8, available: true },
-  { id: "hesam", name: "حسام امینی", specialty: "کارشناس عمومی", rating: 4.8, available: false },
-  { id: "hossein", name: "حسین کاری", specialty: "برندهای چینی", rating: 4.7, available: true }
-];
 
 function productTypeLabel(type: HomepageProduct["type"], locale: Locale) {
   const labels = {
@@ -299,7 +296,7 @@ function LanguageSwitcher({ locale }: { locale: Locale }) {
 
 export function LandingPage({ locale, products, agents, accountHref }: LandingPageProps) {
   const copy = copyByLocale[locale];
-  const visibleAgents = agents.length ? agents.slice(0, 6) : fallbackAgents;
+  const visibleAgents = agents.slice(0, 6);
   const visibleProducts = products.slice(0, 8);
 
   return (
@@ -333,11 +330,7 @@ export function LandingPage({ locale, products, agents, accountHref }: LandingPa
               <span className="hero-title-accent"><span className="inline-logo" aria-hidden="true"><Image src="/brand/topgsm-logo.jpg" alt="" width={76} height={34} priority /></span>{copy.heroTitleAccent}</span>
             </h1>
             <p className="hero-body" data-hero-reveal>{copy.heroBody}</p>
-            <form className="hero-search" role="search" action={`/${locale}/search`} method="get" data-hero-reveal>
-              <label className="sr-only" htmlFor="home-search">{copy.searchLabel}</label>
-              <input id="home-search" name="q" type="search" placeholder={copy.searchPlaceholder} autoComplete="off" />
-              <button type="submit">{copy.primaryAction}</button>
-            </form>
+            <a className="hero-catalog-link" href="#products" data-hero-reveal>{copy.primaryAction}<span aria-hidden="true">↙</span></a>
             <div className="hero-actions" data-hero-reveal>
               <a className="text-action" href="#support">{copy.secondaryAction}<span aria-hidden="true">←</span></a>
               <span className="service-pulse"><i aria-hidden="true" />{copy.completedValue}</span>
@@ -376,7 +369,7 @@ export function LandingPage({ locale, products, agents, accountHref }: LandingPa
 
         <section className="chapter experts-section" id="agents" aria-labelledby="agents-title">
           <div className="section-intro section-intro-split"><h2 id="agents-title">{copy.expertsTitle}</h2><p>{copy.expertsBody}</p></div>
-          <div className="expert-stack">
+          {visibleAgents.length ? <div className="expert-stack">
             {visibleAgents.map((agent, index) => (
               <article className="expert-card" data-stack-card key={agent.id} style={{ "--stack-index": index } as CSSProperties}>
                 <div className="expert-avatar" aria-hidden="true"><span>{initials(agent.name)}</span></div>
@@ -388,7 +381,7 @@ export function LandingPage({ locale, products, agents, accountHref }: LandingPa
                 {agent.phone ? <a className="expert-call" href={`tel:${agent.phone}`}>{copy.callText}</a> : null}
               </article>
             ))}
-          </div>
+          </div> : <p className="empty-state">{copy.emptyExperts}</p>}
         </section>
 
         <section className="chapter products-section" id="products" aria-labelledby="products-title">

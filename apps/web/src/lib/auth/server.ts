@@ -3,16 +3,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SERVER_API_BASE } from "@/lib/api/server";
 import type { Locale } from "@/lib/i18n";
-import type { VendorPermission } from "@topgsm/shared-types";
-
-type Role = "platform-admin" | "seller-admin" | "seller-staff" | "buyer";
-export type AppUser = {
-  id: string;
-  fullName: string;
-  email: string;
-  role: Role;
-  permissions?: VendorPermission[];
-};
+import type { AppUser, Role } from "@topgsm/shared-types";
+export type { AppUser } from "@topgsm/shared-types";
 
 export async function getCurrentUser(): Promise<AppUser | null> {
   const cookieHeader = (await cookies()).toString();
@@ -35,6 +27,12 @@ export async function getCurrentUser(): Promise<AppUser | null> {
 
 export function dashboardFor(user: AppUser, locale: Locale) {
   if (user.role === "platform-admin") return `/${locale}/admin`;
+  if (user.role === "platform-staff") {
+    if (user.platformPermissions?.includes("blog_manage")) {
+      return `/${locale}/admin/blog`;
+    }
+    return `/${locale}/admin`;
+  }
   if (user.role === "seller-admin" || user.role === "seller-staff") {
     return `/${locale}/seller-dashboard`;
   }
