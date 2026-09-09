@@ -1,9 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Route } from "next";
-import type { CSSProperties } from "react";
+import { DesignIcon, type DesignIconName } from "@/components/DesignIcon";
+import styles from "./LandingPage.module.css";
 import { getDirection, localizePath, type Locale } from "@/lib/i18n";
 import { LandingMotion } from "./LandingMotion";
+import { PublicHeader } from "@/components/PublicHeader";
 
 export type HomepageProduct = {
   id: string;
@@ -271,7 +273,7 @@ function productTypeLabel(type: HomepageProduct["type"], locale: Locale) {
 
 function formatPrice(product: HomepageProduct, locale: Locale) {
   if (product.price === undefined) return locale === "fa" ? "مشاهده جزئیات" : locale === "ar" ? "عرض التفاصيل" : "View details";
-  return new Intl.NumberFormat(locale === "fa" ? "fa-IR" : locale === "ar" ? "ar" : "en", { maximumFractionDigits: 0 }).format(product.price) + (locale === "fa" ? " تومان" : ` ${product.currency ?? "IRR"}`);
+  return new Intl.NumberFormat(locale === "fa" ? "fa-IR" : locale === "ar" ? "ar" : "en", { maximumFractionDigits: 2 }).format(product.price) + (product.currency ? ` ${product.currency}` : "");
 }
 
 function initials(name: string) {
@@ -282,147 +284,56 @@ function localizedHref(locale: Locale, href: string) {
   return localizePath(locale, href) as Route;
 }
 
-function LanguageSwitcher({ locale }: { locale: Locale }) {
-  return (
-    <div className="language-switcher" aria-label="Language">
-      {(["fa", "en", "ar"] as Locale[]).map((code) => (
-        <Link key={code} href={localizePath(code) as Route} className={code === locale ? "is-active" : undefined} aria-current={code === locale ? "page" : undefined} hrefLang={code}>
-          {code.toUpperCase()}
-        </Link>
-      ))}
-    </div>
-  );
-}
+const introductions = {
+  fa: { title: "تعمیر حرفه‌ای،", accent: "با همراهی درست.", kicker: "ابزار درست. خیال راحت.", body: "از فایل و آموزش تا ابزار تخصصی؛ هر چیزی که برای قدم بعدی تعمیر نیاز دارید، اینجاست.", browse: "کشف محصولات", note: "برای تعمیرکارانی که به کیفیت اهمیت می‌دهند", image: "گوشی نقره‌ای با قطعات بازشده و ابزار دقیق تعمیر", caption: "دانش و ابزار، کنار هم.", tools: "در کنار ابزارهایی که می‌شناسید", services: "برای هر مسئله، یک راه روشن.", experts: "تجربه‌ای که کنار شماست.", expertsBody: "با متخصص برند دستگاهتان آشنا شوید. گاهی یک گفت‌وگو، مسیر تعمیر را روشن می‌کند.", products: "قدم بعدی، یک ابزار بهتر.", productsBody: "تازه‌های فروشگاه برای میز کار شما.", why: "روی تعمیر تمرکز کنید.", whyAccent: "ما کنارتان هستیم.", cta: "از کجا شروع کنیم؟", skip: "رفتن به محتوا", journal: "مجله", rating: "امتیاز از ۵" },
+  en: { title: "Good repairs start", accent: "with good support.", kicker: "The right tools. A clearer path.", body: "Specialist files, practical training, and professional tools. Everything you need for the next step in your repair.", browse: "Explore the shop", note: "For people who care about their craft", image: "A silver smartphone with disassembled components and a precision repair tool", caption: "Knowledge and tools, together.", tools: "At home with the tools you know", services: "A clearer path to every fix.", experts: "Experience on your side.", expertsBody: "Meet the people who know your device. Sometimes a conversation is all it takes to find the next step.", products: "Your next workbench essential.", productsBody: "The latest additions to the shop.", why: "Focus on the repair.", whyAccent: "We’re here for the rest.", cta: "Where shall we start?", skip: "Skip to content", journal: "Journal", rating: "Rating out of 5" },
+  ar: { title: "صيانة احترافية،", accent: "مع الدعم المناسب.", kicker: "الأداة المناسبة. الطريق الأوضح.", body: "ملفات متخصصة وتدريب عملي وأدوات احترافية. كل ما تحتاجه للخطوة التالية في الصيانة.", browse: "اكتشف المنتجات", note: "لمن يهتمون بجودة عملهم", image: "هاتف فضي مع مكونات مفككة وأداة صيانة دقيقة", caption: "المعرفة والأدوات معًا.", tools: "مع الأدوات التي تعرفها", services: "لكل مشكلة، طريق أوضح.", experts: "خبرة تقف إلى جانبك.", expertsBody: "تعرف على متخصصي جهازك. أحيانًا تكفي محادثة لتوضيح الخطوة التالية.", products: "الأداة التالية لطاولة عملك.", productsBody: "أحدث الإضافات إلى المتجر.", why: "ركز على الصيانة.", whyAccent: "نحن بجانبك.", cta: "من أين نبدأ؟", skip: "انتقل إلى المحتوى", journal: "المجلة", rating: "التقييم من ٥" }
+};
+
+const serviceIcons: DesignIconName[] = ["headphones", "file", "layers"];
 
 export function LandingPage({ locale, products, agents, accountHref }: LandingPageProps) {
-  const copy = copyByLocale[locale];
-  const visibleAgents = agents.slice(0, 6);
-  const visibleProducts = products.slice(0, 8);
-
+  const c = copyByLocale[locale];
+  const intro = introductions[locale];
   return (
-    <div className="home-shell" dir={getDirection(locale)} lang={locale}>
+    <div className={styles.page} dir={getDirection(locale)}>
       <LandingMotion />
-      <a className="skip-link" href="#main-content">Skip to content</a>
-
-      <header className="site-header">
-        <Link className="brand-lockup" href={localizePath(locale) as Route} aria-label="Top GSM home">
-          <Image src="/brand/topgsm-logo.jpg" alt="" width={48} height={48} priority />
-          <span><strong>TOP GSM</strong><small>{copy.brandDescription}</small></span>
-        </Link>
-        <nav className="main-nav" aria-label={copy.menuText}>
-          {copy.navItems.map((item) => <a key={item.label} href={item.href}>{item.label}</a>)}
-        </nav>
-        <div className="header-actions">
-          <LanguageSwitcher locale={locale} />
-          <a className="login-link" href={accountHref ?? `/${locale}/login`}>
-            {accountHref ? copy.myAccountText : copy.loginText}
-          </a>
-          <a className="cart-link" href="#cart" aria-label={copy.cartText}><span>{copy.cartText}</span><b>۰</b></a>
-        </div>
-      </header>
-
-      <main id="main-content" className="landing-main">
-        <section className="hero-section" aria-labelledby="hero-title">
-          <div className="hero-copy">
-            <p className="eyebrow" data-hero-reveal>{copy.heroKicker}</p>
-            <h1 id="hero-title" data-hero-reveal>
-              {copy.heroTitleLead}
-              <span className="hero-title-accent"><span className="inline-logo" aria-hidden="true"><Image src="/brand/topgsm-logo.jpg" alt="" width={76} height={34} priority /></span>{copy.heroTitleAccent}</span>
-            </h1>
-            <p className="hero-body" data-hero-reveal>{copy.heroBody}</p>
-            <a className="hero-catalog-link" href="#products" data-hero-reveal>{copy.primaryAction}<span aria-hidden="true">↙</span></a>
-            <div className="hero-actions" data-hero-reveal>
-              <a className="text-action" href="#support">{copy.secondaryAction}<span aria-hidden="true">←</span></a>
-              <span className="service-pulse"><i aria-hidden="true" />{copy.completedValue}</span>
-            </div>
+      <a className="skip-link" href="#main-content">{intro.skip}</a>
+      <PublicHeader locale={locale} accountHref={accountHref} />
+      <main id="main-content">
+        <section className={styles.hero} aria-labelledby="hero-title">
+          <div className={styles.heroCopy}>
+            <p className={styles.kicker}>{intro.kicker}</p>
+            <h1 id="hero-title">{intro.title}<span>{intro.accent}</span></h1>
+            <p className={styles.heroBody}>{intro.body}</p>
+            <div className={styles.heroActions}><Link className={styles.primary} href={localizedHref(locale, "/products")}>{intro.browse}<DesignIcon name="arrow" /></Link><a className={styles.secondary} href="#agents">{c.secondaryAction}</a></div>
+            <p className={styles.heroNote}><DesignIcon name="check" />{intro.note}</p>
           </div>
-
-          <div className="hero-visual" aria-label={copy.liveDesk} data-hero-reveal>
-            <div className="device-board" aria-hidden="true">
-              <span className="board-orbit orbit-one" /><span className="board-orbit orbit-two" />
-              <div className="board-chip"><span>TOP</span><strong>GSM</strong></div>
-              <i className="trace trace-a" /><i className="trace trace-b" /><i className="trace trace-c" />
-              <i className="node node-a" /><i className="node node-b" /><i className="node node-c" />
-            </div>
-            <div className="support-card">
-              <div><span className="status-dot" />{copy.liveDesk}</div>
-              <dl><div><dt>{copy.responseLabel}</dt><dd>{copy.responseValue}</dd></div><div><dt>{copy.completedLabel}</dt><dd>{copy.completedValue}</dd></div></dl>
-            </div>
-          </div>
+          <figure className={styles.heroVisual}>
+            <div className={styles.heroImage} data-home-image><Image src="/images/repair-studio.png" alt={intro.image} fill sizes="(max-width: 800px) 100vw, 55vw" priority /></div>
+            <figcaption><span className={styles.captionIcon}><DesignIcon name="spark" /></span><span>{intro.caption}</span><span className={styles.imageSignature} translate="no">Top GSM Studio</span></figcaption>
+          </figure>
         </section>
-
-        <section className="tools-marquee" aria-label="Supported platforms">
-          <div className="marquee-track">{[...trustedTools, ...trustedTools].map((tool, index) => <span key={`${tool}-${index}`} aria-hidden={index >= trustedTools.length}>{tool}</span>)}</div>
+        <div className={styles.platforms}><p>{intro.tools}</p><div>{trustedTools.map((tool) => <span key={tool} translate="no">{tool}</span>)}</div></div>
+        <section className={styles.section} id="services" aria-labelledby="services-title">
+          <div className={styles.sectionHeading}><div><p className={styles.sectionLabel}>{c.services}</p><h2 id="services-title">{intro.services}</h2></div><p>{c.servicesBody}</p></div>
+          <div className={styles.services}>{c.serviceCards.map((service, index) => <a className={styles.service} href={index === 0 ? "#agents" : `/${locale}/products`} key={service.title}><span className={styles.serviceIcon}><DesignIcon name={serviceIcons[index]} /></span><h3>{service.title}</h3><p>{service.body}</p><span className={styles.serviceAction}>{service.detail}<DesignIcon name="arrow" /></span></a>)}</div>
         </section>
-
-        <section className="chapter services-section" id="services" aria-labelledby="services-title">
-          <div className="section-intro"><h2 id="services-title">{copy.servicesTitle}</h2><p>{copy.servicesBody}</p></div>
-          <div className="service-bento">
-            {copy.serviceCards.map((service, index) => (
-              <a className={`service-card service-card-${index + 1}`} href={service.href} key={service.title}>
-                <div><h3>{service.title}</h3><p>{service.body}</p></div>
-                <strong>{service.detail}<span aria-hidden="true">←</span></strong>
-              </a>
-            ))}
-          </div>
+        <section className={styles.shopSection} id="products" aria-labelledby="products-title">
+          <div className={styles.sectionHeading}><div><p className={styles.sectionLabel}>{intro.productsBody}</p><h2 id="products-title">{intro.products}</h2></div><Link className={styles.textLink} href={localizedHref(locale, "/products")}>{c.viewAll}<DesignIcon name="arrow" /></Link></div>
+          {products.length ? <div className={styles.products}>{products.slice(0, 4).map((product) => <Link className={styles.product} key={product.id} href={`/${locale}/products/${product.slug ?? product.id}` as Route}><div className={styles.productArtwork} data-type={product.type}><DesignIcon name={product.type === "digital" ? "file" : product.type === "service" ? "headphones" : "layers"} /><span>{productTypeLabel(product.type, locale)}</span></div><div className={styles.productInfo}><p>{product.category ?? productTypeLabel(product.type, locale)}</p><h3>{product.title}</h3><div><span>{formatPrice(product, locale)}</span><DesignIcon name="arrow" /></div></div></Link>)}</div> : <div className={styles.empty}><DesignIcon name="layers" /><p>{c.emptyProducts}</p></div>}
         </section>
-
-        <section className="chapter experts-section" id="agents" aria-labelledby="agents-title">
-          <div className="section-intro section-intro-split"><h2 id="agents-title">{copy.expertsTitle}</h2><p>{copy.expertsBody}</p></div>
-          {visibleAgents.length ? <div className="expert-stack">
-            {visibleAgents.map((agent, index) => (
-              <article className="expert-card" data-stack-card key={agent.id} style={{ "--stack-index": index } as CSSProperties}>
-                <div className="expert-avatar" aria-hidden="true"><span>{initials(agent.name)}</span></div>
-                <div className="expert-copy">
-                  <span className={`availability ${agent.available ? "is-online" : ""}`}><i aria-hidden="true" />{agent.available ? copy.availableText : copy.unavailableText}</span>
-                  <h3>{agent.name}</h3><p>{agent.specialty}</p>
-                </div>
-                <div className="expert-score"><span>{agent.rating.toFixed(1)}</span><small>از ۵</small></div>
-                {agent.phone ? <a className="expert-call" href={`tel:${agent.phone}`}>{copy.callText}</a> : null}
-              </article>
-            ))}
-          </div> : <p className="empty-state">{copy.emptyExperts}</p>}
+        <section className={styles.section} id="agents" aria-labelledby="agents-title">
+          <div className={styles.sectionHeading}><div><p className={styles.sectionLabel}>{c.navItems[3].label}</p><h2 id="agents-title">{intro.experts}</h2></div><p>{intro.expertsBody}</p></div>
+          {agents.length ? <div className={styles.experts}>{agents.slice(0, 6).map((person) => <article className={styles.expert} key={person.id}><div className={styles.expertTop}><div className={styles.avatar} aria-hidden="true">{initials(person.name)}</div><span className={styles.rating} aria-label={`${intro.rating}: ${person.rating}`}><span aria-hidden="true">★</span> {new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(person.rating)}</span></div><h3>{person.name}</h3><p>{person.specialty}</p><div className={styles.expertBottom}><span className={styles.availability} data-online={person.available === true}><i />{person.available ? c.availableText : c.unavailableText}</span>{person.phone ? <a href={`tel:${person.phone}`} aria-label={`${c.callText}: ${person.name}`}><DesignIcon name="arrow" /></a> : null}</div></article>)}</div> : <div className={styles.empty}><DesignIcon name="headphones" /><p>{c.emptyExperts}</p></div>}
         </section>
-
-        <section className="chapter products-section" id="products" aria-labelledby="products-title">
-          <div className="section-intro section-intro-split">
-            <h2 id="products-title">{copy.productsTitle}</h2>
-            <div><p>{copy.productsBody}</p><a className="outline-action" href={`/${locale}/products`}>{copy.viewAll}<span aria-hidden="true">←</span></a></div>
-          </div>
-          {visibleProducts.length ? (
-            <div className="product-grid">
-              {visibleProducts.map((product, index) => (
-                <article className="product-card" key={product.id}>
-                  <Link href={`/${locale}/products/${product.slug ?? product.id}` as Route} aria-label={product.title}>
-                    <div className={`product-visual product-visual-${(index % 4) + 1}`} data-product-visual aria-hidden="true"><span className="product-device" /><i /><b>{product.type.toUpperCase()}</b></div>
-                    <div className="product-info"><span>{product.category ?? productTypeLabel(product.type, locale)}</span><h3>{product.title}</h3><strong>{formatPrice(product, locale)}</strong></div>
-                  </Link>
-                </article>
-              ))}
-            </div>
-          ) : <p className="empty-state">{copy.emptyProducts}</p>}
+        <section className={styles.reassurance} aria-labelledby="why-title">
+          <div><p className={styles.sectionLabel}>Top GSM</p><h2 id="why-title">{intro.why}<span>{intro.whyAccent}</span></h2><p className={styles.revealCopy} data-home-copy>{c.whyWords.map((word, index) => <span key={index} data-home-word>{word} </span>)}</p></div>
+          <div className={styles.benefits}>{c.trust.slice(0, 3).map((benefit) => <div key={benefit.value}><span><DesignIcon name="check" /></span><div><h3>{benefit.value}</h3><p>{benefit.description}</p></div></div>)}</div>
         </section>
-
-        <section className="chapter trust-section" aria-labelledby="why-title">
-          <div className="trust-copy">
-            <h2 id="why-title">{copy.whyTitle}</h2>
-            <p className="reveal-copy" data-reveal-copy>{copy.whyWords.map((word, index) => <span data-reveal-word key={`${word}-${index}`}>{word} </span>)}</p>
-          </div>
-          <dl className="trust-grid">{copy.trust.map((item) => <div key={item.value}><dt>{item.value}</dt><dd>{item.description}</dd></div>)}</dl>
-        </section>
-
-        <section className="support-cta" id="support" aria-labelledby="support-title">
-          <div><h2 id="support-title">{copy.ctaTitle}</h2><p>{copy.ctaBody}</p></div>
-          <a href="tel:09925739312">{copy.ctaAction}<span aria-hidden="true">←</span></a>
-        </section>
+        <section className={styles.support} id="support"><span className={styles.supportIcon}><DesignIcon name="headphones" /></span><h2>{intro.cta}</h2><p>{c.ctaBody}</p><a className={styles.primary} href="tel:09925739312">{c.ctaAction}<DesignIcon name="arrow" /></a></section>
       </main>
-
-      <footer className="site-footer">
-        <div className="footer-brand"><strong>TOP GSM</strong><p>{copy.footerDescription}</p><small>© {new Date().getFullYear()} Top GSM</small></div>
-        <div><h3>{copy.quickAccess}</h3><a href="#products">{copy.productsTitle}</a><a href="#agents">{copy.expertsTitle}</a><a href="#support">{copy.ctaAction}</a></div>
-        <div><h3>{copy.services}</h3>{copy.serviceCards.map((item) => <a key={item.title} href={item.href}>{item.title}</a>)}</div>
-        <div><h3>{copy.account}</h3><a href={accountHref ?? `/${locale}/login`}>{accountHref ? copy.myAccountText : copy.loginText}</a><Link href={localizedHref(locale, "/seller-dashboard")}>{copy.sellerDashboard}</Link><a href="#cart">{copy.cartText}</a></div>
-      </footer>
+      <footer className={styles.footer}><div><Link href={localizePath(locale) as Route} className={styles.footerBrand}>topgsm.</Link><p>{c.footerDescription}</p></div><nav aria-label={c.menuText}><Link href={localizedHref(locale, "/products")}>{intro.browse}</Link><Link href={localizedHref(locale, "/blog")}>{intro.journal}</Link><Link href={localizedHref(locale, "/seller-dashboard")}>{c.sellerDashboard}</Link><a href={accountHref ?? `/${locale}/login`}>{c.account}</a></nav><div className={styles.footerBottom}><span>© {new Date().getFullYear()} Top GSM</span><span>{c.brandDescription}</span></div></footer>
     </div>
   );
 }

@@ -6,9 +6,9 @@ import type { Locale } from "@/lib/i18n";
 import { BlogFooter, BlogHeader } from "./BlogChrome";
 
 const COPY = {
-  fa: { eyebrow: "ECOSYSTEM INDEX · به‌روزرسانی پیوسته", title: "دانش فنی، از دل بازار", intro: "تحلیل‌های دقیق، راهنمای تعمیر و تجربه فروشندگانی که هر روز با دستگاه‌های واقعی کار می‌کنند.", latest: "تازه‌ترین مطالب", empty: "هنوز مقاله‌ای منتشر نشده است.", emptyHint: "مقاله‌های تأییدشده فروشندگان و تحریریه در این صفحه ظاهر می‌شوند.", read: "مطالعه", editorial: "تحریریه تاپ جی‌اس‌ام" },
-  en: { eyebrow: "ECOSYSTEM INDEX · CONTINUOUSLY UPDATED", title: "Technical knowledge from the market", intro: "Precise analysis, repair guides, and first-hand experience from sellers working with real devices every day.", latest: "Latest documents", empty: "No articles have been published yet.", emptyHint: "Approved seller and editorial articles will appear here.", read: "Read", editorial: "Top GSM Editorial" },
-  ar: { eyebrow: "ECOSYSTEM INDEX · تحديث مستمر", title: "معرفة تقنية من قلب السوق", intro: "تحليلات دقيقة وأدلة صيانة وخبرة البائعين الذين يعملون يومياً مع أجهزة حقيقية.", latest: "أحدث المقالات", empty: "لم تُنشر مقالات بعد.", emptyHint: "ستظهر هنا مقالات البائعين والمحررين بعد اعتمادها.", read: "قراءة", editorial: "تحرير Top GSM" }
+  fa: { eyebrow: "یادگیری، تجربه و تعمیر", title: "دانش فنی، از دل بازار", intro: "تحلیل‌های دقیق، راهنمای تعمیر و تجربه فروشندگانی که هر روز با دستگاه‌های واقعی کار می‌کنند.", latest: "تازه‌ترین مطالب", empty: "هنوز مقاله‌ای منتشر نشده است.", emptyHint: "مقاله‌های تأییدشده فروشندگان و تحریریه در این صفحه ظاهر می‌شوند.", read: "مطالعه", editorial: "تحریریه تاپ جی‌اس‌ام" },
+  en: { eyebrow: "Ideas for your workbench", title: "Technical knowledge from the market", intro: "Precise analysis, repair guides, and first-hand experience from sellers working with real devices every day.", latest: "Latest documents", empty: "No articles have been published yet.", emptyHint: "Approved seller and editorial articles will appear here.", read: "Read", editorial: "Top GSM Editorial" },
+  ar: { eyebrow: "تعلم وخبرة وصيانة", title: "معرفة تقنية من قلب السوق", intro: "تحليلات دقيقة وأدلة صيانة وخبرة البائعين الذين يعملون يومياً مع أجهزة حقيقية.", latest: "أحدث المقالات", empty: "لم تُنشر مقالات بعد.", emptyHint: "ستظهر هنا مقالات البائعين والمحررين بعد اعتمادها.", read: "قراءة", editorial: "تحرير Top GSM" }
 } as const;
 
 export function BlogIndex({
@@ -60,11 +60,10 @@ export function BlogIndex({
 
         {latest.length ? (
           <section className="journal-latest" aria-labelledby="latest-title">
-            <header><p>02</p><h2 id="latest-title">{copy.latest}</h2></header>
+            <header><h2 id="latest-title">{copy.latest}</h2></header>
             <div className="journal-grid">
-              {latest.map((post, index) => (
+              {latest.map((post) => (
                 <article key={post.id}>
-                  <p className="journal-index-number">{String(index + 2).padStart(2, "0")}</p>
                   <Cover post={post} />
                   <p className="journal-kicker">{post.category?.name}</p>
                   <h3><Link href={`/${locale}/blog/${post.slug}` as Route}>{post.title}</Link></h3>

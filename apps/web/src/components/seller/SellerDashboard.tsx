@@ -26,7 +26,10 @@ import { LogoutButton } from "@/components/auth/LogoutButton";
 import { ProductPublicUrl } from "@/components/product/ProductPublicUrl";
 import { SellerCoupons } from "./SellerCoupons";
 import { SellerBlogPanel } from "./SellerBlogPanel";
+import { DesignIcon } from "@/components/DesignIcon";
+import { PRODUCT_CREATION_COPY } from "./ProductCreationCopy";
 import styles from "./SellerDashboard.module.css";
+import creation from "./ProductCreation.module.css";
 
 type DashboardSection = "overview" | "products" | "blog" | "coupons" | "orders" | "payouts";
 type RequestState = "idle" | "loading" | "error" | "success";
@@ -764,7 +767,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
     <div className={styles.shell}>
       <aside className={styles.rail}>
         <div className={styles.brandBlock}>
-          <strong>{copy.brand}</strong>
+          <strong dir="ltr" translate="no">topgsm.</strong>
           <span>{copy.workspace}</span>
         </div>
         <nav className={styles.navigation} aria-label={copy.workspace}>
@@ -934,6 +937,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
 export function SellerProductCreation({ locale, user }: SellerProductCreationProps) {
   const router = useRouter();
   const copy = COPY[locale];
+  const formCopy = PRODUCT_CREATION_COPY[locale];
   const [draft, setDraft] = useState<ProductDraft>(() => makeDraft());
   const [submitState, setSubmitState] = useState<RequestState>("idle");
   const [formError, setFormError] = useState("");
@@ -945,6 +949,7 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
   }
 
   function changeKind(kind: ProductKind) {
+    if (kind === draft.kind) return;
     setDraft((current) => ({
       ...current,
       kind,
@@ -1017,128 +1022,52 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
     }
   }
 
+  const productTypes = ["digital", "physical", "service"] as const;
+  const productIcons = { digital: "file", physical: "layers", service: "headphones" } as const;
+  const priceValues = draft.offers.map((offer) => Number(offer.price)).filter((price, index) => draft.offers[index].price.trim() && Number.isFinite(price));
+  const startingPrice = priceValues.length ? new Intl.NumberFormat(locale, { maximumFractionDigits: 4 }).format(Math.min(...priceValues)) : null;
+
   return (
-    <div className={styles.creationShell}>
-      <header className={styles.creationTopbar}>
-        <Link className={styles.creationBrand} href={`/${locale}/seller-dashboard`}>
-          <strong>{copy.brand}</strong>
-          <span>{copy.workspace}</span>
-        </Link>
-        <div className={styles.creationAccount}>
-          <strong>{user.fullName}</strong>
-          <span>{user.email}</span>
-        </div>
+    <div className={creation.shell} dir={locale === "en" ? "ltr" : "rtl"}>
+      <header className={creation.topbar}>
+        <Link className={creation.backLink} href={`/${locale}/seller-dashboard?section=products`}><DesignIcon name="arrow" />{copy.products}</Link>
+        <Link className={creation.brand} href={`/${locale}/seller-dashboard`}><DesignIcon name="layers" /><strong dir="ltr" translate="no">topgsm.</strong></Link>
+        <span className={creation.account}>{user.fullName}</span>
       </header>
-
-      <main className={styles.creationMain}>
-        <header className={styles.creationHeader}>
-          <div>
-            <p>{copy.products}</p>
-            <h1>{copy.newProduct}</h1>
-            <span>{copy.newProductDescription}</span>
+      <main className={creation.main}>
+        <header className={creation.heading}><div><h1>{copy.newProduct}</h1><p>{formCopy.intro}</p></div><span className={creation.draftBadge}>{copy[draft.status]}</span></header>
+        <form className={creation.layout} onSubmit={createProduct} onInvalidCapture={() => setFormError(copy.formIncomplete)} aria-busy={submitState === "loading"}>
+          <div className={creation.formBody}>
+            <section className={creation.card} aria-labelledby="product-basics">
+              <header className={creation.sectionHeading}><span><DesignIcon name="file" /></span><div><h2 id="product-basics">{formCopy.details}</h2><p>{formCopy.detailsHint}</p></div></header>
+              <label className={`${styles.field} ${creation.titleField}`}><span>{copy.title}</span><input required minLength={2} maxLength={200} placeholder={formCopy.titlePlaceholder} value={draft.title} onChange={(event) => updateDraft("title", event.target.value)} /></label>
+              <label className={styles.field}><span>{copy.description}<small>{formCopy.optional}</small></span><textarea maxLength={10000} placeholder={formCopy.descriptionPlaceholder} value={draft.description} onChange={(event) => updateDraft("description", event.target.value)} /></label>
+              <label className={styles.field}><span>{copy.category}<small>{formCopy.optional}</small></span><input maxLength={100} value={draft.category} onChange={(event) => updateDraft("category", event.target.value)} /></label>
+            </section>
+            <fieldset className={creation.deliveryCard}>
+              <legend>{formCopy.delivery}</legend>
+              <div className={creation.typeOptions}>{productTypes.map((type) => <label key={type} className={creation.typeOption} data-selected={draft.type === type}><input type="radio" name="product-type" value={type} checked={draft.type === type} onChange={() => updateDraft("type", type)} /><DesignIcon name={productIcons[type]} /><strong>{copy[type]}</strong><span>{formCopy[type]}</span><i aria-hidden="true">{draft.type === type ? <DesignIcon name="check" /> : null}</i></label>)}</div>
+            </fieldset>
+            <section className={creation.card} aria-labelledby="product-pricing">
+              <header className={creation.sectionHeading}><span><DesignIcon name="layers" /></span><div><h2 id="product-pricing">{formCopy.configuration}</h2><p>{formCopy.configurationHint}</p></div></header>
+              <div className={creation.kindOptions} role="group" aria-label={copy.productKind}>{(["simple", "variable"] as const).map((kind) => <button key={kind} type="button" aria-pressed={draft.kind === kind} onClick={() => changeKind(kind)}><strong>{copy[kind]}</strong><span>{formCopy[kind]}</span></button>)}</div>
+              <div className={creation.pricingSettings}>
+                <label className={styles.currencyField}><span>{copy.currency}</span><input required minLength={3} maxLength={3} pattern="[A-Za-z]{3}" dir="ltr" value={draft.currency} onChange={(event) => updateDraft("currency", event.target.value.toUpperCase())} /></label>
+                {draft.kind === "variable" ? <label className={styles.field}><span>{copy.optionName}</span><input required maxLength={50} value={draft.optionName} onChange={(event) => updateDraft("optionName", event.target.value)} aria-describedby="option-name-hint" /><small id="option-name-hint">{copy.optionNameHint}</small></label> : null}
+              </div>
+              <div className={creation.offers}>{draft.offers.map((offer, index) => <OfferFields key={offer.id} copy={copy} draft={draft} offer={offer} index={index} canRemove={draft.kind === "variable" && draft.offers.length > 1} update={updateOffer} remove={removeVariant} />)}</div>
+              {draft.kind === "variable" && draft.offers.length < 100 ? <button className={styles.addVariantButton} type="button" onClick={addVariant}><Icon name="plus" />{copy.addVariant}</button> : null}
+            </section>
           </div>
-          <Link className={styles.secondaryButton} href={`/${locale}/seller-dashboard?section=products`}>
-            {copy.cancel}
-          </Link>
-        </header>
-
-        <form className={styles.productForm} onSubmit={createProduct} onInvalidCapture={() => setFormError(copy.formIncomplete)} aria-busy={submitState === "loading"}>
-          <fieldset className={styles.formSection}>
-            <legend>{copy.basics}</legend>
-            <div className={styles.twoColumns}>
-              <label className={styles.field}>
-                <span>{copy.title}</span>
-                <input autoFocus required minLength={2} maxLength={200} value={draft.title} onChange={(event) => updateDraft("title", event.target.value)} />
-              </label>
-              <label className={styles.field}>
-                <span>{copy.category}</span>
-                <input maxLength={100} value={draft.category} onChange={(event) => updateDraft("category", event.target.value)} />
-              </label>
-            </div>
-            <label className={styles.field}>
-              <span>{copy.description}</span>
-              <textarea maxLength={10000} value={draft.description} onChange={(event) => updateDraft("description", event.target.value)} />
-            </label>
-            <div className={styles.threeColumns}>
-              <label className={styles.field}>
-                <span>{copy.productKind}</span>
-                <select value={draft.kind} onChange={(event) => changeKind(event.target.value as ProductKind)}>
-                  <option value="simple">{copy.simple}</option>
-                  <option value="variable">{copy.variable}</option>
-                </select>
-              </label>
-              <label className={styles.field}>
-                <span>{copy.productType}</span>
-                <select value={draft.type} onChange={(event) => updateDraft("type", event.target.value as ProductType)}>
-                  <option value="digital">{copy.digital}</option>
-                  <option value="physical">{copy.physical}</option>
-                  <option value="service">{copy.service}</option>
-                </select>
-              </label>
-              <label className={styles.field}>
-                <span>{copy.publishState}</span>
-                <select value={draft.status} onChange={(event) => updateDraft("status", event.target.value as ProductStatus)}>
-                  <option value="draft">{copy.draft}</option>
-                  <option value="active">{copy.active}</option>
-                </select>
-              </label>
-            </div>
-          </fieldset>
-
-          <fieldset className={styles.formSection}>
-            <legend>{copy.offerDetails}</legend>
-            <label className={styles.currencyField}>
-              <span>{copy.currency}</span>
-              <input required minLength={3} maxLength={3} pattern="[A-Za-z]{3}" value={draft.currency} onChange={(event) => updateDraft("currency", event.target.value.toUpperCase())} />
-            </label>
-            {draft.kind === "variable" ? (
-              <label className={styles.field}>
-                <span>{copy.optionName}</span>
-                <input required maxLength={50} value={draft.optionName} onChange={(event) => updateDraft("optionName", event.target.value)} aria-describedby="option-name-hint" />
-                <small id="option-name-hint">{copy.optionNameHint}</small>
-              </label>
-            ) : null}
-          </fieldset>
-
-          <div className={styles.offerList}>
-            {draft.offers.map((offer, index) => (
-              <OfferFields
-                key={offer.id}
-                copy={copy}
-                draft={draft}
-                offer={offer}
-                index={index}
-                canRemove={draft.kind === "variable" && draft.offers.length > 1}
-                update={updateOffer}
-                remove={removeVariant}
-              />
-            ))}
-          </div>
-
-          {draft.kind === "variable" && draft.offers.length < 100 ? (
-            <button className={styles.addVariantButton} type="button" onClick={addVariant}>
-              <Icon name="plus" />
-              {copy.addVariant}
-            </button>
-          ) : null}
-
-          <div className={styles.formMessage} aria-live="polite">
-            {formError ? <p role="alert">{formError}</p> : null}
-          </div>
-          <footer className={styles.formActions}>
-            <Link className={styles.secondaryButton} href={`/${locale}/seller-dashboard?section=products`}>
-              {copy.cancel}
-            </Link>
-            <button className={styles.primaryButton} type="submit" disabled={submitState === "loading"} data-state={submitState}>
-              {submitState === "loading" ? copy.creatingProduct : copy.createProduct}
-            </button>
-          </footer>
+          <aside className={creation.sidebar}>
+            <section className={creation.preview} aria-labelledby="product-preview"><span className={creation.eyebrow} id="product-preview">{formCopy.preview}</span><div className={creation.previewIcon}><DesignIcon name={productIcons[draft.type as keyof typeof productIcons] ?? "layers"} /></div><span className={creation.previewCategory}>{draft.category.trim() || formCopy.noCategory}</span><h2>{draft.title.trim() || formCopy.untitled}</h2><p>{copy[draft.type]}<span>·</span>{copy[draft.kind]}</p><div className={creation.previewPrice}>{startingPrice ? <><small>{draft.kind === "variable" ? formCopy.from : copy.price}</small><strong>{startingPrice}<span dir="ltr">{draft.currency}</span></strong></> : <span>{formCopy.pricePending}</span>}</div></section>
+            <section className={creation.publish}><h2>{formCopy.summary}</h2><p>{formCopy.summaryHint}</p><label className={styles.field}><span>{copy.publishState}</span><select value={draft.status} onChange={(event) => updateDraft("status", event.target.value as ProductStatus)}><option value="draft">{copy.draft}</option><option value="active">{copy.active}</option></select></label><p className={creation.statusHint}>{draft.status === "draft" ? formCopy.draftHint : formCopy.activeHint}</p><div className={creation.readiness} data-ready={validateDraft(draft)}><DesignIcon name="check" /><span>{validateDraft(draft) ? formCopy.ready : formCopy.incomplete}</span></div><div aria-live="polite">{formError ? <p className={creation.error} role="alert">{formError}</p> : null}</div><button className={styles.primaryButton} type="submit" disabled={submitState === "loading"} data-state={submitState}>{submitState === "loading" ? copy.creatingProduct : copy.createProduct}<DesignIcon name="arrow" /></button><Link className={creation.cancel} href={`/${locale}/seller-dashboard?section=products`}>{copy.cancel}</Link></section>
+          </aside>
         </form>
       </main>
     </div>
   );
 }
-
 function ProductList({
   copy,
   locale,

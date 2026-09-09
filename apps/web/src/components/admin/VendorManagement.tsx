@@ -2,10 +2,10 @@
 
 import type { Route } from "next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useGSAP } from "@gsap/react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import Image from "next/image";
+
+
+
+import { DesignIcon } from "@/components/DesignIcon";
 import Link from "next/link";
 import type {
   AdminProductSummary,
@@ -20,7 +20,7 @@ import { api } from "@/lib/api/client";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { ProductPublicUrl } from "@/components/product/ProductPublicUrl";
 
-gsap.registerPlugin(useGSAP, ScrollTrigger);
+
 
 const permissionOrder: VendorPermission[] = [
   "products_manage",
@@ -508,47 +508,6 @@ export function VendorManagement({
     };
   }, [closePanel, panelMode, submitting]);
 
-  useGSAP(
-    () => {
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-      const media = gsap.matchMedia();
-      media.add("(min-width: 1100px)", () => {
-        const summary = root.current?.querySelector<HTMLElement>("[data-admin-summary]");
-        const workspace = root.current?.querySelector<HTMLElement>("[data-vendor-workspace]");
-        if (summary && workspace) {
-          ScrollTrigger.create({
-            trigger: workspace,
-            start: "top 112px",
-            end: "bottom bottom-=80",
-            pin: summary,
-            pinSpacing: false
-          });
-        }
-        gsap.utils
-          .toArray<HTMLElement>("[data-vendor-card]", root.current)
-          .forEach((card) => {
-            gsap.fromTo(
-              card,
-              { transform: "translateY(24px) scale(0.985)", opacity: 0.5 },
-              {
-                transform: "translateY(0) scale(1)",
-                opacity: 1,
-                ease: "none",
-                scrollTrigger: {
-                  trigger: card,
-                  start: "top 94%",
-                  end: "top 72%",
-                  scrub: 0.35
-                }
-              }
-            );
-          });
-      });
-      return () => media.revert();
-    },
-    { scope: root, dependencies: [vendors.length], revertOnUpdate: true }
-  );
-
   const filteredVendors = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase(locale);
     if (!needle) return vendors;
@@ -691,8 +650,8 @@ export function VendorManagement({
       <a className="skip-link" href="#admin-content">{c.skip}</a>
       <aside className="admin-rail">
         <Link className="admin-brand" href={`/${locale}`} aria-label="Top GSM">
-          <Image src="/brand/topgsm-logo.jpg" alt="" width={46} height={46} />
-          <span translate="no">TOP GSM</span>
+          <span className="admin-brand-symbol"><DesignIcon name="layers" /></span>
+          <span dir="ltr" translate="no">topgsm.</span>
         </Link>
         <nav className="admin-navigation" aria-label={c.navigation}>
           <Link
@@ -747,13 +706,7 @@ export function VendorManagement({
       <section className="admin-hero" aria-labelledby="vendor-title">
         <div>
           <p>{c.greeting}, {adminName}</p>
-          <h1 id="vendor-title">
-            {c.titleStart}{" "}
-            <span className="admin-inline-mark" aria-hidden="true">
-              <Image src="/brand/topgsm-logo.jpg" alt="" width={112} height={52} />
-            </span>{" "}
-            <span>{c.titleEnd}</span>
-          </h1>
+          <h1 id="vendor-title">{c.overview}</h1>
           <p className="admin-hero-copy">{c.subtitle}</p>
         </div>
         <button className="admin-primary-button" type="button" onClick={(event) => openCreate(event.currentTarget)}>

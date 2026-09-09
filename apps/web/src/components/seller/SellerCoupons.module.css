@@ -10,14 +10,14 @@
 .checkbox input { width: 1.1rem; height: 1.1rem; accent-color: var(--color-dashboard-accent); }
 .actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1.25rem; }
 .actions p { margin: 0; color: var(--color-dashboard-error); font-size: var(--text-dashboard-sm); }
-.actions button, .more, .message button { min-height: 2.75rem; padding: 0 1rem; border: 0; border-radius: var(--radius-dashboard-xs); font: inherit; font-weight: 800; cursor: pointer; }
+.actions button, .more, .message button { min-height: 2.75rem; padding: 0 1rem; border: 0; border-radius: var(--radius-dashboard-xs); font: inherit; font-weight: 600; cursor: pointer; }
 .actions button { color: var(--color-dashboard-paper); background: var(--color-dashboard-ink); }
 .actions button:disabled, .more:disabled { cursor: wait; opacity: .6; }
 .list { display: grid; gap: .75rem; }
 .coupon { display: grid; gap: 1rem; padding: 1rem; }
 .coupon > div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
 .coupon strong { font-size: 1.125rem; letter-spacing: .08em; }
-.coupon > div span { color: var(--color-dashboard-accent); font-weight: 800; }
+.coupon > div span { color: var(--color-dashboard-accent); font-weight: 600; }
 .coupon dl { display: grid; gap: .75rem; margin: 0; }
 .coupon dl div { display: flex; justify-content: space-between; gap: 1rem; padding-top: .75rem; border-top: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
 .coupon dt { color: var(--color-dashboard-muted); }

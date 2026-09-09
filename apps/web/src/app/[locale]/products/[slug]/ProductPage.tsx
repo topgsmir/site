@@ -1,7 +1,7 @@
 "use client";
 
 import type { Route } from "next";
-import Image from "next/image";
+import { DesignIcon } from "@/components/DesignIcon";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -204,8 +204,8 @@ export function ProductPage({
 
       <header className={styles.navigation}>
         <Link className={styles.brand} href={`/${locale}` as Route} aria-label="Top GSM">
-          <Image src="/brand/topgsm-logo.jpg" width={40} height={40} alt="" priority />
-          <strong>TOP GSM</strong>
+          <span className={styles.brandSymbol}><DesignIcon name="layers" /></span>
+          <strong dir="ltr" translate="no">topgsm.</strong>
         </Link>
         <div className={styles.navigationTools}>
           <nav className={styles.languages} aria-label={copy.language}>
@@ -340,7 +340,7 @@ export function ProductPage({
 
       <footer className={styles.footer}>
         <div>
-          <strong>TOP GSM</strong>
+          <strong dir="ltr" translate="no">topgsm.</strong>
           <p>{copy.footerDescription}</p>
         </div>
         <nav aria-label={copy.backHome}>

@@ -8,72 +8,17 @@ gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 export function LandingMotion() {
   useGSAP(() => {
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduceMotion) return;
-
     const media = gsap.matchMedia();
-
-    media.add("(min-width: 761px)", () => {
-      const revealWords = gsap.utils.toArray<HTMLElement>("[data-reveal-word]");
-      gsap.fromTo(
-        revealWords,
-        { opacity: 0.12 },
-        {
-          opacity: 1,
-          stagger: 0.08,
-          ease: "none",
-          scrollTrigger: {
-            trigger: "[data-reveal-copy]",
-            start: "top 78%",
-            end: "bottom 46%",
-            scrub: 0.55
-          }
-        }
-      );
-
-      const cards = gsap.utils.toArray<HTMLElement>("[data-stack-card]");
-      cards.forEach((card, index) => {
-        gsap.fromTo(
-          card,
-          { y: 46, scale: 0.96, opacity: 0.35 },
-          {
-            y: 0,
-            scale: 1,
-            opacity: 1,
-            ease: "none",
-            scrollTrigger: {
-              trigger: card,
-              start: "top 92%",
-              end: "top 58%",
-              scrub: 0.45
-            },
-            delay: index * 0.02
-          }
-        );
+    media.add("(min-width: 801px) and (prefers-reduced-motion: no-preference)", () => {
+      gsap.fromTo("[data-home-image]", { opacity: .65, scale: .97 }, {
+        opacity: 1, scale: 1, duration: .65, ease: "power2.out"
       });
-
-      const productVisuals = gsap.utils.toArray<HTMLElement>("[data-product-visual]");
-      productVisuals.forEach((visual) => {
-        gsap.fromTo(
-          visual,
-          { scale: 0.9, opacity: 0.55 },
-          {
-            scale: 1,
-            opacity: 1,
-            ease: "none",
-            scrollTrigger: {
-              trigger: visual,
-              start: "top 92%",
-              end: "top 58%",
-              scrub: 0.5
-            }
-          }
-        );
+      gsap.fromTo("[data-home-word]", { opacity: .45 }, {
+        opacity: 1, stagger: .06, ease: "none",
+        scrollTrigger: { trigger: "[data-home-copy]", start: "top 88%", end: "bottom 65%", scrub: .3 }
       });
     });
-
     return () => media.revert();
   });
-
   return null;
 }

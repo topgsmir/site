@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import type { Route } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { Locale } from "@/lib/i18n";
 import type { PlatformPermission } from "@topgsm/shared-types";
@@ -130,7 +131,7 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
     <main className="auth-shell">
       <section className="auth-panel" aria-labelledby="auth-title">
         <Link className="auth-brand" href={`/${locale}`} aria-label="Top GSM home">
-          <span>TOP</span> GSM
+          <span dir="ltr" translate="no">topgsm.</span>
         </Link>
         <div className="auth-heading">
           <p className="eyebrow">Top GSM account</p>
@@ -199,9 +200,8 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
         <Link className="auth-back" href={`/${locale}`}>{copy.backHome}</Link>
       </section>
       <aside className="auth-art" aria-hidden="true">
-        <span className="auth-orbit auth-orbit-one" />
-        <span className="auth-orbit auth-orbit-two" />
-        <div><small>TOP GSM</small><strong>Access<br />secured.</strong></div>
+        <Image src="/images/repair-studio.png" alt="" fill sizes="50vw" priority />
+<div><small>TOP GSM</small><strong>{locale === "fa" ? "همراه شما، در هر قدم تعمیر." : locale === "ar" ? "معك في كل خطوة من الصيانة." : "A little support. A better repair."}</strong></div>
       </aside>
     </main>
   );

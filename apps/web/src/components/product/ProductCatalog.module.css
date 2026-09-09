@@ -1,0 +1,38 @@
+.main { width: min(1280px, calc(100% - 80px)); margin-inline: auto; padding-bottom: 100px; }
+.intro { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 64px 24px; }
+.introIcon { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 18px; color: var(--signal); background: var(--signal-soft); margin-bottom: 24px; }
+.intro h1 { font-size: clamp(2.2rem, 4.5vw, 4rem); font-weight: 550; letter-spacing: -.04em; line-height: 1.4; }
+.intro p { margin-top: 18px; font-size: 1rem; color: var(--muted); line-height: 1.9; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-block: 20px; }
+.filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.filters button { min-height: 44px; padding: 10px 18px; border: 0; border-radius: 999px; color: var(--muted); background: transparent; font-size: .8rem; cursor: pointer; }
+.filters button[aria-pressed="true"] { color: var(--signal-dark); background: var(--signal-soft); }
+.search { display: flex; gap: 12px; align-items: center; min-height: 48px; width: min(100%, 350px); padding-inline: 16px; border: 1px solid var(--color-dashboard-rule-strong); border-radius: 16px; background: var(--paper-bright); }
+.search svg { width: 18px; color: var(--muted); flex-shrink: 0; }
+.search input { width: 100%; min-width: 0; border: 0; outline: 0; color: var(--ink); background: transparent; font-size: .8rem; min-height: 44px; }
+.search input::placeholder { color: var(--muted); }
+.search:focus-within { outline: 3px solid var(--signal); outline-offset: 3px; }
+.resultCount { margin: 16px 0 24px; font-size: .75rem; color: var(--muted); }
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.card { min-width: 0; display: flex; flex-direction: column; padding: 8px; border-radius: 26px; border: 1px solid var(--line); background: var(--paper-bright); transition: transform 200ms var(--ease), box-shadow 200ms ease; }
+.artwork { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; min-height: 260px; border-radius: 20px; color: var(--signal); background: linear-gradient(135deg, var(--signal-soft), var(--paper)); }
+.artwork > svg { width: 84px; height: 84px; padding: 18px; stroke-width: 1; border-radius: 20px; background: var(--paper-bright); box-shadow: var(--shadow-dashboard-float); transform: rotate(-8deg); transition: transform 200ms var(--ease); }
+.artwork > span { font-size: .75rem; }
+.artwork[data-type="service"] { color: var(--color-dashboard-warning); background: var(--color-dashboard-warning-soft); }
+.artwork[data-type="physical"] { color: var(--color-dashboard-success); background: var(--color-dashboard-success-soft); }
+.content { flex: 1; padding: 24px 18px 18px; }
+.content > p { color: var(--muted); font-size: .75rem; }
+.content h2 { margin-top: 10px; font-size: 1.2rem; font-weight: 550; line-height: 1.6; overflow-wrap: anywhere; }
+.content > div { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 32px; font-size: .83rem; }
+.content > div svg { width: 18px; color: var(--signal); }
+:global([dir="rtl"]) .content > div svg { transform: rotate(180deg); }
+.empty { display: grid; justify-items: center; gap: 18px; padding: 72px 24px; border-radius: 26px; background: var(--paper-bright); text-align: center; }
+.empty > svg { color: var(--signal); }
+.empty h2 { font-size: 1.35rem; font-weight: 550; }
+.empty p { color: var(--muted); font-size: .9rem; line-height: 1.8; }
+.empty button { min-height: 44px; padding: 10px 18px; border: 0; border-radius: 999px; color: var(--on-signal); background: var(--signal); cursor: pointer; }
+.main :is(button, a):focus-visible { outline: 3px solid var(--signal); outline-offset: 4px; }
+@media (hover: hover) and (pointer: fine) { .card:hover { transform: translateY(-4px); box-shadow: var(--shadow-dashboard-float); } .card:hover .artwork > svg { transform: rotate(0); } }
+@media (max-width: 1000px) { .toolbar { align-items: stretch; flex-direction: column; } .search { width: 100%; } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .main { width: calc(100% - 40px); } .intro { padding: 40px 0; } .intro h1 { font-size: 2rem; } .intro p { font-size: .9rem; } .filters { gap: 2px; } .filters button { padding-inline: 12px; font-size: .74rem; } .grid { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .card, .artwork > svg { transition: none; } .card:hover { transform: none; } }

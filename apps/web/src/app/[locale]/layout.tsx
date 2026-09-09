@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
+import Script from "next/script";
 import "@fontsource-variable/outfit";
 import "@fontsource-variable/vazirmatn";
 import "../globals.css";
@@ -33,7 +34,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#f4f7fb",
+  themeColor: "#f8f9fc",
   colorScheme: "light dark"
 };
 
@@ -48,7 +49,7 @@ const themeScript = `
       document.documentElement.style.colorScheme = theme;
       document.querySelector('meta[name="theme-color"]')?.setAttribute(
         "content",
-        theme === "dark" ? "#080d16" : "#f4f7fb"
+        theme === "dark" ? "#191c26" : "#f8f9fc"
       );
     } catch {
       document.documentElement.dataset.theme = "light";
@@ -71,7 +72,7 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <Script id="topgsm-theme" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
         {children}

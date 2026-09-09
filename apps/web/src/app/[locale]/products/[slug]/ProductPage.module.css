@@ -1,5 +1,3 @@
-/* Hallmark · genre: editorial · macrostructure: Split Studio · theme: Almanac · enrichment: none · nav: N9 · footer: Ft1 · tone: technical · anchor hue: cobalt · contrast: pass (40–41) · slop: pass (42–45) · honest: pass (46) · chrome: pass (47) · tokens: pass (48) · responsive: pass (49) · icons: pass (30) · mobile: pass (34,49,50–57) */
-/* Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V5 */
 
 .page {
   min-height: 100dvh;
@@ -57,7 +55,7 @@
 .brand strong {
   display: none;
   font-size: var(--text-product-md);
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: -0.02em;
 }
 
@@ -184,9 +182,9 @@
   font-family: var(--font-product-display);
   font-size: var(--text-product-display);
   font-style: normal;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: -0.045em;
-  line-height: 1.02;
+  line-height: 1.3;
 }
 
 .identityPlate {
@@ -240,7 +238,7 @@
   overflow-wrap: anywhere;
   font-family: var(--font-product-display);
   font-style: normal;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: -0.025em;
 }
 
@@ -344,7 +342,7 @@
   outline-offset: var(--space-product-2xs);
   color: var(--color-product-accent-ink);
   background-color: var(--color-product-accent);
-  font-weight: 800;
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
   transition: background-color var(--dur-product-short) var(--ease-product-out), transform var(--dur-product-micro) var(--ease-product-out);
@@ -518,7 +516,7 @@
   padding-inline: var(--space-product-lg);
   border: var(--rule-product-thin) solid var(--color-product-ink);
   border-radius: var(--radius-product-sm);
-  font-weight: 800;
+  font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -549,7 +547,7 @@
 .footer > div > strong {
   font-family: var(--font-product-display);
   font-size: var(--text-product-xl);
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: -0.025em;
 }
 
@@ -649,7 +647,7 @@
   font-family: var(--font-product-display);
   font-size: var(--text-product-display);
   font-style: normal;
-  line-height: 1.02;
+  line-height: 1.3;
 }
 
 .notFound p {
@@ -799,3 +797,21 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+
+/* Product detail: a readable product overview and a calm purchase surface. */
+.navigation { border: 0; min-height: 96px; }
+.hero { padding: clamp(24px, 4vw, 56px); border-radius: 32px; background: var(--color-product-surface); border: 1px solid var(--color-product-rule); }
+.productIntro h1 { max-width: 24ch; font-weight: 550; line-height: 1.4; }
+.identityPlate { border: 0; margin-top: 32px; padding: 12px 20px; border-radius: 18px; background: var(--color-product-paper); }
+.identityPlate > div { padding-block: 14px; }
+.purchasePanel { padding: clamp(24px, 3vw, 36px); border-color: var(--color-product-rule); box-shadow: var(--shadow-dashboard-float); }
+.purchasePanel h2, .description h2, .specification h2, .support h2 { font-weight: 550; line-height: 1.4; }
+.offerSummary .price { font-family: var(--font-product-body); font-weight: 550; }
+.addButton, .mobileCart button { border-radius: 999px; font-weight: 550; }
+.languages a[aria-current="page"] { text-decoration: none; border-radius: 50%; background: var(--color-product-accent-soft); }
+.support { border-radius: 28px; }
+@media (max-width: 600px) { .hero { padding: 20px; border-radius: 24px; } }
+
+.brandSymbol { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 14px; background: var(--color-product-accent-soft); color: var(--color-product-accent); }
+.brand strong { font-family: var(--font-outfit), sans-serif; font-size: 1.7rem; font-weight: 600; letter-spacing: -.06em; }
