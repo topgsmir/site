@@ -37,3 +37,18 @@ test("accepts a read-only CTE over an approved view", async () => {
   assert.equal(queries.validate(sql), sql);
   await queries.onModuleDestroy();
 });
+
+test("accepts joins across expanded masked business views", async () => {
+  const queries = service();
+  const sql = "SELECT seller_id, shop_name, product_title FROM ai_reporting.seller_products WHERE seller_id = '2eeda1d3-cdd1-4708-9903-70db7436ebdc'";
+  assert.equal(queries.validate(sql), sql);
+  await queries.onModuleDestroy();
+});
+
+test("keeps credentials and private contact columns outside generated SQL", async () => {
+  const queries = service();
+  assert.throws(() => queries.validate("SELECT password_hash FROM ai_reporting.user_role_summary"), BadRequestException);
+  assert.throws(() => queries.validate("SELECT phone FROM ai_reporting.specialist_directory"), BadRequestException);
+  assert.throws(() => queries.validate("SELECT encrypted_api_key FROM ai_reporting.bridge_connection_health"), BadRequestException);
+  await queries.onModuleDestroy();
+});

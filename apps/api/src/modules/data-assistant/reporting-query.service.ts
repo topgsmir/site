@@ -3,9 +3,9 @@ import { ConfigService } from "@nestjs/config";
 import { astVisitor, parse } from "pgsql-ast-parser";
 import { Pool, type QueryResultRow } from "pg";
 
-const VIEWS = new Set(["daily_sales", "product_performance", "seller_performance", "payout_summary", "payment_health", "fulfillment_health"]);
+const VIEWS = new Set(["daily_sales", "product_performance", "seller_performance", "seller_products", "specialist_directory", "order_summary", "payout_summary", "payment_health", "payment_refund_summary", "fulfillment_health", "bridge_connection_health", "blog_summary", "coupon_summary", "user_role_summary"]);
 const FUNCTIONS = new Set(["count", "sum", "avg", "min", "max", "date_trunc", "coalesce", "round", "nullif"]);
-const COLUMNS = new Set(["day", "currency", "status", "order_count", "gross_amount", "offer_id", "product_title", "product_type", "units", "cancelled_orders", "seller_id", "shop_name", "approved", "suspended", "payout_count", "commission_amount", "payable_amount", "provider", "attempt_count", "amount", "mode", "fulfillment_count", "average_submit_attempts"]);
+const COLUMNS = new Set(["day", "currency", "status", "order_id", "order_count", "gross_amount", "total_amount", "unit_price", "quantity", "offer_id", "listing_id", "product_id", "product_title", "product_type", "product_kind", "product_status", "listing_status", "offer_status", "category", "variant_name", "price", "stock", "service_type", "estimated_hours", "units", "cancelled_orders", "seller_id", "shop_name", "approved", "suspended", "specialist_id", "name", "specialty", "rating", "available", "payout_count", "commission_amount", "payable_amount", "provider", "attempt_count", "refund_count", "amount", "mode", "fulfillment_count", "average_submit_attempts", "connection_id", "connection_name", "last_tested_at", "last_synced_at", "last_error_code", "post_id", "title", "published_at", "coupon_count", "redeemed_count", "active", "starts_at", "expires_at", "role", "user_count", "created_at"]);
 const OPERATORS = new Set(["OR", "AND", "IN", "NOT IN", "LIKE", "NOT LIKE", "ILIKE", "NOT ILIKE", "=", "!=", ">", ">=", "<", "<=", "+", "-", "*", "/"]);
 
 @Injectable()

@@ -123,14 +123,33 @@
 
   .navigation {
     align-content: start;
+    gap: var(--space-dashboard-2xs);
   }
 
   .group {
-    padding-block: var(--space-dashboard-sm);
+    padding-block: var(--space-dashboard-2xs);
+  }
+
+  .groupTrigger,
+  .item {
+    min-height: 2.5rem;
+    gap: var(--space-dashboard-2xs);
+    padding-inline: var(--space-dashboard-xs);
+  }
+
+  .groupTrigger svg,
+  .item svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .chevron {
+    font-size: var(--text-dashboard-sm);
   }
 
   .subNavigation {
-    padding-inline-start: var(--space-dashboard-sm);
+    padding-block-start: 0;
+    padding-inline-start: var(--space-dashboard-xs);
     border-inline-start: var(--rule-dashboard-thin) solid var(--color-dashboard-rule);
   }
 }
