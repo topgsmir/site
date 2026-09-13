@@ -3,12 +3,15 @@ import { ConfigService } from "@nestjs/config";
 import { BasePaymentAdapter } from "../../base-payment.adapter";
 import {
   PaymentIntentInput,
-  PaymentIntentResult
+  PaymentIntentResult,
+  PaymentRefundInput
 } from "../../payment.interface";
 
 @Injectable()
 export class LocalGatewayAdapter extends BasePaymentAdapter implements OnModuleInit {
   readonly providerCode = "local-country-gateway" as const;
+  readonly displayName = "Local test gateway";
+  readonly supportedCurrencies = ["IRR"] as const;
 
   constructor(private readonly config: ConfigService) {
     super();
@@ -18,6 +21,16 @@ export class LocalGatewayAdapter extends BasePaymentAdapter implements OnModuleI
     if (this.config.get<string>("NODE_ENV") === "production" && this.config.get<string>("LOCAL_PAYMENT_GATEWAY_ENABLED") === "true") {
       throw new ForbiddenException("The local payment gateway cannot be enabled in production");
     }
+  }
+
+  async availability() {
+    const available = (this.config.get<string>("NODE_ENV") ?? "development") !== "production";
+    return { available, unavailabilityReason: available ? null : "development_only" as const, configuration: null };
+  }
+
+  paymentUrl(providerReferenceId: string) {
+    const orderId = providerReferenceId.match(/^local-(.+)-\d+$/)?.[1];
+    return orderId ? `/pay/local/${orderId}` : undefined;
   }
 
   async initiate(input: PaymentIntentInput): Promise<PaymentIntentResult> {
@@ -37,9 +50,9 @@ export class LocalGatewayAdapter extends BasePaymentAdapter implements OnModuleI
     };
   }
 
-  async refund() {
+  async refund(input: PaymentRefundInput) {
     this.assertDevelopment();
-    return true;
+    return { providerRefundId: `local-refund-${input.operationId}` };
   }
 
   private assertDevelopment() {

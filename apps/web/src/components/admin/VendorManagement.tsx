@@ -10,7 +10,6 @@ import Link from "next/link";
 import type {
   AdminProductSummary,
   AdminProductsPage,
-  ProductStatus,
   Vendor,
   VendorPermission,
   VendorStatus
@@ -19,6 +18,16 @@ import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { ProductPublicUrl } from "@/components/product/ProductPublicUrl";
+import { AdminBridgeWorkspace } from "@/components/bridge/AdminBridgeWorkspace";
+import { StaffWorkspace } from "@/components/admin/StaffWorkspace";
+import { UsersWorkspace } from "@/components/admin/UsersWorkspace";
+import { AdminBlogWorkspace } from "@/components/admin/AdminBlogWorkspace";
+import { OrdersWorkspace } from "@/components/seller/SellerOrders";
+import { PaymentServiceWorkspace } from "@/components/admin/PaymentServiceWorkspace";
+import { ProductChangesWorkspace } from "@/components/admin/ProductChangesWorkspace";
+import { AiWorkspace } from "@/components/admin/AiWorkspace";
+import type { AdminSection } from "@/components/admin/AdminPanelRoute";
+import navigationStyles from "@/components/dashboard/DashboardNavigation.module.css";
 
 
 
@@ -38,9 +47,17 @@ const copy = {
     admin: "Platform admin",
     navigation: "Admin navigation",
     overview: "Overview",
+    users: "Users",
     vendors: "Vendors",
+    sellService: "Sales service",
+    paymentService: "Payment service",
+    paymentTransactions: "Transactions",
+    paymentMethods: "Payment methods",
     catalog: "Product catalog",
     editorial: "Editorial",
+    ai: "Artificial intelligence",
+    aiModels: "Models",
+    aiAssistant: "AI assistant",
     staff: "Platform staff",
     account: "Account",
     greeting: "Good to see you",
@@ -57,6 +74,7 @@ const copy = {
     search: "Search by shop, owner, or email…",
     empty: "No vendors match this search.",
     products: "Products",
+    productChanges: "Product changes",
     orders: "Orders",
     permissions: "Permissions",
     manage: "Manage vendor",
@@ -128,9 +146,17 @@ const copy = {
     admin: "مدیر پلتفرم",
     navigation: "ناوبری مدیریت",
     overview: "نمای کلی",
+    users: "کاربران",
     vendors: "فروشنده‌ها",
+    sellService: "سرویس فروش",
+    paymentService: "سرویس پرداخت",
+    paymentTransactions: "تراکنش‌ها",
+    paymentMethods: "روش‌های پرداخت",
     catalog: "کاتالوگ محصولات",
-    editorial: "تحریریه",
+    editorial: "بلاگ",
+    ai: "هوش مصنوعی",
+    aiModels: "مدل‌ها",
+    aiAssistant: "دستیار هوشمند",
     staff: "کارکنان پلتفرم",
     account: "حساب کاربری",
     greeting: "خوش آمدید",
@@ -147,6 +173,7 @@ const copy = {
     search: "جست‌وجوی فروشگاه، مالک یا ایمیل…",
     empty: "فروشنده‌ای با این جست‌وجو پیدا نشد.",
     products: "محصول",
+    productChanges: "تغییرات محصولات",
     orders: "سفارش",
     permissions: "دسترسی‌ها",
     manage: "مدیریت فروشنده",
@@ -218,9 +245,17 @@ const copy = {
     admin: "مدير المنصة",
     navigation: "تنقل الإدارة",
     overview: "نظرة عامة",
+    users: "المستخدمون",
     vendors: "البائعون",
+    sellService: "خدمة المبيعات",
+    paymentService: "خدمة الدفع",
+    paymentTransactions: "المعاملات",
+    paymentMethods: "طرق الدفع",
     catalog: "كتالوج المنتجات",
     editorial: "التحرير",
+    ai: "الذكاء الاصطناعي",
+    aiModels: "النماذج",
+    aiAssistant: "المساعد الذكي",
     staff: "فريق المنصة",
     account: "الحساب",
     greeting: "مرحباً بعودتك",
@@ -237,6 +272,7 @@ const copy = {
     search: "البحث بالمتجر أو المالك أو البريد…",
     empty: "لا يوجد بائع يطابق هذا البحث.",
     products: "المنتجات",
+    productChanges: "تغييرات المنتجات",
     orders: "الطلبات",
     permissions: "الصلاحيات",
     manage: "إدارة البائع",
@@ -321,13 +357,6 @@ type VendorFormState = {
   permissions: VendorPermission[];
 };
 
-type ProductFormState = {
-  title: string;
-  category: string;
-  description: string;
-  status: ProductStatus;
-};
-
 const emptyForm: VendorFormState = {
   ownerName: "",
   ownerEmail: "",
@@ -388,11 +417,13 @@ function requestMessage(error: unknown, fallback: string) {
 export function VendorManagement({
   locale,
   adminName,
-  section
+  section,
+  ownerNavigation
 }: {
   locale: Locale;
   adminName: string;
-  section: "overview" | "vendors" | "products";
+  section: AdminSection;
+  ownerNavigation: boolean;
 }) {
   const c = copy[locale];
   const root = useRef<HTMLElement>(null);
@@ -412,16 +443,22 @@ export function VendorManagement({
   const [productsCursor, setProductsCursor] = useState<string | null>(null);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState("");
-  const [editingProductId, setEditingProductId] = useState<string | null>(null);
-  const [productForm, setProductForm] = useState<ProductFormState>({
-    title: "",
-    category: "",
-    description: "",
-    status: "draft"
-  });
-  const [productSubmitting, setProductSubmitting] = useState(false);
-  const [productMessage, setProductMessage] = useState("");
-  const [productError, setProductError] = useState("");
+  const [usersOpen, setUsersOpen] = useState(false);
+  const [usersHovered, setUsersHovered] = useState(false);
+  const [salesServiceOpen, setSalesServiceOpen] = useState(false);
+  const [salesServiceHovered, setSalesServiceHovered] = useState(false);
+  const [paymentServiceOpen, setPaymentServiceOpen] = useState(false);
+  const [paymentServiceHovered, setPaymentServiceHovered] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiHovered, setAiHovered] = useState(false);
+  const isUsersSection = section === "vendors" || section === "staff" || section === "users";
+  const usersExpanded = isUsersSection || usersOpen || usersHovered;
+  const isSalesServiceSection = section === "products" || section === "product-changes" || section === "orders";
+  const salesServiceExpanded = isSalesServiceSection || salesServiceOpen || salesServiceHovered;
+  const isPaymentServiceSection = section === "payment-transactions" || section === "payment-methods";
+  const paymentServiceExpanded = isPaymentServiceSection || paymentServiceOpen || paymentServiceHovered;
+  const isAiSection = section === "ai-models" || section === "ai-assistant";
+  const aiExpanded = isAiSection || aiOpen || aiHovered;
 
   const loadVendors = useCallback(async () => {
     setLoading(true);
@@ -555,53 +592,6 @@ export function VendorManagement({
     }));
   }
 
-  function openProductEditor(product: AdminProductSummary) {
-    setEditingProductId(product.id);
-    setProductForm({
-      title: product.title,
-      category: product.category ?? "",
-      description: product.description ?? "",
-      status: product.status
-    });
-    setProductMessage("");
-    setProductError("");
-  }
-
-  function updateProductField<K extends keyof ProductFormState>(
-    field: K,
-    value: ProductFormState[K]
-  ) {
-    setProductForm((current) => ({ ...current, [field]: value }));
-  }
-
-  async function submitProduct(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!editingProductId || productSubmitting) return;
-    setProductSubmitting(true);
-    setProductMessage("");
-    setProductError("");
-    try {
-      const response = await api.patch<AdminProductSummary>(
-        `/products/admin/${editingProductId}`,
-        {
-          title: productForm.title,
-          category: productForm.category || null,
-          description: productForm.description || null,
-          status: productForm.status
-        }
-      );
-      setProducts((current) => current.map((product) =>
-        product.id === response.data.id ? response.data : product
-      ));
-      setEditingProductId(null);
-      setProductMessage(c.productUpdated);
-    } catch (requestError) {
-      setProductError(requestMessage(requestError, c.productUpdateError));
-    } finally {
-      setProductSubmitting(false);
-    }
-  }
-
   async function submitVendor(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
@@ -653,47 +643,190 @@ export function VendorManagement({
           <span className="admin-brand-symbol"><DesignIcon name="layers" /></span>
           <span dir="ltr" translate="no">topgsm.</span>
         </Link>
-        <nav className="admin-navigation" aria-label={c.navigation}>
+        <nav className={navigationStyles.navigation} aria-label={c.navigation}>
+          {ownerNavigation ? <>
           <Link
+            className={navigationStyles.item}
             href={`/${locale}/admin`}
             aria-current={section === "overview" ? "page" : undefined}
           >
             <OverviewIcon />
             <span>{c.overview}</span>
           </Link>
-          <Link
-            href={`/${locale}/admin/vendors` as Route}
-            aria-current={section === "vendors" ? "page" : undefined}
+          <div
+            className={navigationStyles.group}
+            data-active={isUsersSection}
+            data-open={usersExpanded}
+            onMouseEnter={() => setUsersHovered(true)}
+            onMouseLeave={() => setUsersHovered(false)}
           >
-            <VendorsIcon />
-            <span>{c.vendors}</span>
-          </Link>
-          <Link
-            href={`/${locale}/admin/products` as Route}
-            aria-current={section === "products" ? "page" : undefined}
+            <button
+              className={navigationStyles.groupTrigger}
+              type="button"
+              aria-expanded={usersExpanded}
+              aria-controls="admin-users-navigation"
+              onClick={() => setUsersOpen((current) => !current)}
+            >
+              <VendorsIcon />
+              <span>{c.users}</span>
+              <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
+            </button>
+            <div className={navigationStyles.subNavigation} id="admin-users-navigation">
+              <Link
+                className={navigationStyles.item}
+                href={`/${locale}/admin/vendors` as Route}
+                aria-current={section === "vendors" ? "page" : undefined}
+              >
+                <VendorsIcon />
+                <span>{c.vendors}</span>
+              </Link>
+              <Link
+                className={navigationStyles.item}
+                href={`/${locale}/admin/staff` as Route}
+                aria-current={section === "staff" ? "page" : undefined}
+              >
+                <VendorsIcon />
+                <span>{c.staff}</span>
+              </Link>
+              <Link
+                className={navigationStyles.item}
+                href={`/${locale}/admin/users` as Route}
+                aria-current={section === "users" ? "page" : undefined}
+              >
+                <VendorsIcon />
+                <span>{c.users}</span>
+              </Link>
+            </div>
+          </div>
+          <div
+            className={navigationStyles.group}
+            data-active={isSalesServiceSection}
+            data-open={salesServiceExpanded}
+            onMouseEnter={() => setSalesServiceHovered(true)}
+            onMouseLeave={() => setSalesServiceHovered(false)}
           >
-            <ProductsIcon />
-            <span>{c.catalog}</span>
-          </Link>
-          <Link href={`/${locale}/admin/blog` as Route}>
+            <button
+              className={navigationStyles.groupTrigger}
+              type="button"
+              aria-expanded={salesServiceExpanded}
+              aria-controls="admin-sales-service-navigation"
+              onClick={() => setSalesServiceOpen((current) => !current)}
+            >
+              <ProductsIcon />
+              <span>{c.sellService}</span>
+              <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
+            </button>
+            <div className={navigationStyles.subNavigation} id="admin-sales-service-navigation">
+              <Link
+                className={navigationStyles.item}
+                href={`/${locale}/admin/products` as Route}
+                aria-current={section === "products" ? "page" : undefined}
+              >
+                <ProductsIcon />
+                <span>{c.products}</span>
+              </Link>
+              <Link
+                className={navigationStyles.item}
+                href={`/${locale}/admin/product-changes` as Route}
+                aria-current={section === "product-changes" ? "page" : undefined}
+              >
+                <ProductsIcon />
+                <span>{c.productChanges}</span>
+              </Link>
+              <Link
+                className={navigationStyles.item}
+                href={`/${locale}/admin/orders` as Route}
+                aria-current={section === "orders" ? "page" : undefined}
+              >
+                <OrdersIcon />
+                <span>{c.orders}</span>
+              </Link>
+            </div>
+          </div>
+          <div
+            className={navigationStyles.group}
+            data-active={isPaymentServiceSection}
+            data-open={paymentServiceExpanded}
+            onMouseEnter={() => setPaymentServiceHovered(true)}
+            onMouseLeave={() => setPaymentServiceHovered(false)}
+          >
+            <button
+              className={navigationStyles.groupTrigger}
+              type="button"
+              aria-expanded={paymentServiceExpanded}
+              aria-controls="admin-payment-service-navigation"
+              onClick={() => setPaymentServiceOpen((current) => !current)}
+            >
+              <PaymentIcon />
+              <span>{c.paymentService}</span>
+              <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
+            </button>
+            <div className={navigationStyles.subNavigation} id="admin-payment-service-navigation">
+              <Link
+                className={navigationStyles.item}
+                href={`/${locale}/admin/payments/transactions` as Route}
+                aria-current={section === "payment-transactions" ? "page" : undefined}
+              >
+                <PaymentIcon />
+                <span>{c.paymentTransactions}</span>
+              </Link>
+              <Link
+                className={navigationStyles.item}
+                href={`/${locale}/admin/payments/methods` as Route}
+                aria-current={section === "payment-methods" ? "page" : undefined}
+              >
+                <PaymentIcon />
+                <span>{c.paymentMethods}</span>
+              </Link>
+            </div>
+          </div>
+          </> : null}
+          <Link className={navigationStyles.item} href={`/${locale}/admin/blog` as Route} aria-current={section === "editorial" ? "page" : undefined}>
             <ProductsIcon />
             <span>{c.editorial}</span>
           </Link>
-          <Link href={`/${locale}/admin/staff` as Route}>
-            <VendorsIcon />
-            <span>{c.staff}</span>
-          </Link>
+          {ownerNavigation ? <>
+          <div
+            className={navigationStyles.group}
+            data-active={isAiSection}
+            data-open={aiExpanded}
+            onMouseEnter={() => setAiHovered(true)}
+            onMouseLeave={() => setAiHovered(false)}
+          >
+            <button
+              className={navigationStyles.groupTrigger}
+              type="button"
+              aria-expanded={aiExpanded}
+              aria-controls="admin-ai-navigation"
+              onClick={() => setAiOpen((current) => !current)}
+            >
+              <OverviewIcon />
+              <span>{c.ai}</span>
+              <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
+            </button>
+            <div className={navigationStyles.subNavigation} id="admin-ai-navigation">
+              <Link className={navigationStyles.item} href={`/${locale}/admin/ai/models` as Route} aria-current={section === "ai-models" ? "page" : undefined}>
+                <ProductsIcon />
+                <span>{c.aiModels}</span>
+              </Link>
+              <Link className={navigationStyles.item} href={`/${locale}/admin/ai/assistant` as Route} aria-current={section === "ai-assistant" ? "page" : undefined}>
+                <OverviewIcon />
+                <span>{c.aiAssistant}</span>
+              </Link>
+            </div>
+          </div>
           {process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true" ? (
-            <Link href={`/${locale}/admin/bridge` as Route}>
+            <Link className={navigationStyles.item} href={`/${locale}/admin/bridge` as Route} aria-current={section === "bridge" ? "page" : undefined}>
               <ProductsIcon />
               <span>Bridge</span>
             </Link>
           ) : null}
+          </> : null}
         </nav>
         <div className="admin-rail-account">
           <span>{c.account}</span>
           <div className="admin-identity">
-            <span>{c.admin}</span>
+            <span>{ownerNavigation ? c.admin : c.staff}</span>
             <strong>{adminName}</strong>
           </div>
           <LogoutButton locale={locale} />
@@ -829,8 +962,6 @@ export function VendorManagement({
           </div>
         </header>
         {productsError ? <p className="admin-notice is-error" role="alert">{productsError}</p> : null}
-        {productError ? <p className="admin-notice is-error" role="alert">{productError}</p> : null}
-        {productMessage ? <p className="admin-notice" role="status">{productMessage}</p> : null}
         {!productsLoading && !products.length ? <p className="vendor-empty">{c.catalogEmpty}</p> : null}
         {products.length ? (
           <div className="admin-product-list">
@@ -850,78 +981,12 @@ export function VendorManagement({
                   <div><dt>{c.listings}</dt><dd>{product.listingCount}</dd></div>
                   <div><dt>{c.status}</dt><dd>{product.status}</dd></div>
                 </dl>
-                <button
+                <Link
                   className="admin-secondary-button admin-product-edit"
-                  type="button"
-                  aria-expanded={editingProductId === product.id}
-                  aria-controls={`admin-product-editor-${product.id}`}
-                  onClick={() => editingProductId === product.id
-                    ? setEditingProductId(null)
-                    : openProductEditor(product)}
+                  href={`/${locale}/admin/products/${product.id}` as Route}
                 >
-                  {editingProductId === product.id ? c.cancel : c.editProduct}
-                </button>
-                {editingProductId === product.id ? (
-                  <form
-                    className="admin-product-edit-form"
-                    id={`admin-product-editor-${product.id}`}
-                    onSubmit={submitProduct}
-                  >
-                    <p>{c.editProductHint}</p>
-                    <label className="vendor-field">
-                      <span>{c.productTitle}</span>
-                      <input
-                        autoFocus
-                        required
-                        minLength={2}
-                        maxLength={200}
-                        value={productForm.title}
-                        onChange={(event) => updateProductField("title", event.target.value)}
-                      />
-                    </label>
-                    <label className="vendor-field">
-                      <span>{c.category}</span>
-                      <input
-                        maxLength={100}
-                        value={productForm.category}
-                        onChange={(event) => updateProductField("category", event.target.value)}
-                      />
-                    </label>
-                    <label className="vendor-field admin-product-description">
-                      <span>{c.description}</span>
-                      <textarea
-                        maxLength={10000}
-                        value={productForm.description}
-                        onChange={(event) => updateProductField("description", event.target.value)}
-                      />
-                    </label>
-                    <label className="vendor-field">
-                      <span>{c.publishState}</span>
-                      <select
-                        value={productForm.status}
-                        onChange={(event) => updateProductField("status", event.target.value as ProductStatus)}
-                      >
-                        <option value="draft">{c.statusDraft}</option>
-                        <option value="pending_review">{c.statusPendingReview}</option>
-                        <option value="active">{c.statusPublished}</option>
-                        <option value="archived">{c.statusArchived}</option>
-                      </select>
-                    </label>
-                    <footer>
-                      <button
-                        className="admin-secondary-button"
-                        type="button"
-                        disabled={productSubmitting}
-                        onClick={() => setEditingProductId(null)}
-                      >
-                        {c.cancel}
-                      </button>
-                      <button className="admin-primary-button" type="submit" disabled={productSubmitting}>
-                        {productSubmitting ? c.saving : c.save}
-                      </button>
-                    </footer>
-                  </form>
-                ) : null}
+                  {c.editProduct}
+                </Link>
               </article>
             ))}
           </div>
@@ -932,6 +997,24 @@ export function VendorManagement({
           </button>
         ) : null}
       </section> : null}
+
+      {section === "product-changes" ? <ProductChangesWorkspace locale={locale} /> : null}
+
+      {section === "orders" ? <OrdersWorkspace locale={locale} audience="admin" /> : null}
+
+      {section === "payment-transactions" ? <PaymentServiceWorkspace locale={locale} view="transactions" /> : null}
+
+      {section === "payment-methods" ? <PaymentServiceWorkspace locale={locale} view="methods" /> : null}
+
+      {section === "staff" ? <StaffWorkspace locale={locale} /> : null}
+
+      {section === "users" ? <UsersWorkspace locale={locale} /> : null}
+
+      {section === "bridge" ? <AdminBridgeWorkspace locale={locale} /> : null}
+
+      {section === "editorial" ? <AdminBlogWorkspace locale={locale} /> : null}
+      {section === "ai-models" ? <AiWorkspace locale={locale} view="models" /> : null}
+      {section === "ai-assistant" ? <AiWorkspace locale={locale} view="assistant" /> : null}
 
       {panelMode ? (
         <div className="vendor-panel-layer" role="presentation">
@@ -1097,6 +1180,24 @@ function VendorsIcon() {
 
 function ProductsIcon() {
   return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m3.5 6 6.5-3 6.5 3-6.5 3-6.5-3Z" /><path d="M3.5 6v8l6.5 3 6.5-3V6M10 9v8" /></svg>;
+}
+
+function OrdersIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" />
+      <path d="M9 8h6M9 12h6" />
+    </svg>
+  );
+}
+
+function PaymentIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 10h18M7 15h4" />
+    </svg>
+  );
 }
 
 function SearchIcon() {

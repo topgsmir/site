@@ -7,6 +7,8 @@ import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import type {
   BlogLocale,
+  BlogChangeEvent,
+  BlogChangesPage,
   BlogMediaAsset,
   BlogTaxonomyTerm,
   BlogTranslationDraft,
@@ -20,12 +22,12 @@ import NextImage from "next/image";
 import type { Route } from "next";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
-import type { Locale } from "@/lib/i18n";
 import { DesignIcon } from "@/components/DesignIcon";
 import { BLOG_EDITOR_COPY } from "./BlogEditorCopy";
 import styles from "./BlogEditor.module.css";
 
 const LABELS: Record<BlogLocale, string> = { fa: "فارسی", en: "English", ar: "العربية" };
+const AUTHORING_LOCALE: BlogLocale = "fa";
 const EMPTY: RichTextDocument = { type: "doc", content: [] };
 
 function hasArticleContent(node: RichTextNode): boolean {
@@ -35,12 +37,12 @@ function hasArticleContent(node: RichTextNode): boolean {
 type ProductOption = { id: string; title: string; slug: string };
 type TaxonomyResponse = { categories: BlogTaxonomyTerm[]; tags: BlogTaxonomyTerm[] };
 
-export function BlogEditor({ locale, postId, backHref }: { locale: Locale; postId: string; backHref: string }) {
-  const copy = BLOG_EDITOR_COPY[locale];
+export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { postId: string; backHref: string; canRestoreHistory?: boolean }) {
+  const copy = BLOG_EDITOR_COPY[AUTHORING_LOCALE];
   const [post, setPost] = useState<ManagedBlogPost | null>(null);
   const [translations, setTranslations] = useState<BlogTranslationDraft[]>([]);
-  const [active, setActive] = useState<BlogLocale>(locale);
-  const activeRef = useRef<BlogLocale>(locale);
+  const [active, setActive] = useState<BlogLocale>(AUTHORING_LOCALE);
+  const activeRef = useRef<BlogLocale>(AUTHORING_LOCALE);
   const [categories, setCategories] = useState<BlogTaxonomyTerm[]>([]);
   const [tags, setTags] = useState<BlogTaxonomyTerm[]>([]);
   const [categoryId, setCategoryId] = useState("");
@@ -53,6 +55,9 @@ export function BlogEditor({ locale, postId, backHref }: { locale: Locale; postI
   const [loadedContent, setLoadedContent] = useState(0);
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [changes, setChanges] = useState<BlogChangeEvent[]>([]);
+  const [historyError, setHistoryError] = useState("");
+  const [confirmRestoreKey, setConfirmRestoreKey] = useState<string | null>(null);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -99,10 +104,19 @@ export function BlogEditor({ locale, postId, backHref }: { locale: Locale; postI
       setError(false);
     } catch { setMessage(copy.loadError); setError(true); }
   }, [postId, copy]);
+  const loadHistory = useCallback(async () => {
+    try {
+      const response = await api.get<BlogChangesPage>(`/blog/manage/posts/${postId}/changes`, { params: { limit: 12 } });
+      setChanges(response.data.items);
+      setHistoryError("");
+    } catch {
+      setHistoryError("دریافت تاریخچه ویرایش‌ها ممکن نبود.");
+    }
+  }, [postId]);
   useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0);
+    const timer = window.setTimeout(() => { void load(); void loadHistory(); }, 0);
     return () => window.clearTimeout(timer);
-  }, [load]);
+  }, [load, loadHistory]);
 
   const translationsRef = useRef(translations);
   useEffect(() => {
@@ -145,12 +159,39 @@ export function BlogEditor({ locale, postId, backHref }: { locale: Locale; postI
       });
       setPost(response.data);
       setMessage(copy.saved);
+      void loadHistory();
       return response.data;
     } catch {
       setError(true);
       setMessage(copy.saveError);
       return null;
     } finally { setSaving(false); }
+  }
+
+  async function restoreChange(change: BlogChangeEvent, side: "before" | "after") {
+    if (!post || saving) return;
+    const key = `${change.id}:${side}`;
+    if (confirmRestoreKey !== key) {
+      setConfirmRestoreKey(key);
+      return;
+    }
+    setSaving(true);
+    setError(false);
+    setMessage("در حال بازگردانی نسخه…");
+    try {
+      await api.post(`/blog/manage/posts/${postId}/changes/${change.id}/restore`, {
+        optimisticVersion: post.optimisticVersion,
+        side
+      });
+      setConfirmRestoreKey(null);
+      await Promise.all([load(), loadHistory()]);
+      setMessage("نسخه انتخاب‌شده بازگردانی شد.");
+    } catch {
+      setError(true);
+      setMessage("بازگردانی انجام نشد؛ مقاله را دوباره بارگذاری کنید.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function submit() {
@@ -186,13 +227,13 @@ export function BlogEditor({ locale, postId, backHref }: { locale: Locale; postI
     translation.seoTitle.trim() && translation.seoDescription.trim() && translation.coverAltText.trim() &&
     hasArticleContent(translation.content)
   );
-  const termName = (term: BlogTaxonomyTerm) => term.translations.find((item) => item.locale === locale)?.name ?? term.translations[0]?.name ?? "";
+  const termName = (term: BlogTaxonomyTerm) => term.translations.find((item) => item.locale === AUTHORING_LOCALE)?.name ?? term.translations[0]?.name ?? "";
 
-  if (!post || !current) return <div className={styles.loading}><DesignIcon name="file" /><p role={error ? "alert" : "status"}>{message}</p>{error ? <button type="button" onClick={() => void load()}>{copy.retry}</button> : null}</div>;
+  if (!post || !current) return <div className={styles.loading} dir="rtl" lang={AUTHORING_LOCALE}><DesignIcon name="file" /><p role={error ? "alert" : "status"}>{message}</p>{error ? <button type="button" onClick={() => void load()}>{copy.retry}</button> : null}</div>;
   const coverVariant = cover?.variants.find((item) => item.name === "wide") ?? cover?.variants[0];
   const checks = [...translations.map((translation) => ({ label: LABELS[translation.locale], done: complete(translation) })), { label: copy.attached, done: Boolean(cover) }, { label: copy.selected, done: Boolean(categoryId) }];
   return (
-    <div className={styles.shell} dir={locale === "en" ? "ltr" : "rtl"}>
+    <div className={styles.shell} dir="rtl" lang={AUTHORING_LOCALE}>
       <header className={styles.topbar}>
         <NextLink className={styles.backLink} href={backHref as Route}><DesignIcon name="arrow" /><span>{copy.back}</span></NextLink>
         <span className={styles.studio}><DesignIcon name="file" />{copy.studio}</span>
@@ -245,6 +286,23 @@ export function BlogEditor({ locale, postId, backHref }: { locale: Locale; postI
           </section>
           <section className={styles.panel}><h2>{copy.organize}</h2><label className={styles.field}><span>{copy.category}</span><select value={categoryId} onChange={(event) => { setCategoryId(event.target.value); setMessage(copy.unsaved); }}><option value="">{copy.choose}</option>{categories.map((category) => <option key={category.id} value={category.id}>{termName(category)}</option>)}</select></label><span className={styles.groupLabel}>{copy.tags}</span><div className={styles.tagList}>{tags.length ? tags.map((tag) => <label key={tag.id}><input type="checkbox" checked={tagIds.includes(tag.id)} onChange={(event) => { setTagIds((currentIds) => event.target.checked ? [...currentIds, tag.id] : currentIds.filter((id) => id !== tag.id)); setMessage(copy.unsaved); }} />{termName(tag)}</label>) : <p>{copy.noTags}</p>}</div></section>
           <section className={styles.panel}><div className={styles.panelTitle}><h2>{copy.related}</h2><span>{products.length}/8</span></div><input className={styles.searchInput} value={productQuery} onChange={(event) => setProductQuery(event.target.value)} placeholder={copy.productSearch} aria-label={copy.productSearch} /><div className={styles.productResults}>{productOptions.filter((option) => !products.some((product) => product.id === option.id)).map((option) => <button key={option.id} type="button" disabled={products.length >= 8} onClick={() => { setProducts((currentProducts) => [...currentProducts, { ...option, startingPrices: [] }]); setProductQuery(""); setMessage(copy.unsaved); }}>{option.title}</button>)}</div><div className={styles.selectedProducts}>{products.map((product) => <button key={product.id} type="button" aria-label={`${copy.remove} ${product.title}`} onClick={() => { setProducts((currentProducts) => currentProducts.filter((item) => item.id !== product.id)); setMessage(copy.unsaved); }}><span>{product.title}</span><span aria-hidden="true">×</span></button>)}</div></section>
+          <section className={`${styles.panel} ${styles.historyPanel}`}>
+            <div className={styles.panelTitle}><h2>تاریخچه ویرایش</h2><span>{changes.length}</span></div>
+            <p>هر ذخیره با نام ویرایشگر و فیلدهای تغییرکرده ثبت می‌شود.</p>
+            {historyError ? <p role="alert">{historyError}</p> : null}
+            <ol className={styles.historyList}>
+              {changes.map((change) => (
+                <li key={change.id}>
+                  <div><strong>{change.action === "create" ? "ایجاد" : change.action === "restore" ? "بازگردانی" : "ویرایش"}</strong><time dateTime={change.createdAt}>{new Intl.DateTimeFormat("fa", { dateStyle: "medium", timeStyle: "short" }).format(new Date(change.createdAt))}</time></div>
+                  <small>{change.actor.name} · {change.changedFields.length} تغییر</small>
+                  {canRestoreHistory ? <div className={styles.historyActions}>
+                    <button type="button" disabled={saving} onClick={() => void restoreChange(change, "after")}>{confirmRestoreKey === `${change.id}:after` ? "تأیید بازگردانی" : "بازگردانی این نسخه"}</button>
+                    {change.before ? <button type="button" disabled={saving} onClick={() => void restoreChange(change, "before")}>{confirmRestoreKey === `${change.id}:before` ? "تأیید بازگردانی" : "لغو این تغییر"}</button> : null}
+                  </div> : null}
+                </li>
+              ))}
+            </ol>
+          </section>
         </aside>
       </div>
     </div>

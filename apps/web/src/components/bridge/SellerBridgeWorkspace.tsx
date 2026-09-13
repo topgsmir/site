@@ -8,20 +8,6 @@ import { api } from "@/lib/api/client";
 import type { Locale } from "@/lib/i18n";
 import styles from "./BridgeWorkspace.module.css";
 
-type BridgeOrder = {
-  id: string;
-  orderId: string;
-  productTitle: string;
-  serviceName: string;
-  quantity: number;
-  mode: "automatic" | "manual";
-  status: string;
-  fields: { fields?: Record<string, string> };
-  result: unknown;
-  errorCode: string | null;
-  mayRetry: boolean;
-};
-
 const COPY = {
   en: {
     back: "Seller dashboard", brand: "Bridge services", title: "Your upstream accounts.", intro: "Connect credentials you own, synchronize their services, then use only the services approved by the platform.",
@@ -47,25 +33,21 @@ export function SellerBridgeWorkspace({ locale }: { locale: Locale }) {
   const c = COPY[locale];
   const [connections, setConnections] = useState<BridgeConnectionSummary[]>([]);
   const [grants, setGrants] = useState<BridgeGrantSummary[]>([]);
-  const [orders, setOrders] = useState<BridgeOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [results, setResults] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const [connectionResponse, grantResponse, orderResponse] = await Promise.all([
+      const [connectionResponse, grantResponse] = await Promise.all([
         api.get<BridgeConnectionSummary[]>("/bridge/connections"),
-        api.get<BridgeGrantSummary[]>("/bridge/grants"),
-        api.get<BridgeOrder[]>("/bridge/orders")
+        api.get<BridgeGrantSummary[]>("/bridge/grants")
       ]);
       setConnections(connectionResponse.data);
       setGrants(grantResponse.data);
-      setOrders(orderResponse.data);
     } catch { setError(c.error); }
     finally { setLoading(false); }
   }, [c.error]);
@@ -98,23 +80,11 @@ export function SellerBridgeWorkspace({ locale }: { locale: Locale }) {
     finally { setBusy(""); }
   }
 
-  async function orderAction(id: string, action: "complete" | "retry") {
-    setBusy(`${id}:${action}`); setError(""); setMessage("");
-    try {
-      if (action === "complete") await api.post(`/bridge/orders/${id}/complete`, { result: results[id] ?? "" });
-      else await api.post(`/bridge/orders/${id}/retry`);
-      setMessage(c.done); await load();
-    } catch { setError(c.error); }
-    finally { setBusy(""); }
-  }
-
   return (
-    <div className={styles.shell}>
-      <header className={styles.header}>
-        <div><p className={styles.brand}>{c.brand}</p><h1>{c.title}</h1></div>
-        <div><p>{c.intro}</p><Link className={styles.link} href={`/${locale}/seller-dashboard`}>{c.back}</Link></div>
+    <div className={styles.workspace}>
+      <header className={styles.workspaceIntro}>
+        <p>{c.intro}</p>
       </header>
-      <main className={styles.main}>
         <section className={styles.section}>
           <div className={styles.sectionHead}><div><h2>{c.connections}</h2><p>{c.connectionsHelp}</p></div><button className={styles.buttonQuiet} onClick={() => void load()} disabled={loading}>{c.refresh}</button></div>
           <form className={styles.form} onSubmit={createConnection}>
@@ -143,23 +113,12 @@ export function SellerBridgeWorkspace({ locale }: { locale: Locale }) {
             <article className={styles.card} key={grant.id}>
               <div className={styles.cardHead}><div><h3>{grant.service.name}</h3><p className={styles.muted}>{grant.service.groupName ?? grant.service.kind}</p></div><span className={styles.status} data-tone={grant.service.available ? "good" : "warn"}>{grant.service.available ? "active" : "unavailable"}</span></div>
               <div><strong>{c.fields}</strong><ul className={styles.fields}>{grant.service.fields.map((field) => <li key={field.key}>{field.label}{field.required ? " *" : ""}</li>)}</ul></div>
-              <Link className={styles.button} href={`/${locale}/seller-dashboard/bridge/products/new?grant=${grant.id}` as Route}>{c.create}</Link>
+              <Link className={styles.button} href={`/${locale}/seller-dashboard/products/new?grant=${grant.id}` as Route}>{c.create}</Link>
             </article>
           ))}</div> : <p className={styles.empty}>{c.noGrants}</p>}
         </section>
 
-        <section className={styles.section}>
-          <div className={styles.sectionHead}><div><h2>{c.orders}</h2><p>{c.ordersHelp}</p></div></div>
-          {orders.length ? <div className={styles.grid}>{orders.map((order) => (
-            <article className={styles.card} key={order.id}>
-              <div className={styles.cardHead}><div><h3>{order.productTitle}</h3><p className={styles.muted}>#{order.orderId} · {order.serviceName}</p></div><span className={styles.status} data-tone={order.status === "succeeded" ? "good" : order.status === "failed" ? "bad" : "warn"}>{order.status}</span></div>
-              <ul className={styles.fields}>{Object.entries(order.fields?.fields ?? {}).map(([key, value]) => <li key={key}>{key}: {value}</li>)}</ul>
-              {["manual_required", "failed"].includes(order.status) ? <><label className={styles.field}><span>{c.result}</span><textarea value={results[order.id] ?? ""} onChange={(event) => setResults((current) => ({ ...current, [order.id]: event.target.value }))} maxLength={10000} /><small>{order.errorCode ?? " "}</small></label><div className={styles.actions}><button className={styles.button} disabled={!results[order.id]?.trim() || Boolean(busy)} onClick={() => void orderAction(order.id, "complete")}>{c.complete}</button>{order.mayRetry ? <button className={styles.buttonQuiet} disabled={Boolean(busy)} onClick={() => void orderAction(order.id, "retry")}>{c.retry}</button> : null}</div></> : null}
-            </article>
-          ))}</div> : <p className={styles.empty}>{c.noOrders}</p>}
-        </section>
         <div aria-live="polite">{error ? <p className={styles.error}>{error}</p> : null}{message ? <p className={styles.success}>{message}</p> : null}</div>
-      </main>
     </div>
   );
 }

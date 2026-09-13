@@ -14,6 +14,9 @@
   --color-dashboard-accent-ink: #ffffff;
   --color-dashboard-accent-soft: #eceefa;
   --color-dashboard-focus: #4354b6;
+  --color-dashboard-scrollbar-track: var(--color-dashboard-surface-raised);
+  --color-dashboard-scrollbar-thumb: var(--color-dashboard-rule-strong);
+  --color-dashboard-scrollbar-thumb-hover: var(--color-dashboard-accent);
   --color-dashboard-error: oklch(48% 0.17 28);
   --color-dashboard-error-soft: oklch(94% 0.035 28);
   --color-dashboard-success: oklch(43% 0.13 157);
@@ -62,6 +65,7 @@
   --radius-dashboard-md: 1.5rem;
   --radius-dashboard-lg: 2rem;
   --radius-dashboard-round: 999px;
+  --size-dashboard-scrollbar: 0.625rem;
 
   --radius-dashboard-control: var(--radius-dashboard-xs);
   --radius-dashboard-panel: var(--radius-dashboard-md);

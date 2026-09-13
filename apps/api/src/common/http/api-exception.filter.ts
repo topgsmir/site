@@ -7,6 +7,7 @@ import {
   Logger
 } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
+import { PublicHttpException } from "./public-http.exception";
 
 type RequestContext = {
   method?: string;
@@ -48,7 +49,8 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const sourceBody = source && typeof source === "object" && !Array.isArray(source)
       ? source as Record<string, unknown>
       : null;
-    const message = status >= 500
+    const publicDetails = exception instanceof PublicHttpException ? exception.publicDetails : null;
+    const message = status >= 500 && !publicDetails
       ? "The service could not complete the request"
       : sourceBody?.message ?? (typeof source === "string" ? source : "The request could not be completed");
 
@@ -68,7 +70,8 @@ export class ApiExceptionFilter implements ExceptionFilter {
       statusCode: status,
       code: errorCode(status),
       message,
-      requestId
+      requestId,
+      ...(publicDetails ?? {})
     });
   }
 }

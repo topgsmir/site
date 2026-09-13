@@ -1,25 +1,46 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, Req, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Ip, Param, ParseUUIDPipe, Patch, Post, Query, Req, Res, UseGuards } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AuthenticatedGuard } from "../../modules/auth/authenticated.guard";
+import { AuthRateLimitService } from "../../modules/auth/auth-rate-limit.service";
 import { IdempotencyKey } from "../../modules/auth/idempotency-key.decorator";
 import type { AuthenticatedRequest } from "../../modules/auth/platform-admin.guard";
 import { PlatformAdminGuard } from "../../modules/auth/platform-admin.guard";
-import { InitiatePaymentDto, RefundPaymentDto } from "./dto/payment.dto";
+import {
+  InitiatePaymentDto,
+  ListAdminPaymentTransactionsQueryDto,
+  ListPaymentSellerOptionsQueryDto,
+  PaymentCallbackQueryDto,
+  PaymentProviderParamDto,
+  RefundPaymentDto,
+  UpdatePaymentMethodDto
+} from "./dto/payment.dto";
 import { PaymentApplicationService } from "./payment-application.service";
 
 @Controller("payments")
 export class PaymentController {
-  constructor(private readonly application: PaymentApplicationService, private readonly config: ConfigService) {}
+  constructor(
+    private readonly application: PaymentApplicationService,
+    private readonly config: ConfigService,
+    private readonly rateLimits: AuthRateLimitService
+  ) {}
 
-  @Post("zarinpal")
+  @Post(":providerCode")
   @UseGuards(AuthenticatedGuard)
-  initiate(@Req() request: AuthenticatedRequest, @Body() body: InitiatePaymentDto, @IdempotencyKey() idempotencyKey: string) {
-    return this.application.initiate(request.authenticatedUser!, body.orderId, idempotencyKey);
+  async initiate(
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string,
+    @Param() params: PaymentProviderParamDto,
+    @Body() body: InitiatePaymentDto,
+    @IdempotencyKey() idempotencyKey: string
+  ) {
+    await this.rateLimits.consumePaymentInitiation(request.authenticatedUser!.id, clientIp);
+    return this.application.initiate(request.authenticatedUser!, body.orderId, idempotencyKey, params.providerCode);
   }
 
   @Get("zarinpal/callback")
-  async callback(@Query("Authority") authority: string, @Query("Status") status: string | undefined, @Res({ passthrough: true }) response: { redirect?(url: string): void }) {
-    const result = await this.application.callback(authority, status);
+  async callback(@Query() query: PaymentCallbackQueryDto, @Ip() clientIp: string, @Res({ passthrough: true }) response: { redirect?(url: string): void }) {
+    await this.rateLimits.consumePaymentCallback(query.Authority, clientIp);
+    const result = await this.application.callback("zarinpal", query.Authority, query.Status);
     const webUrl = this.config.get<string>("WEB_APP_URL")?.trim().replace(/\/$/, "");
     if (webUrl && /^https:\/\//i.test(webUrl) && response.redirect) {
       const locale = this.config.get<string>("DEFAULT_LOCALE")?.trim() || "fa";
@@ -28,9 +49,56 @@ export class PaymentController {
     return result;
   }
 
+  @Get("admin/methods")
+  @UseGuards(PlatformAdminGuard)
+  methods() {
+    return this.application.listMethods();
+  }
+
+  @Patch("admin/methods/:providerCode")
+  @UseGuards(PlatformAdminGuard)
+  async updateMethod(
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string,
+    @Param() params: PaymentProviderParamDto,
+    @Body() body: UpdatePaymentMethodDto
+  ) {
+    await this.rateLimits.consumePaymentConfiguration(request.authenticatedUser!.id, clientIp);
+    return this.application.updateMethod(params.providerCode, {
+      enabled: body.enabled,
+      productTypes: body.productTypes,
+      sellerIds: body.sellerIds,
+      credentials: {
+        merchantId: body.merchantId,
+        callbackUrl: body.callbackUrl,
+        refundAccessToken: body.refundAccessToken,
+        clearRefundAccessToken: body.clearRefundAccessToken
+      }
+    }, request.authenticatedUser!.id);
+  }
+
+  @Get("admin/seller-options")
+  @UseGuards(PlatformAdminGuard)
+  sellerOptions(@Query() query: ListPaymentSellerOptionsQueryDto) {
+    return this.application.listSellerOptions(query.query, query.limit);
+  }
+
+  @Get("admin/transactions")
+  @UseGuards(PlatformAdminGuard)
+  transactions(@Query() query: ListAdminPaymentTransactionsQueryDto) {
+    return this.application.listTransactions(query);
+  }
+
   @Post("admin/:attemptId/refund")
   @UseGuards(PlatformAdminGuard)
-  refund(@Param("attemptId", new ParseUUIDPipe({ version: "4" })) attemptId: string, @Body() body: RefundPaymentDto) {
-    return this.application.refund(attemptId, body.reason);
+  async refund(
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string,
+    @Param("attemptId", new ParseUUIDPipe({ version: "4" })) attemptId: string,
+    @Body() body: RefundPaymentDto,
+    @IdempotencyKey() idempotencyKey: string
+  ) {
+    await this.rateLimits.consumePaymentRefund(request.authenticatedUser!.id, clientIp);
+    return this.application.refund(request.authenticatedUser!, attemptId, body.reason, idempotencyKey);
   }
 }

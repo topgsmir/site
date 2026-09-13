@@ -1,0 +1,19 @@
+.workspace { display: grid; min-width: 0; gap: var(--space-dashboard-lg); padding-block: var(--space-dashboard-xl) var(--space-dashboard-3xl); color: var(--color-dashboard-ink); }
+.header { padding-bottom: var(--space-dashboard-lg); border-bottom: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
+.header h1 { font-family: var(--font-dashboard-display); font-size: clamp(var(--text-dashboard-xl), 3vw, var(--text-dashboard-2xl)); font-weight: 600; line-height: 1.4; letter-spacing: -.03em; }
+.header p { max-width: 64ch; margin-top: var(--space-dashboard-sm); color: var(--color-dashboard-muted); line-height: 1.8; }
+.list { display: grid; gap: var(--space-dashboard-sm); }
+.card { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-dashboard-lg); padding: var(--space-dashboard-lg); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-control); background: var(--color-dashboard-surface-raised); }
+.identity { display: grid; min-width: 0; gap: 5px; }
+.identity strong { overflow-wrap: anywhere; font-size: var(--text-dashboard-md); }
+.identity a, .identity span { width: fit-content; max-width: 100%; overflow-wrap: anywhere; color: var(--color-dashboard-muted); font-size: .82rem; }
+.identity a:hover { color: var(--color-dashboard-accent-strong); text-decoration: underline; text-underline-offset: 3px; }
+.identity a:focus-visible, .more:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 3px; }
+.meta { display: flex; align-items: center; gap: var(--space-dashboard-lg); }
+.meta div { min-width: 88px; }
+.meta dt { color: var(--color-dashboard-muted); font-size: .72rem; }
+.meta dd { margin-top: 5px; font-size: .86rem; font-weight: 600; }
+.empty, .loading, .error { padding: var(--space-dashboard-lg); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-control); color: var(--color-dashboard-muted); background: var(--color-dashboard-surface); }
+.error { color: var(--color-dashboard-error); background: var(--color-dashboard-error-soft); }
+.more { width: fit-content; min-height: 44px; padding-inline: var(--space-dashboard-lg); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-round); color: var(--color-dashboard-ink); background: var(--color-dashboard-surface-raised); font-weight: 600; cursor: pointer; }
+@media (max-width: 39.999rem) { .card { grid-template-columns: minmax(0, 1fr); } .meta { justify-content: space-between; } .more { width: 100%; } }

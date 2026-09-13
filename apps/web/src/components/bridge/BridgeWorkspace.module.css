@@ -1,3 +1,4 @@
+/* Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4 · genre: modern-minimal · macrostructure: Workbench · design-system: TopGSM dashboard */
 .shell {
   min-height: 100svh;
   padding: clamp(var(--space-dashboard-md), 4vw, var(--space-dashboard-2xl));
@@ -56,6 +57,50 @@
   width: min(86rem, 100%);
   margin-inline: auto;
   padding-block: var(--space-dashboard-xl);
+}
+
+.workspace {
+  display: grid;
+  gap: var(--space-dashboard-2xl);
+  min-width: 0;
+  color: var(--color-dashboard-ink);
+  font-family: var(--font-dashboard-body);
+}
+
+.workspaceIntro {
+  padding-block-end: var(--space-dashboard-lg);
+  border-block-end: var(--rule-dashboard-thin) solid var(--color-dashboard-rule);
+}
+
+.workspaceIntro p {
+  max-width: 64ch;
+  color: var(--color-dashboard-muted);
+  line-height: 1.8;
+}
+
+.dashboardHeader {
+  min-width: 0;
+  padding-block-end: var(--space-dashboard-lg);
+  border-block-end: var(--rule-dashboard-thin) solid var(--color-dashboard-rule);
+}
+
+.dashboardHeader h1 {
+  max-width: 28ch;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-dashboard-display);
+  font-size: clamp(var(--text-dashboard-xl), 3vw, var(--text-dashboard-2xl));
+  font-style: normal;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.03em;
+}
+
+.dashboardHeader > div > p:last-child {
+  max-width: 64ch;
+  margin-block-start: var(--space-dashboard-sm);
+  color: var(--color-dashboard-muted);
+  line-height: 1.8;
 }
 
 .section { display: grid; gap: var(--space-dashboard-lg); }

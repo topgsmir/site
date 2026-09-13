@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Ip, Param, ParseUUIDPipe, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import { AuthenticatedGuard } from "../auth/authenticated.guard";
+import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
 import type { AuthenticatedRequest } from "../auth/platform-admin.guard";
 import { PlatformAdminGuard } from "../auth/platform-admin.guard";
 import { BridgeService } from "./bridge.service";
@@ -11,7 +12,11 @@ import { CompleteBridgeOrderDto, CreateBridgeConnectionDto, GrantBridgeServiceDt
 @Controller("bridge")
 @UseGuards(BridgeFeatureGuard)
 export class BridgeController {
-  constructor(private readonly bridge: BridgeService, private readonly fulfillments: BridgeFulfillmentService) {}
+  constructor(
+    private readonly bridge: BridgeService,
+    private readonly fulfillments: BridgeFulfillmentService,
+    private readonly rateLimits: AuthRateLimitService
+  ) {}
 
   @Get("connections") @UseGuards(SellerBridgeGuard)
   listConnections(@Req() request: AuthenticatedRequest) {
@@ -29,12 +34,14 @@ export class BridgeController {
   }
 
   @Post("connections/:id/test") @UseGuards(SellerBridgeGuard)
-  testConnection(@Req() request: AuthenticatedRequest, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string) {
+  async testConnection(@Req() request: AuthenticatedRequest, @Ip() clientIp: string, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string) {
+    await this.rateLimits.consumeBridgeOperation(request.authenticatedUser!.id, clientIp);
     return this.bridge.testConnection(request.sellerContext!.sellerId, request.sellerContext!.membershipRole, id);
   }
 
   @Post("connections/:id/synchronize") @UseGuards(SellerBridgeGuard)
-  synchronize(@Req() request: AuthenticatedRequest, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string) {
+  async synchronize(@Req() request: AuthenticatedRequest, @Ip() clientIp: string, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string) {
+    await this.rateLimits.consumeBridgeOperation(request.authenticatedUser!.id, clientIp);
     return this.bridge.synchronize(request.sellerContext!.sellerId, request.sellerContext!.membershipRole, id);
   }
 
@@ -84,7 +91,8 @@ export class BridgeController {
   }
 
   @Post("orders/:id/retry") @UseGuards(SellerBridgeGuard)
-  retryOrder(@Req() request: AuthenticatedRequest, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string) {
+  async retryOrder(@Req() request: AuthenticatedRequest, @Ip() clientIp: string, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string) {
+    await this.rateLimits.consumeBridgeOperation(request.authenticatedUser!.id, clientIp);
     return this.fulfillments.retry(request.sellerContext!.sellerId, request.authenticatedUser!.id, id);
   }
 

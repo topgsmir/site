@@ -23,6 +23,7 @@ import {
   ListBlogPostsQueryDto,
   ProductOptionsQueryDto,
   RejectBlogPostDto,
+  RestoreBlogChangeDto,
   TaxonomyDto,
   UpdateBlogPostDto
 } from "./dto/blog-post.dto";
@@ -45,6 +46,31 @@ export class BlogManageController {
   @Get("posts/:id")
   get(@Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Req() request: AuthenticatedRequest) {
     return this.blog.getManaged(request.blogActor!, id);
+  }
+
+  @Get("posts/:id/changes")
+  changes(
+    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
+    @Query() query: ListBlogPostsQueryDto,
+    @Req() request: AuthenticatedRequest
+  ) {
+    return this.blog.listChanges(request.blogActor!, id, query);
+  }
+
+  @Post("posts/:id/changes/:changeId/restore")
+  restoreChange(
+    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
+    @Param("changeId", new ParseUUIDPipe({ version: "4" })) changeId: string,
+    @Body() body: RestoreBlogChangeDto,
+    @Req() request: AuthenticatedRequest
+  ) {
+    return this.blog.restoreChange(
+      request.blogActor!,
+      id,
+      changeId,
+      body.optimisticVersion,
+      body.side
+    );
   }
 
   @Patch("posts/:id")

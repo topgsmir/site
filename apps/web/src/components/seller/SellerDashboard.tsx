@@ -24,14 +24,17 @@ import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { ProductPublicUrl } from "@/components/product/ProductPublicUrl";
+import { SellerBridgeWorkspace } from "@/components/bridge/SellerBridgeWorkspace";
+import { SellerOrders } from "@/components/seller/SellerOrders";
 import { SellerCoupons } from "./SellerCoupons";
 import { SellerBlogPanel } from "./SellerBlogPanel";
 import { DesignIcon } from "@/components/DesignIcon";
 import { PRODUCT_CREATION_COPY } from "./ProductCreationCopy";
 import styles from "./SellerDashboard.module.css";
 import creation from "./ProductCreation.module.css";
+import navigationStyles from "@/components/dashboard/DashboardNavigation.module.css";
 
-type DashboardSection = "overview" | "products" | "blog" | "coupons" | "orders" | "payouts";
+type DashboardSection = "overview" | "products" | "blog" | "coupons" | "orders" | "payouts" | "bridge";
 type RequestState = "idle" | "loading" | "error" | "success";
 
 type SellerDashboardProps = {
@@ -73,6 +76,7 @@ type DashboardCopy = {
   brand: string;
   workspace: string;
   overview: string;
+  sellService: string;
   products: string;
   blog: string;
   coupons: string;
@@ -169,6 +173,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     brand: "TOP GSM",
     workspace: "Seller workspace",
     overview: "Overview",
+    sellService: "Sell service",
     products: "Products",
     blog: "Blog",
     coupons: "Coupons",
@@ -256,6 +261,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     brand: "TOP GSM",
     workspace: "فضای کاری فروشنده",
     overview: "نمای کلی",
+    sellService: "خدمات فروش",
     products: "محصولات",
     blog: "وبلاگ",
     coupons: "کدهای تخفیف",
@@ -343,6 +349,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     brand: "TOP GSM",
     workspace: "مساحة عمل البائع",
     overview: "نظرة عامة",
+    sellService: "خدمات البيع",
     products: "المنتجات",
     blog: "المدونة",
     coupons: "القسائم",
@@ -471,6 +478,7 @@ function Icon({ name }: { name: DashboardSection | "plus" | "search" | "close" |
     coupons: <><path d="M4 7a3 3 0 0 0 3-3h13v6a2 2 0 0 0 0 4v6H7a3 3 0 0 0-3-3z"/><path d="M12 7v2M12 11v2M12 15v2"/></>,
     orders: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></>,
     payouts: <><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 15h2"/></>,
+    bridge: <><path d="M8 7H6a4 4 0 0 0 0 8h2M16 7h2a4 4 0 0 1 0 8h-2"/><path d="M8 12h8"/></>,
     plus: <path d="M12 5v14M5 12h14"/>,
     search: <><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></>,
     close: <path d="m6 6 12 12M18 6 6 18"/>,
@@ -514,7 +522,9 @@ function buildOffer(draft: ProductDraft, offer: OfferDraft) {
   const shared = {
     price: offer.price.trim(),
     currency: draft.currency.trim().toUpperCase(),
-    status: draft.status,
+    // Product visibility gates the whole listing. Keep its offers ready so a
+    // draft can be published later without leaving an active product hidden.
+    status: "active" as const,
     ...(offer.sellerSku.trim() ? { sellerSku: offer.sellerSku.trim() } : {})
   };
 
@@ -655,6 +665,8 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
   const [editDraft, setEditDraft] = useState({ title: "", category: "", description: "", status: "draft" as ProductStatus });
   const [editState, setEditState] = useState<RequestState>("idle");
   const [editError, setEditError] = useState("");
+  const [sellServiceOpen, setSellServiceOpen] = useState(false);
+  const [sellServiceHovered, setSellServiceHovered] = useState(false);
   const productEditorRef = useRef<HTMLElement>(null);
 
   const loadListings = useCallback(async (cursor?: string, append = false) => {
@@ -750,18 +762,26 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
     }
   }
 
-  const navigation: Array<{ id: DashboardSection; label: string }> = [
-    { id: "overview", label: copy.overview },
+  const sellServiceNavigation: Array<{ id: DashboardSection; label: string }> = [
     { id: "products", label: copy.products },
-    ...(user.permissions?.includes("blog_manage")
-      ? [{ id: "blog" as const, label: copy.blog }]
-      : []),
     ...(user.permissions?.includes("coupons_manage")
       ? [{ id: "coupons" as const, label: copy.coupons }]
       : []),
-    { id: "orders", label: copy.orders },
+    ...(user.permissions?.includes("orders_manage")
+      ? [{ id: "orders" as const, label: copy.orders }]
+      : []),
+    ...(process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true"
+      ? [{ id: "bridge" as const, label: copy.bridge }]
+      : [])
+  ];
+  const secondaryNavigation: Array<{ id: DashboardSection; label: string }> = [
+    ...(user.permissions?.includes("blog_manage")
+      ? [{ id: "blog" as const, label: copy.blog }]
+      : []),
     { id: "payouts", label: copy.payouts }
   ];
+  const isSellServiceSection = sellServiceNavigation.some((item) => item.id === section);
+  const sellServiceExpanded = isSellServiceSection || sellServiceOpen || sellServiceHovered;
 
   return (
     <div className={styles.shell}>
@@ -770,10 +790,54 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
           <strong dir="ltr" translate="no">topgsm.</strong>
           <span>{copy.workspace}</span>
         </div>
-        <nav className={styles.navigation} aria-label={copy.workspace}>
-          {navigation.map((item) => (
+        <nav className={navigationStyles.navigation} aria-label={copy.workspace}>
+          <button
+            className={navigationStyles.item}
+            type="button"
+            aria-current={section === "overview" ? "page" : undefined}
+            onClick={() => selectSection("overview")}
+            data-state="default"
+          >
+            <Icon name="overview" />
+            <span>{copy.overview}</span>
+          </button>
+          <div
+            className={navigationStyles.group}
+            data-active={isSellServiceSection}
+            data-open={sellServiceExpanded}
+            onMouseEnter={() => setSellServiceHovered(true)}
+            onMouseLeave={() => setSellServiceHovered(false)}
+          >
             <button
-              className={styles.navButton}
+              className={navigationStyles.groupTrigger}
+              type="button"
+              aria-expanded={sellServiceExpanded}
+              aria-controls="sell-service-navigation"
+              onClick={() => setSellServiceOpen((current) => !current)}
+            >
+              <Icon name="products" />
+              <span>{copy.sellService}</span>
+              <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
+            </button>
+            <div className={navigationStyles.subNavigation} id="sell-service-navigation">
+              {sellServiceNavigation.map((item) => (
+                <button
+                  className={navigationStyles.item}
+                  type="button"
+                  key={item.id}
+                  aria-current={section === item.id ? "page" : undefined}
+                  onClick={() => selectSection(item.id)}
+                  data-state="default"
+                >
+                  <Icon name={item.id} />
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          {secondaryNavigation.map((item) => (
+            <button
+              className={navigationStyles.item}
               type="button"
               key={item.id}
               aria-current={section === item.id ? "page" : undefined}
@@ -784,10 +848,6 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
               <span>{item.label}</span>
             </button>
           ))}
-          {process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true" ? <Link className={styles.navButton} href={`/${locale}/seller-dashboard/bridge` as Route} data-state="default">
-            <Icon name="products" />
-            <span>{locale === "fa" ? "سرویس‌های Bridge" : locale === "ar" ? "خدمات Bridge" : "Bridge services"}</span>
-          </Link> : null}
         </nav>
         <div className={styles.accountBlock}>
           <span>{copy.account}</span>
@@ -895,11 +955,15 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
 
           {section === "blog" ? <SellerBlogPanel locale={locale} /> : null}
 
-          {section === "orders" || section === "payouts" ? (
+          {section === "bridge" ? <SellerBridgeWorkspace locale={locale} /> : null}
+
+          {section === "orders" ? <SellerOrders locale={locale} /> : null}
+
+          {section === "payouts" ? (
             <section className={styles.unavailable} aria-labelledby="unavailable-title">
               <Icon name={section} />
               <h2 id="unavailable-title">{copy.sectionUnavailable}</h2>
-              <p>{section === "orders" ? copy.ordersUnavailable : copy.payoutsUnavailable}</p>
+              <p>{copy.payoutsUnavailable}</p>
               <button className={styles.secondaryButton} type="button" onClick={() => selectSection("overview")}>
                 {copy.backToOverview}
               </button>

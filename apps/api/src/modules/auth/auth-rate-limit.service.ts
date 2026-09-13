@@ -85,6 +85,66 @@ export class AuthRateLimitService {
     await this.consumeSensitiveMutation("media", userId, clientIp, 30, 90);
   }
 
+  async consumePaymentInitiation(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("payment", userId, clientIp, 10, 40);
+  }
+
+  async consumePaymentCallback(authority: string, clientIp: string) {
+    await this.consumePublicOperation(
+      "payment_callback",
+      "authority",
+      authority.trim(),
+      clientIp,
+      10,
+      60,
+      15 * 60
+    );
+  }
+
+  async consumePaymentRefund(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("payment_refund", userId, clientIp, 10, 30);
+  }
+
+  async consumePaymentConfiguration(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("payment_configuration", userId, clientIp, 10, 30);
+  }
+
+  async consumeStaffSetup(token: string, clientIp: string) {
+    await this.consumePublicOperation(
+      "staff_setup",
+      "token",
+      token.trim(),
+      clientIp,
+      10,
+      30,
+      60 * 60
+    );
+  }
+
+  async consumeBridgeOperation(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("bridge", userId, clientIp, 20, 60);
+  }
+
+  async consumeSignedTicket(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("signed_ticket", userId, clientIp, 30, 90);
+  }
+
+  async consumeAiProfile(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("ai_profile", userId, clientIp, 10, 30);
+  }
+
+  async consumeAiProfileTest(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("ai_profile_test", userId, clientIp, 30, 90);
+  }
+
+  async consumeAiRun(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("ai_run", userId, clientIp, 20, 60);
+  }
+
+  async consumeProductBulkUndo(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("product_bulk_undo", userId, clientIp, 5, 15);
+  }
+
   async consumeOtp(phoneNumber: string, clientIp: string) {
     await this.consume({
       action: "otp",
@@ -105,7 +165,19 @@ export class AuthRateLimitService {
   }
 
   private async consumeSensitiveMutation(
-    action: "order" | "payout" | "media",
+    action:
+      | "order"
+      | "payout"
+      | "media"
+      | "payment"
+      | "payment_refund"
+      | "payment_configuration"
+      | "bridge"
+      | "signed_ticket"
+      | "ai_profile"
+      | "ai_profile_test"
+      | "ai_run"
+      | "product_bulk_undo",
     userId: string,
     clientIp: string,
     accountLimit: number,
@@ -126,6 +198,34 @@ export class AuthRateLimitService {
       limit: accountLimit,
       windowSeconds: 15 * 60,
       blockSeconds: 15 * 60
+    });
+    await this.pruneStaleBuckets();
+  }
+
+  private async consumePublicOperation(
+    action: "payment_callback" | "staff_setup",
+    subjectScope: string,
+    subjectValue: string,
+    clientIp: string,
+    subjectLimit: number,
+    ipLimit: number,
+    windowSeconds: number
+  ) {
+    await this.consume({
+      action,
+      scope: "ip",
+      value: this.normalizeIp(clientIp),
+      limit: ipLimit,
+      windowSeconds,
+      blockSeconds: windowSeconds
+    });
+    await this.consume({
+      action,
+      scope: subjectScope,
+      value: subjectValue,
+      limit: subjectLimit,
+      windowSeconds,
+      blockSeconds: windowSeconds
     });
     await this.pruneStaleBuckets();
   }

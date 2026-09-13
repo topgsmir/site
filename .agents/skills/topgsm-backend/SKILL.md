@@ -1,6 +1,6 @@
 ---
 name: topgsm-backend
-description: Builds, changes, and reviews the TopGSM NestJS API with secure authorization, runtime-validated contracts, Prisma/PostgreSQL data integrity, seller isolation, payment safety, authenticated Socket.IO behavior, and performance-safe queries. Use when working in apps/api or changing authentication, sellers, products, orders, payouts, payments, realtime events, Prisma access, API DTOs, guards, controllers, or services.
+description: Builds, changes, and reviews the TopGSM NestJS API with secure authorization, abuse-resistant rate limits, runtime-validated contracts, Prisma/PostgreSQL data integrity, seller isolation, payment safety, authenticated Socket.IO behavior, and performance-safe queries. Use when working in apps/api or changing authentication, sellers, products, orders, payouts, payments, realtime events, Prisma access, API DTOs, guards, controllers, or services.
 ---
 
 # TopGSM Backend Engineering
@@ -30,6 +30,7 @@ Before editing:
 3. Define invariants and legal state transitions, including concurrent and repeated requests.
 4. Estimate query cardinality and identify required pagination, indexes, transaction boundaries, and external-service failure behavior.
 5. Search for existing helpers and conventions before introducing another abstraction.
+6. Classify every new or changed endpoint/event for abuse risk and decide explicitly whether it needs a rate limit.
 
 Never assume authentication implies authorization. Never use a client-provided `sellerId`, `buyerId`, role, price, commission, payout amount, or ownership field as proof of authority.
 
@@ -64,6 +65,19 @@ Use concrete DTO classes with `class-validator` for every untrusted body, query,
 - Cookie-authenticated mutations require CSRF protection or strict Origin/Fetch-Metadata validation in addition to CORS. Cookies must be `HttpOnly`, `Secure` in production, deliberately scoped, and use the strictest compatible `SameSite` policy.
 - Rate-limit login, registration, password operations, payment initiation/verification, payout transitions, webhooks, and other abuse-sensitive endpoints.
 - Never log passwords, tokens, cookie values, provider secrets, full webhook bodies, or unnecessary personal data.
+
+#### Abuse resistance and rate limits
+
+Add or update a rate limit when an endpoint/event can enable brute force or enumeration, send email/SMS, upload or transform files, perform cryptography, initiate or verify money movement, call an external provider, trigger synchronization or background work, create expensive database work, or mutate a high-value state. Reassess existing limits whenever the cost, trust boundary, or call pattern changes.
+
+- Reuse `AuthRateLimitService` and its database-backed atomic buckets. Do not add process-local counters or a second limiter without a demonstrated requirement.
+- Limit authenticated operations by verified user ID and IP. Limit public operations by IP plus a normalized, hashed subject such as account identifier, phone number, challenge, invitation token, payment authority, or webhook source.
+- Derive bucket subjects from trusted or validated input. Never store raw passwords, tokens, payment authorities, phone numbers, or other sensitive identifiers in rate-limit records or logs.
+- Choose limits from operation cost and legitimate burst behavior. Keep expensive provider, money, upload, OTP, and signing operations tighter than ordinary mutations; avoid blanket limits on cheap reads unless enumeration, scraping, or query cost justifies them.
+- Apply the limit before the expensive or security-sensitive work, but after guards and input validation when those establish the trusted actor or normalized subject.
+- Preserve horizontal consistency with atomic shared storage, bounded retention, and indexed cleanup. When adding an action, update the database action constraint in a new migration.
+- Return `429 Too Many Requests` without revealing whether an account, token, payment, or resource exists. Preserve stable API error formatting and add `Retry-After` when the limiter can determine it reliably.
+- Consider trusted-proxy configuration before using client IPs. Do not trust arbitrary forwarding headers.
 
 #### Tenant and response isolation
 
@@ -112,6 +126,8 @@ Add tests proportional to the risk:
 - provider contract tests for payment adapters and signed webhook fixtures.
 
 Cover success, invalid input, unauthenticated, wrong role, cross-tenant access, duplicate/replayed request, illegal transition, and concurrent execution where relevant.
+
+For new or changed rate limits, test the allowed threshold, the first rejected request, atomic behavior under concurrency, independent user/IP/subject buckets, expiry/reset behavior, hashed storage, and the matching database action constraint. Verify the controller invokes the limiter before expensive work.
 
 Run the narrowest relevant checks, then the API checks when practical:
 

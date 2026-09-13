@@ -1,5 +1,19 @@
 [
   {
+    "date": "2026-09-13",
+    "macrostructure": "Index-First",
+    "theme": "TopGSM Cobalt",
+    "enrichment": "none",
+    "brief": "Payment provider policy configuration and transaction investigation"
+  },
+  {
+    "date": "2026-09-13",
+    "macrostructure": "Data Observatory",
+    "theme": "TopGSM Technical",
+    "enrichment": "none",
+    "brief": "Owner-only AI database assistant with model profiles, evidence, approvals, and charts"
+  },
+  {
     "date": "2026-09-08",
     "macrostructure": "Catalogue",
     "theme": "TopGSM Coral",

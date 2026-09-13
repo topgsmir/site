@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Ip, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
 import { PlatformAdminGuard, type AuthenticatedRequest } from "../auth/platform-admin.guard";
 import {
   CompleteStaffSetupDto,
@@ -9,7 +10,10 @@ import { StaffService } from "./staff.service";
 
 @Controller("admin/staff")
 export class StaffController {
-  constructor(private readonly staff: StaffService) {}
+  constructor(
+    private readonly staff: StaffService,
+    private readonly rateLimits: AuthRateLimitService
+  ) {}
 
   @Get()
   @UseGuards(PlatformAdminGuard)
@@ -43,10 +47,12 @@ export class StaffController {
   }
 
   @Post("setup/:token")
-  completeSetup(
+  async completeSetup(
     @Param("token") token: string,
-    @Body() body: CompleteStaffSetupDto
+    @Body() body: CompleteStaffSetupDto,
+    @Ip() clientIp: string
   ) {
+    await this.rateLimits.consumeStaffSetup(token, clientIp);
     return this.staff.completeSetup(token, body);
   }
 }

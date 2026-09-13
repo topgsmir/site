@@ -1,3 +1,4 @@
+/* Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4 · genre: modern-minimal · macrostructure: Workbench · design-system: TopGSM dashboard */
 .shell {
   min-height: 100svh;
   color: var(--color-dashboard-ink);
@@ -11,6 +12,40 @@
   padding: var(--space-dashboard-md);
   border-block-end: var(--rule-dashboard-thin) solid var(--color-dashboard-rule);
   background: var(--color-dashboard-surface);
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-dashboard-scrollbar-thumb) var(--color-dashboard-scrollbar-track);
+}
+
+.rail::-webkit-scrollbar {
+  width: var(--size-dashboard-scrollbar);
+  height: var(--size-dashboard-scrollbar);
+}
+
+.rail::-webkit-scrollbar-track {
+  border-radius: var(--radius-dashboard-round);
+  background: var(--color-dashboard-scrollbar-track);
+}
+
+.rail::-webkit-scrollbar-thumb {
+  min-height: var(--space-dashboard-xl);
+  border: var(--space-dashboard-3xs) solid var(--color-dashboard-surface);
+  border-radius: var(--radius-dashboard-round);
+  background: var(--color-dashboard-scrollbar-thumb);
+  background-clip: padding-box;
+}
+
+.rail::-webkit-scrollbar-thumb:hover {
+  background: var(--color-dashboard-scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+.rail::-webkit-scrollbar-thumb:active {
+  background: var(--color-dashboard-focus);
+  background-clip: padding-box;
+}
+
+.rail::-webkit-scrollbar-corner {
+  background: var(--color-dashboard-scrollbar-track);
 }
 
 .brandBlock {
@@ -36,13 +71,6 @@
   font-size: var(--text-dashboard-xs);
 }
 
-.navigation {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-dashboard-xs);
-}
-
-.navButton,
 .primaryButton,
 .secondaryButton,
 .textButton,
@@ -67,7 +95,6 @@
     transform var(--dur-dashboard-micro) var(--ease-dashboard-out);
 }
 
-.navButton:focus-visible,
 .primaryButton:focus-visible,
 .secondaryButton:focus-visible,
 .textButton:focus-visible,
@@ -84,7 +111,6 @@
   outline-color: var(--color-dashboard-focus);
 }
 
-.navButton:active,
 .primaryButton:active,
 .secondaryButton:active,
 .textButton:active,
@@ -95,7 +121,6 @@
   transform: translateY(1px);
 }
 
-.navButton:disabled,
 .primaryButton:disabled,
 .secondaryButton:disabled,
 .textButton:disabled,
@@ -107,7 +132,6 @@
   opacity: 0.52;
 }
 
-.navButton[data-state="loading"],
 .primaryButton[data-state="loading"],
 .secondaryButton[data-state="loading"],
 .loadMoreButton[data-state="loading"] {
@@ -129,7 +153,6 @@
   to { transform: rotate(1turn); }
 }
 
-.navButton[data-state="error"],
 .primaryButton[data-state="error"],
 .secondaryButton[data-state="error"] {
   border-color: var(--color-dashboard-error);
@@ -137,23 +160,11 @@
   background: var(--color-dashboard-error-soft);
 }
 
-.navButton[data-state="success"],
 .primaryButton[data-state="success"],
 .secondaryButton[data-state="success"] {
   border-color: var(--color-dashboard-success);
 }
 
-.navButton {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: var(--space-dashboard-xs);
-  padding-inline: var(--space-dashboard-sm);
-  border-radius: var(--radius-dashboard-sm);
-  text-align: start;
-}
-
-.navButton svg,
 .primaryButton svg,
 .searchField svg,
 .addVariantButton svg,
@@ -169,12 +180,6 @@
   stroke-width: 1.7;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-.navButton[aria-current="page"] {
-  border-color: transparent;
-  color: var(--color-dashboard-accent);
-  background: var(--color-dashboard-accent-soft);
 }
 
 .accountBlock {
@@ -511,7 +516,10 @@
 }
 
 .tableWrap {
-  overflow: hidden;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
   border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule);
   border-radius: var(--radius-dashboard-md);
   background: var(--color-dashboard-surface);
@@ -520,6 +528,7 @@
 
 .productTable {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: var(--text-dashboard-sm);
 }
@@ -1063,7 +1072,6 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .navButton:hover,
   .secondaryButton:hover,
   .loadMoreButton:hover,
   .addVariantButton:hover,
@@ -1096,10 +1104,6 @@
 @media (min-width: 40rem) {
   .rail {
     padding: var(--space-dashboard-lg);
-  }
-
-  .navigation {
-    grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
   }
 
   .pageHeader {
@@ -1174,8 +1178,11 @@
     margin-inline-end: 0;
     border-radius: var(--radius-dashboard-md);
     box-shadow: var(--shadow-dashboard-card);
-    grid-template-rows: auto 1fr auto;
+    grid-template-rows: repeat(3, auto);
     align-content: start;
+    overflow-y: auto;
+    overscroll-behavior-block: contain;
+    scrollbar-gutter: stable;
     padding: var(--space-dashboard-xl) var(--space-dashboard-lg);
     border-block-end: 0;
     border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule);
@@ -1184,12 +1191,6 @@
   .brandBlock {
     display: grid;
     justify-content: stretch;
-  }
-
-  .navigation {
-    grid-template-columns: 1fr;
-    align-content: start;
-    margin-block-start: var(--space-dashboard-xl);
   }
 
   .accountBlock {
@@ -1208,6 +1209,10 @@
 
   .productTable thead {
     display: table-header-group;
+  }
+
+  .productTable {
+    min-width: 64rem;
   }
 
   .productTable tbody {
@@ -1245,7 +1250,6 @@
 }
 
 @media (pointer: coarse) {
-  .navButton,
   .primaryButton,
   .secondaryButton,
   .textButton,
@@ -1275,7 +1279,6 @@
     animation-duration: calc(var(--dur-dashboard-loader) * 2);
   }
 
-  .navButton,
   .primaryButton,
   .secondaryButton,
   .textButton,
@@ -1289,16 +1292,21 @@
   .currencyField input {
     transition-duration: var(--dur-dashboard-reduced);
   }
+
+}
+
+@media (forced-colors: active) {
+  .rail {
+    scrollbar-color: auto;
+  }
 }
 
 
 /* Soft workspace surfaces and quiet, responsive controls. */
-.navButton { border-color: transparent; background: transparent; font-weight: 500; min-height: 3rem; }
-.navButton[aria-current="page"] { color: var(--color-dashboard-focus); background: var(--color-dashboard-accent-soft); }
 .pageHeader h1, .creationHeader h1 { max-width: 32ch; font-weight: 550; line-height: 1.4; }
 .pageHeader p { line-height: 1.8; }
 .primaryButton, .secondaryButton, .loadMoreButton { border-radius: 999px; padding-inline: 1.25rem; font-weight: 550; }
-.primaryButton:active, .secondaryButton:active, .navButton:active { transform: scale(.98); }
+.primaryButton:active, .secondaryButton:active { transform: scale(.98); }
 .searchField, .filterField, .field input, .field select, .field textarea { border-color: var(--color-dashboard-rule-strong); }
 .metricStrip dl > div { min-height: 130px; }
 .metricStrip dl > div:last-child { border: 1px solid var(--color-dashboard-rule); }

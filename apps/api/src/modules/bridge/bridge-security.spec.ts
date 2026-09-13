@@ -29,6 +29,10 @@ describe("Bridge network boundaries", () => {
     await assert.rejects(urls.validate("https://user:pass@example.com"), /public HTTPS/i);
     await assert.rejects(urls.validate("https://example.com:8443"), /public HTTPS/i);
     await assert.rejects(urls.validate("https://127.0.0.1"), /non-public/i);
+    await assert.rejects(urls.validate("https://[::1]"), /non-public/i);
+    await assert.rejects(urls.validate("https://192.0.2.1"), /non-public/i);
+    await assert.rejects(urls.validate("https://198.51.100.1"), /non-public/i);
+    await assert.rejects(urls.validate("https://203.0.113.1"), /non-public/i);
   });
 });
 
@@ -40,7 +44,7 @@ describe("checkout identities and gateways", () => {
   it("fails closed for unknown providers and production local payments", async () => {
     const local = new LocalGatewayAdapter(new ConfigService({ NODE_ENV: "production" }));
     const misconfigured = new LocalGatewayAdapter(new ConfigService({ NODE_ENV: "production", LOCAL_PAYMENT_GATEWAY_ENABLED: "true" }));
-    const fake = { providerCode: "zarinpal", initiate: async () => { throw new Error(); }, verify: async () => ({ verified: false }), inquiry: async () => false, refund: async () => false } as never;
+    const fake = { providerCode: "zarinpal", initiate: async () => { throw new Error(); }, verify: async () => ({ verified: false }), inquiry: async () => false, refund: async () => null } as never;
     const payments = new PaymentService(local, fake);
     assert.throws(() => payments.get("typo"), /unsupported/i);
     assert.throws(() => misconfigured.onModuleInit(), /cannot be enabled in production/i);

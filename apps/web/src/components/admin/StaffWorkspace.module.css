@@ -1,14 +1,19 @@
-.shell { min-height: 100svh; padding: clamp(20px, 5vw, 64px); color: var(--color-dashboard-ink); background: var(--color-dashboard-paper); }
-.header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 18px; max-width: 1160px; margin-inline: auto; padding-bottom: 24px; border-bottom: 1px solid var(--color-dashboard-rule); }
-.header p { max-width: 62ch; margin-top: 8px; color: var(--color-dashboard-muted); line-height: 1.6; }
-.header a, .button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding-inline: 16px; border: 1px solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-control); color: var(--color-dashboard-ink); background: var(--color-dashboard-surface-raised); font-weight: 600; white-space: nowrap; cursor: pointer; }
-.grid { display: grid; gap: 24px; max-width: 1160px; margin: 28px auto 0; }
-.panel { min-width: 0; padding: 20px; border: 1px solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-panel); background: var(--color-dashboard-surface); }
-.panel h2 { margin-bottom: 18px; font-size: 1.15rem; }
+/* Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4 · genre: modern-minimal · macrostructure: Workbench · design-system: TopGSM dashboard */
+.workspace { display: grid; min-width: 0; gap: var(--space-dashboard-xl); padding-block: var(--space-dashboard-xl) var(--space-dashboard-3xl); color: var(--color-dashboard-ink); }
+.header { min-width: 0; padding-bottom: var(--space-dashboard-lg); border-bottom: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
+.header h1 { max-width: 28ch; min-width: 0; overflow-wrap: anywhere; font-family: var(--font-dashboard-display); font-size: clamp(var(--text-dashboard-xl), 3vw, var(--text-dashboard-2xl)); font-style: normal; font-weight: 600; line-height: 1.4; letter-spacing: -.03em; }
+.header p { max-width: 64ch; margin-top: var(--space-dashboard-sm); color: var(--color-dashboard-muted); line-height: 1.8; }
+.button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding-inline: var(--space-dashboard-md); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-round); outline: 2px solid transparent; outline-offset: 2px; color: var(--color-dashboard-ink); background: var(--color-dashboard-surface-raised); font-weight: 600; white-space: nowrap; cursor: pointer; transition: transform var(--dur-dashboard-micro) var(--ease-dashboard-out), opacity var(--dur-dashboard-micro) var(--ease-dashboard-out), background-color var(--dur-dashboard-short) var(--ease-dashboard-out); }
+.grid { display: grid; gap: var(--space-dashboard-lg); }
+.panel { min-width: 0; padding: var(--space-dashboard-lg); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-panel); background: var(--color-dashboard-surface); box-shadow: var(--shadow-dashboard-card); }
+.panel h2 { margin-bottom: var(--space-dashboard-md); font-size: var(--text-dashboard-lg); font-weight: 600; }
 .form { display: grid; gap: 14px; }
 .field { display: grid; gap: 6px; }
 .field span, .legend { font-size: .78rem; font-weight: 600; }
 .field input { min-height: 44px; padding: 10px 12px; border: 1px solid var(--color-dashboard-rule-strong); outline: 2px solid transparent; outline-offset: 1px; border-radius: var(--radius-dashboard-control); color: var(--color-dashboard-ink); background: var(--color-dashboard-surface-raised); }
+.field input:hover { border-color: var(--color-dashboard-accent); }
+.field input:user-invalid { border-color: var(--color-dashboard-error); background: var(--color-dashboard-error-soft); }
+.field input:disabled { cursor: not-allowed; opacity: .55; background: var(--color-dashboard-surface); }
 .permissions { display: grid; gap: 8px; padding: 0; border: 0; }
 .permissions label { min-height: 36px; display: flex; align-items: center; gap: 8px; }
 .permissions input { accent-color: var(--color-dashboard-accent); }
@@ -18,7 +23,12 @@
 .card header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
 .card p, .message { color: var(--color-dashboard-muted); font-size: .82rem; line-height: 1.55; }
 .card footer { display: flex; flex-wrap: wrap; gap: 8px; }
-.danger { color: oklch(53% .2 25); }
+.danger { color: var(--color-dashboard-error); }
 .setup { overflow-wrap: anywhere; padding: 12px; border-inline-start: 3px solid var(--color-dashboard-accent); background: var(--color-dashboard-surface-raised); }
-.shell :is(a, button, input):focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
+.workspace :is(button, input):focus-visible { outline-color: var(--color-dashboard-focus); }
+.button:active { transform: translateY(1px); }
+.button:disabled { cursor: not-allowed; opacity: .52; }
+@media (hover: hover) and (pointer: fine) { .button:hover { background: var(--color-dashboard-surface); transform: translateY(-1px); } .primary:hover { background: var(--color-dashboard-accent-strong); } }
 @media (min-width: 62rem) { .grid { grid-template-columns: 360px minmax(0, 1fr); align-items: start; } }
+@media (max-width: 39.999rem) { .workspace { padding-block-start: var(--space-dashboard-lg); } .panel { padding: var(--space-dashboard-md); } .button { width: 100%; } }
+@media (prefers-reduced-motion: reduce) { .button { transition-duration: var(--dur-dashboard-reduced); transform: none !important; } }

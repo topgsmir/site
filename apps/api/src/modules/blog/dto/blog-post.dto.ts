@@ -120,6 +120,17 @@ export class RejectBlogPostDto {
   note!: string;
 }
 
+export class RestoreBlogChangeDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  optimisticVersion!: number;
+
+  @IsOptional()
+  @IsIn(["before", "after"])
+  side: "before" | "after" = "after";
+}
+
 export class TaxonomyTranslationDto {
   @IsIn(BLOG_LOCALES)
   locale!: (typeof BLOG_LOCALES)[number];

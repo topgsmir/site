@@ -41,6 +41,36 @@ const managedInclude = {
 type ManagedRecord = Prisma.blog_postsGetPayload<{ include: typeof managedInclude }>;
 type Db = Prisma.TransactionClient | PrismaService;
 
+const blogChangeSelect = {
+  id: true,
+  action: true,
+  changed_fields: true,
+  before_snapshot: true,
+  after_snapshot: true,
+  restored_from_event_id: true,
+  created_at: true,
+  actor: { select: { id: true, full_name: true, role: true } }
+} satisfies Prisma.blog_change_eventsSelect;
+
+type BlogSnapshotTranslation = {
+  locale: blog_locale;
+  title: string;
+  slug: string;
+  excerpt: string;
+  seoTitle: string;
+  seoDescription: string;
+  coverAltText: string;
+  content: Prisma.InputJsonValue;
+};
+
+type BlogSnapshot = {
+  translations: BlogSnapshotTranslation[];
+  coverAssetId: string | null;
+  categoryId: string | null;
+  tagIds: string[];
+  relatedProductIds: string[];
+};
+
 @Injectable()
 export class BlogService {
   constructor(private readonly prisma: PrismaService) {}
@@ -65,8 +95,41 @@ export class BlogService {
     return this.mapManaged(await this.requirePost(actor, postId));
   }
 
+  async listChanges(actor: BlogActor, postId: string, input: ListBlogPostsQueryDto) {
+    await this.requirePost(actor, postId);
+    const events = await this.prisma.blog_change_events.findMany({
+      where: { post_id: postId },
+      ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+      take: input.limit + 1,
+      orderBy: [{ created_at: "desc" }, { id: "desc" }],
+      select: blogChangeSelect
+    });
+    const hasMore = events.length > input.limit;
+    const page = hasMore ? events.slice(0, input.limit) : events;
+    return {
+      items: page.map((event) => this.mapBlogChange(event)),
+      nextCursor: hasMore ? page.at(-1)?.id ?? null : null
+    };
+  }
+
   async create(actor: BlogActor, input: CreateBlogPostDto) {
     const translations = this.normalizeTranslations(input.translations ?? []);
+    const snapshot: BlogSnapshot = {
+      translations: translations.map((translation) => ({
+        locale: translation.locale,
+        title: this.clean(translation.title),
+        slug: this.slugify(translation.slug),
+        excerpt: this.clean(translation.excerpt),
+        seoTitle: this.clean(translation.seoTitle),
+        seoDescription: this.clean(translation.seoDescription),
+        coverAltText: this.clean(translation.coverAltText),
+        content: validateRichText(translation.content).content
+      })),
+      coverAssetId: null,
+      categoryId: null,
+      tagIds: [],
+      relatedProductIds: []
+    };
     const postId = await this.prisma.$transaction(async (tx) => {
       const post = await tx.blog_posts.create({
         data: {
@@ -80,7 +143,7 @@ export class BlogService {
           post_id: post.id,
           revision_number: 1,
           translations: {
-            create: translations.map((translation) => ({
+            create: snapshot.translations.map((translation) => ({
               locale: translation.locale,
               title: translation.title,
               slug_proposal: translation.slug,
@@ -88,7 +151,7 @@ export class BlogService {
               seo_title: translation.seoTitle,
               seo_description: translation.seoDescription,
               cover_alt_text: translation.coverAltText,
-              content_json: validateRichText(translation.content).content
+              content_json: translation.content
             }))
           }
         },
@@ -98,6 +161,7 @@ export class BlogService {
         where: { id: post.id },
         data: { working_revision_id: revision.id }
       });
+      await this.recordBlogChange(tx, post.id, actor.user.id, "create", null, snapshot);
       return post.id;
     });
     return this.getManaged(actor, postId);
@@ -135,6 +199,7 @@ export class BlogService {
       if (current.optimistic_version !== input.optimisticVersion) {
         throw new ConflictException("The post changed; reload before saving")
       }
+      const beforeSnapshot = this.blogSnapshot(current);
       const revision = current.status === "draft"
         ? current
         : await this.cloneRevision(tx, post);
@@ -187,6 +252,84 @@ export class BlogService {
           data: { post_id: postId }
         });
       }
+      const afterSnapshot: BlogSnapshot = {
+        translations: translationData.map((translation) => ({
+          locale: translation.locale,
+          title: translation.title,
+          slug: translation.slug_proposal,
+          excerpt: translation.excerpt,
+          seoTitle: translation.seo_title,
+          seoDescription: translation.seo_description,
+          coverAltText: translation.cover_alt_text,
+          content: translation.content_json
+        })),
+        coverAssetId: input.coverAssetId ?? null,
+        categoryId: input.categoryId ?? null,
+        tagIds: [...input.tagIds],
+        relatedProductIds: [...input.relatedProductIds]
+      };
+      await this.recordBlogChange(tx, post.id, actor.user.id, "update", beforeSnapshot, afterSnapshot);
+    });
+    return this.getManaged(actor, postId);
+  }
+
+  async restoreChange(
+    actor: BlogActor,
+    postId: string,
+    changeId: string,
+    optimisticVersion: number,
+    side: "before" | "after" = "after"
+  ) {
+    if (actor.type !== "platform") {
+      throw new ForbiddenException("Only platform editors can restore blog versions");
+    }
+    await this.prisma.$transaction(async (tx) => {
+      const post = await this.requirePost(actor, postId, tx);
+      const current = post.working_revision;
+      if (!current) throw new ConflictException("Post has no working revision");
+      if (current.optimistic_version !== optimisticVersion) {
+        throw new ConflictException("The post changed; reload before restoring");
+      }
+      const event = await tx.blog_change_events.findFirst({
+        where: { id: changeId, post_id: postId },
+        select: { id: true, before_snapshot: true, after_snapshot: true }
+      });
+      if (!event) throw new NotFoundException("Blog change was not found");
+      const savedSnapshot = side === "before" ? event.before_snapshot : event.after_snapshot;
+      if (!savedSnapshot) {
+        throw new ConflictException("This change has no earlier blog version");
+      }
+      const target = this.readBlogSnapshot(savedSnapshot);
+      const before = this.blogSnapshot(current);
+      const revision = current.status === "draft" ? current : await this.cloneRevision(tx, post);
+      const updated = await tx.blog_revisions.updateMany({
+        where: {
+          id: revision.id,
+          status: "draft",
+          optimistic_version: revision.optimistic_version
+        },
+        data: {
+          optimistic_version: { increment: 1 },
+          cover_asset_id: target.coverAssetId,
+          category_id: target.categoryId,
+          moderation_note: null,
+          moderated_by_id: null,
+          submitted_at: null
+        }
+      });
+      if (updated.count !== 1) {
+        throw new ConflictException("The post changed; reload before restoring");
+      }
+      await this.replaceRevisionContent(tx, revision.id, target);
+      await this.recordBlogChange(
+        tx,
+        postId,
+        actor.user.id,
+        "restore",
+        before,
+        target,
+        event.id
+      );
     });
     return this.getManaged(actor, postId);
   }
@@ -599,6 +742,171 @@ export class BlogService {
         note
       }
     });
+  }
+
+  private async recordBlogChange(
+    tx: Prisma.TransactionClient,
+    postId: string,
+    actorUserId: string,
+    action: "create" | "update" | "restore",
+    before: BlogSnapshot | null,
+    after: BlogSnapshot,
+    restoredFromEventId?: string
+  ) {
+    await tx.blog_change_events.create({
+      data: {
+        post_id: postId,
+        actor_user_id: actorUserId,
+        action,
+        changed_fields: this.blogChangedFields(before, after),
+        ...(before ? { before_snapshot: before as unknown as Prisma.InputJsonValue } : {}),
+        after_snapshot: after as unknown as Prisma.InputJsonValue,
+        ...(restoredFromEventId ? { restored_from_event_id: restoredFromEventId } : {})
+      }
+    });
+  }
+
+  private blogChangedFields(before: BlogSnapshot | null, after: BlogSnapshot) {
+    if (!before) {
+      return ["translations", "coverAssetId", "categoryId", "tagIds", "relatedProductIds"];
+    }
+    const fields: string[] = [];
+    for (const field of ["coverAssetId", "categoryId", "tagIds", "relatedProductIds"] as const) {
+      if (JSON.stringify(before[field]) !== JSON.stringify(after[field])) fields.push(field);
+    }
+    for (const translation of after.translations) {
+      const previous = before.translations.find((item) => item.locale === translation.locale);
+      for (const field of ["title", "slug", "excerpt", "seoTitle", "seoDescription", "coverAltText", "content"] as const) {
+        if (JSON.stringify(previous?.[field]) !== JSON.stringify(translation[field])) {
+          fields.push(`translations.${translation.locale}.${field}`);
+        }
+      }
+    }
+    return fields;
+  }
+
+  private blogSnapshot(
+    revision: NonNullable<ManagedRecord["working_revision"]>
+  ): BlogSnapshot {
+    return {
+      translations: revision.translations.map((translation) => ({
+        locale: translation.locale,
+        title: translation.title ?? "",
+        slug: translation.slug_proposal ?? "",
+        excerpt: translation.excerpt ?? "",
+        seoTitle: translation.seo_title ?? "",
+        seoDescription: translation.seo_description ?? "",
+        coverAltText: translation.cover_alt_text ?? "",
+        content: (translation.content_json ?? { type: "doc", content: [] }) as Prisma.InputJsonValue
+      })),
+      coverAssetId: revision.cover_asset_id,
+      categoryId: revision.category_id,
+      tagIds: revision.tags.map((item) => item.tag_id),
+      relatedProductIds: revision.related_products.map((item) => item.product_id)
+    };
+  }
+
+  private readBlogSnapshot(value: Prisma.JsonValue): BlogSnapshot {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new ConflictException("The saved blog version is no longer restorable");
+    }
+    const raw = value as Record<string, Prisma.JsonValue>;
+    if (!Array.isArray(raw.translations) || !Array.isArray(raw.tagIds) || !Array.isArray(raw.relatedProductIds)) {
+      throw new ConflictException("The saved blog version is no longer restorable");
+    }
+    const translations = raw.translations.map((entry) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+        throw new ConflictException("The saved blog version is no longer restorable");
+      }
+      const item = entry as Record<string, Prisma.JsonValue>;
+      const locale = item.locale;
+      const stringFields = ["title", "slug", "excerpt", "seoTitle", "seoDescription", "coverAltText"] as const;
+      if (!BLOG_LOCALES.includes(locale as blog_locale) || stringFields.some((field) => typeof item[field] !== "string")) {
+        throw new ConflictException("The saved blog version is no longer restorable");
+      }
+      return {
+        locale: locale as blog_locale,
+        title: item.title as string,
+        slug: item.slug as string,
+        excerpt: item.excerpt as string,
+        seoTitle: item.seoTitle as string,
+        seoDescription: item.seoDescription as string,
+        coverAltText: item.coverAltText as string,
+        content: validateRichText(item.content).content
+      };
+    });
+    this.assertAllLocales(translations);
+    if (
+      raw.tagIds.some((id) => typeof id !== "string") ||
+      raw.relatedProductIds.some((id) => typeof id !== "string") ||
+      (raw.coverAssetId !== null && typeof raw.coverAssetId !== "string") ||
+      (raw.categoryId !== null && typeof raw.categoryId !== "string")
+    ) {
+      throw new ConflictException("The saved blog version is no longer restorable");
+    }
+    return {
+      translations,
+      coverAssetId: raw.coverAssetId as string | null,
+      categoryId: raw.categoryId as string | null,
+      tagIds: raw.tagIds as string[],
+      relatedProductIds: raw.relatedProductIds as string[]
+    };
+  }
+
+  private async replaceRevisionContent(
+    tx: Prisma.TransactionClient,
+    revisionId: string,
+    snapshot: BlogSnapshot
+  ) {
+    await tx.blog_revision_translations.deleteMany({ where: { revision_id: revisionId } });
+    await tx.blog_revision_translations.createMany({
+      data: snapshot.translations.map((translation) => ({
+        revision_id: revisionId,
+        locale: translation.locale,
+        title: translation.title,
+        slug_proposal: translation.slug,
+        excerpt: translation.excerpt,
+        seo_title: translation.seoTitle,
+        seo_description: translation.seoDescription,
+        cover_alt_text: translation.coverAltText,
+        content_json: translation.content as Prisma.InputJsonValue
+      }))
+    });
+    await tx.blog_revision_tags.deleteMany({ where: { revision_id: revisionId } });
+    if (snapshot.tagIds.length) {
+      await tx.blog_revision_tags.createMany({
+        data: snapshot.tagIds.map((tagId) => ({ revision_id: revisionId, tag_id: tagId }))
+      });
+    }
+    await tx.blog_revision_products.deleteMany({ where: { revision_id: revisionId } });
+    if (snapshot.relatedProductIds.length) {
+      await tx.blog_revision_products.createMany({
+        data: snapshot.relatedProductIds.map((productId, position) => ({
+          revision_id: revisionId,
+          product_id: productId,
+          position
+        }))
+      });
+    }
+  }
+
+  private mapBlogChange(
+    event: Prisma.blog_change_eventsGetPayload<{ select: typeof blogChangeSelect }>
+  ) {
+    return {
+      id: event.id,
+      action: event.action,
+      changedFields: event.changed_fields,
+      before: event.before_snapshot,
+      after: event.after_snapshot,
+      restoredFromChangeId: event.restored_from_event_id,
+      actor: {
+        id: event.actor.id,
+        name: event.actor.full_name,
+        role: event.actor.role.replaceAll("_", "-")
+      },
+      createdAt: event.created_at.toISOString()
+    };
   }
 
   private async cloneRevision(tx: Prisma.TransactionClient, post: ManagedRecord) {

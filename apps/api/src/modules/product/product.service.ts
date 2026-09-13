@@ -12,9 +12,12 @@ import { PrismaService } from "../../prisma/prisma.service";
 import type {
   AddSellerOfferDto,
   AddSellerOffersDto,
+  BulkUndoProductChangesDto,
   CreateProductDto,
   CreateProductOfferDto,
   ListProductsQueryDto,
+  PreviewBulkUndoProductChangesDto,
+  UpdateAdminProductDto,
   UpdateProductDto,
   UpdateSellerOfferDto
 } from "./dto/product.dto";
@@ -131,8 +134,88 @@ const adminProductSelect = {
   _count: { select: { listings: true } }
 } satisfies Prisma.productsSelect;
 
+const adminProductDetailSelect = {
+  ...adminProductSelect,
+  created_by: { select: { id: true, shop_name: true } },
+  options: {
+    orderBy: [{ position: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      values: {
+        orderBy: [{ position: "asc" }, { id: "asc" }],
+        select: { id: true, value: true }
+      }
+    }
+  },
+  variants: {
+    orderBy: [{ created_at: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      option_values: { select: variantOptionSelect }
+    }
+  }
+} satisfies Prisma.productsSelect;
+
+const adminListingSelect = {
+  id: true,
+  status: true,
+  created_at: true,
+  updated_at: true,
+  seller: { select: { id: true, shop_name: true } },
+  offers: sellerListingSelect.offers
+} satisfies Prisma.seller_listingsSelect;
+
+const productSnapshotSelect = {
+  title: true,
+  slug: true,
+  description: true,
+  category: true,
+  status: true
+} satisfies Prisma.productsSelect;
+
+const productChangeSelect = {
+  id: true,
+  action: true,
+  changed_fields: true,
+  before_snapshot: true,
+  after_snapshot: true,
+  restored_from_event_id: true,
+  bulk_operation_id: true,
+  created_at: true,
+  actor: { select: { id: true, full_name: true, role: true } },
+  product: {
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      type: true,
+      created_by: { select: { id: true, shop_name: true } }
+    }
+  }
+} satisfies Prisma.product_change_eventsSelect;
+
+type ProductSnapshot = {
+  title: string;
+  slug?: string;
+  description: string | null;
+  category: string | null;
+  status: "draft" | "pending_review" | "active" | "archived";
+};
+
+const productSnapshotFields = ["title", "slug", "description", "category", "status"] as const;
+
 type AdminProductRecord = Prisma.productsGetPayload<{
   select: typeof adminProductSelect;
+}>;
+
+type AdminProductDetailRecord = Prisma.productsGetPayload<{
+  select: typeof adminProductDetailSelect;
+}>;
+
+type AdminListingRecord = Prisma.seller_listingsGetPayload<{
+  select: typeof adminListingSelect;
 }>;
 
 type SellerListingRecord = Prisma.seller_listingsGetPayload<{
@@ -432,14 +515,213 @@ export class ProductService {
     };
   }
 
-  async updateAdminProduct(productId: string, input: UpdateProductDto) {
+  async listProductChanges(input: ListProductsQueryDto, productId?: string) {
+    if (productId) {
+      const exists = await this.prisma.products.count({ where: { id: productId } });
+      if (!exists) throw new NotFoundException("Product was not found");
+    }
+    const events = await this.prisma.product_change_events.findMany({
+      where: productId ? { product_id: productId } : undefined,
+      ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+      take: input.limit + 1,
+      orderBy: [{ created_at: "desc" }, { id: "desc" }],
+      select: productChangeSelect
+    });
+    const hasMore = events.length > input.limit;
+    const page = hasMore ? events.slice(0, input.limit) : events;
+    return {
+      items: page.map((event) => this.toProductChange(event)),
+      nextCursor: hasMore ? page.at(-1)?.id ?? null : null
+    };
+  }
+
+  async getAdminProduct(productId: string, input: ListProductsQueryDto) {
+    const [product, listings] = await Promise.all([
+      this.prisma.products.findUnique({
+        where: { id: productId },
+        select: adminProductDetailSelect
+      }),
+      this.prisma.seller_listings.findMany({
+        where: { product_id: productId },
+        ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+        take: input.limit + 1,
+        orderBy: { id: "asc" },
+        select: adminListingSelect
+      })
+    ]);
+    if (!product) throw new NotFoundException("Product was not found");
+    const hasMore = listings.length > input.limit;
+    const page = hasMore ? listings.slice(0, input.limit) : listings;
+    return this.toAdminProductDetail(
+      product,
+      page,
+      hasMore ? page.at(-1)?.id ?? null : null
+    );
+  }
+
+  async previewBulkUndo(input: PreviewBulkUndoProductChangesDto) {
+    this.assertBulkUndoSelector(input);
+    const events = await this.prisma.product_change_events.findMany({
+      where: this.bulkUndoWhere(input),
+      take: input.count + 1,
+      orderBy: [{ created_at: "desc" }, { id: "desc" }],
+      select: { id: true, product_id: true }
+    });
+    const selected = events.slice(0, input.count);
+    return {
+      changeIds: selected.map((event) => event.id),
+      changeCount: selected.length,
+      affectedProductCount: new Set(selected.map((event) => event.product_id)).size,
+      hasMore: events.length > input.count
+    };
+  }
+
+  async bulkUndo(input: BulkUndoProductChangesDto, actorUserId: string) {
+    this.assertBulkUndoSelector(input);
+    return this.prisma.$transaction(async (tx) => {
+      const replay = await tx.product_change_events.findMany({
+        where: { bulk_operation_id: input.operationId },
+        select: { actor_user_id: true, product_id: true, restored_from_event_id: true }
+      });
+      if (replay.length) {
+        const replayedChangeIds = replay
+          .map((event) => event.restored_from_event_id)
+          .filter((id): id is string => Boolean(id))
+          .sort();
+        const requestedChangeIds = [...input.changeIds].sort();
+        if (
+          replay.some((event) => event.actor_user_id !== actorUserId) ||
+          replayedChangeIds.length !== requestedChangeIds.length ||
+          replayedChangeIds.some((id, index) => id !== requestedChangeIds[index])
+        ) {
+          throw new ConflictException("Bulk undo operation ID is already in use");
+        }
+        return {
+          operationId: input.operationId,
+          undoneCount: replay.length,
+          affectedProductCount: new Set(replay.map((event) => event.product_id)).size,
+          replayed: true
+        };
+      }
+
+      const events = await tx.product_change_events.findMany({
+        where: {
+          AND: [this.bulkUndoWhere(input), { id: { in: input.changeIds } }]
+        },
+        orderBy: [{ created_at: "desc" }, { id: "desc" }],
+        select: {
+          id: true,
+          product_id: true,
+          changed_fields: true,
+          before_snapshot: true,
+          after_snapshot: true
+        }
+      });
+      if (
+        events.length !== input.changeIds.length ||
+        events.some((event) => !input.changeIds.includes(event.id))
+      ) {
+        throw new ConflictException("Bulk undo preview is stale; preview the changes again");
+      }
+
+      const productIds = [...new Set(events.map((event) => event.product_id))].sort();
+      await tx.$queryRaw(Prisma.sql`
+        SELECT "id"
+        FROM "products"
+        WHERE "id" IN (${Prisma.join(productIds)})
+        ORDER BY "id"
+        FOR UPDATE
+      `);
+      const products = await tx.products.findMany({
+        where: { id: { in: productIds } },
+        select: {
+          id: true,
+          ...productSnapshotSelect,
+          bridge_binding: { select: { schema_review_needed: true } }
+        }
+      });
+      if (products.length !== productIds.length) {
+        throw new ConflictException("One or more products no longer exist");
+      }
+      const currentByProduct = new Map(products.map((product) => [product.id, product]));
+
+      for (const event of events) {
+        const current = currentByProduct.get(event.product_id)!;
+        if (!event.before_snapshot) {
+          throw new ConflictException("A selected change has no earlier product version");
+        }
+        const previous = this.readProductSnapshot(event.before_snapshot);
+        const expectedCurrent = this.readProductSnapshot(event.after_snapshot);
+        const data = this.productFieldsFromSnapshot(previous, event.changed_fields);
+        if (!this.changedProductFieldsMatch(current, expectedCurrent, event.changed_fields)) {
+          throw new ConflictException(
+            "A newer excluded change modified the same product field; adjust the filters and preview again"
+          );
+        }
+        if (data.status === "active" && current.bridge_binding?.schema_review_needed) {
+          throw new ConflictException("A Bridge product requires schema review before it can be restored as active");
+        }
+        const updated = await tx.products.update({
+          where: { id: event.product_id },
+          data,
+          select: productSnapshotSelect
+        });
+        await this.recordProductChange(
+          tx,
+          event.product_id,
+          actorUserId,
+          "restore",
+          current,
+          updated,
+          event.id,
+          input.operationId
+        );
+        currentByProduct.set(event.product_id, {
+          ...updated,
+          id: event.product_id,
+          bridge_binding: current.bridge_binding
+        });
+      }
+
+      return {
+        operationId: input.operationId,
+        undoneCount: events.length,
+        affectedProductCount: productIds.length,
+        replayed: false
+      };
+    });
+  }
+
+  async updateAdminProduct(
+    productId: string,
+    actorUserId: string,
+    input: UpdateAdminProductDto
+  ) {
     this.assertProductUpdate(input);
 
     try {
-      const product = await this.prisma.products.update({
-        where: { id: productId },
-        data: this.productUpdateData(input),
-        select: adminProductSelect
+      const product = await this.prisma.$transaction(async (tx) => {
+        const current = await tx.products.findUnique({
+          where: { id: productId },
+          select: {
+            ...productSnapshotSelect,
+            bridge_binding: { select: { schema_review_needed: true } }
+          }
+        });
+        if (!current) throw new NotFoundException("Product was not found");
+        if (input.status === "active" && current.bridge_binding?.schema_review_needed) {
+          throw new ConflictException("The Bridge product requires schema review before it can become active");
+        }
+        const updated = await tx.products.update({
+          where: { id: productId },
+          data: {
+            ...this.productUpdateData(input),
+            ...(input.slug === undefined ? {} : { slug: this.clean(input.slug) })
+          },
+          select: adminProductSelect
+        });
+        await this.recordProductChange(tx, productId, actorUserId, "update", current, updated);
+        return updated;
       });
       return this.toAdminProduct(product);
     } catch (error) {
@@ -449,11 +731,159 @@ export class ProductService {
       ) {
         throw new NotFoundException("Product was not found");
       }
+      this.rethrowWriteError(error);
+    }
+  }
+
+  async updateAdminListing(
+    listingId: string,
+    status: "draft" | "active" | "archived"
+  ) {
+    try {
+      const listing = await this.prisma.seller_listings.update({
+        where: { id: listingId },
+        data: { status },
+        select: { id: true, status: true, updated_at: true }
+      });
+      return {
+        id: listing.id,
+        status: listing.status,
+        updatedAt: listing.updated_at.toISOString()
+      };
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2025"
+      ) {
+        throw new NotFoundException("Seller listing was not found");
+      }
       throw error;
     }
   }
 
-  async createProduct(sellerId: string, input: CreateProductDto) {
+  async updateAdminOffer(offerId: string, input: UpdateSellerOfferDto) {
+    if (!Object.values(input).some((value) => value !== undefined)) {
+      throw new BadRequestException("At least one offer field is required");
+    }
+
+    try {
+      await this.prisma.$transaction(async (transaction) => {
+        const offer = await transaction.seller_offers.findUnique({
+          where: { id: offerId },
+          select: {
+            id: true,
+            listing: { select: { product: { select: { type: true } } } }
+          }
+        });
+        if (!offer) throw new NotFoundException("Seller offer was not found");
+
+        const detail = this.detailFromInput(input);
+        if (detail) this.assertFulfillment(offer.listing.product.type, input);
+        await transaction.seller_offers.update({
+          where: { id: offer.id },
+          data: {
+            ...(input.price === undefined ? {} : { price: new Prisma.Decimal(input.price) }),
+            ...(input.currency === undefined ? {} : { currency: input.currency.toUpperCase() }),
+            ...(input.sellerSku === undefined
+              ? {}
+              : { seller_sku: this.cleanOptional(input.sellerSku ?? undefined) }),
+            ...(input.status === undefined ? {} : { status: input.status })
+          }
+        });
+        if (input.digital) {
+          await transaction.seller_offer_digital.update({
+            where: { offer_id: offer.id },
+            data: {
+              file_reference: input.digital.fileReference,
+              max_downloads: input.digital.maxDownloads
+            }
+          });
+        }
+        if (input.physical) {
+          await transaction.seller_offer_physical.update({
+            where: { offer_id: offer.id },
+            data: {
+              stock: input.physical.stock,
+              weight_grams: input.physical.weightGrams
+            }
+          });
+        }
+        if (input.service) {
+          await transaction.seller_offer_service.update({
+            where: { offer_id: offer.id },
+            data: {
+              service_type: this.clean(input.service.serviceType),
+              estimated_hours: input.service.estimatedHours,
+              instructions: this.cleanOptional(input.service.instructions)
+            }
+          });
+        }
+        await this.validateDeferredConstraints(transaction);
+      });
+    } catch (error) {
+      this.rethrowWriteError(error);
+    }
+
+    const listing = await this.prisma.seller_listings.findFirst({
+      where: { offers: { some: { id: offerId } } },
+      select: sellerListingSelect
+    });
+    if (!listing) throw new NotFoundException("Seller offer was not found");
+    const mapped = this.toSellerListing(listing);
+    const offer = mapped.offers.find((item) => item.id === offerId);
+    if (!offer) throw new NotFoundException("Seller offer was not found");
+    return offer;
+  }
+
+  async restoreProductChange(
+    productId: string,
+    changeId: string,
+    actorUserId: string,
+    side: "before" | "after" = "after"
+  ) {
+    const product = await this.prisma.$transaction(async (tx) => {
+      const [event, current] = await Promise.all([
+        tx.product_change_events.findFirst({
+          where: { id: changeId, product_id: productId },
+          select: { id: true, before_snapshot: true, after_snapshot: true }
+        }),
+        tx.products.findUnique({
+          where: { id: productId },
+          select: {
+            ...productSnapshotSelect,
+            bridge_binding: { select: { schema_review_needed: true } }
+          }
+        })
+      ]);
+      if (!event || !current) throw new NotFoundException("Product change was not found");
+      const savedSnapshot = side === "before" ? event.before_snapshot : event.after_snapshot;
+      if (!savedSnapshot) {
+        throw new ConflictException("This change has no earlier product version");
+      }
+      const target = this.readProductSnapshot(savedSnapshot);
+      if (target.status === "active" && current.bridge_binding?.schema_review_needed) {
+        throw new ConflictException("The Bridge product requires schema review before it can be restored as active");
+      }
+      const updated = await tx.products.update({
+        where: { id: productId },
+        data: target,
+        select: adminProductSelect
+      });
+      await this.recordProductChange(
+        tx,
+        productId,
+        actorUserId,
+        "restore",
+        current,
+        updated,
+        event.id
+      );
+      return updated;
+    });
+    return this.toAdminProduct(product);
+  }
+
+  async createProduct(sellerId: string, actorUserId: string, input: CreateProductDto) {
     if (input.type === "bridge" && !this.bridgeEnabled()) throw new ConflictException("Bridge is not enabled");
     if (input.type !== "bridge" && input.bridge) {
       throw new BadRequestException("Only Bridge products may define a Bridge binding");
@@ -471,7 +901,7 @@ export class ProductService {
 
     try {
       await this.prisma.$transaction(async (transaction) => {
-        await transaction.products.create({
+        const createdProduct = await transaction.products.create({
           data: {
             id: plan.productId,
             created_by_seller_id: sellerId,
@@ -482,8 +912,17 @@ export class ProductService {
             kind: input.kind,
             type: input.type,
             status: productStatus
-          }
+          },
+          select: productSnapshotSelect
         });
+        await this.recordProductChange(
+          transaction,
+          plan.productId,
+          actorUserId,
+          "create",
+          null,
+          createdProduct
+        );
 
         if (bridgeGrant && input.bridge) {
           await transaction.bridge_product_bindings.create({
@@ -574,6 +1013,7 @@ export class ProductService {
   async updateProduct(
     sellerId: string,
     productId: string,
+    actorUserId: string,
     input: UpdateProductDto
   ) {
     this.assertProductUpdate(input);
@@ -584,27 +1024,29 @@ export class ProductService {
     });
     if (!seller) throw new NotFoundException("Seller was not found");
 
-    const product = await this.prisma.products.findFirst({
-      where: { id: productId, created_by_seller_id: sellerId },
-      select: { id: true, status: true }
-    });
-    if (!product) throw new NotFoundException("Seller product was not found");
-
     const mayPublish = seller.permissions.some((item) => item.permission === "products_publish");
-    const requestedStatus = input.status;
-    const nextStatus = requestedStatus === undefined
-      ? product.status === "active" && !mayPublish ? "pending_review" : undefined
-      : requestedStatus === "active" && !mayPublish ? "pending_review" : requestedStatus;
-
-    await this.prisma.products.update({
-      where: { id: product.id },
-      data: {
-        ...this.productUpdateData(input),
-        ...(nextStatus === undefined ? {} : { status: nextStatus })
-      }
+    await this.prisma.$transaction(async (tx) => {
+      const product = await tx.products.findFirst({
+        where: { id: productId, created_by_seller_id: sellerId },
+        select: { id: true, ...productSnapshotSelect }
+      });
+      if (!product) throw new NotFoundException("Seller product was not found");
+      const requestedStatus = input.status;
+      const nextStatus = requestedStatus === undefined
+        ? product.status === "active" && !mayPublish ? "pending_review" : undefined
+        : requestedStatus === "active" && !mayPublish ? "pending_review" : requestedStatus;
+      const updated = await tx.products.update({
+        where: { id: product.id },
+        data: {
+          ...this.productUpdateData(input),
+          ...(nextStatus === undefined ? {} : { status: nextStatus })
+        },
+        select: productSnapshotSelect
+      });
+      await this.recordProductChange(tx, product.id, actorUserId, "update", product, updated);
     });
 
-    return this.getSellerListingByProduct(sellerId, product.id);
+    return this.getSellerListingByProduct(sellerId, productId);
   }
 
   async reviewProduct(
@@ -613,20 +1055,24 @@ export class ProductService {
     status: "active" | "draft",
     reason?: string
   ) {
-    const current = await this.prisma.products.findUnique({
-      where: { id: productId },
-      select: { id: true, status: true, bridge_binding: { select: { schema_review_needed: true } } }
-    });
-    if (!current) throw new NotFoundException("Product was not found");
-    if (current.status !== "pending_review") {
-      throw new ConflictException("Only pending products can be reviewed");
-    }
-    if (status === "active" && current.bridge_binding?.schema_review_needed) {
-      throw new ConflictException("The seller must accept the current provider schema first");
-    }
-    await this.prisma.$transaction([
-      this.prisma.products.update({ where: { id: current.id }, data: { status } }),
-      this.prisma.product_review_events.create({
+    await this.prisma.$transaction(async (tx) => {
+      const current = await tx.products.findUnique({
+        where: { id: productId },
+        select: { id: true, ...productSnapshotSelect, bridge_binding: { select: { schema_review_needed: true } } }
+      });
+      if (!current) throw new NotFoundException("Product was not found");
+      if (current.status !== "pending_review") {
+        throw new ConflictException("Only pending products can be reviewed");
+      }
+      if (status === "active" && current.bridge_binding?.schema_review_needed) {
+        throw new ConflictException("The seller must accept the current provider schema first");
+      }
+      const updated = await tx.products.update({
+        where: { id: current.id },
+        data: { status },
+        select: productSnapshotSelect
+      });
+      await tx.product_review_events.create({
         data: {
           product_id: current.id,
           reviewer_id: reviewerId,
@@ -634,9 +1080,10 @@ export class ProductService {
           to_status: status,
           reason: this.cleanOptional(reason)
         }
-      })
-    ]);
-    return { id: current.id, status, reason: this.cleanOptional(reason) };
+      });
+      await this.recordProductChange(tx, current.id, reviewerId, "review", current, updated);
+    });
+    return { id: productId, status, reason: this.cleanOptional(reason) };
   }
 
   async addSellerOffers(
@@ -764,7 +1211,7 @@ export class ProductService {
               : { currency: input.currency.toUpperCase() }),
             ...(input.sellerSku === undefined
               ? {}
-              : { seller_sku: this.clean(input.sellerSku) }),
+              : { seller_sku: this.cleanOptional(input.sellerSku ?? undefined) }),
             ...(input.status === undefined ? {} : { status: input.status })
           }
         });
@@ -1184,6 +1631,246 @@ export class ProductService {
         ? {}
         : { category: this.cleanOptional(input.category ?? undefined) }),
       ...(input.status === undefined ? {} : { status: input.status })
+    };
+  }
+
+  private toAdminProductDetail(
+    product: AdminProductDetailRecord,
+    listings: AdminListingRecord[],
+    nextListingCursor: string | null
+  ) {
+    return {
+      ...this.toAdminProduct(product),
+      createdBy: {
+        id: product.created_by.id,
+        shopName: product.created_by.shop_name
+      },
+      options: product.options.map((option) => ({
+        id: option.id,
+        name: option.name,
+        values: option.values
+      })),
+      variants: product.variants.map((variant) => ({
+        id: variant.id,
+        name: variant.name,
+        options: this.mapVariantOptions(variant.option_values)
+      })),
+      listings: listings.map((listing) => ({
+        id: listing.id,
+        status: listing.status,
+        seller: {
+          id: listing.seller.id,
+          shopName: listing.seller.shop_name
+        },
+        offers: listing.offers.map((offer) => ({
+          id: offer.id,
+          variant: {
+            id: offer.variant.id,
+            name: offer.variant.name,
+            options: this.mapVariantOptions(offer.variant.option_values)
+          },
+          price: offer.price.toString(),
+          currency: offer.currency.trim(),
+          sellerSku: offer.seller_sku,
+          status: offer.status,
+          ...(offer.digital
+            ? {
+                digital: {
+                  fileReference: offer.digital.file_reference,
+                  maxDownloads: offer.digital.max_downloads
+                }
+              }
+            : {}),
+          ...(offer.physical
+            ? {
+                physical: {
+                  stock: offer.physical.stock,
+                  weightGrams: offer.physical.weight_grams
+                }
+              }
+            : {}),
+          ...(offer.service
+            ? {
+                service: {
+                  serviceType: offer.service.service_type,
+                  estimatedHours: offer.service.estimated_hours,
+                  instructions: offer.service.instructions
+                }
+              }
+            : {}),
+          createdAt: offer.created_at.toISOString(),
+          updatedAt: offer.updated_at.toISOString()
+        })),
+        createdAt: listing.created_at.toISOString(),
+        updatedAt: listing.updated_at.toISOString()
+      })),
+      nextListingCursor
+    };
+  }
+
+  private async recordProductChange(
+    tx: Prisma.TransactionClient,
+    productId: string,
+    actorUserId: string,
+    action: "create" | "update" | "review" | "restore",
+    beforeRecord: ProductSnapshot | null,
+    afterRecord: ProductSnapshot,
+    restoredFromEventId?: string,
+    bulkOperationId?: string
+  ) {
+    const before = beforeRecord ? this.productSnapshot(beforeRecord) : null;
+    const after = this.productSnapshot(afterRecord);
+    const changedFields = before
+      ? productSnapshotFields.filter((field) => before[field] !== after[field])
+      : [...productSnapshotFields];
+    await tx.product_change_events.create({
+      data: {
+        product_id: productId,
+        actor_user_id: actorUserId,
+        action,
+        changed_fields: changedFields,
+        ...(before ? { before_snapshot: before as Prisma.InputJsonValue } : {}),
+        after_snapshot: after as Prisma.InputJsonValue,
+        ...(restoredFromEventId ? { restored_from_event_id: restoredFromEventId } : {}),
+        ...(bulkOperationId ? { bulk_operation_id: bulkOperationId } : {})
+      }
+    });
+  }
+
+  private assertBulkUndoSelector(input: PreviewBulkUndoProductChangesDto) {
+    if (input.mode === "after_time" && !input.after) {
+      throw new BadRequestException("An after timestamp is required for time-based bulk undo");
+    }
+    if (input.mode === "last" && input.after) {
+      throw new BadRequestException("An after timestamp is only valid for time-based bulk undo");
+    }
+  }
+
+  private bulkUndoWhere(
+    input: PreviewBulkUndoProductChangesDto
+  ): Prisma.product_change_eventsWhereInput {
+    const filters: Prisma.product_change_eventsWhereInput[] = [];
+    if (input.actions?.length) filters.push({ action: { in: input.actions } });
+    if (input.productTypes?.length) {
+      filters.push({ product: { type: { in: input.productTypes } } });
+    }
+    if (input.sellerIds?.length) {
+      filters.push({ product: { created_by_seller_id: { in: input.sellerIds } } });
+    }
+    const required: Prisma.product_change_eventsWhereInput[] = [
+      { bulk_operation_id: null },
+      { before_snapshot: { not: Prisma.DbNull } },
+      { changed_fields: { isEmpty: false } },
+      ...(input.mode === "after_time" ? [{ created_at: { gt: new Date(input.after!) } }] : [])
+    ];
+    if (filters.length) {
+      required.push(input.operator === "or" ? { OR: filters } : { AND: filters });
+    }
+    return { AND: required };
+  }
+
+  private productFieldsFromSnapshot(
+    snapshot: ProductSnapshot,
+    changedFields: string[]
+  ): Prisma.productsUpdateInput {
+    const selected = new Set(changedFields);
+    const data: Prisma.productsUpdateInput = {};
+    if (selected.has("title")) data.title = snapshot.title;
+    if (selected.has("slug")) {
+      if (!snapshot.slug) {
+        throw new ConflictException("The saved product slug is no longer restorable");
+      }
+      data.slug = snapshot.slug;
+    }
+    if (selected.has("description")) data.description = snapshot.description;
+    if (selected.has("category")) data.category = snapshot.category;
+    if (selected.has("status")) data.status = snapshot.status;
+    if (!Object.keys(data).length) {
+      throw new ConflictException("A selected change has no restorable product fields");
+    }
+    return data;
+  }
+
+  private changedProductFieldsMatch(
+    current: ProductSnapshot,
+    expected: ProductSnapshot,
+    changedFields: string[]
+  ) {
+    const selected = new Set(changedFields);
+    return (
+      (!selected.has("title") || current.title === expected.title) &&
+      (!selected.has("slug") || current.slug === expected.slug) &&
+      (!selected.has("description") || current.description === expected.description) &&
+      (!selected.has("category") || current.category === expected.category) &&
+      (!selected.has("status") || current.status === expected.status)
+    );
+  }
+
+  private productSnapshot(record: ProductSnapshot): ProductSnapshot {
+    return {
+      title: record.title,
+      ...(record.slug ? { slug: record.slug } : {}),
+      description: record.description,
+      category: record.category,
+      status: record.status
+    };
+  }
+
+  private readProductSnapshot(value: Prisma.JsonValue): ProductSnapshot {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new ConflictException("The saved product version is no longer restorable");
+    }
+    const status = value.status;
+    if (
+      typeof value.title !== "string" ||
+      value.title.length < 2 ||
+      value.title.length > 200 ||
+      (value.slug !== undefined &&
+        (typeof value.slug !== "string" ||
+          value.slug.length > 200 ||
+          !/^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u.test(value.slug))) ||
+      (value.description !== null && typeof value.description !== "string") ||
+      (value.category !== null && typeof value.category !== "string") ||
+      !["draft", "pending_review", "active", "archived"].includes(String(status))
+    ) {
+      throw new ConflictException("The saved product version is no longer restorable");
+    }
+    return {
+      title: value.title,
+      ...(typeof value.slug === "string" ? { slug: value.slug } : {}),
+      description: value.description as string | null,
+      category: value.category as string | null,
+      status: status as ProductSnapshot["status"]
+    };
+  }
+
+  private toProductChange(
+    event: Prisma.product_change_eventsGetPayload<{ select: typeof productChangeSelect }>
+  ) {
+    return {
+      id: event.id,
+      action: event.action,
+      changedFields: event.changed_fields,
+      before: event.before_snapshot,
+      after: event.after_snapshot,
+      restoredFromChangeId: event.restored_from_event_id,
+      bulkOperationId: event.bulk_operation_id,
+      actor: {
+        id: event.actor.id,
+        name: event.actor.full_name,
+        role: event.actor.role.replaceAll("_", "-")
+      },
+      product: {
+        id: event.product.id,
+        title: event.product.title,
+        slug: event.product.slug,
+        type: event.product.type,
+        seller: {
+          id: event.product.created_by.id,
+          shopName: event.product.created_by.shop_name
+        }
+      },
+      createdAt: event.created_at.toISOString()
     };
   }
 

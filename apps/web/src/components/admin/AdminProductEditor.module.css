@@ -1,0 +1,52 @@
+/* Hallmark · pre-emit critique: P4 H5 E4 S5 R5 V4 */
+.page { min-height: 100svh; padding: clamp(1rem, 3vw, 3rem); color: var(--color-product-ink); background: var(--color-product-paper); font-family: var(--font-product-body); }
+.pageHeader { display: flex; align-items: end; justify-content: space-between; gap: var(--space-product-xl); max-width: 92rem; margin: 0 auto var(--space-product-xl); }
+.pageHeader a:first-child { display: inline-flex; min-height: 2.75rem; align-items: center; color: var(--color-product-accent); font-size: var(--text-product-sm); font-weight: 600; white-space: nowrap; }
+.pageHeader h1 { margin: var(--space-product-sm) 0 0; font-family: var(--font-product-display); font-size: clamp(2rem, 4vw, 3.75rem); font-style: normal; font-weight: 560; letter-spacing: -.045em; line-height: 1; overflow-wrap: anywhere; }
+.pageHeader p { max-width: 42rem; margin-top: var(--space-product-md); color: var(--color-product-muted); line-height: 1.7; }
+.publicLink { display: inline-flex; min-height: 2.75rem; align-items: center; padding-inline: var(--space-product-md); border: var(--rule-dashboard-thin) solid var(--color-product-rule); border-radius: var(--radius-product-round); background: var(--color-product-surface); color: var(--color-product-accent); font-weight: 600; white-space: nowrap; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(18rem, 26rem); gap: var(--space-product-lg); max-width: 92rem; margin-inline: auto; align-items: start; }
+.primary, .sidebar, .sellers, .offerList { display: grid; gap: var(--space-product-lg); min-width: 0; }
+.sidebar { position: sticky; top: var(--space-product-lg); }
+.panel, .listing { min-width: 0; border: var(--rule-dashboard-thin) solid var(--color-product-rule); border-radius: var(--radius-product-md); background: var(--color-product-surface); box-shadow: var(--shadow-dashboard-card); }
+.panel { padding: clamp(1rem, 2.2vw, 2rem); }
+.panel > header, .sellers > header { margin-bottom: var(--space-product-lg); }
+.panel h2, .sellers h2 { margin: 0; font-size: var(--text-product-lg); font-style: normal; font-weight: 600; letter-spacing: -.025em; }
+.panel header p, .sellers header p { margin: var(--space-product-xs) 0 0; color: var(--color-product-muted); font-size: var(--text-product-sm); line-height: 1.65; }
+.formGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-product-md); }
+.formGrid label, .inlineField { display: grid; gap: var(--space-product-xs); min-width: 0; color: var(--color-product-ink-soft); font-size: var(--text-product-xs); font-weight: 600; }
+.formGrid input, .formGrid select, .formGrid textarea, .inlineField select { width: 100%; min-height: 3rem; padding: .7rem .85rem; border: var(--rule-dashboard-thin) solid var(--color-product-rule-strong); border-radius: var(--radius-product-xs); outline: 0; color: var(--color-product-ink); background: var(--color-product-surface); }
+.formGrid textarea { min-height: 8rem; resize: vertical; line-height: 1.65; }
+.formGrid input:focus-visible, .formGrid select:focus-visible, .formGrid textarea:focus-visible, .inlineField select:focus-visible, .page button:focus-visible, .page a:focus-visible { outline: 3px solid var(--color-product-focus); outline-offset: 2px; }
+.wide { grid-column: 1 / -1; }
+.panel > footer, .offer > footer { display: flex; justify-content: flex-end; margin-top: var(--space-product-lg); }
+.primaryButton, .secondaryButton, .state button { min-height: 2.75rem; padding-inline: var(--space-product-lg); border: 0; border-radius: var(--radius-product-round); font-weight: 650; cursor: pointer; white-space: nowrap; transition: transform var(--dur-product-micro) var(--ease-product-out), opacity var(--dur-product-micro) var(--ease-product-out); }
+.primaryButton { color: var(--color-product-accent-ink); background: var(--color-product-accent); }
+.secondaryButton, .state button { color: var(--color-product-accent); background: var(--color-product-accent-soft); }
+.primaryButton:active, .secondaryButton:active, .state button:active { transform: scale(.98); }
+.primaryButton:disabled, .secondaryButton:disabled { opacity: .55; cursor: wait; }
+.sellers { margin-top: var(--space-product-xl); }
+.listing { overflow: clip; }
+.listing > header { display: flex; justify-content: space-between; gap: var(--space-product-lg); align-items: end; padding: var(--space-product-lg); border-bottom: var(--rule-dashboard-thin) solid var(--color-product-rule); }
+.listing h3, .offer h4 { margin: 0; font-style: normal; font-weight: 650; }
+.listing header div > span, .offer header p { display: block; margin-top: var(--space-product-2xs); color: var(--color-product-muted); font-size: var(--text-product-xs); }
+.inlineField { min-width: 11rem; }
+.offerList { padding: var(--space-product-lg); }
+.offer { padding: var(--space-product-lg); border: var(--rule-dashboard-thin) solid var(--color-product-rule); border-radius: var(--radius-product-sm); background: var(--color-product-paper); }
+.offer > header { display: flex; justify-content: space-between; gap: var(--space-product-md); margin-bottom: var(--space-product-md); }
+.offer > header > span { color: var(--color-product-muted); font-family: var(--font-product-mono); font-size: var(--text-product-xs); }
+.facts { display: grid; gap: var(--space-product-sm); margin: 0; }
+.facts div { display: flex; justify-content: space-between; gap: var(--space-product-md); padding-bottom: var(--space-product-sm); border-bottom: var(--rule-dashboard-thin) solid var(--color-product-rule); }
+.facts dt { color: var(--color-product-muted); }
+.facts dd { margin: 0; font-weight: 650; text-align: end; }
+.option { margin-top: var(--space-product-md); padding: var(--space-product-md); border-radius: var(--radius-product-xs); background: var(--color-product-surface-raised); }
+.option p { margin: var(--space-product-2xs) 0 0; color: var(--color-product-muted); font-size: var(--text-product-xs); line-height: 1.6; }
+.error, .message { max-width: 92rem; margin: 0 auto var(--space-product-md); padding: var(--space-product-sm) var(--space-product-md); border-radius: var(--radius-product-xs); font-size: var(--text-product-sm); }
+.error { color: var(--color-product-error); background: var(--color-product-error-soft); }
+.message { color: var(--color-product-success); background: var(--color-product-success-soft); }
+.empty { padding: var(--space-product-xl); color: var(--color-product-muted); text-align: center; }
+.loadMore { justify-self: start; min-height: 2.75rem; padding-inline: var(--space-product-lg); border: var(--rule-dashboard-thin) solid var(--color-product-rule); border-radius: var(--radius-product-round); color: var(--color-product-accent); background: var(--color-product-surface); font-weight: 650; cursor: pointer; }
+.state { display: grid; min-height: 100svh; place-content: center; gap: var(--space-product-md); text-align: center; }
+@media (max-width: 62rem) { .layout { grid-template-columns: minmax(0, 1fr); } .sidebar { position: static; } }
+@media (max-width: 40rem) { .page { padding: var(--space-product-md); } .pageHeader, .listing > header { align-items: stretch; flex-direction: column; } .formGrid { grid-template-columns: minmax(0, 1fr); } .wide { grid-column: auto; } .publicLink { justify-content: center; } .inlineField { min-width: 0; } .offerList, .listing > header, .offer { padding: var(--space-product-md); } }
+@media (prefers-reduced-motion: reduce) { .primaryButton, .secondaryButton, .state button { transition: opacity var(--dur-product-reduced) linear; } }

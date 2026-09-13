@@ -23,6 +23,8 @@
     "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1",
     "socket.io-client": "4.8.3"
   },
   "devDependencies": {
@@ -34,7 +36,7 @@
     "@typescript/native": "npm:typescript@7.0.2",
     "eslint": "10.10.0",
     "eslint-plugin-react-hooks": "7.1.1",
-    "typescript-eslint": "8.70.0",
-    "typescript": "npm:@typescript/typescript6@6.0.2"
+    "typescript": "npm:@typescript/typescript6@6.0.2",
+    "typescript-eslint": "8.70.0"
   }
 }

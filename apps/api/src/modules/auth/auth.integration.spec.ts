@@ -15,6 +15,13 @@ const email = `security-${suffix}@example.com`;
 const ip = `test-${suffix}`;
 const concurrentEmail = `concurrent-${suffix}@example.com`;
 const concurrentIp = `concurrent-${suffix}`;
+const rateUser = `rate-user-${suffix}`;
+const rateIp = `rate-ip-${suffix}`;
+const ratePhone = `+989${suffix.replaceAll("-", "").slice(0, 9)}`;
+const rateAuthority = `authority-${suffix}`;
+const rateToken = `token-${suffix}`;
+const aiTestUser = `ai-test-user-${suffix}`;
+const aiTestIp = `ai-test-ip-${suffix}`;
 
 before(async () => {
   await prisma.$connect();
@@ -25,7 +32,31 @@ after(async () => {
     `login:account:${email.toLowerCase()}`,
     `login:ip:${ip.toLowerCase()}`,
     `login:account:${concurrentEmail.toLowerCase()}`,
-    `login:ip:${concurrentIp.toLowerCase()}`
+    `login:ip:${concurrentIp.toLowerCase()}`,
+    `media:account:${rateUser}`,
+    `media:ip:${rateIp}`,
+    `otp:phone:${ratePhone}`,
+    `otp:ip:${rateIp}`,
+    `payment:account:${rateUser}`,
+    `payment:ip:${rateIp}`,
+    `payment_callback:authority:${rateAuthority}`,
+    `payment_callback:ip:${rateIp}`,
+    `payment_refund:account:${rateUser}`,
+    `payment_refund:ip:${rateIp}`,
+    `payment_configuration:account:${rateUser}`,
+    `payment_configuration:ip:${rateIp}`,
+    `staff_setup:token:${rateToken}`,
+    `staff_setup:ip:${rateIp}`,
+    `bridge:account:${rateUser}`,
+    `bridge:ip:${rateIp}`,
+    `signed_ticket:account:${rateUser}`,
+    `signed_ticket:ip:${rateIp}`,
+    `ai_profile_test:account:${rateUser}`,
+    `ai_profile_test:ip:${rateIp}`,
+    `ai_profile_test:account:${aiTestUser}`,
+    `ai_profile_test:ip:${aiTestIp}`,
+    `product_bulk_undo:account:${rateUser}`,
+    `product_bulk_undo:ip:${rateIp}`
   ].map((value) => createHash("sha256").update(value).digest("hex"));
   await prisma.auth_rate_limits.deleteMany({
     where: { key_hash: { in: keyHashes } }
@@ -100,6 +131,72 @@ describe("database-backed authentication", () => {
           "status" in result.reason &&
           result.reason.status === 429
       )
+    );
+  });
+
+  it("persists every abuse-sensitive rate-limit action", async () => {
+    await rateLimits.consumeMediaUpload(rateUser, rateIp);
+    await rateLimits.consumeOtp(ratePhone, rateIp);
+    await rateLimits.consumePaymentInitiation(rateUser, rateIp);
+    await rateLimits.consumePaymentCallback(rateAuthority, rateIp);
+    await rateLimits.consumePaymentRefund(rateUser, rateIp);
+    await rateLimits.consumePaymentConfiguration(rateUser, rateIp);
+    await rateLimits.consumeStaffSetup(rateToken, rateIp);
+    await rateLimits.consumeBridgeOperation(rateUser, rateIp);
+    await rateLimits.consumeSignedTicket(rateUser, rateIp);
+    await rateLimits.consumeAiProfileTest(rateUser, rateIp);
+    await rateLimits.consumeProductBulkUndo(rateUser, rateIp);
+
+    const rows = await prisma.auth_rate_limits.findMany({
+      where: {
+        action: {
+          in: [
+            "media",
+            "otp",
+            "payment",
+            "payment_callback",
+            "payment_refund",
+            "payment_configuration",
+            "staff_setup",
+            "bridge",
+            "signed_ticket",
+            "ai_profile_test",
+            "product_bulk_undo"
+          ]
+        }
+      },
+      select: { action: true }
+    });
+    const actions = new Set(rows.map((row) => row.action));
+    for (const action of [
+      "media",
+      "otp",
+      "payment",
+      "payment_callback",
+      "payment_refund",
+      "payment_configuration",
+      "staff_setup",
+      "bridge",
+      "signed_ticket",
+      "ai_profile_test",
+      "product_bulk_undo"
+    ]) {
+      assert.ok(actions.has(action), `missing ${action} rate-limit bucket`);
+    }
+  });
+
+  it("allows 30 AI model connection tests per admin account window", async () => {
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      await rateLimits.consumeAiProfileTest(aiTestUser, aiTestIp);
+    }
+
+    await assert.rejects(
+      () => rateLimits.consumeAiProfileTest(aiTestUser, aiTestIp),
+      (error: unknown) =>
+        typeof error === "object" &&
+        error !== null &&
+        "status" in error &&
+        error.status === 429
     );
   });
 });

@@ -5,11 +5,13 @@ import { AuthModule } from "../../modules/auth/auth.module";
 import { PaymentApplicationService } from "./payment-application.service";
 import { PaymentController } from "./payment.controller";
 import { ZarinpalAdapter } from "./providers/zarinpal/zarinpal.adapter";
+import { CredentialCryptoService } from "../../common/security/credential-crypto.service";
+import { PaymentCredentialService } from "./payment-credential.service";
 
 @Module({
   imports: [AuthModule],
   controllers: [PaymentController],
-  providers: [LocalGatewayAdapter, ZarinpalAdapter, PaymentService, PaymentApplicationService],
+  providers: [CredentialCryptoService, PaymentCredentialService, LocalGatewayAdapter, ZarinpalAdapter, PaymentService, PaymentApplicationService],
   exports: [PaymentService]
 })
 export class PaymentsModule {}

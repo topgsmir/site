@@ -2,9 +2,13 @@ import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { BasePaymentAdapter } from "./base-payment.adapter";
 import { LocalGatewayAdapter } from "./providers/local-gateway/local-gateway.adapter";
 import { ZarinpalAdapter } from "./providers/zarinpal/zarinpal.adapter";
-import { PaymentAdapter, PaymentIntentInput, PaymentIntentResult } from "./payment.interface";
+import {
+  PaymentIntentInput,
+  PaymentIntentResult,
+  PaymentProviderDescriptor
+} from "./payment.interface";
 
-type ProviderMap = Record<string, PaymentAdapter>;
+type ProviderMap = Record<string, BasePaymentAdapter>;
 
 @Injectable()
 export class PaymentService {
@@ -22,6 +26,21 @@ export class PaymentService {
     const adapter = this.adapters[providerCode];
     if (!adapter) throw new BadRequestException("Unsupported payment provider");
     return adapter;
+  }
+
+  async listProviders(): Promise<PaymentProviderDescriptor[]> {
+    return Promise.all(Object.values(this.adapters).map(async (adapter) => {
+      const availability = await adapter.availability();
+      return {
+        code: adapter.providerCode,
+        name: adapter.displayName,
+        available: availability.available,
+        unavailabilityReason: availability.unavailabilityReason,
+        currencies: [...adapter.supportedCurrencies],
+        supportsRefunds: adapter.supportsRefunds,
+        configuration: availability.configuration
+      };
+    }));
   }
 
   initiateWithProvider(

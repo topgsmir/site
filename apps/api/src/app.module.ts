@@ -15,6 +15,9 @@ import { MediaModule } from "./modules/media/media.module";
 import { BridgeModule } from "./modules/bridge/bridge.module";
 import { SmsModule } from "./modules/sms/sms.module";
 import { GoghdiModule } from "./modules/goghdi/goghdi.module";
+import { AdminUsersModule } from "./modules/admin-users/admin-users.module";
+import { AiModule } from "./integrations/ai/ai.module";
+import { DataAssistantModule } from "./modules/data-assistant/data-assistant.module";
 
 @Module({
   imports: [
@@ -24,6 +27,9 @@ import { GoghdiModule } from "./modules/goghdi/goghdi.module";
     }),
     PrismaModule,
     AuthModule,
+    AdminUsersModule,
+    AiModule,
+    DataAssistantModule,
     StaffModule,
     MediaModule,
     SellerModule,

@@ -6,6 +6,7 @@ import {
   IsArray,
   IsIn,
   IsInt,
+  IsISO8601,
   IsOptional,
   IsString,
   IsUUID,
@@ -263,7 +264,7 @@ export class UpdateSellerOfferDto {
   @IsString()
   @MinLength(1)
   @MaxLength(100)
-  sellerSku?: string;
+  sellerSku?: string | null;
 
   @IsOptional()
   @IsIn(listingStatuses)
@@ -308,6 +309,20 @@ export class UpdateProductDto {
   status?: ProductStatus;
 }
 
+export class UpdateAdminProductDto extends UpdateProductDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  @Matches(SLUG_PATTERN)
+  slug?: string;
+}
+
+export class UpdateAdminListingDto {
+  @IsIn(listingStatuses)
+  status!: ListingStatus;
+}
+
 export class ReviewProductDto {
   @IsIn(["active", "draft"])
   status!: "active" | "draft";
@@ -316,4 +331,68 @@ export class ReviewProductDto {
   @IsString()
   @MaxLength(500)
   reason?: string;
+}
+
+export class RestoreProductChangeDto {
+  @IsUUID("4")
+  changeId!: string;
+
+  @IsOptional()
+  @IsIn(["before", "after"])
+  side: "before" | "after" = "after";
+}
+
+export const productChangeActions = ["update", "review", "restore"] as const;
+
+export class PreviewBulkUndoProductChangesDto {
+  @IsIn(["last", "after_time"])
+  mode!: "last" | "after_time";
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  count = 100;
+
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  after?: string;
+
+  @IsOptional()
+  @IsIn(["and", "or"])
+  operator: "and" | "or" = "and";
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @ArrayMaxSize(3)
+  @IsIn(productChangeActions, { each: true })
+  actions?: Array<(typeof productChangeActions)[number]>;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @ArrayMaxSize(4)
+  @IsIn(productTypes, { each: true })
+  productTypes?: ProductType[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @ArrayMaxSize(100)
+  @IsUUID("4", { each: true })
+  sellerIds?: string[];
+}
+
+export class BulkUndoProductChangesDto extends PreviewBulkUndoProductChangesDto {
+  @IsUUID("4")
+  operationId!: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayUnique()
+  @ArrayMaxSize(100)
+  @IsUUID("4", { each: true })
+  changeIds!: string[];
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { SellerBridgeWorkspace } from "@/components/bridge/SellerBridgeWorkspace";
+import { SellerDashboard } from "@/components/seller/SellerDashboard";
 import { requireUser } from "@/lib/auth/server";
 import { isLocale } from "@/lib/i18n";
 
@@ -10,6 +10,6 @@ export const dynamic = "force-dynamic";
 export default async function BridgePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  await requireUser(locale, ["seller-admin", "seller-staff"]);
-  return <SellerBridgeWorkspace locale={locale} />;
+  const user = await requireUser(locale, ["seller-admin", "seller-staff"]);
+  return <SellerDashboard locale={locale} user={user} initialSection="bridge" />;
 }

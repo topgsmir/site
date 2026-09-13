@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import type { PrismaService } from "../../prisma/prisma.service";
 import type { BlogActor } from "./blog-manage.guard";
 import { BlogService } from "./blog.service";
@@ -137,6 +137,59 @@ describe("multilingual blog security", () => {
       fa: "راهنمای-خرید",
       en: "buying-guide"
     });
+  });
+
+  it("scopes blog change history to the seller-owned post", async () => {
+    let where: unknown;
+    const prisma = {
+      blog_posts: {
+        findFirst: async (input: { where: unknown }) => {
+          where = input.where;
+          return {
+            id: "00000000-0000-4000-8000-000000000010",
+            seller: null,
+            routes: [],
+            working_revision: {
+              status: "draft",
+              revision_number: 1,
+              optimistic_version: 1,
+              translations: [],
+              cover_asset: null,
+              category: null,
+              tags: [],
+              related_products: [],
+              moderation_note: null
+            },
+            archived_at: null,
+            published_at: null,
+            updated_at: new Date()
+          };
+        }
+      },
+      blog_change_events: { findMany: async () => [] }
+    } as unknown as PrismaService;
+
+    await new BlogService(prisma).listChanges(
+      sellerActor,
+      "00000000-0000-4000-8000-000000000010",
+      { limit: 20 }
+    );
+    assert.deepEqual(where, {
+      id: "00000000-0000-4000-8000-000000000010",
+      seller_id: sellerActor.sellerId
+    });
+  });
+
+  it("does not let sellers restore blog history", async () => {
+    await assert.rejects(
+      () => new BlogService({} as PrismaService).restoreChange(
+        sellerActor,
+        "00000000-0000-4000-8000-000000000010",
+        "00000000-0000-4000-8000-000000000011",
+        1
+      ),
+      ForbiddenException
+    );
   });
 
 });

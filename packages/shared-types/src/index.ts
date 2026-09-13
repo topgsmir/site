@@ -288,6 +288,192 @@ export interface AdminProductsPage {
   nextCursor: string | null;
 }
 
+export interface AdminProductDetails extends AdminProductSummary {
+  createdBy: { id: string; shopName: string };
+  options: Array<{
+    id: string;
+    name: string;
+    values: Array<{ id: string; value: string }>;
+  }>;
+  variants: Array<{
+    id: string;
+    name: string | null;
+    options: ProductOptionSelection[];
+  }>;
+  listings: Array<{
+    id: string;
+    status: SellerListingStatus;
+    seller: { id: string; shopName: string };
+    offers: SellerProductOffer[];
+    createdAt: string;
+    updatedAt: string;
+  }>;
+  nextListingCursor: string | null;
+}
+
+export type ContentChangeAction = "create" | "update" | "review" | "restore";
+
+export interface ProductChangeSnapshot {
+  title: string;
+  slug?: string;
+  description: string | null;
+  category: string | null;
+  status: ProductStatus;
+}
+
+export interface ContentChangeActor {
+  id: string;
+  name: string;
+  role: Role;
+}
+
+export interface ProductChangeEvent {
+  id: string;
+  action: ContentChangeAction;
+  changedFields: string[];
+  before: ProductChangeSnapshot | null;
+  after: ProductChangeSnapshot;
+  restoredFromChangeId: string | null;
+  bulkOperationId: string | null;
+  actor: ContentChangeActor;
+  product: {
+    id: string;
+    title: string;
+    slug: string;
+    type: ProductType;
+    seller: { id: string; shopName: string };
+  };
+  createdAt: string;
+}
+
+export interface ProductChangesPage {
+  items: ProductChangeEvent[];
+  nextCursor: string | null;
+}
+
+export interface ProductBulkUndoPreview {
+  changeIds: string[];
+  changeCount: number;
+  affectedProductCount: number;
+  hasMore: boolean;
+}
+
+export interface ProductBulkUndoResult {
+  operationId: string;
+  undoneCount: number;
+  affectedProductCount: number;
+  replayed: boolean;
+}
+
+export interface BlogChangeSnapshot {
+  translations: BlogTranslationDraft[];
+  coverAssetId: string | null;
+  categoryId: string | null;
+  tagIds: string[];
+  relatedProductIds: string[];
+}
+
+export interface BlogChangeEvent {
+  id: string;
+  action: ContentChangeAction;
+  changedFields: string[];
+  before: BlogChangeSnapshot | null;
+  after: BlogChangeSnapshot;
+  restoredFromChangeId: string | null;
+  actor: ContentChangeActor;
+  createdAt: string;
+}
+
+export interface BlogChangesPage {
+  items: BlogChangeEvent[];
+  nextCursor: string | null;
+}
+
+export interface AdminUserSummary {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string | null;
+  orderCount: number;
+  createdAt: string;
+}
+
+export interface AdminUsersPage {
+  items: AdminUserSummary[];
+  nextCursor: string | null;
+}
+
+export type PaymentTransactionStatus =
+  | "created"
+  | "initiating"
+  | "initiation_unknown"
+  | "pending"
+  | "succeeded"
+  | "refund_pending"
+  | "refund_unknown"
+  | "failed"
+  | "refunded";
+
+export type PaymentProviderUnavailabilityReason =
+  | "development_only"
+  | "missing_merchant_id"
+  | "missing_callback_url";
+
+export interface AdminPaymentMethod {
+  code: string;
+  name: string;
+  adapterAvailable: boolean;
+  unavailabilityReason: PaymentProviderUnavailabilityReason | null;
+  enabled: boolean;
+  currencies: string[];
+  supportsRefunds: boolean;
+  configuration: {
+    merchantIdConfigured: boolean;
+    merchantIdHint: string | null;
+    callbackUrlConfigured: boolean;
+    refundAccessTokenConfigured: boolean;
+    refundAccessTokenHint: string | null;
+  } | null;
+  allowedProductTypes: ProductType[];
+  allowedSellers: AdminPaymentSellerOption[];
+}
+
+export interface AdminPaymentSellerOption {
+  id: string;
+  shopName: string;
+}
+
+export interface AdminPaymentTransaction {
+  id: string;
+  orderId: string;
+  provider: string;
+  status: PaymentTransactionStatus;
+  amount: string;
+  currency: string;
+  authority: string | null;
+  providerReferenceId: string | null;
+  failureCode: string | null;
+  buyer: {
+    id: string;
+    fullName: string;
+    email: string;
+  };
+  seller: {
+    id: string;
+    shopName: string;
+  };
+  verifiedAt: string | null;
+  refundedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminPaymentTransactionsPage {
+  items: AdminPaymentTransaction[];
+  nextCursor: string | null;
+  total: number;
+}
+
 export type OrderStatus =
   | "pending"
   | "paid"

@@ -118,10 +118,20 @@ enum bridge_fulfillment_status {
 
 enum payment_attempt_status {
   created
+  initiating
+  initiation_unknown
   pending
   succeeded
+  refund_pending
+  refund_unknown
   failed
   refunded
+}
+
+enum payment_refund_status {
+  processing
+  succeeded
+  unknown
 }
 
 enum otp_status {
@@ -176,6 +186,50 @@ enum blog_revision_status {
   rejected
 }
 
+enum ai_provider {
+  openai
+  anthropic
+}
+
+enum ai_profile_status {
+  inactive
+  active
+  error
+}
+
+enum ai_message_role {
+  user
+  assistant
+}
+
+enum ai_run_status {
+  running
+  awaiting_approval
+  completed
+  failed
+  rejected
+}
+
+enum ai_tool_kind {
+  tool
+  sql
+}
+
+enum ai_tool_status {
+  proposed
+  running
+  completed
+  failed
+  rejected
+}
+
+enum content_change_action {
+  create
+  update
+  review
+  restore
+}
+
 enum blog_media_kind {
   cover
   inline
@@ -216,9 +270,192 @@ model users {
   created_seller_invites       seller_invitations[]         @relation("seller_invitation_creator")
   granted_bridge_services      bridge_service_grants[]      @relation("bridge_granter")
   reviewed_products            product_review_events[]      @relation("product_reviewer")
+  product_change_events        product_change_events[]       @relation("product_change_actor")
+  blog_change_events           blog_change_events[]          @relation("blog_change_actor")
   bridge_data_accesses         bridge_data_access_audits[]
+  created_ai_profiles          ai_model_profiles[]         @relation("ai_profile_creator")
+  updated_ai_bindings          ai_capability_bindings[]     @relation("ai_binding_updater")
+  ai_conversations             ai_conversations[]           @relation("ai_conversation_owner")
+  requested_ai_runs            ai_runs[]                    @relation("ai_run_requester")
+  approved_ai_tools            ai_tool_executions[]         @relation("ai_tool_approver")
+  ai_audit_events              ai_audit_events[]             @relation("ai_audit_actor")
+  payment_refunds              payment_refunds[]
+  payment_config_events       payment_method_config_events[] @relation("payment_config_actor")
 
+  @@index([role, created_at(sort: Desc), id(sort: Desc)])
   @@map("users")
+}
+
+model ai_model_profiles {
+  id                String                  @id @default(uuid()) @map("id")
+  name              String                  @map("name") @db.VarChar(100)
+  provider          ai_provider             @map("provider")
+  model_id          String                  @map("model_id") @db.VarChar(200)
+  base_url          String                  @map("base_url") @db.VarChar(500)
+  encrypted_api_key String                  @map("encrypted_api_key")
+  encryption_key_id String                  @map("encryption_key_id") @db.VarChar(32)
+  api_key_hint      String                  @map("api_key_hint") @db.VarChar(8)
+  input_price_per_million_usd  Decimal?      @map("input_price_per_million_usd") @db.Decimal(20, 8)
+  output_price_per_million_usd Decimal?      @map("output_price_per_million_usd") @db.Decimal(20, 8)
+  status            ai_profile_status       @default(inactive) @map("status")
+  last_tested_at    DateTime?               @map("last_tested_at")
+  last_error_code   String?                 @map("last_error_code") @db.VarChar(64)
+  created_by_id     String                  @map("created_by_id")
+  created_at        DateTime                @default(now()) @map("created_at")
+  updated_at        DateTime                @default(now()) @updatedAt @map("updated_at")
+  creator           users                   @relation("ai_profile_creator", fields: [created_by_id], references: [id], onDelete: Restrict)
+  bindings          ai_capability_bindings[]
+  runs              ai_runs[]
+  audit_events      ai_audit_events[]
+
+  @@index([status, updated_at(sort: Desc), id(sort: Desc)])
+  @@map("ai_model_profiles")
+}
+
+model ai_capabilities {
+  key           String                  @id @map("key") @db.VarChar(64)
+  created_at    DateTime                @default(now()) @map("created_at")
+  binding       ai_capability_bindings?
+  conversations ai_conversations[]
+  audit_events  ai_audit_events[]
+
+  @@map("ai_capabilities")
+}
+
+model ai_capability_bindings {
+  capability_key String            @id @map("capability_key") @db.VarChar(64)
+  profile_id     String            @map("profile_id")
+  updated_by_id  String            @map("updated_by_id")
+  created_at     DateTime          @default(now()) @map("created_at")
+  updated_at     DateTime          @default(now()) @updatedAt @map("updated_at")
+  capability     ai_capabilities   @relation(fields: [capability_key], references: [key], onDelete: Cascade)
+  profile        ai_model_profiles @relation(fields: [profile_id], references: [id], onDelete: Restrict)
+  updated_by     users             @relation("ai_binding_updater", fields: [updated_by_id], references: [id], onDelete: Restrict)
+
+  @@index([profile_id])
+  @@map("ai_capability_bindings")
+}
+
+model ai_conversations {
+  id             String          @id @default(uuid()) @map("id")
+  capability_key String          @map("capability_key") @db.VarChar(64)
+  owner_user_id  String          @map("owner_user_id")
+  title          String          @map("title") @db.VarChar(160)
+  expires_at     DateTime        @map("expires_at")
+  deleted_at     DateTime?       @map("deleted_at")
+  created_at     DateTime        @default(now()) @map("created_at")
+  updated_at     DateTime        @default(now()) @updatedAt @map("updated_at")
+  capability     ai_capabilities @relation(fields: [capability_key], references: [key], onDelete: Restrict)
+  owner          users           @relation("ai_conversation_owner", fields: [owner_user_id], references: [id], onDelete: Restrict)
+  messages       ai_messages[]
+  runs           ai_runs[]
+  audit_events   ai_audit_events[]
+
+  @@index([owner_user_id, deleted_at, updated_at(sort: Desc), id(sort: Desc)])
+  @@index([expires_at])
+  @@map("ai_conversations")
+}
+
+model ai_messages {
+  id                 String             @id @default(uuid()) @map("id")
+  conversation_id    String             @map("conversation_id")
+  role               ai_message_role    @map("role")
+  content            String             @map("content")
+  structured_content Json?              @map("structured_content")
+  expires_at         DateTime            @map("expires_at")
+  created_at         DateTime            @default(now()) @map("created_at")
+  conversation       ai_conversations    @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  input_run           ai_runs?           @relation("ai_run_input")
+  output_run          ai_runs?           @relation("ai_run_output")
+
+  @@index([conversation_id, created_at, id])
+  @@index([expires_at])
+  @@map("ai_messages")
+}
+
+model ai_runs {
+  id                   String           @id @default(uuid()) @map("id")
+  conversation_id      String           @map("conversation_id")
+  requester_id         String           @map("requester_id")
+  profile_id           String           @map("profile_id")
+  provider_snapshot    ai_provider      @map("provider_snapshot")
+  model_id_snapshot    String           @map("model_id_snapshot") @db.VarChar(200)
+  base_url_snapshot    String           @map("base_url_snapshot") @db.VarChar(500)
+  input_message_id     String           @unique @map("input_message_id")
+  output_message_id    String?          @unique @map("output_message_id")
+  status               ai_run_status    @default(running) @map("status")
+  provider_request_id  String?          @map("provider_request_id") @db.VarChar(200)
+  input_tokens         Int?             @map("input_tokens")
+  output_tokens        Int?             @map("output_tokens")
+  input_price_per_million_usd_snapshot  Decimal? @map("input_price_per_million_usd_snapshot") @db.Decimal(20, 8)
+  output_price_per_million_usd_snapshot Decimal? @map("output_price_per_million_usd_snapshot") @db.Decimal(20, 8)
+  estimated_cost_usd   Decimal?          @map("estimated_cost_usd") @db.Decimal(20, 10)
+  duration_ms          Int?             @map("duration_ms")
+  error_code           String?          @map("error_code") @db.VarChar(64)
+  expires_at           DateTime         @map("expires_at")
+  started_at           DateTime         @default(now()) @map("started_at")
+  completed_at         DateTime?        @map("completed_at")
+  conversation         ai_conversations @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  requester            users            @relation("ai_run_requester", fields: [requester_id], references: [id], onDelete: Restrict)
+  profile              ai_model_profiles @relation(fields: [profile_id], references: [id], onDelete: Restrict)
+  input_message        ai_messages      @relation("ai_run_input", fields: [input_message_id], references: [id], onDelete: Cascade)
+  output_message       ai_messages?     @relation("ai_run_output", fields: [output_message_id], references: [id], onDelete: SetNull)
+  tool_executions      ai_tool_executions[]
+  audit_events         ai_audit_events[]
+
+  @@index([conversation_id, started_at(sort: Desc), id(sort: Desc)])
+  @@index([status, started_at])
+  @@index([expires_at])
+  @@map("ai_runs")
+}
+
+model ai_tool_executions {
+  id             String         @id @default(uuid()) @map("id")
+  run_id         String         @map("run_id")
+  name           String         @map("name") @db.VarChar(64)
+  kind           ai_tool_kind   @map("kind")
+  status         ai_tool_status @map("status")
+  input          Json           @map("input")
+  result         Json?          @map("result")
+  sql_text       String?        @map("sql_text")
+  sql_hash       String?        @map("sql_hash") @db.Char(64)
+  row_count      Int?           @map("row_count")
+  duration_ms    Int?           @map("duration_ms")
+  approved_by_id String?        @map("approved_by_id")
+  approved_at    DateTime?      @map("approved_at")
+  expires_at     DateTime       @map("expires_at")
+  created_at     DateTime       @default(now()) @map("created_at")
+  completed_at   DateTime?      @map("completed_at")
+  run            ai_runs        @relation(fields: [run_id], references: [id], onDelete: Cascade)
+  approved_by    users?         @relation("ai_tool_approver", fields: [approved_by_id], references: [id], onDelete: Restrict)
+
+  @@index([run_id, created_at, id])
+  @@index([status, created_at])
+  @@index([expires_at])
+  @@map("ai_tool_executions")
+}
+
+model ai_audit_events {
+  id              String             @id @default(uuid()) @map("id")
+  actor_user_id   String             @map("actor_user_id")
+  capability_key  String?            @map("capability_key") @db.VarChar(64)
+  profile_id      String?            @map("profile_id")
+  conversation_id String?            @map("conversation_id")
+  run_id          String?            @map("run_id")
+  event_type      String             @map("event_type") @db.VarChar(64)
+  metadata        Json               @map("metadata")
+  expires_at      DateTime           @map("expires_at")
+  created_at      DateTime           @default(now()) @map("created_at")
+  actor           users              @relation("ai_audit_actor", fields: [actor_user_id], references: [id], onDelete: Restrict)
+  capability      ai_capabilities?   @relation(fields: [capability_key], references: [key], onDelete: SetNull)
+  profile         ai_model_profiles? @relation(fields: [profile_id], references: [id], onDelete: SetNull)
+  conversation    ai_conversations?  @relation(fields: [conversation_id], references: [id], onDelete: SetNull)
+  run             ai_runs?           @relation(fields: [run_id], references: [id], onDelete: SetNull)
+
+  @@index([actor_user_id, created_at(sort: Desc), id(sort: Desc)])
+  @@index([run_id])
+  @@index([expires_at])
+  @@map("ai_audit_events")
 }
 
 model platform_staff_permissions {
@@ -306,6 +543,7 @@ model sellers {
   memberships          seller_memberships[]
   bridge_connections   bridge_connections[]
   bridge_grants        bridge_service_grants[]
+  payment_method_rules payment_method_seller_rules[]
 
   @@map("sellers")
 }
@@ -406,12 +644,34 @@ model blog_posts {
   routes                blog_routes[]
   moderation_events     blog_moderation_events[]
   media                 blog_media_assets[]
+  change_events         blog_change_events[]
 
   @@index([seller_id, updated_at, id])
   @@index([creator_user_id, updated_at, id])
   @@index([archived_at, published_at, id])
   @@index([featured_rank, published_at])
   @@map("blog_posts")
+}
+
+model blog_change_events {
+  id                     String                @id @default(uuid()) @map("id")
+  post_id                String                @map("post_id")
+  actor_user_id          String                @map("actor_user_id")
+  action                 content_change_action @map("action")
+  changed_fields         String[]              @map("changed_fields")
+  before_snapshot        Json?                 @map("before_snapshot")
+  after_snapshot         Json                  @map("after_snapshot")
+  restored_from_event_id String?               @map("restored_from_event_id")
+  created_at             DateTime              @default(now()) @map("created_at")
+  post                   blog_posts            @relation(fields: [post_id], references: [id], onDelete: Restrict)
+  actor                  users                 @relation("blog_change_actor", fields: [actor_user_id], references: [id], onDelete: Restrict)
+  restored_from_event    blog_change_events?   @relation("blog_change_restore", fields: [restored_from_event_id], references: [id], onDelete: SetNull)
+  restore_events         blog_change_events[]  @relation("blog_change_restore")
+
+  @@index([post_id, created_at(sort: Desc), id(sort: Desc)])
+  @@index([created_at(sort: Desc), id(sort: Desc)])
+  @@index([actor_user_id])
+  @@map("blog_change_events")
 }
 
 model blog_revisions {
@@ -631,10 +891,35 @@ model products {
   blog_revisions       blog_revision_products[]
   bridge_binding       bridge_product_bindings?
   review_events        product_review_events[]
+  change_events        product_change_events[]
 
   @@index([created_by_seller_id])
   @@index([status, created_at, id])
   @@map("products")
+}
+
+model product_change_events {
+  id                     String                  @id @default(uuid()) @map("id")
+  product_id             String                  @map("product_id")
+  actor_user_id          String                  @map("actor_user_id")
+  action                 content_change_action   @map("action")
+  changed_fields         String[]                @map("changed_fields")
+  before_snapshot        Json?                   @map("before_snapshot")
+  after_snapshot         Json                    @map("after_snapshot")
+  restored_from_event_id String?                 @map("restored_from_event_id")
+  bulk_operation_id      String?                 @map("bulk_operation_id")
+  created_at             DateTime                @default(now()) @map("created_at")
+  product                products                @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  actor                  users                   @relation("product_change_actor", fields: [actor_user_id], references: [id], onDelete: Restrict)
+  restored_from_event    product_change_events?  @relation("product_change_restore", fields: [restored_from_event_id], references: [id], onDelete: SetNull)
+  restore_events         product_change_events[] @relation("product_change_restore")
+
+  @@index([product_id, created_at(sort: Desc), id(sort: Desc)])
+  @@index([created_at(sort: Desc), id(sort: Desc)])
+  @@index([actor_user_id])
+  @@index([bulk_operation_id])
+  @@unique([bulk_operation_id, restored_from_event_id])
+  @@map("product_change_events")
 }
 
 model product_review_events {
@@ -1075,13 +1360,89 @@ model payment_attempts {
   failure_code    String?                @map("failure_code") @db.VarChar(64)
   verified_at     DateTime?              @map("verified_at")
   refunded_at     DateTime?              @map("refunded_at")
+  initiation_started_at DateTime?        @map("initiation_started_at")
   created_at      DateTime               @default(now()) @map("created_at")
   updated_at      DateTime               @default(now()) @updatedAt @map("updated_at")
   order           orders                 @relation(fields: [order_id], references: [id], onDelete: Restrict)
+  refund          payment_refunds?
 
   @@unique([order_id, idempotency_key])
   @@index([order_id, status, created_at])
+  @@index([created_at(sort: Desc), id(sort: Desc)])
+  @@index([status, created_at(sort: Desc), id(sort: Desc)])
+  @@index([provider, created_at(sort: Desc), id(sort: Desc)])
   @@map("payment_attempts")
+}
+
+model payment_refunds {
+  id                 String                @id @default(uuid()) @map("id")
+  payment_attempt_id String                @unique @map("payment_attempt_id")
+  actor_user_id      String                @map("actor_user_id")
+  idempotency_key    String                @map("idempotency_key") @db.Uuid
+  request_hash       String                @map("request_hash") @db.Char(64)
+  status             payment_refund_status @default(processing) @map("status")
+  provider_ref_id    String?               @unique @map("provider_ref_id") @db.VarChar(200)
+  failure_code       String?               @map("failure_code") @db.VarChar(64)
+  created_at         DateTime              @default(now()) @map("created_at")
+  updated_at         DateTime              @default(now()) @updatedAt @map("updated_at")
+  completed_at       DateTime?             @map("completed_at")
+  payment_attempt    payment_attempts      @relation(fields: [payment_attempt_id], references: [id], onDelete: Restrict)
+  actor              users                 @relation(fields: [actor_user_id], references: [id], onDelete: Restrict)
+
+  @@unique([actor_user_id, idempotency_key])
+  @@index([status, created_at])
+  @@map("payment_refunds")
+}
+
+model payment_method_configs {
+  provider_code      String                              @id @map("provider_code") @db.VarChar(32)
+  enabled            Boolean                             @default(false) @map("enabled")
+  encrypted_credentials String?                         @map("encrypted_credentials") @db.Text
+  encryption_key_id String?                             @map("encryption_key_id") @db.VarChar(32)
+  merchant_id_hint  String?                             @map("merchant_id_hint") @db.VarChar(4)
+  refund_token_hint String?                             @map("refund_token_hint") @db.VarChar(4)
+  created_at         DateTime                            @default(now()) @map("created_at")
+  updated_at         DateTime                            @default(now()) @updatedAt @map("updated_at")
+  seller_rules       payment_method_seller_rules[]
+  product_type_rules payment_method_product_type_rules[]
+  audit_events       payment_method_config_events[]
+
+  @@map("payment_method_configs")
+}
+
+model payment_method_config_events {
+  id             String                 @id @default(uuid()) @map("id")
+  provider_code  String                 @map("provider_code") @db.VarChar(32)
+  actor_user_id  String                 @map("actor_user_id")
+  enabled        Boolean                @map("enabled")
+  changed_fields String[]               @map("changed_fields")
+  created_at     DateTime               @default(now()) @map("created_at")
+  config         payment_method_configs @relation(fields: [provider_code], references: [provider_code], onDelete: Restrict)
+  actor          users                  @relation("payment_config_actor", fields: [actor_user_id], references: [id], onDelete: Restrict)
+
+  @@index([provider_code, created_at(sort: Desc), id(sort: Desc)])
+  @@index([actor_user_id, created_at(sort: Desc), id(sort: Desc)])
+  @@map("payment_method_config_events")
+}
+
+model payment_method_seller_rules {
+  provider_code String                 @map("provider_code") @db.VarChar(32)
+  seller_id     String                 @map("seller_id")
+  config        payment_method_configs @relation(fields: [provider_code], references: [provider_code], onDelete: Cascade)
+  seller        sellers                @relation(fields: [seller_id], references: [id], onDelete: Cascade)
+
+  @@id([provider_code, seller_id])
+  @@index([seller_id])
+  @@map("payment_method_seller_rules")
+}
+
+model payment_method_product_type_rules {
+  provider_code String                 @map("provider_code") @db.VarChar(32)
+  product_type  product_type           @map("product_type")
+  config        payment_method_configs @relation(fields: [provider_code], references: [provider_code], onDelete: Cascade)
+
+  @@id([provider_code, product_type])
+  @@map("payment_method_product_type_rules")
 }
 
 model otp_challenges {

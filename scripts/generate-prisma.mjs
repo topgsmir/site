@@ -20,7 +20,17 @@ const result = spawnSync(
     "--config",
     "prisma.config.ts"
   ],
-  { cwd: root, env: process.env, stdio: "inherit" }
+  {
+    cwd: root,
+    env: {
+      ...process.env,
+      // Client generation only parses the datasource config; it does not connect.
+      DATABASE_URL:
+        process.env.DATABASE_URL ??
+        "postgresql://prisma:prisma@localhost:5432/prisma"
+    },
+    stdio: "inherit"
+  }
 );
 
 if (result.error) {

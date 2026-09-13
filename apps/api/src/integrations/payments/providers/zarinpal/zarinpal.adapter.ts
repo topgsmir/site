@@ -3,11 +3,12 @@ import {
   Injectable,
   ServiceUnavailableException
 } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import { BasePaymentAdapter } from "../../base-payment.adapter";
+import { PaymentCredentialService } from "../../payment-credential.service";
 import type {
   PaymentIntentInput,
-  PaymentIntentResult
+  PaymentIntentResult,
+  PaymentRefundInput
 } from "../../payment.interface";
 
 type ZarinpalResponse = {
@@ -23,20 +24,36 @@ type ZarinpalGraphqlResponse = { data?: { resource?: { id?: string } }; errors?:
 @Injectable()
 export class ZarinpalAdapter extends BasePaymentAdapter {
   readonly providerCode = "zarinpal" as const;
+  readonly displayName = "Zarinpal";
+  readonly supportedCurrencies = ["IRR"] as const;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(private readonly credentials: PaymentCredentialService) {
     super();
+  }
+
+  async availability() {
+    const result = await this.credentials.availability(this.providerCode);
+    return {
+      available: result?.reason === null,
+      unavailabilityReason: result?.reason ?? "missing_merchant_id",
+      configuration: result?.configuration ?? null
+    };
+  }
+
+  paymentUrl(authority: string) {
+    return `https://www.zarinpal.com/pg/StartPay/${authority}`;
   }
 
   async initiate(input: PaymentIntentInput): Promise<PaymentIntentResult> {
     this.assertIrr(input.amount, input.currency);
+    const credentials = await this.credentials.zarinpal();
     const result = await this.call(
       "https://payment.zarinpal.com/pg/v4/payment/request.json",
       {
-        merchant_id: this.merchantId(),
+        merchant_id: credentials.merchantId,
         amount: Number(input.amount),
-        callback_url: this.callbackUrl(),
-        description: `TopGSM order ${input.orderId}`,
+        callback_url: credentials.callbackUrl,
+        description: `TopGSM order ${input.orderId} operation ${input.operationId}`,
         metadata: { order_id: input.orderId }
       }
     );
@@ -47,15 +64,16 @@ export class ZarinpalAdapter extends BasePaymentAdapter {
     return {
       providerReferenceId: authority,
       status: "pending",
-      paymentUrl: `https://www.zarinpal.com/pg/StartPay/${authority}`
+      paymentUrl: this.paymentUrl(authority)
     };
   }
 
   async verify(authority: string, amount: string) {
     this.assertIrr(amount, "IRR");
+    const credentials = await this.credentials.zarinpal();
     const result = await this.call(
       "https://payment.zarinpal.com/pg/v4/payment/verify.json",
-      { merchant_id: this.merchantId(), authority, amount: Number(amount) }
+      { merchant_id: credentials.merchantId, authority, amount: Number(amount) }
     );
     const code = result.data?.code;
     return {
@@ -68,26 +86,27 @@ export class ZarinpalAdapter extends BasePaymentAdapter {
 
   async inquiry(authority: string, amount: string) {
     this.assertIrr(amount, "IRR");
+    const credentials = await this.credentials.zarinpal();
     const result = await this.call(
       "https://payment.zarinpal.com/pg/v4/payment/inquiry.json",
-      { merchant_id: this.merchantId(), authority }
+      { merchant_id: credentials.merchantId, authority }
     );
     return result.data?.code === 100 || result.data?.code === 101;
   }
 
-  async refund(sessionId: string, amount: string, description: string) {
-    this.assertIrr(amount, "IRR");
-    const accessToken = this.config
-      .get<string>("ZARINPAL_REFUND_ACCESS_TOKEN")
-      ?.trim();
+  async refund(input: PaymentRefundInput) {
+    this.assertIrr(input.amount, "IRR");
+    const accessToken = (await this.credentials.zarinpal()).refundAccessToken?.trim();
     if (!accessToken) {
       throw new ServiceUnavailableException("Zarinpal refunds are not configured");
     }
-    const response = await fetch(
-      "https://next.zarinpal.com/api/v4/graphql/",
-      {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12_000);
+    try {
+      const response = await fetch("https://next.zarinpal.com/api/v4/graphql/", {
         method: "POST",
         redirect: "error",
+        signal: controller.signal,
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
@@ -95,13 +114,24 @@ export class ZarinpalAdapter extends BasePaymentAdapter {
         },
         body: JSON.stringify({
           query: "mutation AddRefund($session_id: ID!, $amount: BigInteger!, $description: String, $reason: RefundReasonEnum) { resource: AddRefund(session_id: $session_id, amount: $amount, description: $description, reason: $reason) { id } }",
-          variables: { session_id: sessionId, amount: Number(amount), description, reason: "CUSTOMER_REQUEST" }
+          variables: {
+            session_id: input.providerReferenceId,
+            amount: Number(input.amount),
+            description: `${input.reason.slice(0, 400)} [operation:${input.operationId}]`,
+            reason: "CUSTOMER_REQUEST"
+          }
         })
-      }
-    );
-    if (!response.ok) throw new BadGatewayException("Zarinpal refund failed");
-    const result = (await response.json()) as ZarinpalGraphqlResponse;
-    return Boolean(result.data?.resource?.id) && !result.errors?.length;
+      });
+      if (!response.ok) throw new BadGatewayException("Zarinpal refund failed");
+      const result = (await response.json()) as ZarinpalGraphqlResponse;
+      const providerRefundId = result.data?.resource?.id;
+      return providerRefundId && !result.errors?.length ? { providerRefundId } : null;
+    } catch (error) {
+      if (error instanceof BadGatewayException) throw error;
+      throw new BadGatewayException("Zarinpal refund request failed");
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   private async call(
@@ -128,22 +158,6 @@ export class ZarinpalAdapter extends BasePaymentAdapter {
     } finally {
       clearTimeout(timer);
     }
-  }
-
-  private merchantId() {
-    const value = this.config.get<string>("ZARINPAL_MERCHANT_ID")?.trim();
-    if (!value) {
-      throw new ServiceUnavailableException("Zarinpal merchant ID is not configured");
-    }
-    return value;
-  }
-
-  private callbackUrl() {
-    const value = this.config.get<string>("ZARINPAL_CALLBACK_URL")?.trim();
-    if (!value || !value.startsWith("https://")) {
-      throw new ServiceUnavailableException("Zarinpal HTTPS callback URL is not configured");
-    }
-    return value;
   }
 
   private assertIrr(amount: string, currency: string) {
