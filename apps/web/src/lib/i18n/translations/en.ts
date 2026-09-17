@@ -70,7 +70,6 @@ export const en = {
     noDescription: "The seller has not added a detailed description yet. Confirm the variant and fulfilment details before buying.",
     technicalDetails: "Technical details",
     productType: "Product type",
-    productCode: "Product code",
     category: "Category",
     fulfilment: "Fulfilment",
     digitalDelivery: "Digital delivery",

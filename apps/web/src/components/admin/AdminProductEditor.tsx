@@ -9,6 +9,7 @@ import type {
 } from "@topgsm/shared-types";
 import type { Route } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { ProductPublicUrl } from "@/components/product/ProductPublicUrl";
 import { api } from "@/lib/api/client";
@@ -29,6 +30,12 @@ const COPY = {
     back: "كتالوج المنتجات", title: "تعديل المنتج", intro: "أدر سجل الكتالوج الكامل وعروض جميع البائعين من مساحة واحدة.", loadMore: "تحميل بائعين إضافيين",
     catalog: "بيانات الكتالوج", catalogHint: "هذه البيانات مشتركة بين جميع قوائم البائعين.", productTitle: "اسم المنتج", slug: "المعرّف العام", category: "الفئة", description: "الوصف", status: "حالة النشر", save: "حفظ الكتالوج", saving: "جارٍ الحفظ…", saved: "تم حفظ الكتالوج.", loadError: "تعذر تحميل المنتج.", saveError: "تعذر حفظ المنتج.", retry: "إعادة المحاولة", publicPage: "فتح الصفحة العامة", structure: "بنية المنتج", kind: "البنية", type: "النوع", owner: "أنشأه", variants: "المتغيرات", immutable: "النوع والبنية خصائص أساسية. أنشئ منتجاً بديلاً إذا لزم تغيير نموذج التنفيذ.", sellers: "قوائم البائعين", sellersHint: "عدّل ظهور القائمة والسعر ورمز البائع وبيانات التنفيذ.", noListings: "لا توجد قوائم بائعين مرتبطة بهذا المنتج.", listingStatus: "حالة القائمة", offer: "العرض", price: "السعر", currency: "العملة", sku: "رمز البائع", offerStatus: "حالة العرض", saveOffer: "حفظ العرض", offerSaved: "تم حفظ العرض.", listingSaved: "تم حفظ حالة القائمة.", fileReference: "مرجع الملف", downloads: "الحد الأقصى للتنزيل", stock: "المخزون", weight: "الوزن (غرام)", serviceType: "نوع الخدمة", hours: "الساعات المقدرة", instructions: "التعليمات", draft: "مسودة", active: "منشور", pending_review: "قيد المراجعة", archived: "مؤرشف", simple: "بسيط", variable: "متغير"
   }
+} as const;
+
+const IMAGE_COPY = {
+  en: { title: "Product image", hint: "WebP or SVG · up to 8 MiB", choose: "Choose image", replace: "Replace image", remove: "Remove", saved: "Product image saved.", removed: "Product image removed.", error: "The product image could not be updated." },
+  fa: { title: "تصویر محصول", hint: "WebP یا SVG · حداکثر ۸ مگابایت", choose: "انتخاب تصویر", replace: "تغییر تصویر", remove: "حذف", saved: "تصویر محصول ذخیره شد.", removed: "تصویر محصول حذف شد.", error: "به‌روزرسانی تصویر محصول انجام نشد." },
+  ar: { title: "صورة المنتج", hint: "WebP أو SVG · حتى 8 ميغابايت", choose: "اختيار صورة", replace: "تغيير الصورة", remove: "حذف", saved: "تم حفظ صورة المنتج.", removed: "تم حذف صورة المنتج.", error: "تعذر تحديث صورة المنتج." }
 } as const;
 
 type CoreDraft = Pick<AdminProductDetails, "title" | "slug" | "status"> & {
@@ -74,6 +81,7 @@ function requestMessage(error: unknown, fallback: string) {
 
 export function AdminProductEditor({ locale, productId }: { locale: Locale; productId: string }) {
   const c = COPY[locale];
+  const imageCopy = IMAGE_COPY[locale];
   const [product, setProduct] = useState<AdminProductDetails | null>(null);
   const [draft, setDraft] = useState<CoreDraft | null>(null);
   const [offers, setOffers] = useState<Record<string, OfferDraft>>({});
@@ -120,6 +128,30 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
       setProduct((current) => current ? { ...current, listings: current.listings.map((listing) => listing.id === listingId ? { ...listing, status } : listing) } : current);
       setMessage(c.listingSaved);
     } catch (requestError) { setError(requestMessage(requestError, c.saveError)); }
+    finally { setBusy(null); }
+  }
+
+  async function uploadImage(file: File) {
+    if (busy) return;
+    const body = new FormData();
+    body.append("file", file);
+    setBusy("image"); setError(""); setMessage("");
+    try {
+      const response = await api.post<NonNullable<AdminProductDetails["image"]>>(`/products/admin/${productId}/image`, body);
+      setProduct((current) => current ? { ...current, image: response.data } : current);
+      setMessage(imageCopy.saved);
+    } catch (requestError) { setError(requestMessage(requestError, imageCopy.error)); }
+    finally { setBusy(null); }
+  }
+
+  async function removeImage() {
+    if (busy || !product?.image) return;
+    setBusy("image"); setError(""); setMessage("");
+    try {
+      await api.delete(`/products/admin/${productId}/image`);
+      setProduct((current) => current ? { ...current, image: null } : current);
+      setMessage(imageCopy.removed);
+    } catch (requestError) { setError(requestMessage(requestError, imageCopy.error)); }
     finally { setBusy(null); }
   }
 
@@ -195,7 +227,7 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
                         <label><span>{c.currency}</span><input required dir="ltr" minLength={3} maxLength={3} pattern="[A-Za-z]{3}" value={value.currency} onChange={(event) => update("currency", event.target.value)} /></label>
                         <label><span>{c.sku}</span><input dir="ltr" maxLength={100} value={value.sellerSku} onChange={(event) => update("sellerSku", event.target.value)} /></label>
                         <label><span>{c.offerStatus}</span><select value={value.status} onChange={(event) => update("status", event.target.value)}><option value="draft">{c.draft}</option><option value="active">{c.active}</option><option value="archived">{c.archived}</option></select></label>
-                        {offer.digital ? <><label><span>{c.fileReference}</span><input required dir="ltr" maxLength={512} value={value.fileReference} onChange={(event) => update("fileReference", event.target.value)} /></label><label><span>{c.downloads}</span><input required type="number" min={0} max={2147483647} value={value.maxDownloads} onChange={(event) => update("maxDownloads", event.target.value)} /></label></> : null}
+                        {offer.digital ? <><label><span>{c.fileReference}</span><input required type="url" dir="ltr" maxLength={2048} value={value.fileReference} onChange={(event) => update("fileReference", event.target.value)} /></label><label><span>{c.downloads}</span><input required type="number" min={0} max={2147483647} value={value.maxDownloads} onChange={(event) => update("maxDownloads", event.target.value)} /></label></> : null}
                         {offer.physical ? <><label><span>{c.stock}</span><input required type="number" min={0} max={2147483647} value={value.stock} onChange={(event) => update("stock", event.target.value)} /></label><label><span>{c.weight}</span><input required type="number" min={0} max={2147483647} value={value.weightGrams} onChange={(event) => update("weightGrams", event.target.value)} /></label></> : null}
                         {offer.service ? <><label><span>{c.serviceType}</span><input required maxLength={100} value={value.serviceType} onChange={(event) => update("serviceType", event.target.value)} /></label><label><span>{c.hours}</span><input required type="number" min={1} max={10000} value={value.estimatedHours} onChange={(event) => update("estimatedHours", event.target.value)} /></label><label className={styles.wide}><span>{c.instructions}</span><textarea maxLength={5000} value={value.instructions} onChange={(event) => update("instructions", event.target.value)} /></label></> : null}
                       </div>
@@ -210,6 +242,17 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
         </div>
 
         <aside className={styles.sidebar}>
+          <section className={`${styles.panel} ${styles.imagePanel}`} aria-busy={busy === "image"}>
+            <header><h2>{imageCopy.title}</h2><p>{imageCopy.hint}</p></header>
+            {product.image ? (() => {
+              const variant = product.image.variants.find((item) => item.name === "thumb") ?? product.image.variants[0];
+              return variant ? <Image className={styles.productImage} unoptimized src={variant.url} alt={product.title} width={variant.width} height={variant.height} /> : null;
+            })() : <div className={styles.imagePlaceholder}><span aria-hidden="true">＋</span></div>}
+            <div className={styles.imageActions}>
+              <label className={styles.secondaryButton}>{product.image ? imageCopy.replace : imageCopy.choose}<input type="file" accept="image/webp,image/svg+xml" disabled={Boolean(busy)} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file); event.currentTarget.value = ""; }} /></label>
+              {product.image ? <button className={styles.secondaryButton} type="button" disabled={Boolean(busy)} onClick={() => void removeImage()}>{imageCopy.remove}</button> : null}
+            </div>
+          </section>
           <section className={styles.panel}>
             <header><h2>{c.structure}</h2><p>{c.immutable}</p></header>
             <dl className={styles.facts}><div><dt>{c.kind}</dt><dd>{c[product.kind]}</dd></div><div><dt>{c.type}</dt><dd>{product.type}</dd></div><div><dt>{c.owner}</dt><dd>{product.createdBy.shopName}</dd></div><div><dt>{c.variants}</dt><dd>{product.variants.length}</dd></div></dl>

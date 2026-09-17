@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Ip,
   Param,
@@ -9,8 +10,11 @@ import {
   Post,
   Query,
   Req,
-  UseGuards
+  UploadedFile,
+  UseGuards,
+  UseInterceptors
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { PlatformAdminGuard, type AuthenticatedRequest } from "../auth/platform-admin.guard";
 import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
 import { PlatformPermissionGuard } from "../auth/platform-permission.guard";
@@ -30,12 +34,14 @@ import {
 } from "./dto/product.dto";
 import { ProductService } from "./product.service";
 import { SellerProductsGuard } from "./seller-products.guard";
+import { MediaService } from "../media/media.service";
 
 @Controller("products")
 export class ProductController {
   constructor(
     private readonly productService: ProductService,
-    private readonly rateLimits: AuthRateLimitService
+    private readonly rateLimits: AuthRateLimitService,
+    private readonly media: MediaService
   ) {}
 
   @Get()
@@ -154,6 +160,54 @@ export class ProductController {
       request.authenticatedUser!.id,
       body
     );
+  }
+
+  @Post("admin/:productId/image")
+  @UseGuards(PlatformAdminGuard)
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 8 * 1024 * 1024, files: 1 } }))
+  async uploadImageForAdmin(
+    @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Ip() clientIp: string,
+    @Req() request: AuthenticatedRequest
+  ) {
+    await this.rateLimits.consumeMediaUpload(request.authenticatedUser!.id, clientIp);
+    return this.media.uploadProductImage(productId, request.authenticatedUser!.id, null, file);
+  }
+
+  @Delete("admin/:productId/image")
+  @UseGuards(PlatformAdminGuard)
+  deleteImageForAdmin(
+    @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string
+  ) {
+    return this.media.deleteProductImage(productId, null);
+  }
+
+  @Post(":productId/image")
+  @UseGuards(SellerProductsGuard)
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 8 * 1024 * 1024, files: 1 } }))
+  async uploadImage(
+    @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Ip() clientIp: string,
+    @Req() request: AuthenticatedRequest
+  ) {
+    await this.rateLimits.consumeMediaUpload(request.authenticatedUser!.id, clientIp);
+    return this.media.uploadProductImage(
+      productId,
+      request.authenticatedUser!.id,
+      request.sellerContext!.sellerId,
+      file
+    );
+  }
+
+  @Delete(":productId/image")
+  @UseGuards(SellerProductsGuard)
+  deleteImage(
+    @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
+    @Req() request: AuthenticatedRequest
+  ) {
+    return this.media.deleteProductImage(productId, request.sellerContext!.sellerId);
   }
 
   @Patch("admin/listings/:listingId")

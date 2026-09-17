@@ -29,6 +29,11 @@ import styles from "./BlogEditor.module.css";
 const LABELS: Record<BlogLocale, string> = { fa: "فارسی", en: "English", ar: "العربية" };
 const AUTHORING_LOCALE: BlogLocale = "fa";
 const EMPTY: RichTextDocument = { type: "doc", content: [] };
+const COPY = {
+  ...BLOG_EDITOR_COPY[AUTHORING_LOCALE],
+  format: "WebP یا SVG · حداکثر ۸ مگابایت",
+  uploadError: "بارگذاری انجام نشد. از تصویر ثابت WebP یا SVG با حجم کمتر از ۸ مگابایت و ابعاد کمتر از ۲۴ مگاپیکسل استفاده کنید."
+};
 
 function hasArticleContent(node: RichTextNode): boolean {
   return node.type === "image" || Boolean(node.type === "text" && node.text?.trim()) || Boolean(node.content?.some(hasArticleContent));
@@ -38,7 +43,7 @@ type ProductOption = { id: string; title: string; slug: string };
 type TaxonomyResponse = { categories: BlogTaxonomyTerm[]; tags: BlogTaxonomyTerm[] };
 
 export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { postId: string; backHref: string; canRestoreHistory?: boolean }) {
-  const copy = BLOG_EDITOR_COPY[AUTHORING_LOCALE];
+  const copy = COPY;
   const [post, setPost] = useState<ManagedBlogPost | null>(null);
   const [translations, setTranslations] = useState<BlogTranslationDraft[]>([]);
   const [active, setActive] = useState<BlogLocale>(AUTHORING_LOCALE);
@@ -260,7 +265,7 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
               <span className={styles.toolDivider} />
               <button type="button" aria-pressed={formatting?.heading} aria-label={copy.heading} title={copy.heading} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}>H2</button>
               <button type="button" aria-pressed={formatting?.list} onClick={() => editor?.chain().focus().toggleBulletList().run()}>{copy.list}</button>
-              <label className={styles.inlineUpload}><DesignIcon name="layers" />{copy.image}<input aria-label={copy.image} type="file" accept="image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file, "inline"); event.currentTarget.value = ""; }} /></label>
+              <label className={styles.inlineUpload}><DesignIcon name="layers" />{copy.image}<input aria-label={copy.image} type="file" accept="image/webp,image/svg+xml" onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file, "inline"); event.currentTarget.value = ""; }} /></label>
             </div>
             <div className={styles.editor} dir={active === "en" ? "ltr" : "rtl"} lang={active}><EditorContent editor={editor} /></div>
           </section>
@@ -280,7 +285,7 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
             <label className={styles.coverUpload}>
               {coverVariant ? <NextImage unoptimized src={coverVariant.url} alt={current.coverAltText} width={coverVariant.width} height={coverVariant.height} sizes="(max-width: 900px) 100vw, 320px" /> : <span className={styles.coverPlaceholder}><DesignIcon name="layers" /><strong>{copy.upload}</strong><small>{copy.format}</small></span>}
               {coverVariant ? <span className={styles.replaceLabel}>{copy.replace}</span> : null}
-              <input aria-label={coverVariant ? copy.replace : copy.upload} type="file" accept="image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file, "cover"); event.currentTarget.value = ""; }} />
+              <input aria-label={coverVariant ? copy.replace : copy.upload} type="file" accept="image/webp,image/svg+xml" onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file, "cover"); event.currentTarget.value = ""; }} />
             </label>
             <label className={styles.field}><span>{copy.alt}</span><input dir={active === "en" ? "ltr" : "rtl"} value={current.coverAltText} maxLength={300} onChange={(event) => updateTranslation("coverAltText", event.target.value)} /><small>{copy.altHint}</small></label>
           </section>

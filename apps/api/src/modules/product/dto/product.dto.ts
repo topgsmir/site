@@ -10,6 +10,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  IsUrl,
   Matches,
   Max,
   MaxLength,
@@ -32,8 +33,6 @@ type ListingStatus = (typeof listingStatuses)[number];
 const MONEY_PATTERN = /^(?:0|[1-9]\d{0,15})(?:\.\d{1,4})?$/;
 const CURRENCY_PATTERN = /^[A-Za-z]{3}$/;
 const SLUG_PATTERN = /^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u;
-const STORAGE_REFERENCE_PATTERN =
-  /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))[A-Za-z0-9][A-Za-z0-9._/-]{0,511}$/;
 
 export class ListProductsQueryDto {
   @IsOptional()
@@ -86,8 +85,8 @@ export class CreateProductVariantDto {
 }
 
 export class DigitalFulfillmentDto {
-  @IsString()
-  @Matches(STORAGE_REFERENCE_PATTERN)
+  @IsUrl({ protocols: ["https"], require_protocol: true })
+  @MaxLength(2048)
   fileReference!: string;
 
   @Type(() => Number)

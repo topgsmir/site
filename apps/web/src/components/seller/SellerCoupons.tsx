@@ -8,6 +8,7 @@ import type {
 } from "@topgsm/shared-types";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
+import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import type { Locale } from "@/lib/i18n";
 import styles from "./SellerCoupons.module.css";
 
@@ -238,7 +239,7 @@ export function SellerCoupons({ locale }: { locale: Locale }) {
         {!listError && !loading && coupons.length === 0 ? <p className={styles.message}>{c.empty}</p> : null}
         {coupons.map((coupon) => (
           <article className={styles.coupon} key={coupon.id}>
-            <div><strong>{coupon.code}</strong><span>{coupon.discountType === "percentage" ? `${coupon.discountValue}%` : `${coupon.discountValue} ${coupon.currency}`}</span></div>
+            <div><strong>{coupon.code}</strong><span>{coupon.discountType === "percentage" ? `${coupon.discountValue}%` : `${formatCurrencyAmount(coupon.discountValue, coupon.currency, locale)} ${currencyLabel(coupon.currency)}`}</span></div>
             <dl>
               <div><dt>{c.status}</dt><dd>{coupon.active ? c.enabled : c.disabled}</dd></div>
               <div><dt>{c.redemptions}</dt><dd>{coupon.redeemedCount} / {coupon.maximumRedemptions ?? c.noLimit}</dd></div>

@@ -7,12 +7,14 @@ import { AuthService } from "../auth/auth.service";
 import type { VerifyOtpDto } from "./dto/otp.dto";
 import { normalizeIranianPhone } from "./phone-number";
 import { SmsService } from "./sms.service";
+import { SmsSettingsService } from "./sms-settings.service";
 
 @Injectable()
 export class OtpService {
-  constructor(private readonly prisma: PrismaService, private readonly auth: AuthService, private readonly sms: SmsService, private readonly config: ConfigService) {}
+  constructor(private readonly prisma: PrismaService, private readonly auth: AuthService, private readonly sms: SmsService, private readonly config: ConfigService, private readonly settings: SmsSettingsService) {}
 
   async request(rawPhone: string) {
+    await this.assertEnabled();
     const phone = normalizeIranianPhone(rawPhone);
     const id = randomUUID();
     const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
@@ -27,6 +29,7 @@ export class OtpService {
   }
 
   async verify(input: VerifyOtpDto) {
+    await this.assertEnabled();
     const phone = normalizeIranianPhone(input.phoneNumber);
     const challenge = await this.prisma.otp_challenges.findFirst({ where: { id: input.challengeId, phone_number: phone, status: "pending" } });
     if (!challenge || challenge.expires_at <= new Date() || challenge.attempts >= 5) throw new UnauthorizedException("OTP challenge is invalid or expired");
@@ -67,5 +70,11 @@ export class OtpService {
     const secret = this.config.get<string>("OTP_HMAC_KEY")?.trim();
     if (!secret || secret.length < 32) throw new ServiceUnavailableException("OTP security key is not configured");
     return createHmac("sha256", secret).update(`${id}:${phone}:${code}`).digest("hex");
+  }
+
+  private async assertEnabled() {
+    if (!(await this.settings.isOtpEnabled())) {
+      throw new ServiceUnavailableException("OTP sign-in is currently disabled");
+    }
   }
 }

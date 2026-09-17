@@ -9,6 +9,7 @@ export type AdminSection =
   | "users"
   | "products"
   | "product-changes"
+  | "coupons"
   | "orders"
   | "payment-transactions"
   | "payment-methods"
@@ -16,6 +17,9 @@ export type AdminSection =
   | "bridge"
   | "ai-models"
   | "ai-assistant"
+  | "settings-sms"
+  | "settings-shipping"
+  | "settings-usd"
   | "editorial";
 
 export type AdminPanelRouteProps = {

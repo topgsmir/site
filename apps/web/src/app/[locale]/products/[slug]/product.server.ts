@@ -27,6 +27,10 @@ export type PublicProduct = {
   category: string | null;
   kind: "simple" | "variable";
   type: "digital" | "physical" | "service" | "bridge";
+  image: null | {
+    id: string;
+    variants: Array<{ name: "thumb" | "large"; url: string; width: number; height: number }>;
+  };
   bridge?: {
     fields: Array<{
       key: string;
@@ -66,6 +70,14 @@ function isNullableString(value: unknown): value is string | null {
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function isProductImage(value: unknown): value is NonNullable<PublicProduct["image"]> {
+  return isRecord(value) && isString(value.id) && Array.isArray(value.variants) && value.variants.every((variant) => (
+    isRecord(variant) && ["thumb", "large"].includes(String(variant.name)) &&
+    isString(variant.url) && /^\/media\/[0-9a-f-]{36}\/(?:thumb|large)\.webp$/i.test(variant.url) &&
+    isFiniteNumber(variant.width) && isFiniteNumber(variant.height)
+  ));
 }
 
 function isNamedValue(value: unknown): value is { name: string; value: string } {
@@ -155,6 +167,7 @@ function isProductResponse(value: unknown): value is PublicProduct {
     !isString(value.updatedAt) ||
     !["simple", "variable"].includes(String(value.kind)) ||
     !["digital", "physical", "service", "bridge"].includes(String(value.type)) ||
+    !(value.image === null || isProductImage(value.image)) ||
     !Array.isArray(value.options) ||
     !Array.isArray(value.variants)
   ) {

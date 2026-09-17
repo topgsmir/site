@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
-import { BadRequestException, ForbiddenException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
@@ -21,7 +21,7 @@ const actor: BlogActor = {
   }
 };
 
-describe("blog media boundary", () => {
+describe("media boundary", () => {
   it("rejects files that claim to be WebP but cannot be decoded", async () => {
     const service = new MediaService(
       new ConfigService({ MEDIA_ROOT: "var/test-media" }),
@@ -121,5 +121,92 @@ describe("blog media boundary", () => {
     } as unknown as PrismaService;
     const service = new MediaService(new ConfigService({ MEDIA_ROOT: "var/test-media" }), prisma);
     await assert.rejects(service.get("asset", "wide"), ForbiddenException);
+  });
+
+  it("accepts SVG blog uploads and stores their WebP variants under the blog directory", async () => {
+    const base = join(process.cwd(), "var");
+    await mkdir(base, { recursive: true });
+    const root = await mkdtemp(join(base, "media-svg-"));
+    const variantPaths: string[] = [];
+    const prisma = {
+      blog_media_assets: {
+        create: async (input: {
+          data: {
+            id: string;
+            kind: "cover" | "inline";
+            width: number;
+            height: number;
+            variants: { create: Array<{ variant: string; width: number; height: number; path: string }> };
+          };
+        }) => {
+          variantPaths.push(...input.data.variants.create.map((variant) => variant.path));
+          return {
+            id: input.data.id,
+            kind: input.data.kind,
+            width: input.data.width,
+            height: input.data.height,
+            variants: input.data.variants.create
+          };
+        }
+      }
+    } as unknown as PrismaService;
+    const service = new MediaService(new ConfigService({ MEDIA_ROOT: root }), prisma);
+    try {
+      const result = await service.upload(actor, {
+        buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="24"><rect width="32" height="24" fill="#2457ff"/></svg>'),
+        mimetype: "image/svg+xml",
+        originalname: "valid.svg"
+      } as Express.Multer.File, { kind: "inline", focalX: 0.5, focalY: 0.5 });
+
+      assert.equal(result.variants.length, 3);
+      assert.equal(variantPaths.every((path) => path.startsWith("blog/")), true);
+      assert.equal(variantPaths.every((path) => path.endsWith(".webp")), true);
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
+  });
+
+  it("rejects invalid product image bytes before writing files", async () => {
+    const prisma = {
+      products: { findFirst: async () => ({ id: "product" }) }
+    } as unknown as PrismaService;
+    const service = new MediaService(new ConfigService({ MEDIA_ROOT: "var/test-media" }), prisma);
+    await assert.rejects(
+      service.uploadProductImage("product", actor.user.id, actor.sellerId, {
+        buffer: Buffer.from("not-an-image"),
+        mimetype: "image/png",
+        originalname: "spoof.png"
+      } as Express.Multer.File),
+      BadRequestException
+    );
+  });
+
+  it("hides another seller's product during image replacement", async () => {
+    const prisma = {
+      products: { findFirst: async () => null }
+    } as unknown as PrismaService;
+    const service = new MediaService(new ConfigService({ MEDIA_ROOT: "var/test-media" }), prisma);
+    await assert.rejects(
+      service.uploadProductImage("other-product", actor.user.id, actor.sellerId, undefined),
+      NotFoundException
+    );
+  });
+
+  it("rejects decoded PNG product uploads even when their MIME type is spoofed", async () => {
+    const image = await sharp({ create: { width: 32, height: 24, channels: 4, background: "#2457ff" } })
+      .png()
+      .toBuffer();
+    const prisma = {
+      products: { findFirst: async () => ({ id: "product" }) }
+    } as unknown as PrismaService;
+    const service = new MediaService(new ConfigService({ MEDIA_ROOT: "var/test-media" }), prisma);
+    await assert.rejects(
+      service.uploadProductImage("product", actor.user.id, actor.sellerId, {
+        buffer: image,
+        mimetype: "image/webp",
+        originalname: "spoof.webp"
+      } as Express.Multer.File),
+      BadRequestException
+    );
   });
 });

@@ -77,6 +77,14 @@ export class AuthRateLimitService {
     await this.consumeSensitiveMutation("order", userId, clientIp, 30, 100);
   }
 
+  async consumeShippingMutation(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("shipping", userId, clientIp, 10, 30);
+  }
+
+  async consumeShippingConfiguration(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("shipping_configuration", userId, clientIp, 10, 30);
+  }
+
   async consumePayoutMutation(userId: string, clientIp: string) {
     await this.consumeSensitiveMutation("payout", userId, clientIp, 20, 60);
   }
@@ -101,12 +109,28 @@ export class AuthRateLimitService {
     );
   }
 
+  async consumeCheckoutQuote(subject: string, clientIp: string) {
+    await this.consumePublicOperation(
+      "checkout_quote",
+      "cart",
+      subject,
+      clientIp,
+      30,
+      120,
+      15 * 60
+    );
+  }
+
   async consumePaymentRefund(userId: string, clientIp: string) {
     await this.consumeSensitiveMutation("payment_refund", userId, clientIp, 10, 30);
   }
 
   async consumePaymentConfiguration(userId: string, clientIp: string) {
     await this.consumeSensitiveMutation("payment_configuration", userId, clientIp, 10, 30);
+  }
+
+  async consumeSmsConfiguration(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("sms_configuration", userId, clientIp, 10, 30);
   }
 
   async consumeStaffSetup(token: string, clientIp: string) {
@@ -167,11 +191,14 @@ export class AuthRateLimitService {
   private async consumeSensitiveMutation(
     action:
       | "order"
+      | "shipping"
+      | "shipping_configuration"
       | "payout"
       | "media"
       | "payment"
       | "payment_refund"
       | "payment_configuration"
+      | "sms_configuration"
       | "bridge"
       | "signed_ticket"
       | "ai_profile"
@@ -203,7 +230,7 @@ export class AuthRateLimitService {
   }
 
   private async consumePublicOperation(
-    action: "payment_callback" | "staff_setup",
+    action: "payment_callback" | "staff_setup" | "checkout_quote",
     subjectScope: string,
     subjectValue: string,
     clientIp: string,

@@ -3,9 +3,11 @@
 import type { Route } from "next";
 import { DesignIcon } from "@/components/DesignIcon";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { getDictionary, Locale } from "@/lib/i18n";
+import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import {
   GoghdiAuthenticationRequiredError,
   goghdiEnabled,
@@ -13,11 +15,11 @@ import {
 } from "@/lib/goghdi/goghdi";
 import type { PublicProduct, PublicProductOffer, PublicProductVariant } from "./product.server";
 import styles from "./ProductPage.module.css";
+import { CART_EVENT, cartQuantity, readCart, writeCart } from "@/lib/cart";
 
 type ProductCopy = ReturnType<typeof getDictionary>["product"];
 type ButtonState = "idle" | "loading" | "success" | "error";
 type SupportState = "idle" | "loading" | "error";
-type CartItem = { productId: string; offerId: string; quantity: number };
 
 type SelectableOffer = PublicProductOffer & {
   variantId: string;
@@ -25,35 +27,6 @@ type SelectableOffer = PublicProductOffer & {
   variantOptions: Array<{ name: string; value: string }>;
 };
 
-const CART_KEY = "topgsm-cart-v1";
-const CART_EVENT = "topgsm:cart-updated";
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function isCartItem(value: unknown): value is CartItem {
-  if (typeof value !== "object" || value === null) return false;
-  const item = value as Partial<CartItem>;
-  return (
-    typeof item.productId === "string" &&
-    UUID_PATTERN.test(item.productId) &&
-    typeof item.offerId === "string" &&
-    UUID_PATTERN.test(item.offerId) &&
-    Number.isInteger(item.quantity) &&
-    Number(item.quantity) > 0 &&
-    Number(item.quantity) <= 99
-  );
-}
-
-function readCart(): CartItem[] {
-  const raw = window.localStorage.getItem(CART_KEY);
-  if (!raw) return [];
-  const parsed: unknown = JSON.parse(raw);
-  if (!Array.isArray(parsed)) return [];
-  return parsed.filter(isCartItem).slice(0, 100);
-}
-
-function cartQuantity(items: CartItem[]) {
-  return items.reduce((total, item) => total + item.quantity, 0);
-}
 
 function variantLabel(variant: PublicProductVariant, copy: ProductCopy) {
   if (variant.name) return variant.name;
@@ -73,17 +46,8 @@ function flattenOffers(product: PublicProduct, copy: ProductCopy): SelectableOff
 }
 
 function formatPrice(price: string, currency: string, locale: Locale) {
-  const numericPrice = Number(price);
-  if (!Number.isFinite(numericPrice)) return `${price} ${currency}`;
-  try {
-    return new Intl.NumberFormat(locale === "fa" ? "fa-IR" : locale === "ar" ? "ar" : "en", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 4
-    }).format(numericPrice);
-  } catch {
-    return `${price} ${currency}`;
-  }
+  const numberLocale = locale === "fa" ? "fa-IR" : locale === "ar" ? "ar" : "en";
+  return `${formatCurrencyAmount(price, currency, numberLocale)} ${currencyLabel(currency)}`;
 }
 
 function fulfilmentLabel(product: PublicProduct, copy: ProductCopy) {
@@ -119,6 +83,7 @@ export function ProductPage({
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const selectedOffer = offers.find((offer) => offer.id === selectedOfferId) ?? firstAvailableOffer;
   const unavailable = !selectedOffer || selectedOffer.physical?.inStock === false;
+  const productImage = product.image?.variants.find((item) => item.name === "large") ?? product.image?.variants[0];
 
   useEffect(() => {
     const updateCount = () => {
@@ -146,12 +111,16 @@ export function ProductPage({
       const items = readCart();
       const existing = items.find((item) => item.offerId === selectedOffer.id);
       if (existing) {
-        existing.quantity = Math.min(existing.quantity + 1, 99);
+        existing.quantity = Math.min(existing.quantity + 1, 100);
+        existing.productName = product.title;
       } else {
-        items.push({ productId: product.id, offerId: selectedOffer.id, quantity: 1 });
+        if (items.length >= 50) {
+          setButtonState("error");
+          return;
+        }
+        items.push({ productId: product.id, productName: product.title, offerId: selectedOffer.id, quantity: 1 });
       }
-      window.localStorage.setItem(CART_KEY, JSON.stringify(items));
-      window.dispatchEvent(new Event(CART_EVENT));
+      writeCart(items);
       setButtonState("success");
       if (resetTimer.current) clearTimeout(resetTimer.current);
       resetTimer.current = setTimeout(() => setButtonState("idle"), 2500);
@@ -220,9 +189,9 @@ export function ProductPage({
               </Link>
             ))}
           </nav>
-          <div className={styles.cartIndicator} aria-label={`${countLabel} ${copy.itemCount}`}>
+          <Link href={`/${locale}/cart` as Route} className={styles.cartIndicator} aria-label={`${countLabel} ${copy.itemCount}`}>
             <span>{copy.cart}</span><strong>{countLabel}</strong>
-          </div>
+          </Link>
         </div>
       </header>
 
@@ -235,12 +204,12 @@ export function ProductPage({
 
         <section className={styles.hero} aria-labelledby="product-title">
           <div className={styles.productIntro}>
+            {productImage ? <Image className={styles.productImage} unoptimized src={productImage.url} alt={product.title} width={productImage.width} height={productImage.height} priority /> : null}
             <p className={styles.productClass}>{category} · {typeLabel}</p>
             <h1 id="product-title">{product.title}</h1>
             <div className={styles.identityPlate} aria-label={copy.technicalDetails}>
               <div><span>{copy.productType}</span><strong>{typeLabel}</strong></div>
               <div><span>{copy.category}</span><strong>{category}</strong></div>
-              <div><span>{copy.productCode}</span><code>{product.id}</code></div>
             </div>
           </div>
 

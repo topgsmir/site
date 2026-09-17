@@ -2,9 +2,11 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import type { Route } from "next";
 import type { PublicProductSummary } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
+import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import { DesignIcon } from "@/components/DesignIcon";
 import styles from "./ProductCatalog.module.css";
 
@@ -29,7 +31,8 @@ export function ProductCatalog({ locale, products, unavailable }: { locale: Loca
     <p className={styles.resultCount} role="status">{number.format(visible.length)} {c.results}</p>
     {unavailable ? <p className={styles.empty} role="alert">{c.error}</p> : visible.length ? <div className={styles.grid}>{visible.map((product) => {
       const starting = product.startingPrices[0];
-      return <Link className={styles.card} key={product.id} href={`/${locale}/products/${product.slug}` as Route}><div className={styles.artwork} data-type={product.type}><DesignIcon name={product.type === "digital" ? "file" : product.type === "service" ? "headphones" : "layers"} /><span>{c[product.type]}</span></div><div className={styles.content}><p>{product.category ?? c[product.type]}</p><h2>{product.title}</h2><div><span>{starting ? `${c.from} ${number.format(Number(starting.price))} ${starting.currency}` : c.details}</span><DesignIcon name="arrow" /></div></div></Link>;
+      const image = product.image?.variants.find((item) => item.name === "thumb") ?? product.image?.variants[0];
+      return <Link className={styles.card} key={product.id} href={`/${locale}/products/${product.slug}` as Route}><div className={styles.artwork} data-type={product.type}>{image ? <Image unoptimized src={image.url} alt={product.title} width={image.width} height={image.height} /> : <><DesignIcon name={product.type === "digital" ? "file" : product.type === "service" ? "headphones" : "layers"} /><span>{c[product.type]}</span></>}</div><div className={styles.content}><p>{product.category ?? c[product.type]}</p><h2>{product.title}</h2><div><span>{starting ? `${c.from} ${formatCurrencyAmount(starting.price, starting.currency, locale)} ${currencyLabel(starting.currency)}` : c.details}</span><DesignIcon name="arrow" /></div></div></Link>;
     })}</div> : <div className={styles.empty}><DesignIcon name="search" /><h2>{c.empty}</h2><p>{c.emptyHint}</p>{query || type !== "all" ? <button type="button" onClick={() => { setQuery(""); setType("all"); }}>{c.reset}</button> : null}</div>}
   </main>;
 }

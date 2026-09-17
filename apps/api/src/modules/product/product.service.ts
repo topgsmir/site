@@ -56,6 +56,14 @@ const variantOptionSelect = {
   }
 } as const;
 
+const productMediaSelect = {
+  id: true,
+  variants: {
+    orderBy: { variant: "asc" as const },
+    select: { variant: true, width: true, height: true }
+  }
+} satisfies Prisma.product_media_assetsSelect;
+
 const sellerListingSelect = {
   id: true,
   seller_id: true,
@@ -75,6 +83,7 @@ const sellerListingSelect = {
       created_at: true,
       updated_at: true,
       created_by_seller_id: true,
+      media: { select: productMediaSelect },
       bridge_binding: {
         select: {
           mode: true,
@@ -131,6 +140,7 @@ const adminProductSelect = {
   status: true,
   created_at: true,
   updated_at: true,
+  media: { select: productMediaSelect },
   _count: { select: { listings: true } }
 } satisfies Prisma.productsSelect;
 
@@ -283,7 +293,8 @@ export class ProductService {
         category: true,
         kind: true,
         type: true,
-        created_at: true
+        created_at: true,
+        media: { select: productMediaSelect }
       }
     });
 
@@ -326,6 +337,7 @@ export class ProductService {
         category: product.category,
         kind: product.kind,
         type: product.type,
+        image: this.mapProductImage(product.media),
         ...(startingPrices.length === 1
           ? {
               price: startingPrices[0].price,
@@ -360,6 +372,7 @@ export class ProductService {
         type: true,
         created_at: true,
         updated_at: true,
+        media: { select: productMediaSelect },
         bridge_binding: {
           select: {
             minimum_quantity: true,
@@ -424,6 +437,7 @@ export class ProductService {
       category: product.category,
       kind: product.kind,
       type: product.type,
+      image: this.mapProductImage(product.media),
       ...(product.bridge_binding
         ? {
             bridge: {
@@ -1516,6 +1530,7 @@ export class ProductService {
         kind: listing.product.kind,
         type: listing.product.type,
         status: listing.product.status,
+        image: this.mapProductImage(listing.product.media),
         canEdit: listing.product.created_by_seller_id === listing.seller_id,
         createdAt: listing.product.created_at.toISOString(),
         updatedAt: listing.product.updated_at.toISOString(),
@@ -1609,6 +1624,7 @@ export class ProductService {
       kind: product.kind,
       type: product.type,
       status: product.status,
+      image: this.mapProductImage(product.media),
       listingCount: product._count.listings,
       createdAt: product.created_at.toISOString(),
       updatedAt: product.updated_at.toISOString()
@@ -1631,6 +1647,21 @@ export class ProductService {
         ? {}
         : { category: this.cleanOptional(input.category ?? undefined) }),
       ...(input.status === undefined ? {} : { status: input.status })
+    };
+  }
+
+  private mapProductImage(
+    media: { id: string; variants: Array<{ variant: string; width: number; height: number }> } | null
+  ) {
+    if (!media) return null;
+    return {
+      id: media.id,
+      variants: media.variants.map((variant) => ({
+        name: variant.variant as "thumb" | "large",
+        url: `/media/${media.id}/${variant.variant}.webp`,
+        width: variant.width,
+        height: variant.height
+      }))
     };
   }
 

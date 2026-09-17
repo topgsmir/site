@@ -141,15 +141,91 @@ export class PaymentApplicationService {
     return { orderId: order.id, authority: result.providerReferenceId, paymentUrl: result.paymentUrl, status: "pending" };
   }
 
+  async initiateCheckoutGroup(actor: AppUser, checkoutId: string, groupId: string, idempotencyKey: string) {
+    if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can pay for checkouts");
+    const group = await this.prisma.checkout_payment_groups.findFirst({
+      where: { id: groupId, checkout_id: checkoutId, checkout: { buyer_id: actor.id } },
+      select: {
+        id: true, provider: true, status: true, amount: true, currency: true, expires_at: true,
+        checkout: { select: { id: true, status: true, buyer_id: true } },
+        orders: { orderBy: { order_id: "asc" }, select: { order: { select: { id: true, seller_id: true, status: true, total_amount: true } } } }
+      }
+    });
+    if (!group) throw new NotFoundException("Checkout payment group was not found");
+    if (group.status === "paid") return { checkoutId, paymentGroupId: group.id, status: "succeeded" };
+    if (group.status !== "pending" || group.checkout.status === "cancelled" || group.checkout.status === "expired") {
+      throw new ConflictException("This checkout payment group is not payable");
+    }
+    if (group.expires_at <= new Date()) throw new ConflictException("The stock reservation has expired");
+    if (!group.orders.length || group.orders.some(({ order }) => order.status !== "pending")) throw new ConflictException("One or more allocated orders are not awaiting payment");
+    const allocated = group.orders.reduce((sum, { order }) => sum.add(order.total_amount), new Prisma.Decimal(0));
+    if (allocated.comparedTo(group.amount) !== 0) throw new ConflictException("Payment allocation integrity check failed");
+    const adapter = this.payments.get(group.provider);
+    if (!(await adapter.availability()).available) throw new ServiceUnavailableException("This payment method is not configured");
+    const primary = group.orders[0]!.order;
+    let attempt = await this.prisma.payment_attempts.findUnique({
+      where: { order_id_idempotency_key: { order_id: primary.id, idempotency_key: idempotencyKey } }
+    });
+    if (!attempt) {
+      try {
+        attempt = await this.prisma.payment_attempts.create({
+          data: { order_id: primary.id, checkout_payment_group_id: group.id, provider: group.provider, amount: group.amount, currency: group.currency.trim(), idempotency_key: idempotencyKey }
+        });
+      } catch (error) {
+        if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
+        attempt = await this.prisma.payment_attempts.findUnique({
+          where: { order_id_idempotency_key: { order_id: primary.id, idempotency_key: idempotencyKey } }
+        });
+        if (!attempt) {
+          throw new ConflictException("Another payment initiation is already active for this checkout");
+        }
+      }
+    }
+    if (attempt.checkout_payment_group_id !== group.id || attempt.provider !== group.provider || attempt.amount.comparedTo(group.amount) !== 0) {
+      throw new ConflictException("The payment idempotency key belongs to another operation");
+    }
+    if (attempt.status === "succeeded") return { checkoutId, paymentGroupId: group.id, status: "succeeded" };
+    if (attempt.status === "pending" && attempt.authority) {
+      return { checkoutId, paymentGroupId: group.id, authority: attempt.authority, paymentUrl: adapter.paymentUrl(attempt.authority), status: "pending" };
+    }
+    if (attempt.status === "initiating") throw new ConflictException("Payment initiation is already in progress");
+    if (attempt.status === "initiation_unknown") throw new ConflictException("Payment initiation requires reconciliation");
+    if (attempt.status !== "created") throw new ConflictException("This payment attempt cannot be initiated again");
+    const claimed = await this.prisma.payment_attempts.updateMany({ where: { id: attempt.id, status: "created" }, data: { status: "initiating", initiation_started_at: new Date(), failure_code: null } });
+    if (claimed.count !== 1) throw new ConflictException("Payment initiation is already in progress");
+    let result;
+    try {
+      result = await this.payments.initiateWithProvider(group.provider, {
+        operationId: attempt.id, orderId: primary.id, sellerId: primary.seller_id, buyerId: actor.id,
+        amount: group.amount.toString(), currency: group.currency.trim(), metadata: { checkoutId, paymentGroupId: group.id }
+      });
+    } catch (error) {
+      await this.markInitiationUnknown(attempt.id, error);
+      throw error;
+    }
+    const stored = await this.prisma.payment_attempts.updateMany({
+      where: { id: attempt.id, status: "initiating", authority: null },
+      data: { authority: result.providerReferenceId, status: "pending", failure_code: null }
+    });
+    if (stored.count !== 1) {
+      await this.markInitiationUnknown(attempt.id, new Error("Payment state changed"));
+      throw new ConflictException("Payment initiation state changed before it was stored");
+    }
+    return { checkoutId, paymentGroupId: group.id, authority: result.providerReferenceId, paymentUrl: result.paymentUrl, status: "pending" };
+  }
+
   async callback(providerCode: string, authority: string, callbackStatus: string | undefined) {
     if (typeof authority !== "string" || !/^[A-Za-z0-9-]{10,128}$/.test(authority)) {
       throw new BadRequestException("Payment authority is invalid");
     }
     const attempt = await this.prisma.payment_attempts.findUnique({
-      where: { authority },
+      where: { provider_authority: { provider: providerCode, authority } },
       include: { order: { select: { id: true, buyer_id: true, seller_id: true, status: true, total_amount: true, currency: true } } }
     });
-    if (!attempt || attempt.provider !== providerCode) throw new NotFoundException("Payment attempt was not found");
+    if (!attempt) throw new NotFoundException("Payment attempt was not found");
+    if (attempt.checkout_payment_group_id) {
+      return this.callbackCheckoutGroup(attempt.id, providerCode, authority, callbackStatus);
+    }
     if (attempt.status === "succeeded") return this.result(attempt.order_id, attempt.provider, authority, attempt.provider_ref_id, "succeeded");
     if (attempt.status === "refunded") return this.result(attempt.order_id, attempt.provider, authority, attempt.provider_ref_id, "refunded");
     if (attempt.status !== "pending") throw new ConflictException("Payment is not awaiting verification");
@@ -185,6 +261,20 @@ export class PaymentApplicationService {
         data: { status: "paid" }
       });
       if (orderChanged.count !== 1) throw new ConflictException("Order changed while payment was being settled");
+      await transaction.inventory_reservations.updateMany({
+        where: { order_item: { order_id: attempt.order.id }, status: "active" },
+        data: { status: "committed" }
+      });
+      const digitalItems = await transaction.order_items.findMany({
+        where: { order_id: attempt.order.id, digital_delivery_url: { not: null }, digital_max_downloads: { not: null } },
+        select: { id: true, digital_delivery_url: true, digital_max_downloads: true }
+      });
+      if (digitalItems.length) {
+        await transaction.digital_entitlements.createMany({
+          data: digitalItems.map((item) => ({ order_item_id: item.id, buyer_id: attempt.order.buyer_id, delivery_url: item.digital_delivery_url!, max_downloads: item.digital_max_downloads! })),
+          skipDuplicates: true
+        });
+      }
       await transaction.bridge_fulfillments.updateMany({
         where: { order_item: { order_id: attempt.order.id }, status: "waiting_payment" },
         data: { status: "queued", next_attempt_at: new Date() }
@@ -221,6 +311,97 @@ export class PaymentApplicationService {
       return transaction.payment_attempts.findUniqueOrThrow({ where: { id: current.id } });
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     return this.result(attempt.order_id, attempt.provider, authority, result.provider_ref_id, "succeeded");
+  }
+
+  private async callbackCheckoutGroup(attemptId: string, providerCode: string, authority: string, callbackStatus: string | undefined) {
+    const attempt = await this.prisma.payment_attempts.findUnique({
+      where: { id: attemptId },
+      select: {
+        id: true, provider: true, status: true, amount: true, currency: true, provider_ref_id: true,
+        checkout_payment_group: {
+          select: {
+            id: true, checkout_id: true, status: true, amount: true, currency: true,
+            checkout: { select: { buyer_id: true } },
+            orders: {
+              select: {
+                order: {
+                  select: {
+                    id: true, buyer_id: true, seller_id: true, status: true, total_amount: true,
+                    items: { select: { id: true, digital_delivery_url: true, digital_max_downloads: true } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+    const group = attempt?.checkout_payment_group;
+    if (!attempt || !group || attempt.provider !== providerCode) throw new NotFoundException("Checkout payment attempt was not found");
+    if (attempt.status === "succeeded") return { checkoutId: group.checkout_id, paymentGroupId: group.id, authority, referenceId: attempt.provider_ref_id, status: "succeeded" };
+    if (attempt.status !== "pending" || group.status !== "pending") throw new ConflictException("Payment is not awaiting verification");
+    const allocated = group.orders.reduce((sum, item) => sum.add(item.order.total_amount), new Prisma.Decimal(0));
+    if (allocated.comparedTo(group.amount) !== 0 || attempt.amount.comparedTo(group.amount) !== 0 || attempt.currency.trim() !== group.currency.trim()) {
+      throw new ConflictException("Checkout payment amount integrity check failed");
+    }
+    const verification = await this.payments.get(attempt.provider).verify(authority, attempt.amount.toString());
+    if (!verification.verified) {
+      const failureCode = callbackStatus?.toUpperCase() === "NOK" ? "BUYER_CANCELLED" : "VERIFICATION_FAILED";
+      const changed = await this.prisma.payment_attempts.updateMany({ where: { id: attempt.id, status: "pending" }, data: { status: "failed", failure_code: failureCode } });
+      if (changed.count !== 1) throw new ConflictException("Payment changed while verification was processed");
+      return { checkoutId: group.checkout_id, paymentGroupId: group.id, authority, status: "failed", failureCode };
+    }
+    await this.prisma.$transaction(async (tx) => {
+      const current = await tx.checkout_payment_groups.findUniqueOrThrow({
+        where: { id: group.id },
+        select: { status: true, checkout_id: true, orders: { select: { order: { select: { id: true, buyer_id: true, seller_id: true, status: true, items: { select: { id: true, digital_delivery_url: true, digital_max_downloads: true } } } } } } }
+      });
+      if (current.status === "paid") return;
+      if (current.status !== "pending" || current.orders.some(({ order }) => order.status !== "pending")) throw new ConflictException("Checkout orders are not awaiting payment");
+      const changed = await tx.payment_attempts.updateMany({ where: { id: attempt.id, status: "pending" }, data: { status: "succeeded", provider_ref_id: verification.referenceId, verified_at: new Date(), failure_code: null } });
+      if (changed.count !== 1) throw new ConflictException("Payment changed while it was being settled");
+      await tx.checkout_payment_groups.update({ where: { id: group.id }, data: { status: "paid" } });
+      for (const { order } of current.orders) {
+        const orderChanged = await tx.orders.updateMany({ where: { id: order.id, status: "pending" }, data: { status: "paid" } });
+        if (orderChanged.count !== 1) throw new ConflictException("Order changed while payment was being settled");
+        await tx.inventory_reservations.updateMany({ where: { order_item: { order_id: order.id }, status: "active" }, data: { status: "committed" } });
+        const entitlements = order.items.filter((item) => item.digital_delivery_url && item.digital_max_downloads !== null);
+        if (entitlements.length) {
+          await tx.digital_entitlements.createMany({
+            data: entitlements.map((item) => ({ order_item_id: item.id, buyer_id: order.buyer_id, delivery_url: item.digital_delivery_url!, max_downloads: item.digital_max_downloads! })),
+            skipDuplicates: true
+          });
+        }
+        await tx.order_events.create({
+          data: { order_id: order.id, actor_user_id: order.buyer_id, from_status: "pending", to_status: "paid", idempotency_key: randomUUID(), request_hash: this.hash({ authority, referenceId: verification.referenceId, paymentGroupId: group.id }) }
+        });
+        await tx.outbox_events.create({
+          data: { aggregate: "order", aggregate_id: order.id, event_type: "order.paid", dedupe_key: `order.paid:${order.id}`, payload: { orderId: order.id, buyerId: order.buyer_id, sellerId: order.seller_id, checkoutId: group.checkout_id, status: "paid" } }
+        });
+      }
+      const unpaid = await tx.checkout_payment_groups.count({ where: { checkout_id: current.checkout_id, status: { not: "paid" } } });
+      await tx.checkouts.update({ where: { id: current.checkout_id }, data: { status: unpaid === 0 ? "paid" : "partially_paid" } });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    return { checkoutId: group.checkout_id, paymentGroupId: group.id, authority, referenceId: verification.referenceId, status: "succeeded" };
+  }
+
+  async reconcileCheckoutAttempt(attemptId: string) {
+    const attempt = await this.prisma.payment_attempts.findFirst({
+      where: { id: attemptId, checkout_payment_group_id: { not: null }, status: "pending", authority: { not: null } },
+      select: { id: true, provider: true, authority: true, amount: true }
+    });
+    if (!attempt?.authority) return;
+    const adapter = this.payments.get(attempt.provider);
+    if (!adapter.inquiry) return;
+    const paid = await adapter.inquiry(attempt.authority, attempt.amount.toString());
+    if (paid) {
+      await this.callbackCheckoutGroup(attempt.id, attempt.provider, attempt.authority, "OK");
+      return;
+    }
+    await this.prisma.payment_attempts.updateMany({
+      where: { id: attempt.id, status: "pending" },
+      data: { status: "failed", failure_code: "STALE_UNPAID" }
+    });
   }
 
   async refund(actor: AppUser, attemptId: string, reason: string, idempotencyKey: string) {
@@ -309,6 +490,7 @@ export class PaymentApplicationService {
       const refund = await transaction.payment_refunds.create({
         data: {
           payment_attempt_id: attempt.id,
+          provider: attempt.provider,
           actor_user_id: actor.id,
           idempotency_key: idempotencyKey,
           request_hash: requestHash

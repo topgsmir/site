@@ -45,6 +45,8 @@ after(async () => {
     `payment_refund:ip:${rateIp}`,
     `payment_configuration:account:${rateUser}`,
     `payment_configuration:ip:${rateIp}`,
+    `sms_configuration:account:${rateUser}`,
+    `sms_configuration:ip:${rateIp}`,
     `staff_setup:token:${rateToken}`,
     `staff_setup:ip:${rateIp}`,
     `bridge:account:${rateUser}`,
@@ -141,6 +143,7 @@ describe("database-backed authentication", () => {
     await rateLimits.consumePaymentCallback(rateAuthority, rateIp);
     await rateLimits.consumePaymentRefund(rateUser, rateIp);
     await rateLimits.consumePaymentConfiguration(rateUser, rateIp);
+    await rateLimits.consumeSmsConfiguration(rateUser, rateIp);
     await rateLimits.consumeStaffSetup(rateToken, rateIp);
     await rateLimits.consumeBridgeOperation(rateUser, rateIp);
     await rateLimits.consumeSignedTicket(rateUser, rateIp);
@@ -157,6 +160,7 @@ describe("database-backed authentication", () => {
             "payment_callback",
             "payment_refund",
             "payment_configuration",
+            "sms_configuration",
             "staff_setup",
             "bridge",
             "signed_ticket",
@@ -175,6 +179,7 @@ describe("database-backed authentication", () => {
       "payment_callback",
       "payment_refund",
       "payment_configuration",
+      "sms_configuration",
       "staff_setup",
       "bridge",
       "signed_ticket",

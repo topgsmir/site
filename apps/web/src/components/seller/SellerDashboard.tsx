@@ -3,6 +3,7 @@
 import axios from "axios";
 import type { Route } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type {
   AppUser,
@@ -22,6 +23,7 @@ import {
 } from "react";
 import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
+import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { ProductPublicUrl } from "@/components/product/ProductPublicUrl";
 import { SellerBridgeWorkspace } from "@/components/bridge/SellerBridgeWorkspace";
@@ -238,8 +240,8 @@ const COPY: Record<Locale, DashboardCopy> = {
     variantName: "Variant label",
     optionValue: "Option value",
     sellerSku: "Seller SKU",
-    fileReference: "Secure file reference",
-    fileReferenceHint: "Use a storage key, not a public download URL.",
+    fileReference: "HTTPS delivery URL",
+    fileReferenceHint: "Paste the HTTPS URL from UploadCenter. Buyers receive it after verified payment.",
     maxDownloads: "Maximum downloads",
     stock: "Stock",
     weightGrams: "Weight in grams",
@@ -326,8 +328,8 @@ const COPY: Record<Locale, DashboardCopy> = {
     variantName: "عنوان تنوع",
     optionValue: "مقدار ویژگی",
     sellerSku: "شناسه کالای فروشنده",
-    fileReference: "شناسه امن فایل",
-    fileReferenceHint: "کلید فضای ذخیره‌سازی را وارد کنید، نه لینک عمومی دانلود.",
+    fileReference: "لینک HTTPS تحویل فایل",
+    fileReferenceHint: "لینک HTTPS آپلودسنتر را وارد کنید؛ پس از پرداخت تأییدشده به خریدار نمایش داده می‌شود.",
     maxDownloads: "حداکثر دانلود",
     stock: "موجودی",
     weightGrams: "وزن به گرم",
@@ -414,8 +416,8 @@ const COPY: Record<Locale, DashboardCopy> = {
     variantName: "تسمية المتغير",
     optionValue: "قيمة الخيار",
     sellerSku: "رمز البائع",
-    fileReference: "مرجع الملف الآمن",
-    fileReferenceHint: "استخدم مفتاح التخزين، وليس رابط تنزيل عامًا.",
+    fileReference: "رابط تسليم HTTPS",
+    fileReferenceHint: "ألصق رابط HTTPS من مركز الرفع؛ يظهر للمشتري بعد تأكيد الدفع.",
     maxDownloads: "الحد الأقصى للتنزيلات",
     stock: "المخزون",
     weightGrams: "الوزن بالغرام",
@@ -437,7 +439,13 @@ const COPY: Record<Locale, DashboardCopy> = {
 
 const MONEY_PATTERN = /^(?:0|[1-9]\d{0,15})(?:\.\d{1,4})?$/;
 const CURRENCY_PATTERN = /^[A-Za-z]{3}$/;
-const STORAGE_REFERENCE_PATTERN = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))[A-Za-z0-9][A-Za-z0-9._/-]{0,511}$/;
+const HTTPS_URL_PATTERN = /^https:\/\/\S{1,2040}$/i;
+
+const PRODUCT_IMAGE_COPY = {
+  en: { title: "Product image", hint: "WebP or SVG · up to 8 MiB", choose: "Choose image", replace: "Replace image", remove: "Remove image", error: "The product image could not be updated." },
+  fa: { title: "تصویر محصول", hint: "WebP یا SVG · حداکثر ۸ مگابایت", choose: "انتخاب تصویر", replace: "تغییر تصویر", remove: "حذف تصویر", error: "به‌روزرسانی تصویر محصول انجام نشد." },
+  ar: { title: "صورة المنتج", hint: "WebP أو SVG · حتى 8 ميغابايت", choose: "اختيار صورة", replace: "تغيير الصورة", remove: "حذف الصورة", error: "تعذر تحديث صورة المنتج." }
+} as const;
 
 function makeOffer(id: string): OfferDraft {
   return {
@@ -509,7 +517,7 @@ function validateDraft(draft: ProductDraft) {
     if (!MONEY_PATTERN.test(offer.price.trim())) return false;
     if (draft.kind === "variable" && !offer.optionValue.trim()) return false;
     if (draft.type === "digital") {
-      return STORAGE_REFERENCE_PATTERN.test(offer.fileReference.trim()) && Number.isInteger(Number(offer.maxDownloads)) && Number(offer.maxDownloads) >= 0;
+      return HTTPS_URL_PATTERN.test(offer.fileReference.trim()) && Number.isInteger(Number(offer.maxDownloads)) && Number(offer.maxDownloads) >= 0;
     }
     if (draft.type === "physical") {
       return Number.isInteger(Number(offer.stock)) && Number(offer.stock) >= 0 && Number.isInteger(Number(offer.weightGrams)) && Number(offer.weightGrams) >= 0;
@@ -631,7 +639,7 @@ function OfferFields({
       {draft.type === "digital" ? (
         <label className={styles.field}>
           <span>{copy.fileReference}</span>
-          <input required maxLength={512} value={offer.fileReference} onChange={(event) => update(offer.id, "fileReference", event.target.value)} aria-describedby={`${offer.id}-file-hint`} />
+          <input required type="url" maxLength={2048} value={offer.fileReference} onChange={(event) => update(offer.id, "fileReference", event.target.value)} aria-describedby={`${offer.id}-file-hint`} />
           <small id={`${offer.id}-file-hint`}>{copy.fileReferenceHint}</small>
         </label>
       ) : null}
@@ -654,6 +662,7 @@ function OfferFields({
 export function SellerDashboard({ locale, user, initialSection = "overview" }: SellerDashboardProps) {
   const router = useRouter();
   const copy = COPY[locale];
+  const imageCopy = PRODUCT_IMAGE_COPY[locale];
   const [section, setSection] = useState<DashboardSection>(initialSection);
   const [listings, setListings] = useState<SellerListing[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -666,7 +675,6 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
   const [editState, setEditState] = useState<RequestState>("idle");
   const [editError, setEditError] = useState("");
   const [sellServiceOpen, setSellServiceOpen] = useState(false);
-  const [sellServiceHovered, setSellServiceHovered] = useState(false);
   const productEditorRef = useRef<HTMLElement>(null);
 
   const loadListings = useCallback(async (cursor?: string, append = false) => {
@@ -762,6 +770,40 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
     }
   }
 
+  async function uploadProductImage(file: File) {
+    if (!editingProduct || editState === "loading") return;
+    const body = new FormData();
+    body.append("file", file);
+    setEditState("loading"); setEditError("");
+    try {
+      const response = await api.post<NonNullable<SellerListing["product"]["image"]>>(`/products/${editingProduct.product.id}/image`, body);
+      const update = (listing: SellerListing): SellerListing => listing.product.id === editingProduct.product.id
+        ? { ...listing, product: { ...listing.product, image: response.data } }
+        : listing;
+      setListings((current) => current.map(update));
+      setEditingProduct((current) => current ? update(current) : current);
+      setEditState("success");
+    } catch (error) {
+      setEditState("error"); setEditError(requestError(error, imageCopy.error));
+    }
+  }
+
+  async function removeProductImage() {
+    if (!editingProduct?.product.image || editState === "loading") return;
+    setEditState("loading"); setEditError("");
+    try {
+      await api.delete(`/products/${editingProduct.product.id}/image`);
+      const update = (listing: SellerListing): SellerListing => listing.product.id === editingProduct.product.id
+        ? { ...listing, product: { ...listing.product, image: null } }
+        : listing;
+      setListings((current) => current.map(update));
+      setEditingProduct((current) => current ? update(current) : current);
+      setEditState("success");
+    } catch (error) {
+      setEditState("error"); setEditError(requestError(error, imageCopy.error));
+    }
+  }
+
   const sellServiceNavigation: Array<{ id: DashboardSection; label: string }> = [
     { id: "products", label: copy.products },
     ...(user.permissions?.includes("coupons_manage")
@@ -781,7 +823,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
     { id: "payouts", label: copy.payouts }
   ];
   const isSellServiceSection = sellServiceNavigation.some((item) => item.id === section);
-  const sellServiceExpanded = isSellServiceSection || sellServiceOpen || sellServiceHovered;
+  const sellServiceExpanded = isSellServiceSection || sellServiceOpen;
 
   return (
     <div className={styles.shell}>
@@ -805,8 +847,6 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
             className={navigationStyles.group}
             data-active={isSellServiceSection}
             data-open={sellServiceExpanded}
-            onMouseEnter={() => setSellServiceHovered(true)}
-            onMouseLeave={() => setSellServiceHovered(false)}
           >
             <button
               className={navigationStyles.groupTrigger}
@@ -983,6 +1023,17 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
           <section ref={productEditorRef} className={styles.productEditor} role="dialog" aria-modal="true" aria-labelledby="product-editor-title">
             <header><div><h2 id="product-editor-title">{copy.editProduct}</h2><p>{copy.editProductDescription}</p></div><button className={styles.textButton} type="button" onClick={() => setEditingProduct(null)}>{copy.cancel}</button></header>
             <form onSubmit={updateProduct} aria-busy={editState === "loading"}>
+              <section className={styles.productImageEditor}>
+                <div>
+                  {editingProduct.product.image ? (() => {
+                    const variant = editingProduct.product.image.variants.find((item) => item.name === "thumb") ?? editingProduct.product.image.variants[0];
+                    return variant ? <Image unoptimized src={variant.url} alt={editingProduct.product.title} width={variant.width} height={variant.height} /> : null;
+                  })() : <span aria-hidden="true">＋</span>}
+                </div>
+                <p><strong>{imageCopy.title}</strong><small>{imageCopy.hint}</small></p>
+                <label className={styles.secondaryButton}>{editingProduct.product.image ? imageCopy.replace : imageCopy.choose}<input type="file" accept="image/webp,image/svg+xml" disabled={editState === "loading"} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadProductImage(file); event.currentTarget.value = ""; }} /></label>
+                {editingProduct.product.image ? <button className={styles.textButton} type="button" disabled={editState === "loading"} onClick={() => void removeProductImage()}>{imageCopy.remove}</button> : null}
+              </section>
               <label className={styles.field}><span>{copy.title}</span><input autoFocus required minLength={2} maxLength={200} value={editDraft.title} onChange={(event) => setEditDraft((current) => ({ ...current, title: event.target.value }))} /></label>
               <label className={styles.field}><span>{copy.category}</span><input maxLength={100} value={editDraft.category} onChange={(event) => setEditDraft((current) => ({ ...current, category: event.target.value }))} /></label>
               <label className={styles.field}><span>{copy.description}</span><textarea maxLength={10000} value={editDraft.description} onChange={(event) => setEditDraft((current) => ({ ...current, description: event.target.value }))} /></label>
@@ -1089,7 +1140,7 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
   const productTypes = ["digital", "physical", "service"] as const;
   const productIcons = { digital: "file", physical: "layers", service: "headphones" } as const;
   const priceValues = draft.offers.map((offer) => Number(offer.price)).filter((price, index) => draft.offers[index].price.trim() && Number.isFinite(price));
-  const startingPrice = priceValues.length ? new Intl.NumberFormat(locale, { maximumFractionDigits: 4 }).format(Math.min(...priceValues)) : null;
+  const startingPrice = priceValues.length ? formatCurrencyAmount(Math.min(...priceValues), draft.currency, locale) : null;
 
   return (
     <div className={creation.shell} dir={locale === "en" ? "ltr" : "rtl"}>
@@ -1124,7 +1175,7 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
             </section>
           </div>
           <aside className={creation.sidebar}>
-            <section className={creation.preview} aria-labelledby="product-preview"><span className={creation.eyebrow} id="product-preview">{formCopy.preview}</span><div className={creation.previewIcon}><DesignIcon name={productIcons[draft.type as keyof typeof productIcons] ?? "layers"} /></div><span className={creation.previewCategory}>{draft.category.trim() || formCopy.noCategory}</span><h2>{draft.title.trim() || formCopy.untitled}</h2><p>{copy[draft.type]}<span>·</span>{copy[draft.kind]}</p><div className={creation.previewPrice}>{startingPrice ? <><small>{draft.kind === "variable" ? formCopy.from : copy.price}</small><strong>{startingPrice}<span dir="ltr">{draft.currency}</span></strong></> : <span>{formCopy.pricePending}</span>}</div></section>
+            <section className={creation.preview} aria-labelledby="product-preview"><span className={creation.eyebrow} id="product-preview">{formCopy.preview}</span><div className={creation.previewIcon}><DesignIcon name={productIcons[draft.type as keyof typeof productIcons] ?? "layers"} /></div><span className={creation.previewCategory}>{draft.category.trim() || formCopy.noCategory}</span><h2>{draft.title.trim() || formCopy.untitled}</h2><p>{copy[draft.type]}<span>·</span>{copy[draft.kind]}</p><div className={creation.previewPrice}>{startingPrice ? <><small>{draft.kind === "variable" ? formCopy.from : copy.price}</small><strong>{startingPrice}<span>{currencyLabel(draft.currency)}</span></strong></> : <span>{formCopy.pricePending}</span>}</div></section>
             <section className={creation.publish}><h2>{formCopy.summary}</h2><p>{formCopy.summaryHint}</p><label className={styles.field}><span>{copy.publishState}</span><select value={draft.status} onChange={(event) => updateDraft("status", event.target.value as ProductStatus)}><option value="draft">{copy.draft}</option><option value="active">{copy.active}</option></select></label><p className={creation.statusHint}>{draft.status === "draft" ? formCopy.draftHint : formCopy.activeHint}</p><div className={creation.readiness} data-ready={validateDraft(draft)}><DesignIcon name="check" /><span>{validateDraft(draft) ? formCopy.ready : formCopy.incomplete}</span></div><div aria-live="polite">{formError ? <p className={creation.error} role="alert">{formError}</p> : null}</div><button className={styles.primaryButton} type="submit" disabled={submitState === "loading"} data-state={submitState}>{submitState === "loading" ? copy.creatingProduct : copy.createProduct}<DesignIcon name="arrow" /></button><Link className={creation.cancel} href={`/${locale}/seller-dashboard?section=products`}>{copy.cancel}</Link></section>
           </aside>
         </form>
@@ -1213,7 +1264,7 @@ function ProductList({
               <td data-label={copy.kind}>{copy[listing.product.kind]}</td>
               <td data-label={copy.offers}>{listing.offers.length}</td>
               <td data-label={copy.price} className={styles.priceCell}>
-                {listing.offers[0] ? `${listing.offers[0].price} ${listing.offers[0].currency}` : "—"}
+                {listing.offers[0] ? `${formatCurrencyAmount(listing.offers[0].price, listing.offers[0].currency, locale)} ${currencyLabel(listing.offers[0].currency)}` : "—"}
               </td>
               <td data-label={copy.status}>
                 <span className={styles.statusBadge} data-status={listing.product.status}>{statusLabel(listing.product.status, copy)}</span>

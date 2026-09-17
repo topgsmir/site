@@ -4,6 +4,7 @@ import type { Route } from "next";
 import { DesignIcon, type DesignIconName } from "@/components/DesignIcon";
 import styles from "./LandingPage.module.css";
 import { getDirection, localizePath, type Locale } from "@/lib/i18n";
+import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import { LandingMotion } from "./LandingMotion";
 import { PublicHeader } from "@/components/PublicHeader";
 
@@ -273,7 +274,7 @@ function productTypeLabel(type: HomepageProduct["type"], locale: Locale) {
 
 function formatPrice(product: HomepageProduct, locale: Locale) {
   if (product.price === undefined) return locale === "fa" ? "مشاهده جزئیات" : locale === "ar" ? "عرض التفاصيل" : "View details";
-  return new Intl.NumberFormat(locale === "fa" ? "fa-IR" : locale === "ar" ? "ar" : "en", { maximumFractionDigits: 2 }).format(product.price) + (product.currency ? ` ${product.currency}` : "");
+  return formatCurrencyAmount(product.price, product.currency ?? "", locale === "fa" ? "fa-IR" : locale === "ar" ? "ar" : "en") + (product.currency ? ` ${currencyLabel(product.currency)}` : "");
 }
 
 function initials(name: string) {

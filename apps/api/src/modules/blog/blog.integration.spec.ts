@@ -61,7 +61,10 @@ before(async () => {
 });
 
 after(async () => {
-  if (postId) await prisma.blog_posts.deleteMany({ where: { id: postId } });
+  if (postId) {
+    await prisma.blog_change_events.deleteMany({ where: { post_id: postId } });
+    await prisma.blog_posts.deleteMany({ where: { id: postId } });
+  }
   await prisma.blog_media_assets.deleteMany({ where: { id: mediaId } });
   await prisma.blog_categories.deleteMany({ where: { id: categoryId } });
   await prisma.seller_listings.deleteMany({ where: { product_id: productId } });

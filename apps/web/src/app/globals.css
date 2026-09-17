@@ -28,6 +28,8 @@
 * { box-sizing: border-box; }
 html { max-width: 100%; overflow-x: clip; scroll-behavior: smooth; background: var(--paper); }
 body { max-width: 100%; margin: 0; color: var(--ink); background: var(--paper); font-family: var(--font-outfit), var(--font-vazirmatn), system-ui, sans-serif; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
+html[dir="rtl"] { height: 100%; overflow: hidden; }
+html[dir="rtl"] body { height: 100%; overflow-x: clip; overflow-y: auto; scroll-behavior: smooth; }
 html:lang(fa) body, html:lang(ar) body { font-family: var(--font-vazirmatn), system-ui, sans-serif; }
 button, input, a, select, textarea { font: inherit; }
 a { color: inherit; text-decoration: none; }

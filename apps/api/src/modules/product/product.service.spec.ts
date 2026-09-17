@@ -82,6 +82,15 @@ describe("admin product editing", () => {
         status: true,
         created_at: true,
         updated_at: true,
+        media: {
+          select: {
+            id: true,
+            variants: {
+              orderBy: { variant: "asc" },
+              select: { variant: true, width: true, height: true }
+            }
+          }
+        },
         _count: { select: { listings: true } }
       }
     });

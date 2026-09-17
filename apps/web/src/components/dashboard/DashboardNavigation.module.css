@@ -101,6 +101,23 @@
   background: var(--color-dashboard-accent-soft);
 }
 
+.item[data-alert="true"] {
+  color: var(--color-dashboard-error);
+}
+
+.alert {
+  display: inline-grid;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-inline-start: auto;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--color-dashboard-error);
+  background: var(--color-dashboard-error-soft);
+  font-size: .7rem;
+  line-height: 1;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .groupTrigger:hover,
   .item:hover {

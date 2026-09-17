@@ -13,6 +13,16 @@ export interface ProductStartingPrice {
   price: string;
 }
 
+export interface ProductImage {
+  id: string;
+  variants: Array<{
+    name: "thumb" | "large";
+    url: string;
+    width: number;
+    height: number;
+  }>;
+}
+
 export interface PublicProductSummary {
   id: string;
   title: string;
@@ -20,6 +30,7 @@ export interface PublicProductSummary {
   category: string | null;
   kind: ProductKind;
   type: ProductType;
+  image: ProductImage | null;
   price?: string;
   currency?: string;
   startingPrices: ProductStartingPrice[];
@@ -51,6 +62,7 @@ export interface PublicProduct {
   category: string | null;
   kind: ProductKind;
   type: ProductType;
+  image: ProductImage | null;
   bridge?: PublicBridgeProduct;
   options: Array<{
     id: string;
@@ -102,6 +114,7 @@ export interface SellerListing {
     kind: ProductKind;
     type: ProductType;
     status: ProductStatus;
+    image: ProductImage | null;
     canEdit: boolean;
     createdAt: string;
     updatedAt: string;
@@ -269,6 +282,18 @@ export interface SellerCouponsPage {
   nextCursor: string | null;
 }
 
+export interface AdminSellerCoupon extends SellerCoupon {
+  seller: {
+    id: string;
+    shopName: string;
+  };
+}
+
+export interface AdminSellerCouponsPage {
+  items: AdminSellerCoupon[];
+  nextCursor: string | null;
+}
+
 export interface AdminProductSummary {
   id: string;
   title: string;
@@ -278,6 +303,7 @@ export interface AdminProductSummary {
   kind: ProductKind;
   type: ProductType;
   status: ProductStatus;
+  image: ProductImage | null;
   listingCount: number;
   createdAt: string;
   updatedAt: string;
@@ -403,6 +429,66 @@ export interface AdminUsersPage {
   nextCursor: string | null;
 }
 
+export interface AdminSmsSettings {
+  otpEnabled: boolean;
+  provider: "sms_ir";
+  apiKeyConfigured: boolean;
+  apiKeyHint: string | null;
+  credentialSource: "database" | "environment" | "none";
+  templateIds: {
+    otp: number | null;
+    sellerNewOrder: number | null;
+    buyerSuccess: number | null;
+    buyerFailure: number | null;
+  };
+  updatedAt: string | null;
+}
+
+export interface AdminShippingSettings {
+  enabled: boolean;
+  provider: "amadast";
+  clientCodeConfigured: boolean;
+  clientCodeHint: string | null;
+  credentialSource: "database" | "environment" | "none";
+  userId: number | null;
+  storeId: number | null;
+  senderName: string | null;
+  senderMobile: string | null;
+  productType: number;
+  packageType: number;
+  updatedAt: string | null;
+}
+
+export type UsdRateProviderId = "alanchand" | "nobitex" | "tgju";
+
+export interface AdminUsdRateProviderQuote {
+  id: UsdRateProviderId;
+  name: string;
+  sourceUrl: string;
+  rateToman: string | null;
+  status: "available" | "unavailable";
+  errorCode: string | null;
+}
+
+export interface AdminUsdRateSettings {
+  automationEnabled: boolean;
+  selectedProvider: UsdRateProviderId;
+  providers: AdminUsdRateProviderQuote[];
+  currentRateToman: string | null;
+  currentRateIrr: string | null;
+  rateSource: UsdRateProviderId | "manual" | null;
+  rateUpdatedAt: string | null;
+  cronStatus: "never" | "running" | "success" | "failed" | "cancelled";
+  lastAttemptAt: string | null;
+  lastSuccessAt: string | null;
+  lastFailureAt: string | null;
+  lastErrorCode: string | null;
+  nextRunAt: string | null;
+  updatedAt: string;
+  sourceUrl: string;
+  intervalHours: number;
+}
+
 export type PaymentTransactionStatus =
   | "created"
   | "initiating"
@@ -482,6 +568,81 @@ export type OrderStatus =
   | "awaiting_confirmation"
   | "delivered"
   | "cancelled";
+
+export interface CheckoutCartLine {
+  offerId: string;
+  quantity: number;
+  serviceNote?: string;
+}
+
+export interface CheckoutPaymentMethod {
+  code: string;
+  name: string;
+}
+
+export interface CheckoutQuoteGroup {
+  key: string;
+  seller: { id: string; shopName: string };
+  productType: Exclude<ProductType, "bridge">;
+  items: Array<{
+    offerId: string;
+    productId: string;
+    title: string;
+    image: { url: string; width: number; height: number } | null;
+    productType: Exclude<ProductType, "bridge">;
+    quantity: number;
+    unitPrice: string;
+    totalAmount: string;
+    availableStock: number | null;
+    serviceNote: string | null;
+  }>;
+  totalAmount: string;
+  paymentMethods: CheckoutPaymentMethod[];
+}
+
+export interface CheckoutQuote {
+  currency: "IRR";
+  totalAmount: string;
+  groups: CheckoutQuoteGroup[];
+  commonPaymentMethods: CheckoutPaymentMethod[];
+  requiresShippingAddress: boolean;
+}
+
+export interface CheckoutDetail {
+  id: string;
+  status: "pending_payment" | "partially_paid" | "paid" | "expired" | "cancelled";
+  currency: "IRR";
+  totalAmount: string;
+  expiresAt: string;
+  createdAt: string;
+  orders: Array<{
+    id: string;
+    status: OrderStatus;
+    seller: { id: string; shopName: string };
+    totalAmount: string;
+    items: Array<{
+      id: string;
+      offerId: string;
+      productType: ProductType;
+      productTitle: string;
+      quantity: number;
+      unitPrice: string;
+      totalAmount: string;
+      serviceNote: string | null;
+      digitalDelivery: null | { downloadUrl: string; destinationHost: string; maxDownloads: number; downloadCount: number };
+    }>;
+  }>;
+  paymentGroups: Array<{
+    id: string;
+    provider: string;
+    status: "pending" | "paid" | "failed" | "expired";
+    amount: string;
+    currency: "IRR";
+    orderIds: string[];
+    expiresAt: string;
+    latestAttempt: null | { status: PaymentTransactionStatus; authority: string | null; failure_code: string | null };
+  }>;
+}
 
 export type PayoutStatus =
   | "draft"

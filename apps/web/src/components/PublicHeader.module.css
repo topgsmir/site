@@ -17,6 +17,9 @@
 .account svg { width: 16px; }
 :global([dir="rtl"]) .account svg { transform: rotate(180deg); }
 .account:active { transform: scale(.97); }
+.cart { display: flex; align-items: center; gap: 8px; min-height: 44px; color: var(--ink-soft); font-size: .78rem; }
+.cart[aria-current="page"] { color: var(--signal-dark); }
+.cart strong { display: grid; place-items: center; min-width: 24px; height: 24px; padding-inline: 6px; border-radius: 999px; color: var(--on-signal); background: var(--signal); font-size: .7rem; }
 @media (hover: hover) and (pointer: fine) { .navigation a:hover { color: var(--signal); } }
 @media (max-width: 1120px) { .navigation { gap: 18px; } .actions { gap: 12px; } }
 @media (max-width: 900px) { .languages { display: none; } }

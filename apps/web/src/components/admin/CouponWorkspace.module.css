@@ -1,0 +1,42 @@
+.workspace { display: grid; min-width: 0; gap: var(--space-dashboard-xl); padding-block: var(--space-dashboard-xl) var(--space-dashboard-3xl); color: var(--color-dashboard-ink); }
+.hero { display: grid; gap: var(--space-dashboard-xs); max-width: 52rem; }
+.hero > span { color: var(--color-dashboard-accent-strong); font-size: var(--text-dashboard-xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.hero h1 { font-family: var(--font-dashboard-display); font-size: clamp(var(--text-dashboard-xl), 4vw, 3.25rem); font-weight: 600; line-height: 1.2; letter-spacing: -.04em; }
+.hero p { color: var(--color-dashboard-muted); line-height: 1.8; }
+.form, .coupon, .message { border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-panel); background: var(--color-dashboard-surface); box-shadow: var(--shadow-dashboard-card); }
+.form { display: grid; gap: var(--space-dashboard-lg); padding: var(--space-dashboard-lg); }
+.formHeader, .formFooter, .listHeader, .rowActions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-dashboard-sm); }
+.formHeader { justify-content: space-between; }
+.formHeader h2 { font-size: var(--text-dashboard-lg); }
+.formHeader button, .rowActions button, .message button, .more { min-height: 2.75rem; padding-inline: var(--space-dashboard-md); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-control); color: var(--color-dashboard-ink); background: var(--color-dashboard-surface-raised); font: inherit; font-weight: 600; cursor: pointer; }
+.fields { display: grid; gap: var(--space-dashboard-md); }
+.fields label, .listHeader label { display: grid; min-width: 0; gap: var(--space-dashboard-xs); color: var(--color-dashboard-ink-soft); font-size: var(--text-dashboard-xs); font-weight: 700; }
+.fields small { color: var(--color-dashboard-muted); font-weight: 500; }
+.fields input, .fields select, .listHeader select { width: 100%; min-width: 0; min-height: 44px; padding-inline: var(--space-dashboard-sm); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-control); outline: 2px solid transparent; color: var(--color-dashboard-ink); background: var(--color-dashboard-surface); font: inherit; }
+.fields input:focus-visible, .fields select:focus-visible, .listHeader select:focus-visible { outline-color: var(--color-dashboard-focus); }
+.fields select:disabled { opacity: .65; }
+.formFooter { justify-content: flex-end; }
+.formFooter p { flex: 1 1 16rem; margin: 0; color: var(--color-dashboard-error); font-size: var(--text-dashboard-xs); }
+.checkbox { display: flex; align-items: center; gap: var(--space-dashboard-xs); min-height: 44px; cursor: pointer; }
+.checkbox input { width: 1.1rem; height: 1.1rem; accent-color: var(--color-dashboard-accent); }
+.primary { min-height: 44px; padding-inline: var(--space-dashboard-lg); border: 0; border-radius: var(--radius-dashboard-control); color: var(--color-dashboard-accent-ink); background: var(--color-dashboard-accent); font: inherit; font-weight: 700; cursor: pointer; }
+.primary:disabled, .rowActions button:disabled, .more:disabled { cursor: wait; opacity: .55; }
+.listHeader { justify-content: flex-end; padding-block-end: var(--space-dashboard-sm); border-block-end: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
+.listHeader label { width: min(100%, 22rem); }
+.list { display: grid; gap: var(--space-dashboard-sm); }
+.coupon { display: grid; min-width: 0; gap: var(--space-dashboard-md); padding: var(--space-dashboard-md); }
+.couponLead { display: grid; min-width: 0; gap: var(--space-dashboard-2xs); }
+.couponLead small { overflow: hidden; color: var(--color-dashboard-muted); text-overflow: ellipsis; white-space: nowrap; }
+.couponLead strong { overflow-wrap: anywhere; font-family: var(--font-product-mono); font-size: var(--text-dashboard-md); letter-spacing: .06em; }
+.couponLead span { color: var(--color-dashboard-accent-strong); font-weight: 700; }
+.coupon dl { display: grid; gap: var(--space-dashboard-sm); margin: 0; }
+.coupon dl div { display: flex; justify-content: space-between; gap: var(--space-dashboard-sm); padding-block-start: var(--space-dashboard-sm); border-block-start: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
+.coupon dt { color: var(--color-dashboard-muted); }
+.coupon dd { margin: 0; text-align: end; }
+.coupon dd[data-active="true"] { color: var(--color-dashboard-success); }
+.rowActions { justify-content: flex-end; }
+.rowActions .danger { color: var(--color-dashboard-error); }
+.message { margin: 0; padding: var(--space-dashboard-md); color: var(--color-dashboard-muted); }
+.message button, .more { margin-block-start: var(--space-dashboard-sm); }
+.more { justify-self: start; }
+@media (min-width: 48rem) { .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } .coupon { grid-template-columns: minmax(10rem, .32fr) 1fr auto; align-items: center; } .coupon dl { grid-template-columns: repeat(3, minmax(0, 1fr)); } .coupon dl div { display: grid; border-block-start: 0; padding-block-start: 0; } }

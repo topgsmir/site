@@ -12,7 +12,7 @@ import { PaymentCredentialService } from "./payment-credential.service";
   imports: [AuthModule],
   controllers: [PaymentController],
   providers: [CredentialCryptoService, PaymentCredentialService, LocalGatewayAdapter, ZarinpalAdapter, PaymentService, PaymentApplicationService],
-  exports: [PaymentService]
+  exports: [PaymentService, PaymentApplicationService]
 })
 export class PaymentsModule {}
 

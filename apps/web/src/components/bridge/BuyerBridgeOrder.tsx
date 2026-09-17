@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { api } from "@/lib/api/client";
+import { API_BASE, api } from "@/lib/api/client";
+import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import { getSocket } from "@/lib/sockets/socket";
 import type { Locale } from "@/lib/i18n";
 import styles from "./BridgeWorkspace.module.css";
@@ -13,9 +14,15 @@ type Order = {
   totalAmount: string;
   currency: string;
   seller: { shopName: string };
+  shippingAddress?: { recipientName: string; phoneNumber: string; province: string; city: string; postalCode: string; addressLine: string } | null;
+  shipment?: { carrier: string | null; trackingCode: string | null; shippedAt: string } | null;
   items: Array<{
+    id: string;
     productTitle: string;
+    productType: string;
     quantity: number;
+    serviceNote?: string | null;
+    digitalDelivery?: { downloadUrl: string; destinationHost: string; maxDownloads: number; downloadCount: number };
     bridge?: {
       id: string;
       mode: string;
@@ -75,7 +82,7 @@ const COPY = {
   },
 } as const;
 
-export function BuyerBridgeOrder({ locale, orderId }: { locale: Locale; orderId: string }) {
+export function BuyerOrderDetails({ locale, orderId }: { locale: Locale; orderId: string }) {
   const c = COPY[locale];
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState("");
@@ -105,7 +112,7 @@ export function BuyerBridgeOrder({ locale, orderId }: { locale: Locale; orderId:
     };
   }, [load, orderId]);
 
-  const bridge = order?.items[0]?.bridge;
+  const bridge = order?.items.find((item) => item.bridge)?.bridge;
 
   async function refund() {
     if (!bridge) return;
@@ -143,7 +150,7 @@ export function BuyerBridgeOrder({ locale, orderId }: { locale: Locale; orderId:
                   {order.status}
                 </span>
                 <strong>
-                  {Number(order.totalAmount).toLocaleString(locale)} {order.currency}
+                  {formatCurrencyAmount(order.totalAmount, order.currency, locale)} {currencyLabel(order.currency)}
                 </strong>
               </article>
               <article className={styles.card}>
@@ -152,7 +159,7 @@ export function BuyerBridgeOrder({ locale, orderId }: { locale: Locale; orderId:
                   className={styles.status}
                   data-tone={bridge?.status === "succeeded" ? "good" : bridge?.status === "failed" ? "bad" : "warn"}
                 >
-                  {bridge?.status ?? "—"}
+                  {bridge?.status ?? order.status}
                 </span>
                 <p>{c.wait}</p>
               </article>
@@ -161,6 +168,8 @@ export function BuyerBridgeOrder({ locale, orderId }: { locale: Locale; orderId:
                 <p>{order.seller.shopName}</p>
               </article>
             </section>
+            {order.shippingAddress ? <section className={styles.section}><div className={styles.sectionHead}><h2>{locale === "fa" ? "نشانی تحویل" : locale === "ar" ? "عنوان التسليم" : "Delivery address"}</h2></div><p>{order.shippingAddress.recipientName} · {order.shippingAddress.phoneNumber}</p><p>{order.shippingAddress.province}، {order.shippingAddress.city}، {order.shippingAddress.addressLine} · {order.shippingAddress.postalCode}</p>{order.shipment ? <p>{order.shipment.carrier} · {order.shipment.trackingCode}</p> : null}</section> : null}
+            {order.items.some((item) => item.digitalDelivery) ? <section className={styles.section}><div className={styles.sectionHead}><h2>{locale === "fa" ? "فایل‌های خریداری‌شده" : locale === "ar" ? "الملفات المشتراة" : "Purchased files"}</h2></div>{order.items.map((item) => item.digitalDelivery ? <p key={item.id}><a href={`${API_BASE}${item.digitalDelivery.downloadUrl}`} target="_blank" rel="noopener noreferrer">{item.productTitle} · {item.digitalDelivery.destinationHost}</a></p> : null)}</section> : null}
             <section className={styles.section}>
               <div className={styles.sectionHead}>
                 <h2>{c.inputs}</h2>

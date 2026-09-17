@@ -70,7 +70,6 @@ export const fa = {
     noDescription: "فروشنده هنوز توضیح کامل ثبت نکرده است. پیش از خرید، مدل و جزئیات تحویل را بررسی کنید.",
     technicalDetails: "مشخصات فنی",
     productType: "نوع محصول",
-    productCode: "کد محصول",
     category: "دسته‌بندی",
     fulfilment: "روش تحویل",
     digitalDelivery: "تحویل دیجیتال",

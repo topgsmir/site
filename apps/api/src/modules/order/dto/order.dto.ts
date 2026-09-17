@@ -53,3 +53,17 @@ export class UpdateOrderStatusDto {
     | "delivered"
     | "cancelled";
 }
+
+export class UpdateOrderShippingDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  carrier?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  trackingCode?: string;
+}

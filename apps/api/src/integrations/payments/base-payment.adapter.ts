@@ -23,6 +23,7 @@ export abstract class BasePaymentAdapter implements PaymentAdapter {
     providerReferenceId: string,
     amount: string
   ): Promise<{ verified: boolean; referenceId?: string }>;
+  inquiry?(providerReferenceId: string, amount: string): Promise<boolean>;
   abstract refund(input: PaymentRefundInput): Promise<PaymentRefundResult | null>;
 }
 

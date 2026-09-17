@@ -74,21 +74,34 @@ export class StaffService {
     const expiresAt = new Date(
       Date.now() + (input.expiresInHours ?? 48) * 60 * 60 * 1000
     );
-    await this.prisma.platform_staff_invitations.updateMany({
-      where: { email, status: "pending" },
-      data: { status: "revoked", revoked_at: new Date() }
-    });
-    const invitation = await this.prisma.platform_staff_invitations.create({
-      data: {
-        full_name: input.fullName.trim(),
-        email,
-        permissions: input.permissions,
-        token_hash: this.hash(token),
-        expires_at: expiresAt,
-        created_by_id: ownerId
-      },
-      select: { id: true, expires_at: true }
-    });
+    let invitation: { id: string; expires_at: Date };
+    try {
+      invitation = await this.prisma.$transaction(async (tx) => {
+        await tx.platform_staff_invitations.updateMany({
+          where: { email, status: "pending" },
+          data: { status: "revoked", revoked_at: new Date() }
+        });
+        return tx.platform_staff_invitations.create({
+          data: {
+            full_name: input.fullName.trim(),
+            email,
+            permissions: input.permissions,
+            token_hash: this.hash(token),
+            expires_at: expiresAt,
+            created_by_id: ownerId
+          },
+          select: { id: true, expires_at: true }
+        });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        (error.code === "P2002" || error.code === "P2034")
+      ) {
+        throw new ConflictException("A pending invitation for this email already exists; try again");
+      }
+      throw error;
+    }
     return {
       id: invitation.id,
       setupToken: token,

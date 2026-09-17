@@ -138,6 +138,7 @@ after(async () => {
     await transaction.payout_events.deleteMany({ where: { actor: { email: { in: emails } } } });
     await transaction.order_events.deleteMany({ where: { actor: { email: { in: emails } } } });
     await transaction.payout_ledger.deleteMany({ where: { seller_id: sellerId } });
+    await transaction.inventory_reservations.deleteMany({ where: { order_item: { order: { seller_id: sellerId } } } });
     await transaction.order_items.deleteMany({ where: { order: { seller_id: sellerId } } });
     await transaction.orders.deleteMany({ where: { seller_id: sellerId } });
     await transaction.seller_listings.deleteMany({ where: { seller_id: sellerId } });

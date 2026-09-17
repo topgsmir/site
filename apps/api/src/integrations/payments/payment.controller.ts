@@ -44,7 +44,11 @@ export class PaymentController {
     const webUrl = this.config.get<string>("WEB_APP_URL")?.trim().replace(/\/$/, "");
     if (webUrl && /^https:\/\//i.test(webUrl) && response.redirect) {
       const locale = this.config.get<string>("DEFAULT_LOCALE")?.trim() || "fa";
-      response.redirect(`${webUrl}/${["fa", "en", "ar"].includes(locale) ? locale : "fa"}/orders/${result.orderId}?payment=${result.status}`);
+      const safeLocale = ["fa", "en", "ar"].includes(locale) ? locale : "fa";
+      const destination = "checkoutId" in result && result.checkoutId
+        ? `${webUrl}/${safeLocale}/checkout/${result.checkoutId}?payment=${result.status}`
+        : `${webUrl}/${safeLocale}/orders/${"orderId" in result ? result.orderId : ""}?payment=${result.status}`;
+      response.redirect(destination);
     }
     return result;
   }

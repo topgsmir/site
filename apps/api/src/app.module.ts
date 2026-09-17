@@ -18,6 +18,8 @@ import { GoghdiModule } from "./modules/goghdi/goghdi.module";
 import { AdminUsersModule } from "./modules/admin-users/admin-users.module";
 import { AiModule } from "./integrations/ai/ai.module";
 import { DataAssistantModule } from "./modules/data-assistant/data-assistant.module";
+import { CheckoutModule } from "./modules/checkout/checkout.module";
+import { UsdRateModule } from "./modules/usd-rate/usd-rate.module";
 
 @Module({
   imports: [
@@ -39,6 +41,8 @@ import { DataAssistantModule } from "./modules/data-assistant/data-assistant.mod
     BridgeModule,
     SmsModule,
     OrderModule,
+    CheckoutModule,
+    UsdRateModule,
     PayoutModule,
     RealtimeModule,
     GoghdiModule,

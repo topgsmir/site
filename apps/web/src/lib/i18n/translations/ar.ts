@@ -70,7 +70,6 @@ export const ar = {
     noDescription: "لم يضف البائع وصفًا مفصلًا بعد. تحقق من الطراز وتفاصيل التنفيذ قبل الشراء.",
     technicalDetails: "التفاصيل الفنية",
     productType: "نوع المنتج",
-    productCode: "رمز المنتج",
     category: "الفئة",
     fulfilment: "التنفيذ",
     digitalDelivery: "تسليم رقمي",

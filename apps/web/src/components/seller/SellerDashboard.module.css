@@ -1295,6 +1295,34 @@
 
 }
 
+.productImageEditor {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr);
+  gap: var(--space-dashboard-sm);
+  align-items: center;
+  padding-block-end: var(--space-dashboard-md);
+  border-block-end: var(--rule-dashboard-thin) solid var(--color-dashboard-rule);
+}
+
+.productImageEditor > div {
+  display: grid;
+  width: 5rem;
+  aspect-ratio: 1;
+  place-items: center;
+  overflow: hidden;
+  border: var(--rule-dashboard-thin) dashed var(--color-dashboard-rule-strong);
+  border-radius: var(--radius-dashboard-sm);
+  color: var(--color-dashboard-muted);
+  background: var(--color-dashboard-paper);
+}
+
+.productImageEditor img { width: 100%; height: 100%; object-fit: cover; }
+.productImageEditor p { display: grid; gap: var(--space-dashboard-2xs); margin: 0; }
+.productImageEditor small { color: var(--color-dashboard-muted); font-weight: 400; }
+.productImageEditor label { display: inline-flex; justify-content: center; align-items: center; cursor: pointer; }
+.productImageEditor label input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
+.productImageEditor > button { justify-self: start; }
+
 @media (forced-colors: active) {
   .rail {
     scrollbar-color: auto;

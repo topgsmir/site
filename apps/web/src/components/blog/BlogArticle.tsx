@@ -3,6 +3,7 @@ import Image from "next/image";
 import type { Route } from "next";
 import type { PublicBlogPost } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
+import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import { BlogFooter, BlogHeader } from "./BlogChrome";
 import { RichText } from "./RichText";
 
@@ -41,7 +42,7 @@ export function BlogArticle({ locale, post }: { locale: Locale; post: PublicBlog
               {post.relatedProducts.map((product) => (
                 <Link key={product.id} href={`/${locale}/products/${product.slug}` as Route}>
                   <strong>{product.title}</strong>
-                  <span>{product.startingPrices[0] ? `${product.startingPrices[0].price} ${product.startingPrices[0].currency}` : locale === "fa" ? "مشاهده پیشنهادها" : "View offers"}</span>
+                  <span>{product.startingPrices[0] ? `${formatCurrencyAmount(product.startingPrices[0].price, product.startingPrices[0].currency, locale)} ${currencyLabel(product.startingPrices[0].currency)}` : locale === "fa" ? "مشاهده پیشنهادها" : "View offers"}</span>
                 </Link>
               ))}
             </div>

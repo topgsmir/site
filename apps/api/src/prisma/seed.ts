@@ -72,7 +72,23 @@ async function seedAdmin(config: AdminSeedConfig) {
   return "created";
 }
 
+async function seedDevelopmentPaymentMethods() {
+  if (!process.argv.includes("--development")) return;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Development payment methods cannot be seeded in production");
+  }
+
+  await prisma.payment_method_configs.upsert({
+    where: { provider_code: "local-country-gateway" },
+    create: { provider_code: "local-country-gateway", enabled: true },
+    update: { enabled: true }
+  });
+  console.log("Development payment method enabled: local-country-gateway");
+}
+
 async function main() {
+  await seedDevelopmentPaymentMethods();
+
   const config = readAdminConfig();
   if (!config) {
     console.log("Admin seed skipped: BOOTSTRAP_ADMIN_* is not configured");

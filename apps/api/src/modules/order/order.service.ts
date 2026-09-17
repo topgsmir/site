@@ -16,8 +16,11 @@ import { CredentialCryptoService } from "../bridge/credential-crypto.service";
 import type {
   CreateOrderDto,
   ListOrdersQueryDto,
+  UpdateOrderShippingDto,
   UpdateOrderStatusDto
 } from "./dto/order.dto";
+import { UsdRateService } from "../usd-rate/usd-rate.service";
+import { AmadastSettingsService } from "../../integrations/shipping/amadast/amadast-settings.service";
 
 const orderSelect = {
   id: true,
@@ -31,14 +34,21 @@ const orderSelect = {
   created_at: true,
   updated_at: true,
   seller: { select: { shop_name: true } },
+  buyer: { select: { full_name: true, email: true, phone_number: true } },
+  shipping_address: { select: { recipient_name: true, phone_number: true, province: true, city: true, postal_code: true, address_line: true } },
+  shipment: { select: { carrier: true, tracking_code: true, shipped_at: true } },
+  amadast_shipment: { select: { id: true, status: true, provider_order_id: true, amadast_tracking_code: true, courier_tracking_code: true, courier_title: true, last_error_code: true, registered_at: true, tracking_synced_at: true } },
   items: {
     select: {
+      id: true,
       offer_id: true,
       product_type: true,
       product_title: true,
       quantity: true,
       unit_price: true,
       total_amount: true,
+      service_note: true,
+      digital_entitlement: { select: { delivery_url: true, max_downloads: true, download_count: true } },
       bridge_fulfillment: {
         select: { id: true, mode: true, status: true, last_error_code: true, completed_at: true, encrypted_input: true, encryption_key_id: true, encrypted_result: true, result_encryption_key_id: true }
       }
@@ -53,7 +63,9 @@ export class OrderService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly crypto?: CredentialCryptoService,
-    @Optional() private readonly config?: ConfigService
+    @Optional() private readonly config?: ConfigService,
+    @Optional() private readonly usdRates?: UsdRateService,
+    @Optional() private readonly amadastSettings?: AmadastSettingsService
   ) {}
 
   async list(actor: AppUser, input: ListOrdersQueryDto) {
@@ -77,7 +89,10 @@ export class OrderService {
     await this.auditBridgeAccess(actor.id, page, "list");
     return {
       items: page.map((order) => this.map(order)),
-      nextCursor: hasMore ? page.at(-1)?.id ?? null : null
+      nextCursor: hasMore ? page.at(-1)?.id ?? null : null,
+      shippingProviders: {
+        amadast: { enabled: actor.role === "seller-admin" || actor.role === "seller-staff" ? await this.amadastSettings?.isEnabled() ?? false : false }
+      }
     };
   }
 
@@ -132,6 +147,7 @@ export class OrderService {
             id: true,
             price: true,
             currency: true,
+            digital: { select: { file_reference: true, max_downloads: true } },
             physical: { select: { stock: true } },
             listing: {
               select: {
@@ -179,9 +195,15 @@ export class OrderService {
           throw new BadRequestException("Only Bridge orders accept provider fields");
         }
 
-        const currency = offer.currency.trim();
-        if (currency !== "IRR" || !offer.price.isInteger()) {
+        const offerCurrency = offer.currency.trim();
+        if ((offerCurrency !== "IRR" && offerCurrency !== "USD") || (offerCurrency === "IRR" && !offer.price.isInteger())) {
           throw new BadRequestException("The offer currency or precision is unsupported");
+        }
+        if (offerCurrency === "USD" && !this.usdRates) {
+          throw new ServiceUnavailableException("The USD exchange rate service is unavailable");
+        }
+        if (offer.listing.product.type === "digital" && (!offer.digital || !this.isHttpsUrl(offer.digital.file_reference))) {
+          throw new ConflictException("This digital offer has no valid HTTPS delivery URL");
         }
 
         if (offer.listing.product.type === "physical") {
@@ -194,7 +216,11 @@ export class OrderService {
           }
         }
 
-        const gross = offer.price.mul(input.quantity);
+        const unitPrice = offerCurrency === "USD"
+          ? offer.price.mul(await this.usdRates!.getIrrPerUsd(transaction)).toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP)
+          : offer.price;
+        const currency = "IRR";
+        const gross = unitPrice.mul(input.quantity);
         const commission = gross
           .mul(offer.listing.seller.commission)
           .toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP);
@@ -223,8 +249,11 @@ export class OrderService {
                 product_type: offer.listing.product.type,
                 product_title: offer.listing.product.title,
                 quantity: input.quantity,
-                unit_price: offer.price,
+                unit_price: unitPrice,
                 total_amount: gross,
+                ...(offer.listing.product.type === "digital" && offer.digital && this.isHttpsUrl(offer.digital.file_reference)
+                  ? { digital_delivery_url: offer.digital.file_reference, digital_max_downloads: offer.digital.max_downloads }
+                  : {}),
                 ...(bridgePlan
                   ? {
                       bridge_fulfillment: {
@@ -244,7 +273,6 @@ export class OrderService {
             },
             payout_records: {
               create: {
-                seller_id: offer.listing.seller.id,
                 gross_amount: gross,
                 commission_amount: commission,
                 holdback_amount: holdback,
@@ -256,6 +284,14 @@ export class OrderService {
           },
           select: orderSelect
         });
+
+        if (offer.listing.product.type === "physical") {
+          const item = created.items[0];
+          if (!item) throw new ConflictException("Order has no inventory item");
+          await transaction.inventory_reservations.create({
+            data: { order_item_id: item.id, offer_id: offer.id, quantity: input.quantity, expires_at: new Date(Date.now() + 15 * 60 * 1000) }
+          });
+        }
 
         await transaction.order_events.create({
           data: {
@@ -338,7 +374,7 @@ export class OrderService {
                 ? { buyer_id: actor.id }
                 : { seller_id: sellerId ?? "" })
           },
-          select: { ...orderSelect, items: { select: { product_type: true } } }
+          select: { ...orderSelect, items: { select: { id: true, product_type: true, inventory_reservation: { select: { id: true, offer_id: true, quantity: true, status: true } } } } }
         });
         if (!current) throw new NotFoundException("Order was not found");
 
@@ -352,6 +388,16 @@ export class OrderService {
         });
         if (changed.count !== 1) {
           throw new ConflictException("The order changed; reload and try again");
+        }
+        if (input.status === "cancelled") {
+          for (const item of current.items) {
+            const reservation = item.inventory_reservation;
+            if (!reservation || reservation.status !== "active") continue;
+            const released = await transaction.inventory_reservations.updateMany({ where: { id: reservation.id, status: "active" }, data: { status: "released" } });
+            if (released.count === 1) {
+              await transaction.seller_offer_physical.update({ where: { offer_id: reservation.offer_id }, data: { stock: { increment: reservation.quantity } } });
+            }
+          }
         }
         await transaction.order_events.create({
           data: {
@@ -404,6 +450,48 @@ export class OrderService {
     }
   }
 
+  async ship(actor: AppUser, orderId: string, input: UpdateOrderShippingDto, idempotencyKey: string) {
+    if (!input.carrier?.trim() && !input.trackingCode?.trim()) throw new BadRequestException("Carrier or tracking code is required");
+    const sellerId = await this.sellerIdFor(actor, "orders_manage");
+    if (!sellerId) throw new ForbiddenException("Seller access is required");
+    const requestHash = this.hash({ orderId, carrier: input.carrier?.trim() ?? null, trackingCode: input.trackingCode?.trim() ?? null });
+    return this.serializable(async (tx) => {
+      const replay = await tx.order_events.findUnique({ where: { actor_user_id_idempotency_key: { actor_user_id: actor.id, idempotency_key: idempotencyKey } }, select: { request_hash: true, order: { select: orderSelect } } });
+      if (replay) { this.assertSameRequest(replay.request_hash, requestHash); return this.map(replay.order); }
+      const order = await tx.orders.findFirst({ where: { id: orderId, seller_id: sellerId, status: "processing", items: { some: { product_type: "physical" } } }, select: { id: true, buyer_id: true, seller_id: true } });
+      if (!order) throw new NotFoundException("A processing physical order was not found");
+      const changed = await tx.orders.updateMany({ where: { id: order.id, seller_id: sellerId, status: "processing" }, data: { status: "shipped" } });
+      if (changed.count !== 1) throw new ConflictException("Order changed before shipment was recorded");
+      await tx.order_shipments.upsert({
+        where: { order_id: order.id },
+        create: { order_id: order.id, carrier: input.carrier?.trim() || null, tracking_code: input.trackingCode?.trim() || null },
+        update: { carrier: input.carrier?.trim() || null, tracking_code: input.trackingCode?.trim() || null, shipped_at: new Date() }
+      });
+      await tx.order_events.create({ data: { order_id: order.id, actor_user_id: actor.id, from_status: "processing", to_status: "shipped", idempotency_key: idempotencyKey, request_hash: requestHash } });
+      await tx.outbox_events.create({ data: { aggregate: "order", aggregate_id: order.id, event_type: "order.status.updated", dedupe_key: `order.shipped:${actor.id}:${idempotencyKey}`, payload: { orderId: order.id, buyerId: order.buyer_id, sellerId: order.seller_id, fromStatus: "processing", status: "shipped" } } });
+      return this.map(await tx.orders.findUniqueOrThrow({ where: { id: order.id }, select: orderSelect }));
+    });
+  }
+
+  async claimDigitalDownload(actor: AppUser, orderId: string, itemId: string) {
+    if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can download purchases");
+    return this.prisma.$transaction(async (tx) => {
+      const entitlement = await tx.digital_entitlements.findFirst({
+        where: { order_item_id: itemId, buyer_id: actor.id, order_item: { order_id: orderId, order: { buyer_id: actor.id, status: { in: ["paid", "processing", "awaiting_confirmation", "delivered"] } } } },
+        select: { id: true, delivery_url: true, max_downloads: true, download_count: true }
+      });
+      if (!entitlement) throw new NotFoundException("Digital delivery was not found");
+      if (entitlement.max_downloads > 0 && entitlement.download_count >= entitlement.max_downloads) throw new ConflictException("The download limit has been reached");
+      const claimed = await tx.digital_entitlements.updateMany({
+        where: { id: entitlement.id, ...(entitlement.max_downloads > 0 ? { download_count: { lt: entitlement.max_downloads } } : {}) },
+        data: { download_count: { increment: 1 }, last_accessed_at: new Date() }
+      });
+      if (claimed.count !== 1) throw new ConflictException("The download limit has been reached");
+      if (!this.isHttpsUrl(entitlement.delivery_url)) throw new ConflictException("The delivery URL is invalid");
+      return entitlement.delivery_url;
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }
+
   private async scope(actor: AppUser): Promise<Prisma.ordersWhereInput> {
     if (this.hasPlatformPermission(actor, "orders_manage")) return {};
     if (actor.role === "buyer") return { buyer_id: actor.id };
@@ -448,6 +536,7 @@ export class OrderService {
     } else if (actor.role === "buyer") {
       allowed =
         (from === "pending" && to === "cancelled") ||
+        (productType === "digital" && from === "paid" && to === "delivered") ||
         (productType === "physical" && from === "shipped" && to === "delivered") ||
         (productType !== "physical" &&
           from === "awaiting_confirmation" &&
@@ -512,18 +601,25 @@ export class OrderService {
       id: order.id,
       buyerId: order.buyer_id,
       seller: { id: order.seller_id, shopName: order.seller.shop_name },
+      buyer: { fullName: order.buyer.full_name, email: order.buyer.email, phoneNumber: order.buyer.phone_number },
       status: order.status,
       currency: order.currency.trim(),
       totalAmount: order.total_amount.toString(),
       commissionRate: order.commission_rate.toString(),
       holdbackRate: order.holdback_rate.toString(),
+      shippingAddress: order.shipping_address ? { recipientName: order.shipping_address.recipient_name, phoneNumber: order.shipping_address.phone_number, province: order.shipping_address.province, city: order.shipping_address.city, postalCode: order.shipping_address.postal_code.trim(), addressLine: order.shipping_address.address_line } : null,
+      shipment: order.shipment ? { carrier: order.shipment.carrier, trackingCode: order.shipment.tracking_code, shippedAt: order.shipment.shipped_at.toISOString() } : null,
+      amadastShipment: order.amadast_shipment ? { externalOrderId: order.amadast_shipment.id, status: order.amadast_shipment.status, providerOrderId: order.amadast_shipment.provider_order_id, amadastTrackingCode: order.amadast_shipment.amadast_tracking_code, courierTrackingCode: order.amadast_shipment.courier_tracking_code, courierTitle: order.amadast_shipment.courier_title, errorCode: order.amadast_shipment.last_error_code, registeredAt: order.amadast_shipment.registered_at?.toISOString() ?? null, trackingSyncedAt: order.amadast_shipment.tracking_synced_at?.toISOString() ?? null } : null,
       items: order.items.map((item) => ({
+        id: item.id,
         offerId: item.offer_id,
         productType: item.product_type,
         productTitle: item.product_title,
         quantity: item.quantity,
         unitPrice: item.unit_price.toString(),
         totalAmount: item.total_amount.toString(),
+        serviceNote: item.service_note,
+        ...(item.digital_entitlement ? { digitalDelivery: { downloadUrl: `/orders/${order.id}/items/${item.id}/download`, destinationHost: new URL(item.digital_entitlement.delivery_url).hostname, maxDownloads: item.digital_entitlement.max_downloads, downloadCount: item.digital_entitlement.download_count } } : {}),
         ...(item.bridge_fulfillment
           ? {
               bridge: {
@@ -543,6 +639,10 @@ export class OrderService {
       createdAt: order.created_at.toISOString(),
       updatedAt: order.updated_at.toISOString()
     };
+  }
+
+  private isHttpsUrl(value: string) {
+    try { return new URL(value).protocol === "https:"; } catch { return false; }
   }
 
   private decryptBridgeValue(ciphertext: string, keyId: string, purpose: string) {

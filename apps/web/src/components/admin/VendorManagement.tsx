@@ -1,6 +1,7 @@
 "use client";
 
 import type { Route } from "next";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 
@@ -10,6 +11,7 @@ import Link from "next/link";
 import type {
   AdminProductSummary,
   AdminProductsPage,
+  AdminUsdRateSettings,
   Vendor,
   VendorPermission,
   VendorStatus
@@ -26,6 +28,10 @@ import { OrdersWorkspace } from "@/components/seller/SellerOrders";
 import { PaymentServiceWorkspace } from "@/components/admin/PaymentServiceWorkspace";
 import { ProductChangesWorkspace } from "@/components/admin/ProductChangesWorkspace";
 import { AiWorkspace } from "@/components/admin/AiWorkspace";
+import { CouponWorkspace } from "@/components/admin/CouponWorkspace";
+import { SmsSettingsWorkspace } from "@/components/admin/SmsSettingsWorkspace";
+import { ShippingSettingsWorkspace } from "@/components/admin/ShippingSettingsWorkspace";
+import { UsdSettingsWorkspace } from "@/components/admin/UsdSettingsWorkspace";
 import type { AdminSection } from "@/components/admin/AdminPanelRoute";
 import navigationStyles from "@/components/dashboard/DashboardNavigation.module.css";
 
@@ -58,6 +64,11 @@ const copy = {
     ai: "Artificial intelligence",
     aiModels: "Models",
     aiAssistant: "AI assistant",
+    settings: "Settings",
+    sms: "SMS",
+    shipping: "Shipping",
+    usd: "USD rate",
+    usdAlert: "Automatic USD refresh failed",
     staff: "Platform staff",
     account: "Account",
     greeting: "Good to see you",
@@ -75,6 +86,7 @@ const copy = {
     empty: "No vendors match this search.",
     products: "Products",
     productChanges: "Product changes",
+    coupons: "Coupons",
     orders: "Orders",
     permissions: "Permissions",
     manage: "Manage vendor",
@@ -157,6 +169,11 @@ const copy = {
     ai: "هوش مصنوعی",
     aiModels: "مدل‌ها",
     aiAssistant: "دستیار هوشمند",
+    settings: "تنظیمات",
+    sms: "پیامک",
+    shipping: "ارسال",
+    usd: "نرخ دلار",
+    usdAlert: "به‌روزرسانی خودکار دلار ناموفق بود",
     staff: "کارکنان پلتفرم",
     account: "حساب کاربری",
     greeting: "خوش آمدید",
@@ -174,6 +191,7 @@ const copy = {
     empty: "فروشنده‌ای با این جست‌وجو پیدا نشد.",
     products: "محصول",
     productChanges: "تغییرات محصولات",
+    coupons: "کدهای تخفیف",
     orders: "سفارش",
     permissions: "دسترسی‌ها",
     manage: "مدیریت فروشنده",
@@ -256,6 +274,11 @@ const copy = {
     ai: "الذكاء الاصطناعي",
     aiModels: "النماذج",
     aiAssistant: "المساعد الذكي",
+    settings: "الإعدادات",
+    sms: "الرسائل النصية",
+    shipping: "الشحن",
+    usd: "سعر الدولار",
+    usdAlert: "فشل التحديث التلقائي للدولار",
     staff: "فريق المنصة",
     account: "الحساب",
     greeting: "مرحباً بعودتك",
@@ -273,6 +296,7 @@ const copy = {
     empty: "لا يوجد بائع يطابق هذا البحث.",
     products: "المنتجات",
     productChanges: "تغييرات المنتجات",
+    coupons: "القسائم",
     orders: "الطلبات",
     permissions: "الصلاحيات",
     manage: "إدارة البائع",
@@ -444,21 +468,40 @@ export function VendorManagement({
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState("");
   const [usersOpen, setUsersOpen] = useState(false);
-  const [usersHovered, setUsersHovered] = useState(false);
   const [salesServiceOpen, setSalesServiceOpen] = useState(false);
-  const [salesServiceHovered, setSalesServiceHovered] = useState(false);
   const [paymentServiceOpen, setPaymentServiceOpen] = useState(false);
-  const [paymentServiceHovered, setPaymentServiceHovered] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
-  const [aiHovered, setAiHovered] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [usdRateFailed, setUsdRateFailed] = useState(false);
   const isUsersSection = section === "vendors" || section === "staff" || section === "users";
-  const usersExpanded = isUsersSection || usersOpen || usersHovered;
-  const isSalesServiceSection = section === "products" || section === "product-changes" || section === "orders";
-  const salesServiceExpanded = isSalesServiceSection || salesServiceOpen || salesServiceHovered;
+  const usersExpanded = isUsersSection || usersOpen;
+  const isSalesServiceSection = section === "products" || section === "product-changes" || section === "coupons" || section === "orders";
+  const salesServiceExpanded = isSalesServiceSection || salesServiceOpen;
   const isPaymentServiceSection = section === "payment-transactions" || section === "payment-methods";
-  const paymentServiceExpanded = isPaymentServiceSection || paymentServiceOpen || paymentServiceHovered;
+  const paymentServiceExpanded = isPaymentServiceSection || paymentServiceOpen;
   const isAiSection = section === "ai-models" || section === "ai-assistant";
-  const aiExpanded = isAiSection || aiOpen || aiHovered;
+  const aiExpanded = isAiSection || aiOpen;
+  const isSettingsSection = section === "settings-sms" || section === "settings-shipping" || section === "settings-usd";
+  const settingsExpanded = isSettingsSection || settingsOpen;
+
+  useEffect(() => {
+    if (!ownerNavigation) return;
+    let active = true;
+    const checkUsdRate = async () => {
+      try {
+        const response = await api.get<AdminUsdRateSettings>("/admin/settings/usd");
+        if (active) setUsdRateFailed(response.data.cronStatus === "failed");
+      } catch {
+        // The settings workspace owns full request errors; navigation only mirrors a persisted cron failure.
+      }
+    };
+    void checkUsdRate();
+    const timer = window.setInterval(() => void checkUsdRate(), 60_000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [ownerNavigation]);
 
   const loadVendors = useCallback(async () => {
     setLoading(true);
@@ -657,8 +700,6 @@ export function VendorManagement({
             className={navigationStyles.group}
             data-active={isUsersSection}
             data-open={usersExpanded}
-            onMouseEnter={() => setUsersHovered(true)}
-            onMouseLeave={() => setUsersHovered(false)}
           >
             <button
               className={navigationStyles.groupTrigger}
@@ -667,7 +708,7 @@ export function VendorManagement({
               aria-controls="admin-users-navigation"
               onClick={() => setUsersOpen((current) => !current)}
             >
-              <VendorsIcon />
+              <UsersGroupIcon />
               <span>{c.users}</span>
               <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
             </button>
@@ -685,7 +726,7 @@ export function VendorManagement({
                 href={`/${locale}/admin/staff` as Route}
                 aria-current={section === "staff" ? "page" : undefined}
               >
-                <VendorsIcon />
+                <StaffIcon />
                 <span>{c.staff}</span>
               </Link>
               <Link
@@ -693,7 +734,7 @@ export function VendorManagement({
                 href={`/${locale}/admin/users` as Route}
                 aria-current={section === "users" ? "page" : undefined}
               >
-                <VendorsIcon />
+                <CustomersIcon />
                 <span>{c.users}</span>
               </Link>
             </div>
@@ -702,8 +743,6 @@ export function VendorManagement({
             className={navigationStyles.group}
             data-active={isSalesServiceSection}
             data-open={salesServiceExpanded}
-            onMouseEnter={() => setSalesServiceHovered(true)}
-            onMouseLeave={() => setSalesServiceHovered(false)}
           >
             <button
               className={navigationStyles.groupTrigger}
@@ -712,7 +751,7 @@ export function VendorManagement({
               aria-controls="admin-sales-service-navigation"
               onClick={() => setSalesServiceOpen((current) => !current)}
             >
-              <ProductsIcon />
+              <SalesServiceIcon />
               <span>{c.sellService}</span>
               <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
             </button>
@@ -730,8 +769,16 @@ export function VendorManagement({
                 href={`/${locale}/admin/product-changes` as Route}
                 aria-current={section === "product-changes" ? "page" : undefined}
               >
-                <ProductsIcon />
+                <ProductChangesIcon />
                 <span>{c.productChanges}</span>
+              </Link>
+              <Link
+                className={navigationStyles.item}
+                href={`/${locale}/admin/coupons` as Route}
+                aria-current={section === "coupons" ? "page" : undefined}
+              >
+                <CouponIcon />
+                <span>{c.coupons}</span>
               </Link>
               <Link
                 className={navigationStyles.item}
@@ -747,8 +794,6 @@ export function VendorManagement({
             className={navigationStyles.group}
             data-active={isPaymentServiceSection}
             data-open={paymentServiceExpanded}
-            onMouseEnter={() => setPaymentServiceHovered(true)}
-            onMouseLeave={() => setPaymentServiceHovered(false)}
           >
             <button
               className={navigationStyles.groupTrigger}
@@ -757,7 +802,7 @@ export function VendorManagement({
               aria-controls="admin-payment-service-navigation"
               onClick={() => setPaymentServiceOpen((current) => !current)}
             >
-              <PaymentIcon />
+              <PaymentServiceIcon />
               <span>{c.paymentService}</span>
               <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
             </button>
@@ -767,7 +812,7 @@ export function VendorManagement({
                 href={`/${locale}/admin/payments/transactions` as Route}
                 aria-current={section === "payment-transactions" ? "page" : undefined}
               >
-                <PaymentIcon />
+                <TransactionsIcon />
                 <span>{c.paymentTransactions}</span>
               </Link>
               <Link
@@ -775,14 +820,14 @@ export function VendorManagement({
                 href={`/${locale}/admin/payments/methods` as Route}
                 aria-current={section === "payment-methods" ? "page" : undefined}
               >
-                <PaymentIcon />
+                <PaymentMethodsIcon />
                 <span>{c.paymentMethods}</span>
               </Link>
             </div>
           </div>
           </> : null}
           <Link className={navigationStyles.item} href={`/${locale}/admin/blog` as Route} aria-current={section === "editorial" ? "page" : undefined}>
-            <ProductsIcon />
+            <EditorialIcon />
             <span>{c.editorial}</span>
           </Link>
           {ownerNavigation ? <>
@@ -790,8 +835,6 @@ export function VendorManagement({
             className={navigationStyles.group}
             data-active={isAiSection}
             data-open={aiExpanded}
-            onMouseEnter={() => setAiHovered(true)}
-            onMouseLeave={() => setAiHovered(false)}
           >
             <button
               className={navigationStyles.groupTrigger}
@@ -800,24 +843,69 @@ export function VendorManagement({
               aria-controls="admin-ai-navigation"
               onClick={() => setAiOpen((current) => !current)}
             >
-              <OverviewIcon />
+              <AiServiceIcon />
               <span>{c.ai}</span>
               <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
             </button>
             <div className={navigationStyles.subNavigation} id="admin-ai-navigation">
               <Link className={navigationStyles.item} href={`/${locale}/admin/ai/models` as Route} aria-current={section === "ai-models" ? "page" : undefined}>
-                <ProductsIcon />
+                <AiModelsIcon />
                 <span>{c.aiModels}</span>
               </Link>
               <Link className={navigationStyles.item} href={`/${locale}/admin/ai/assistant` as Route} aria-current={section === "ai-assistant" ? "page" : undefined}>
-                <OverviewIcon />
+                <AiAssistantIcon />
                 <span>{c.aiAssistant}</span>
+              </Link>
+            </div>
+          </div>
+          <div
+            className={navigationStyles.group}
+            data-active={isSettingsSection}
+            data-open={settingsExpanded}
+          >
+            <button
+              className={navigationStyles.groupTrigger}
+              type="button"
+              aria-expanded={settingsExpanded}
+              aria-controls="admin-settings-navigation"
+              onClick={() => setSettingsOpen((current) => !current)}
+            >
+              <SettingsIcon />
+              <span>{c.settings}</span>
+              <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
+            </button>
+            <div className={navigationStyles.subNavigation} id="admin-settings-navigation">
+              <Link
+                className={navigationStyles.item}
+                href={`/${locale}/admin/settings/shipping` as Route}
+                aria-current={section === "settings-shipping" ? "page" : undefined}
+              >
+                <ShippingIcon />
+                <span>{c.shipping}</span>
+              </Link>
+              <Link
+                className={navigationStyles.item}
+                href={`/${locale}/admin/settings/sms` as Route}
+                aria-current={section === "settings-sms" ? "page" : undefined}
+              >
+                <SmsIcon />
+                <span>{c.sms}</span>
+              </Link>
+              <Link
+                className={navigationStyles.item}
+                href={`/${locale}/admin/settings/usd` as Route}
+                aria-current={section === "settings-usd" ? "page" : undefined}
+                data-alert={usdRateFailed}
+              >
+                <UsdIcon />
+                <span>{c.usd}</span>
+                {usdRateFailed ? <strong className={navigationStyles.alert} aria-label={c.usdAlert} title={c.usdAlert}>!</strong> : null}
               </Link>
             </div>
           </div>
           {process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true" ? (
             <Link className={navigationStyles.item} href={`/${locale}/admin/bridge` as Route} aria-current={section === "bridge" ? "page" : undefined}>
-              <ProductsIcon />
+              <BridgeIcon />
               <span>Bridge</span>
             </Link>
           ) : null}
@@ -1000,6 +1088,8 @@ export function VendorManagement({
 
       {section === "product-changes" ? <ProductChangesWorkspace locale={locale} /> : null}
 
+      {section === "coupons" ? <CouponWorkspace locale={locale} /> : null}
+
       {section === "orders" ? <OrdersWorkspace locale={locale} audience="admin" /> : null}
 
       {section === "payment-transactions" ? <PaymentServiceWorkspace locale={locale} view="transactions" /> : null}
@@ -1015,6 +1105,9 @@ export function VendorManagement({
       {section === "editorial" ? <AdminBlogWorkspace locale={locale} /> : null}
       {section === "ai-models" ? <AiWorkspace locale={locale} view="models" /> : null}
       {section === "ai-assistant" ? <AiWorkspace locale={locale} view="assistant" /> : null}
+      {section === "settings-sms" ? <SmsSettingsWorkspace locale={locale} /> : null}
+      {section === "settings-shipping" ? <ShippingSettingsWorkspace locale={locale} /> : null}
+      {section === "settings-usd" ? <UsdSettingsWorkspace locale={locale} /> : null}
 
       {panelMode ? (
         <div className="vendor-panel-layer" role="presentation">
@@ -1174,12 +1267,40 @@ function OverviewIcon() {
   return <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="5" height="5" rx="1" /><rect x="12" y="3" width="5" height="5" rx="1" /><rect x="3" y="12" width="5" height="5" rx="1" /><rect x="12" y="12" width="5" height="5" rx="1" /></svg>;
 }
 
+function NavIcon({ children }: { children: ReactNode }) {
+  return <svg viewBox="0 0 24 24" aria-hidden="true">{children}</svg>;
+}
+
+function UsersGroupIcon() {
+  return <NavIcon><circle cx="9" cy="8" r="3" /><circle cx="17" cy="9" r="2.25" /><path d="M3.5 19c.5-4 2.3-6 5.5-6s5 2 5.5 6M15 14c2.8.1 4.5 1.8 5 5" /></NavIcon>;
+}
+
 function VendorsIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="6.5" r="3" /><path d="M4.5 17c.4-3.2 2.2-5 5.5-5s5.1 1.8 5.5 5" /></svg>;
+  return <NavIcon><path d="M4 10v10h16V10M3 10l2-6h14l2 6" /><path d="M3 10c0 1.5 1 2.5 2.5 2.5S8 11.5 8 10c0 1.5 1 2.5 2.5 2.5S13 11.5 13 10c0 1.5 1 2.5 2.5 2.5S18 11.5 18 10c0 1.5 1 2.5 2.5 2.5M9 20v-4h6v4" /></NavIcon>;
+}
+
+function StaffIcon() {
+  return <NavIcon><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M9 5V3h6v2M8 11h8M8 15h5" /></NavIcon>;
+}
+
+function CustomersIcon() {
+  return <NavIcon><circle cx="12" cy="12" r="9" /><circle cx="12" cy="9" r="3" /><path d="M6.5 19c.7-3.4 2.5-5 5.5-5s4.8 1.6 5.5 5" /></NavIcon>;
+}
+
+function SalesServiceIcon() {
+  return <NavIcon><path d="M5 8h14l1 12H4L5 8Z" /><path d="M9 9V7a3 3 0 0 1 6 0v2M8 14h8" /></NavIcon>;
 }
 
 function ProductsIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m3.5 6 6.5-3 6.5 3-6.5 3-6.5-3Z" /><path d="M3.5 6v8l6.5 3 6.5-3V6M10 9v8" /></svg>;
+  return <NavIcon><path d="m4 7 8-4 8 4-8 4-8-4Z" /><path d="M4 7v10l8 4 8-4V7M12 11v10" /></NavIcon>;
+}
+
+function ProductChangesIcon() {
+  return <NavIcon><path d="m3 7 6-3 6 3-6 3-6-3ZM3 7v7l6 3.5 3-1.75M9 10v7.5" /><path d="M15 12.5a4 4 0 0 1 5.5 1.5M20.5 14v-3M20.5 14h-3M21 18a4 4 0 0 1-5.5 1.5M15.5 19.5v3M15.5 19.5h3" /></NavIcon>;
+}
+
+function CouponIcon() {
+  return <NavIcon><path d="M4 7a2 2 0 0 0 2-2h12a2 2 0 0 0 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 0-2 2H6a2 2 0 0 0-2-2v-2a3 3 0 0 0 0-6V7Z" /><path d="m9 15 6-6M9.5 9h.01M14.5 15h.01" /></NavIcon>;
 }
 
 function OrdersIcon() {
@@ -1191,13 +1312,52 @@ function OrdersIcon() {
   );
 }
 
-function PaymentIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <path d="M3 10h18M7 15h4" />
-    </svg>
-  );
+function PaymentServiceIcon() {
+  return <NavIcon><path d="M4 7.5h14a2 2 0 0 1 2 2V19H6a2 2 0 0 1-2-2V7.5Z" /><path d="m5 7 11-3v3.5M15 12h6v4h-6a2 2 0 0 1 0-4Z" /></NavIcon>;
+}
+
+function TransactionsIcon() {
+  return <NavIcon><circle cx="12" cy="12" r="9" /><path d="M8 9h8l-2.5-2.5M16 15H8l2.5 2.5" /></NavIcon>;
+}
+
+function PaymentMethodsIcon() {
+  return <NavIcon><rect x="3" y="5" width="15" height="11" rx="2" /><path d="M3 9h15M7 13h3" /><path d="M7 19h14V8" /></NavIcon>;
+}
+
+function EditorialIcon() {
+  return <NavIcon><path d="M5 4h14v16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" /><path d="M7 8h8M7 12h8M7 16h5M19 6h2v12a2 2 0 0 1-2 2" /></NavIcon>;
+}
+
+function AiServiceIcon() {
+  return <NavIcon><rect x="5" y="5" width="14" height="14" rx="3" /><path d="M9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M19 9h4M1 15h4M19 15h4M12 8l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3Z" /></NavIcon>;
+}
+
+function AiModelsIcon() {
+  return <NavIcon><ellipse cx="12" cy="6" rx="7" ry="3" /><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" /></NavIcon>;
+}
+
+function AiAssistantIcon() {
+  return <NavIcon><path d="M4 5h16v12H9l-5 4V5Z" /><path d="m13 8 .7 2.3L16 11l-2.3.7L13 14l-.7-2.3L10 11l2.3-.7L13 8Z" /></NavIcon>;
+}
+
+function SettingsIcon() {
+  return <NavIcon><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 8.94 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.57 15 1.7 1.7 0 0 0 3 14H3v-4h.08A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.57 1.7 1.7 0 0 0 10 3h4v.08A1.7 1.7 0 0 0 15.06 4.6a1.7 1.7 0 0 0 1.88-.34L17 4.2 19.83 7l-.06.06A1.7 1.7 0 0 0 19.43 9 1.7 1.7 0 0 0 21 10v4h-.08A1.7 1.7 0 0 0 19.4 15Z" /></NavIcon>;
+}
+
+function SmsIcon() {
+  return <NavIcon><path d="M4 5.5h16v11H8l-4 3v-14Z" /><path d="M8 10h8M8 13h5" /></NavIcon>;
+}
+
+function ShippingIcon() {
+  return <NavIcon><path d="M3 6h11v10H3V6Zm11 4h4l3 3v3h-7v-6Z" /><circle cx="7" cy="18" r="2" /><circle cx="18" cy="18" r="2" /></NavIcon>;
+}
+
+function UsdIcon() {
+  return <NavIcon><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5c-.8-.7-2-1-3.4-1-1.8 0-3.1.8-3.1 2s1.1 1.8 3.2 2.2 3.1.9 3.1 2.4-1.3 2.4-3.3 2.4c-1.5 0-2.9-.5-3.8-1.4M12 5.5v13" /></NavIcon>;
+}
+
+function BridgeIcon() {
+  return <NavIcon><circle cx="6" cy="12" r="3" /><circle cx="18" cy="6" r="3" /><circle cx="18" cy="18" r="3" /><path d="m8.7 10.7 6.6-3.4M8.7 13.3l6.6 3.4" /></NavIcon>;
 }
 
 function SearchIcon() {
