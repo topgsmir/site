@@ -313,6 +313,47 @@ export class PaymentApplicationService {
     return this.result(attempt.order_id, attempt.provider, authority, result.provider_ref_id, "succeeded");
   }
 
+  async localPayment(actor: AppUser, authority: string) {
+    if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can use the local gateway");
+    if (!/^local-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(authority)) {
+      throw new BadRequestException("Local payment authority is invalid");
+    }
+    if (!(await this.payments.get("local-country-gateway").availability()).available) {
+      throw new ForbiddenException("The local gateway is unavailable");
+    }
+    const attempt = await this.prisma.payment_attempts.findFirst({
+      where: { provider: "local-country-gateway", authority, order: { buyer_id: actor.id } },
+      select: {
+        status: true, amount: true, currency: true, order_id: true,
+        checkout_payment_group: { select: { checkout_id: true, expires_at: true } }
+      }
+    });
+    if (!attempt) throw new NotFoundException("Local payment was not found");
+    return {
+      status: attempt.status,
+      amount: attempt.amount.toString(),
+      currency: attempt.currency.trim(),
+      orderId: attempt.order_id,
+      checkoutId: attempt.checkout_payment_group?.checkout_id ?? null,
+      expiresAt: attempt.checkout_payment_group?.expires_at ?? null
+    };
+  }
+
+  async completeLocalPayment(actor: AppUser, authority: string, status: "paid" | "canceled") {
+    const payment = await this.localPayment(actor, authority);
+    if (payment.status !== "pending") throw new ConflictException("Local payment is no longer pending");
+    if (status === "paid" && payment.expiresAt && payment.expiresAt <= new Date()) {
+      throw new ConflictException("The stock reservation has expired");
+    }
+    if (status === "paid") return this.callback("local-country-gateway", authority, "OK");
+    const changed = await this.prisma.payment_attempts.updateMany({
+      where: { provider: "local-country-gateway", authority, status: "pending", order: { buyer_id: actor.id } },
+      data: { status: "failed", failure_code: "BUYER_CANCELLED" }
+    });
+    if (changed.count !== 1) throw new ConflictException("Local payment changed while it was being canceled");
+    return { checkoutId: payment.checkoutId, orderId: payment.orderId, status: "failed", failureCode: "BUYER_CANCELLED" };
+  }
+
   private async callbackCheckoutGroup(attemptId: string, providerCode: string, authority: string, callbackStatus: string | undefined) {
     const attempt = await this.prisma.payment_attempts.findUnique({
       where: { id: attemptId },

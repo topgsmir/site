@@ -16,6 +16,7 @@ import {
 import type { PublicProduct, PublicProductOffer, PublicProductVariant } from "./product.server";
 import styles from "./ProductPage.module.css";
 import { CART_EVENT, cartQuantity, readCart, writeCart } from "@/lib/cart";
+import { ProductComments } from "@/components/comments/ProductComments";
 
 type ProductCopy = ReturnType<typeof getDictionary>["product"];
 type ButtonState = "idle" | "loading" | "success" | "error";
@@ -285,6 +286,8 @@ export function ProductPage({
             </table>
           </div>
         </section>
+
+        <ProductComments productId={product.id} locale={locale} />
 
         <section className={styles.support} aria-labelledby="support-title">
           <div>

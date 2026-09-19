@@ -908,6 +908,9 @@ export class ProductService {
       select: { permissions: { select: { permission: true } } }
     });
     if (!seller) throw new NotFoundException("Seller was not found");
+    if (input.type === "physical" && !seller.permissions.some((item) => item.permission === "physical_products_manage")) {
+      throw new ForbiddenException("Physical-product access has not been granted to this seller");
+    }
     const mayPublish = seller.permissions.some((item) => item.permission === "products_publish");
     const requestedStatus = input.status ?? "active";
     const productStatus = requestedStatus === "active" && !mayPublish ? "pending_review" : requestedStatus;
@@ -1126,6 +1129,13 @@ export class ProductService {
           }
         });
         if (!product) throw new NotFoundException("Product was not found");
+        if (product.type === "physical") {
+          const grant = await transaction.seller_permissions.findUnique({
+            where: { seller_id_permission: { seller_id: sellerId, permission: "physical_products_manage" } },
+            select: { seller_id: true }
+          });
+          if (!grant) throw new ForbiddenException("Physical-product access has not been granted to this seller");
+        }
         if (product.type === "bridge") {
           const binding = product.bridge_binding;
           if (
@@ -1210,6 +1220,13 @@ export class ProductService {
           }
         });
         if (!offer) throw new NotFoundException("Seller offer was not found");
+        if (offer.listing.product.type === "physical") {
+          const grant = await transaction.seller_permissions.findUnique({
+            where: { seller_id_permission: { seller_id: sellerId, permission: "physical_products_manage" } },
+            select: { seller_id: true }
+          });
+          if (!grant) throw new ForbiddenException("Physical-product access has not been granted to this seller");
+        }
 
         const detail = this.detailFromInput(input);
         if (detail) this.assertFulfillment(offer.listing.product.type, input);

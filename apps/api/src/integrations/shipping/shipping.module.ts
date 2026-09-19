@@ -7,11 +7,13 @@ import { AmadastAdapter } from "./amadast/amadast.adapter";
 import { AmadastShippingService } from "./amadast/amadast-shipping.service";
 import { AmadastSettingsService } from "./amadast/amadast-settings.service";
 import { ShippingSettingsController } from "./shipping-settings.controller";
+import { SellerShippingProfileController } from "./seller-shipping-profile.controller";
+import { SellerShippingProfileService } from "./seller-shipping-profile.service";
 
 @Module({
   imports: [AuthModule],
-  controllers: [ShippingSettingsController],
-  providers: [PublicUrlService, SafeHttpService, CredentialCryptoService, AmadastAdapter, AmadastSettingsService, AmadastShippingService],
-  exports: [AmadastSettingsService, AmadastShippingService]
+  controllers: [ShippingSettingsController, SellerShippingProfileController],
+  providers: [PublicUrlService, SafeHttpService, CredentialCryptoService, AmadastAdapter, AmadastSettingsService, SellerShippingProfileService, AmadastShippingService],
+  exports: [AmadastSettingsService, SellerShippingProfileService, AmadastShippingService]
 })
 export class ShippingModule {}

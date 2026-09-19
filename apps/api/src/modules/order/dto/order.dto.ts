@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { ArrayMaxSize, ArrayUnique, IsArray, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength, ValidateNested } from "class-validator";
+import { ArrayMaxSize, ArrayUnique, IsArray, IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, MinLength, ValidateNested } from "class-validator";
 
 export class BridgeOrderFieldDto {
   @IsString() @MinLength(1) @MaxLength(100) key!: string;
@@ -7,6 +7,12 @@ export class BridgeOrderFieldDto {
 }
 
 export class CreateOrderDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @Matches(/^[a-zA-Z0-9][a-zA-Z0-9._ -]*$/)
+  trafficSource?: string;
+
   @IsUUID("4")
   offerId!: string;
 

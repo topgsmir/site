@@ -1,4 +1,4 @@
-import { Body, Controller, Ip, Post, Res } from "@nestjs/common";
+import { Body, Controller, ForbiddenException, Ip, Post, Res } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
 import { BrowserSessionMutation } from "../auth/browser-session-mutation.decorator";
@@ -6,17 +6,23 @@ import { SESSION_COOKIE } from "../auth/session-token";
 import { RequestOtpDto, VerifyOtpDto } from "./dto/otp.dto";
 import { normalizeIranianPhone } from "./phone-number";
 import { OtpService } from "./otp.service";
+import { SecurityPolicyService } from "../auth/security-policy.service";
+import { CaptchaService } from "../captcha/captcha.service";
 
 type HeaderResponse = { setHeader(name: string, value: string): void };
 
 @Controller("auth/otp")
 export class OtpController {
-  constructor(private readonly otp: OtpService, private readonly rateLimits: AuthRateLimitService, private readonly config: ConfigService) {}
+  constructor(private readonly otp: OtpService, private readonly rateLimits: AuthRateLimitService, private readonly config: ConfigService, private readonly policies: SecurityPolicyService, private readonly captcha: CaptchaService) {}
 
   @Post("request") @BrowserSessionMutation()
   async request(@Body() body: RequestOtpDto, @Ip() clientIp: string) {
     const phone = normalizeIranianPhone(body.phoneNumber);
     await this.rateLimits.consumeOtp(phone, clientIp);
+    if ((await this.policies.get("otp")).captchaEnabled) {
+      if (!body.captchaToken) throw new ForbiddenException("Captcha verification required");
+      await this.captcha.verify(body.captchaToken, "otp");
+    }
     return this.otp.request(phone);
   }
 

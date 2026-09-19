@@ -2,6 +2,8 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { Prisma } from "../../prisma/client";
 import { createHash } from "node:crypto";
 import { PrismaService } from "../../prisma/prisma.service";
+import { SecurityPolicyService } from "./security-policy.service";
+import type { SecurityAction } from "./security-policy.service";
 
 type RateLimitResult = {
   attempt_count: number;
@@ -19,24 +21,25 @@ type Bucket = {
 
 @Injectable()
 export class AuthRateLimitService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly policies: SecurityPolicyService) {}
 
   async consumeLogin(identifier: string, clientIp: string) {
+    const policy = await this.policies.get("login");
     await this.consume({
       action: "login",
       scope: "ip",
       value: this.normalizeIp(clientIp),
-      limit: 40,
-      windowSeconds: 15 * 60,
-      blockSeconds: 15 * 60
+      limit: policy.ipLimit,
+      windowSeconds: policy.ipWindowSeconds,
+      blockSeconds: policy.ipWindowSeconds
     });
     await this.consume({
       action: "login",
       scope: "account",
       value: identifier.trim().toLowerCase(),
-      limit: 8,
-      windowSeconds: 15 * 60,
-      blockSeconds: 15 * 60
+      limit: policy.subjectLimit,
+      windowSeconds: policy.subjectWindowSeconds,
+      blockSeconds: policy.subjectWindowSeconds
     });
     await this.pruneStaleBuckets();
   }
@@ -54,47 +57,60 @@ export class AuthRateLimitService {
   }
 
   async consumeRegistration(email: string, clientIp: string) {
+    const policy = await this.policies.get("register");
     await this.consume({
       action: "register",
       scope: "ip",
       value: this.normalizeIp(clientIp),
-      limit: 10,
-      windowSeconds: 60 * 60,
-      blockSeconds: 60 * 60
+      limit: policy.ipLimit,
+      windowSeconds: policy.ipWindowSeconds,
+      blockSeconds: policy.ipWindowSeconds
     });
     await this.consume({
       action: "register",
       scope: "email",
       value: email.trim().toLowerCase(),
-      limit: 3,
-      windowSeconds: 24 * 60 * 60,
-      blockSeconds: 24 * 60 * 60
+      limit: policy.subjectLimit,
+      windowSeconds: policy.subjectWindowSeconds,
+      blockSeconds: policy.subjectWindowSeconds
     });
     await this.pruneStaleBuckets();
   }
 
+  async consumeCaptchaChallenge(clientIp: string) {
+    const policy = await this.policies.get("captcha_challenge");
+    await this.consume({
+      action: "captcha_challenge",
+      scope: "ip",
+      value: this.normalizeIp(clientIp),
+      limit: policy.ipLimit,
+      windowSeconds: policy.ipWindowSeconds,
+      blockSeconds: policy.ipWindowSeconds
+    });
+  }
+
   async consumeOrderMutation(userId: string, clientIp: string) {
-    await this.consumeSensitiveMutation("order", userId, clientIp, 30, 100);
+    await this.consumeSensitiveMutation("order", userId, clientIp);
   }
 
   async consumeShippingMutation(userId: string, clientIp: string) {
-    await this.consumeSensitiveMutation("shipping", userId, clientIp, 10, 30);
+    await this.consumeSensitiveMutation("shipping", userId, clientIp);
   }
 
   async consumeShippingConfiguration(userId: string, clientIp: string) {
-    await this.consumeSensitiveMutation("shipping_configuration", userId, clientIp, 10, 30);
+    await this.consumeSensitiveMutation("shipping_configuration", userId, clientIp);
   }
 
   async consumePayoutMutation(userId: string, clientIp: string) {
-    await this.consumeSensitiveMutation("payout", userId, clientIp, 20, 60);
+    await this.consumeSensitiveMutation("payout", userId, clientIp);
   }
 
   async consumeMediaUpload(userId: string, clientIp: string) {
-    await this.consumeSensitiveMutation("media", userId, clientIp, 30, 90);
+    await this.consumeSensitiveMutation("media", userId, clientIp);
   }
 
   async consumePaymentInitiation(userId: string, clientIp: string) {
-    await this.consumeSensitiveMutation("payment", userId, clientIp, 10, 40);
+    await this.consumeSensitiveMutation("payment", userId, clientIp);
   }
 
   async consumePaymentCallback(authority: string, clientIp: string) {
@@ -102,10 +118,7 @@ export class AuthRateLimitService {
       "payment_callback",
       "authority",
       authority.trim(),
-      clientIp,
-      10,
-      60,
-      15 * 60
+      clientIp
     );
   }
 
@@ -114,23 +127,24 @@ export class AuthRateLimitService {
       "checkout_quote",
       "cart",
       subject,
-      clientIp,
-      30,
-      120,
-      15 * 60
+      clientIp
     );
   }
 
   async consumePaymentRefund(userId: string, clientIp: string) {
-    await this.consumeSensitiveMutation("payment_refund", userId, clientIp, 10, 30);
+    await this.consumeSensitiveMutation("payment_refund", userId, clientIp);
   }
 
   async consumePaymentConfiguration(userId: string, clientIp: string) {
-    await this.consumeSensitiveMutation("payment_configuration", userId, clientIp, 10, 30);
+    await this.consumeSensitiveMutation("payment_configuration", userId, clientIp);
   }
 
   async consumeSmsConfiguration(userId: string, clientIp: string) {
-    await this.consumeSensitiveMutation("sms_configuration", userId, clientIp, 10, 30);
+    await this.consumeSensitiveMutation("sms_configuration", userId, clientIp);
+  }
+
+  async consumeAuthConfiguration(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("auth_configuration", userId, clientIp);
   }
 
   async consumeStaffSetup(token: string, clientIp: string) {
@@ -138,53 +152,88 @@ export class AuthRateLimitService {
       "staff_setup",
       "token",
       token.trim(),
-      clientIp,
-      10,
-      30,
-      60 * 60
+      clientIp
     );
   }
 
   async consumeBridgeOperation(userId: string, clientIp: string) {
-    await this.consumeSensitiveMutation("bridge", userId, clientIp, 20, 60);
+    await this.consumeSensitiveMutation("bridge", userId, clientIp);
   }
 
   async consumeSignedTicket(userId: string, clientIp: string) {
-    await this.consumeSensitiveMutation("signed_ticket", userId, clientIp, 30, 90);
+    await this.consumeSensitiveMutation("signed_ticket", userId, clientIp);
   }
 
   async consumeAiProfile(userId: string, clientIp: string) {
-    await this.consumeSensitiveMutation("ai_profile", userId, clientIp, 10, 30);
+    await this.consumeSensitiveMutation("ai_profile", userId, clientIp);
   }
 
   async consumeAiProfileTest(userId: string, clientIp: string) {
-    await this.consumeSensitiveMutation("ai_profile_test", userId, clientIp, 30, 90);
+    await this.consumeSensitiveMutation("ai_profile_test", userId, clientIp);
   }
 
   async consumeAiRun(userId: string, clientIp: string) {
-    await this.consumeSensitiveMutation("ai_run", userId, clientIp, 20, 60);
+    await this.consumeSensitiveMutation("ai_run", userId, clientIp);
   }
 
   async consumeProductBulkUndo(userId: string, clientIp: string) {
-    await this.consumeSensitiveMutation("product_bulk_undo", userId, clientIp, 5, 15);
+    await this.consumeSensitiveMutation("product_bulk_undo", userId, clientIp);
+  }
+
+  async consumeCommentSubmit(userId: string | null, productId: string, clientIp: string) {
+    if (userId) {
+      await this.consumeSensitiveMutation("comment_submit", userId, clientIp);
+    } else {
+      await this.consumePublicOperation("comment_submit", "ip_product", `${this.normalizeIp(clientIp)}:${productId}`, clientIp, "comment_submit_guest");
+    }
+  }
+
+  async consumeCommentReply(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("comment_reply", userId, clientIp);
+  }
+
+  async consumeCommentAdmin(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("comment_admin", userId, clientIp);
+  }
+
+  async consumeAnalyticsRead(userId: string, clientIp: string) {
+    const policy = await this.policies.get("analytics");
+    await this.consume({
+      action: "analytics",
+      scope: "ip",
+      value: this.normalizeIp(clientIp),
+      limit: policy.ipLimit,
+      windowSeconds: policy.ipWindowSeconds,
+      blockSeconds: policy.ipWindowSeconds
+    });
+    await this.consume({
+      action: "analytics",
+      scope: "account",
+      value: userId,
+      limit: policy.subjectLimit,
+      windowSeconds: policy.subjectWindowSeconds,
+      blockSeconds: policy.subjectWindowSeconds
+    });
+    await this.pruneStaleBuckets();
   }
 
   async consumeOtp(phoneNumber: string, clientIp: string) {
+    const policy = await this.policies.get("otp");
     await this.consume({
       action: "otp",
       scope: "ip",
       value: this.normalizeIp(clientIp),
-      limit: 20,
-      windowSeconds: 60 * 60,
-      blockSeconds: 60 * 60
+      limit: policy.ipLimit,
+      windowSeconds: policy.ipWindowSeconds,
+      blockSeconds: policy.ipWindowSeconds
     });
     await this.consume({
       action: "otp",
       scope: "phone",
       value: phoneNumber,
-      limit: 5,
-      windowSeconds: 60 * 60,
-      blockSeconds: 60 * 60
+      limit: policy.subjectLimit,
+      windowSeconds: policy.subjectWindowSeconds,
+      blockSeconds: policy.subjectWindowSeconds
     });
   }
 
@@ -199,60 +248,62 @@ export class AuthRateLimitService {
       | "payment_refund"
       | "payment_configuration"
       | "sms_configuration"
+      | "auth_configuration"
       | "bridge"
       | "signed_ticket"
       | "ai_profile"
       | "ai_profile_test"
       | "ai_run"
-      | "product_bulk_undo",
+      | "product_bulk_undo"
+      | "comment_submit"
+      | "comment_reply"
+      | "comment_admin",
     userId: string,
-    clientIp: string,
-    accountLimit: number,
-    ipLimit: number
+    clientIp: string
   ) {
+    const policy = await this.policies.get(action);
     await this.consume({
       action,
       scope: "ip",
       value: this.normalizeIp(clientIp),
-      limit: ipLimit,
-      windowSeconds: 15 * 60,
-      blockSeconds: 15 * 60
+      limit: policy.ipLimit,
+      windowSeconds: policy.ipWindowSeconds,
+      blockSeconds: policy.ipWindowSeconds
     });
     await this.consume({
       action,
       scope: "account",
       value: userId,
-      limit: accountLimit,
-      windowSeconds: 15 * 60,
-      blockSeconds: 15 * 60
+      limit: policy.subjectLimit,
+      windowSeconds: policy.subjectWindowSeconds,
+      blockSeconds: policy.subjectWindowSeconds
     });
     await this.pruneStaleBuckets();
   }
 
   private async consumePublicOperation(
-    action: "payment_callback" | "staff_setup" | "checkout_quote",
+    action: "payment_callback" | "staff_setup" | "checkout_quote" | "comment_submit",
     subjectScope: string,
     subjectValue: string,
     clientIp: string,
-    subjectLimit: number,
-    ipLimit: number,
-    windowSeconds: number
+    policyAction: SecurityAction = action
   ) {
+    const policy = await this.policies.get(policyAction);
     await this.consume({
       action,
       scope: "ip",
       value: this.normalizeIp(clientIp),
-      limit: ipLimit,
-      windowSeconds,
-      blockSeconds: windowSeconds
+      limit: policy.ipLimit,
+      windowSeconds: policy.ipWindowSeconds,
+      blockSeconds: policy.ipWindowSeconds
     });
     await this.consume({
       action,
       scope: subjectScope,
       value: subjectValue,
-      limit: subjectLimit,
-      windowSeconds,
-      blockSeconds: windowSeconds
+      limit: policy.subjectLimit,
+      windowSeconds: policy.subjectWindowSeconds,
+      blockSeconds: policy.subjectWindowSeconds
     });
     await this.pruneStaleBuckets();
   }

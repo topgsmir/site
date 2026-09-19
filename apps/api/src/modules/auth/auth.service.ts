@@ -20,6 +20,7 @@ import {
 import { PrismaService } from "../../prisma/prisma.service";
 import type { LoginDto } from "./dto/login.dto";
 import type { RegisterDto } from "./dto/register.dto";
+import { AuthLoginSettingsService } from "./auth-login-settings.service";
 
 const SCRYPT_COST = 16_384;
 const SCRYPT_BLOCK_SIZE = 8;
@@ -50,9 +51,10 @@ type StoredUser = {
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly loginSettings: AuthLoginSettingsService) {}
 
   async register(input: RegisterDto) {
+    await this.loginSettings.assertEmailPasswordEnabled();
     const email = this.normalizeEmail(input.email);
     const fullName = input.fullName.trim();
     if (fullName.length < 2) {
@@ -84,6 +86,7 @@ export class AuthService {
   }
 
   async login(input: LoginDto) {
+    await this.loginSettings.assertEmailPasswordEnabled();
     const identifier = input.identifier.trim().toLowerCase();
     const user = identifier.includes("@")
       ? await this.prisma.users.findUnique({

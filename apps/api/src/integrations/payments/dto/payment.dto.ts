@@ -49,6 +49,11 @@ export class PaymentCallbackQueryDto {
   Status?: string;
 }
 
+export class CompleteLocalPaymentDto {
+  @IsIn(["paid", "canceled"])
+  status!: "paid" | "canceled";
+}
+
 export class ListAdminPaymentTransactionsQueryDto {
   @IsOptional()
   @IsUUID("4")

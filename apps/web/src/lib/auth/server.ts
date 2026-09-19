@@ -36,7 +36,7 @@ export function dashboardFor(user: AppUser, locale: Locale) {
   if (user.role === "seller-admin" || user.role === "seller-staff") {
     return `/${locale}/seller-dashboard`;
   }
-  return `/${locale}`;
+  return `/${locale}/account`;
 }
 
 export async function requireUser(locale: Locale, allowedRoles: Role[]) {

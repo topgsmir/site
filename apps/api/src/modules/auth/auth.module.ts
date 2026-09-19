@@ -8,12 +8,20 @@ import { BrowserMutationGuard } from "./browser-mutation.guard";
 import { PlatformAdminGuard } from "./platform-admin.guard";
 import { PlatformPermissionGuard } from "./platform-permission.guard";
 import { RequestAuthenticationService } from "./request-authentication.service";
+import { AuthLoginSettingsService } from "./auth-login-settings.service";
+import { AdminAuthLoginSettingsController, AuthLoginMethodsController } from "./auth-login-settings.controller";
+import { SecurityPolicyService } from "./security-policy.service";
+import { AdminSecurityPolicyController, PublicSecurityPolicyController } from "./security-policy.controller";
+import { CaptchaService } from "../captcha/captcha.service";
 
 @Module({
-  controllers: [AuthController],
+  controllers: [AuthController, AuthLoginMethodsController, AdminAuthLoginSettingsController, AdminSecurityPolicyController, PublicSecurityPolicyController],
   providers: [
     AuthService,
+    AuthLoginSettingsService,
     AuthRateLimitService,
+    SecurityPolicyService,
+    CaptchaService,
     AuthenticatedGuard,
     BrowserMutationGuard,
     PlatformAdminGuard,
@@ -23,7 +31,10 @@ import { RequestAuthenticationService } from "./request-authentication.service";
   ],
   exports: [
     AuthService,
+    AuthLoginSettingsService,
     AuthRateLimitService,
+    SecurityPolicyService,
+    CaptchaService,
     AuthenticatedGuard,
     PlatformAdminGuard,
     PlatformPermissionGuard,

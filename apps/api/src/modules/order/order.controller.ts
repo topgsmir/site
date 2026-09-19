@@ -115,11 +115,12 @@ export class OrderController {
   @Get(":orderId/items/:itemId/download")
   async download(
     @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string,
     @Param("orderId", new ParseUUIDPipe({ version: "4" })) orderId: string,
     @Param("itemId", new ParseUUIDPipe({ version: "4" })) itemId: string,
     @Res() response: { redirect(url: string): void }
   ) {
-    const url = await this.orders.claimDigitalDownload(request.authenticatedUser!, orderId, itemId);
+    const url = await this.orders.claimDigitalDownload(request.authenticatedUser!, orderId, itemId, clientIp);
     response.redirect(url);
   }
 }

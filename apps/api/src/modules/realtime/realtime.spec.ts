@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import type { Server, Socket } from "socket.io";
 import type { AuthService } from "../auth/auth.service";
 import type { PrismaService } from "../../prisma/prisma.service";
+import type { CommentsService } from "../comments/comments.service";
 import { RealtimeGateway } from "./realtime.gateway";
 
 function socketFor(headers: { cookie?: string; authorization?: string } = {}) {
@@ -21,13 +22,14 @@ function socketFor(headers: { cookie?: string; authorization?: string } = {}) {
 }
 
 describe("realtime tenant isolation", () => {
+  const comments = { isLockedUser: async () => false } as unknown as CommentsService;
   it("disconnects a socket when session authentication fails", async () => {
     const auth = {
       getUserFromToken: async () => {
         throw new Error("invalid");
       }
     } as unknown as AuthService;
-    const gateway = new RealtimeGateway(auth, {} as PrismaService);
+    const gateway = new RealtimeGateway(auth, {} as PrismaService, comments);
     const client = socketFor();
     await gateway.handleConnection(client.socket);
     assert.equal(client.disconnected(), true);
@@ -50,10 +52,20 @@ describe("realtime tenant isolation", () => {
         })
       }
     } as unknown as PrismaService;
-    const gateway = new RealtimeGateway(auth, prisma);
+    const gateway = new RealtimeGateway(auth, prisma, comments);
     const client = socketFor({ authorization: "Bearer opaque" });
     await gateway.handleConnection(client.socket);
     assert.deepEqual(client.rooms, ["user:user-1", "seller:seller-1:orders"]);
+  });
+
+  it("disconnects a seller with unanswered comments before joining seller rooms", async () => {
+    const auth = { getUserFromToken: async () => ({ id: "user-1", role: "seller-admin" }) } as unknown as AuthService;
+    const lockedComments = { isLockedUser: async () => true } as unknown as CommentsService;
+    const gateway = new RealtimeGateway(auth, {} as PrismaService, lockedComments);
+    const client = socketFor({ authorization: "Bearer opaque" });
+    await gateway.handleConnection(client.socket);
+    assert.equal(client.disconnected(), true);
+    assert.equal(client.rooms.includes("seller:seller-1:orders"), false);
   });
 
   it("does not join order or payout rooms for blog-only platform staff", async () => {
@@ -66,7 +78,7 @@ describe("realtime tenant isolation", () => {
         platformPermissions: ["blog_manage"]
       })
     } as unknown as AuthService;
-    const gateway = new RealtimeGateway(auth, {} as PrismaService);
+    const gateway = new RealtimeGateway(auth, {} as PrismaService, comments);
     const client = socketFor({ authorization: "Bearer opaque" });
     await gateway.handleConnection(client.socket);
     assert.deepEqual(client.rooms, ["user:editor-1"]);
@@ -74,7 +86,7 @@ describe("realtime tenant isolation", () => {
 
   it("emits order events only to buyer, seller, and platform rooms", () => {
     const emissions: Array<{ room: string; event: string }> = [];
-    const gateway = new RealtimeGateway({} as AuthService, {} as PrismaService);
+    const gateway = new RealtimeGateway({} as AuthService, {} as PrismaService, comments);
     gateway.server = {
       to: (room: string) => ({
         emit: (event: string) => emissions.push({ room, event })

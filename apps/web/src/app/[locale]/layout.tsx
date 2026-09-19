@@ -8,6 +8,7 @@ import "../blog.css";
 import { getDirection, isLocale, locales } from "@/lib/i18n";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { GoghdiWidget } from "@/components/goghdi/GoghdiWidget";
+import { TrafficSourceCapture } from "@/components/TrafficSourceCapture";
 
 type LocaleLayoutProps = Readonly<{
   children: React.ReactNode;
@@ -75,6 +76,7 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
         <Script id="topgsm-theme" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
+        <TrafficSourceCapture />
         {children}
         <GoghdiWidget />
         <ThemeToggle locale={locale} />

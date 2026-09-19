@@ -444,6 +444,15 @@ export interface AdminSmsSettings {
   updatedAt: string | null;
 }
 
+export interface AuthLoginMethods {
+  emailPasswordEnabled: boolean;
+  phoneOtpEnabled: boolean;
+}
+
+export interface AdminAuthLoginSettings extends AuthLoginMethods {
+  updatedAt: string | null;
+}
+
 export interface AdminShippingSettings {
   enabled: boolean;
   provider: "amadast";
@@ -452,11 +461,35 @@ export interface AdminShippingSettings {
   credentialSource: "database" | "environment" | "none";
   userId: number | null;
   storeId: number | null;
-  senderName: string | null;
-  senderMobile: string | null;
   productType: number;
   packageType: number;
   updatedAt: string | null;
+}
+
+export interface SellerShippingProfile {
+  sellerId: string;
+  granted: boolean;
+  enabled: boolean;
+  complete: boolean;
+  senderName: string | null;
+  senderMobile: string | null;
+  province: string | null;
+  city: string | null;
+  addressLine: string | null;
+  postalCode: string | null;
+  updatedAt: string | null;
+}
+
+export interface AdminSellerShippingProfile extends SellerShippingProfile {
+  shopName: string;
+  ownerName: string;
+  ownerEmail: string;
+  sellerStatus: "invited" | "active" | "suspended";
+}
+
+export interface AdminSellerShippingProfilesPage {
+  items: AdminSellerShippingProfile[];
+  nextCursor: string | null;
 }
 
 export type UsdRateProviderId = "alanchand" | "nobitex" | "tgju";
@@ -677,6 +710,7 @@ export type PlatformPermission =
 
 export type VendorPermission =
   | "products_manage"
+  | "physical_products_manage"
   | "products_publish"
   | "blog_manage"
   | "coupons_manage"
@@ -684,6 +718,85 @@ export type VendorPermission =
   | "staff_manage"
   | "analytics_view"
   | "payouts_request";
+
+export type AnalyticsScope = "admin" | "seller";
+export type AnalyticsGranularity = "hour" | "day" | "week" | "month";
+
+export interface AnalyticsMetric {
+  value: string;
+  previousValue: string;
+  changePercent: number | null;
+}
+
+export interface AnalyticsSeriesPoint {
+  bucket: string;
+  grossSales: string;
+  income: string;
+  refunds: string;
+  netSales: string;
+  paidOrders: number;
+}
+
+export interface AnalyticsBreakdownItem {
+  key: string;
+  label: string;
+  count: number;
+  amount: string;
+}
+
+export interface AnalyticsRankingItem {
+  id: string;
+  label: string;
+  secondaryLabel: string | null;
+  count: number;
+  units: number;
+  amount: string;
+}
+
+export interface AnalyticsActivityItem {
+  id: string;
+  kind: "sale" | "refund" | "payout";
+  label: string;
+  secondaryLabel: string | null;
+  amount: string;
+  occurredAt: string;
+  status: string;
+}
+
+export interface AnalyticsOverview {
+  scope: AnalyticsScope;
+  currency: "IRR";
+  range: {
+    from: string;
+    to: string;
+    timezone: "Asia/Tehran";
+    granularity: AnalyticsGranularity;
+    previousFrom: string;
+    previousTo: string;
+  };
+  summary: {
+    grossSales: AnalyticsMetric;
+    netSales: AnalyticsMetric;
+    income: AnalyticsMetric;
+    paidOrders: AnalyticsMetric;
+    unitsSold: AnalyticsMetric;
+    averageOrderValue: AnalyticsMetric;
+    refunds: AnalyticsMetric;
+    commission: AnalyticsMetric;
+    holdback: AnalyticsMetric;
+    settledPayouts: AnalyticsMetric;
+    outstandingLiability: string;
+  };
+  series: AnalyticsSeriesPoint[];
+  orderStatuses: AnalyticsBreakdownItem[];
+  productTypes: AnalyticsBreakdownItem[];
+  payoutPipeline: AnalyticsBreakdownItem[];
+  topProducts: AnalyticsRankingItem[];
+  topCategories: AnalyticsRankingItem[];
+  topSellers?: AnalyticsRankingItem[];
+  recentActivity: AnalyticsActivityItem[];
+  generatedAt: string;
+}
 
 export type BridgeProvider = "dhru_legacy" | "dhru_new" | "webx";
 export type BridgeConnectionStatus = "active" | "inactive" | "error";
@@ -761,3 +874,47 @@ export interface Vendor {
   createdAt: string;
   updatedAt: string;
 }
+
+export type CommentPostingPolicy = "purchasers" | "buyers" | "guests";
+export type CommentPublicationPolicy = "approval" | "immediate";
+export type CommentStatus = "pending" | "approved" | "rejected" | "spam_review" | "spam";
+
+export interface CommentSettings {
+  sellerLockEnabled: boolean;
+  postingPolicy: CommentPostingPolicy;
+  publicationPolicy: CommentPublicationPolicy;
+  updatedAt: string | null;
+}
+
+export interface ProductComment {
+  id: string;
+  body: string;
+  authorName: string;
+  createdAt: string;
+  replies: Array<{ sellerName: string; body: string; repliedAt: string }>;
+}
+
+export interface SellerComment {
+  id: string;
+  body: string;
+  authorName: string;
+  createdAt: string;
+  productTitle: string;
+  productSlug: string;
+  reply: string | null;
+  repliedAt: string | null;
+}
+
+export interface AdminComment {
+  id: string;
+  body: string;
+  status: CommentStatus;
+  authorName: string;
+  createdAt: string;
+  productTitle: string;
+  productSlug: string;
+  flagged: boolean;
+  replies: Array<{ sellerName: string; body: string | null }>;
+}
+
+export interface CommentPage<T> { items: T[]; nextCursor: string | null }

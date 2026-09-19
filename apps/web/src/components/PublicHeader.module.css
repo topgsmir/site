@@ -17,7 +17,10 @@
 .account svg { width: 16px; }
 :global([dir="rtl"]) .account svg { transform: rotate(180deg); }
 .account:active { transform: scale(.97); }
-.cart { display: flex; align-items: center; gap: 8px; min-height: 44px; color: var(--ink-soft); font-size: .78rem; }
+.cart { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 9px; border: 1px solid transparent; border-radius: 12px; color: var(--ink-soft); background: transparent; font: inherit; font-size: .78rem; cursor: pointer; transition: color 160ms var(--ease), background-color 160ms var(--ease), border-color 160ms var(--ease); }
+.cart > svg { width: 17px; height: 17px; color: var(--signal-dark); }
+.cart:hover, .cart[aria-expanded="true"] { border-color: var(--line); color: var(--ink); background: var(--paper-bright); }
+.cart:focus-visible { outline: 3px solid var(--signal); outline-offset: 3px; }
 .cart[aria-current="page"] { color: var(--signal-dark); }
 .cart strong { display: grid; place-items: center; min-width: 24px; height: 24px; padding-inline: 6px; border-radius: 999px; color: var(--on-signal); background: var(--signal); font-size: .7rem; }
 @media (hover: hover) and (pointer: fine) { .navigation a:hover { color: var(--signal); } }

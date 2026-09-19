@@ -160,6 +160,8 @@ describe("secure order and payout persistence", () => {
     assert.equal(replay.id, first.id);
     assert.equal(first.seller.id, sellerId);
     assert.equal(first.totalAmount, "1001");
+    assert.equal("commissionRate" in first, false);
+    assert.equal("holdbackRate" in replay, false);
     const ledger = await prisma.payout_ledger.findUniqueOrThrow({
       where: { order_id: first.id }
     });
@@ -198,6 +200,13 @@ describe("secure order and payout persistence", () => {
 
     const buyerPage = await orders.list(buyer, { limit: 20 });
     assert.equal(buyerPage.items.length, 1);
+    assert.equal("commissionRate" in buyerPage.items[0]!, false);
+    assert.equal("holdbackRate" in buyerPage.items[0]!, false);
+    assert.equal("bridge" in buyerPage.items[0]!.items[0]!, false);
+    const buyerOrder = await orders.get(buyer, buyerPage.items[0]!.id);
+    assert.equal("commissionRate" in buyerOrder, false);
+    assert.equal("holdbackRate" in buyerOrder, false);
+    await assert.rejects(() => orders.get(secondBuyer, buyerPage.items[0]!.id), /Order was not found/);
     const sellerPage = await orders.list(sellerActor, { limit: 20 });
     assert.equal(sellerPage.items.length, 2);
   });
@@ -230,7 +239,8 @@ describe("secure order and payout persistence", () => {
     await prisma.orders.update({ where: { id: row.id }, data: { status: "paid" } });
     await orders.transition(sellerActor, row.id, { status: "processing" }, randomUUID());
     await orders.transition(sellerActor, row.id, { status: "shipped" }, randomUUID());
-    await orders.transition(buyer, row.id, { status: "delivered" }, randomUUID());
+    const delivered = await orders.transition(buyer, row.id, { status: "delivered" }, randomUUID());
+    assert.equal("commissionRate" in delivered, false);
 
     const requestKey = randomUUID();
     const requested = await payouts.request(sellerActor, row.id, requestKey);

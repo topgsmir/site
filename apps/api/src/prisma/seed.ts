@@ -1,4 +1,5 @@
 import { AuthService } from "../modules/auth/auth.service";
+import { AuthLoginSettingsService } from "../modules/auth/auth-login-settings.service";
 import { PrismaService } from "./prisma.service";
 
 type AdminSeedConfig = {
@@ -9,7 +10,7 @@ type AdminSeedConfig = {
 };
 
 const prisma = new PrismaService();
-const auth = new AuthService(prisma);
+const auth = new AuthService(prisma, new AuthLoginSettingsService(prisma));
 
 function readAdminConfig(): AdminSeedConfig | null {
   const values = {

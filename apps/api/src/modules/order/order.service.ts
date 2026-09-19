@@ -21,11 +21,15 @@ import type {
 } from "./dto/order.dto";
 import { UsdRateService } from "../usd-rate/usd-rate.service";
 import { AmadastSettingsService } from "../../integrations/shipping/amadast/amadast-settings.service";
+import { SellerShippingProfileService } from "../../integrations/shipping/seller-shipping-profile.service";
+import { signUploadDownloadLink } from "./upload-download-link";
 
 const orderSelect = {
   id: true,
+  traffic_source: true,
   buyer_id: true,
   seller_id: true,
+  checkout_id: true,
   status: true,
   currency: true,
   total_amount: true,
@@ -56,6 +60,16 @@ const orderSelect = {
   }
 } satisfies Prisma.ordersSelect;
 
+const buyerOrderSummarySelect = {
+  id: true,
+  status: true,
+  currency: true,
+  total_amount: true,
+  created_at: true,
+  seller: { select: { shop_name: true } },
+  items: { select: { id: true, product_title: true, product_type: true, quantity: true } }
+} satisfies Prisma.ordersSelect;
+
 type OrderRecord = Prisma.ordersGetPayload<{ select: typeof orderSelect }>;
 
 @Injectable()
@@ -65,7 +79,8 @@ export class OrderService {
     @Optional() private readonly crypto?: CredentialCryptoService,
     @Optional() private readonly config?: ConfigService,
     @Optional() private readonly usdRates?: UsdRateService,
-    @Optional() private readonly amadastSettings?: AmadastSettingsService
+    @Optional() private readonly amadastSettings?: AmadastSettingsService,
+    @Optional() private readonly sellerShippingProfiles?: SellerShippingProfileService
   ) {}
 
   async list(actor: AppUser, input: ListOrdersQueryDto) {
@@ -76,6 +91,34 @@ export class OrderService {
         select: { id: true }
       });
       if (!cursor) throw new NotFoundException("Order page cursor was not found");
+    }
+    if (actor.role === "buyer") {
+      const rows = await this.prisma.orders.findMany({
+        where,
+        ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+        take: input.limit + 1,
+        orderBy: [{ created_at: "desc" }, { id: "desc" }],
+        select: buyerOrderSummarySelect
+      });
+      const hasMore = rows.length > input.limit;
+      const page = hasMore ? rows.slice(0, input.limit) : rows;
+      return {
+        items: page.map((order) => ({
+          id: order.id,
+          status: order.status,
+          currency: order.currency.trim(),
+          totalAmount: order.total_amount.toString(),
+          createdAt: order.created_at.toISOString(),
+          seller: { shopName: order.seller.shop_name },
+          items: order.items.map((item) => ({
+            id: item.id,
+            productTitle: item.product_title,
+            productType: item.product_type,
+            quantity: item.quantity
+          }))
+        })),
+        nextCursor: hasMore ? page.at(-1)?.id ?? null : null
+      };
     }
     const rows = await this.prisma.orders.findMany({
       where,
@@ -91,7 +134,11 @@ export class OrderService {
       items: page.map((order) => this.map(order)),
       nextCursor: hasMore ? page.at(-1)?.id ?? null : null,
       shippingProviders: {
-        amadast: { enabled: actor.role === "seller-admin" || actor.role === "seller-staff" ? await this.amadastSettings?.isEnabled() ?? false : false }
+        amadast: {
+          enabled: actor.role === "seller-admin" || actor.role === "seller-staff"
+            ? Boolean(await this.amadastSettings?.isEnabled() && await this.sellerShippingProfiles?.isReadyForActor(actor))
+            : false
+        }
       }
     };
   }
@@ -101,7 +148,7 @@ export class OrderService {
     const order = await this.prisma.orders.findFirst({ where: { ...where, id: orderId }, select: orderSelect });
     if (!order) throw new NotFoundException("Order was not found");
     await this.auditBridgeAccess(actor.id, [order], "detail");
-    return this.map(order);
+    return this.mapForActor(order, actor);
   }
 
   async create(actor: AppUser, input: CreateOrderDto, idempotencyKey: string) {
@@ -235,6 +282,7 @@ export class OrderService {
         const created = await transaction.orders.create({
           data: {
             buyer_id: actor.id,
+            traffic_source: input.trafficSource ?? null,
             seller_id: offer.listing.seller.id,
             status: "pending",
             currency,
@@ -319,7 +367,7 @@ export class OrderService {
         });
         return created;
       });
-      return this.map(order);
+      return this.mapForActor(order, actor);
     } catch (error) {
       if (this.isUniqueConflict(error)) {
         const replay = await this.prisma.orders.findUnique({
@@ -333,7 +381,7 @@ export class OrderService {
         });
         if (replay) {
           this.assertSameRequest(replay.request_hash, requestHash);
-          return this.map(replay);
+          return this.mapForActor(replay, actor);
         }
       }
       throw error;
@@ -429,7 +477,7 @@ export class OrderService {
           select: orderSelect
         });
       });
-      return this.map(order);
+      return this.mapForActor(order, actor);
     } catch (error) {
       if (this.isUniqueConflict(error)) {
         const replay = await this.prisma.order_events.findUnique({
@@ -443,7 +491,7 @@ export class OrderService {
         });
         if (replay) {
           this.assertSameRequest(replay.request_hash, requestHash);
-          return this.map(replay.order);
+          return this.mapForActor(replay.order, actor);
         }
       }
       throw error;
@@ -473,7 +521,7 @@ export class OrderService {
     });
   }
 
-  async claimDigitalDownload(actor: AppUser, orderId: string, itemId: string) {
+  async claimDigitalDownload(actor: AppUser, orderId: string, itemId: string, clientIp: string) {
     if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can download purchases");
     return this.prisma.$transaction(async (tx) => {
       const entitlement = await tx.digital_entitlements.findFirst({
@@ -482,13 +530,23 @@ export class OrderService {
       });
       if (!entitlement) throw new NotFoundException("Digital delivery was not found");
       if (entitlement.max_downloads > 0 && entitlement.download_count >= entitlement.max_downloads) throw new ConflictException("The download limit has been reached");
+      let signedUrl: string;
+      try {
+        signedUrl = signUploadDownloadLink(
+          entitlement.delivery_url,
+          clientIp,
+          this.config?.get<string>("UPLOAD_DOWNLOAD_HOSTS") ?? "",
+          this.config?.get<string>("UPLOAD_DOWNLOAD_SECRET") ?? ""
+        );
+      } catch {
+        throw new ServiceUnavailableException("Digital delivery is not configured");
+      }
       const claimed = await tx.digital_entitlements.updateMany({
         where: { id: entitlement.id, ...(entitlement.max_downloads > 0 ? { download_count: { lt: entitlement.max_downloads } } : {}) },
         data: { download_count: { increment: 1 }, last_accessed_at: new Date() }
       });
       if (claimed.count !== 1) throw new ConflictException("The download limit has been reached");
-      if (!this.isHttpsUrl(entitlement.delivery_url)) throw new ConflictException("The delivery URL is invalid");
-      return entitlement.delivery_url;
+      return signedUrl;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
@@ -600,6 +658,8 @@ export class OrderService {
     return {
       id: order.id,
       buyerId: order.buyer_id,
+      checkoutId: order.checkout_id,
+      trafficSource: order.traffic_source,
       seller: { id: order.seller_id, shopName: order.seller.shop_name },
       buyer: { fullName: order.buyer.full_name, email: order.buyer.email, phoneNumber: order.buyer.phone_number },
       status: order.status,
@@ -638,6 +698,24 @@ export class OrderService {
       })),
       createdAt: order.created_at.toISOString(),
       updatedAt: order.updated_at.toISOString()
+    };
+  }
+
+  private mapForActor(order: OrderRecord, actor: AppUser) {
+    const mapped = this.map(order);
+    if (actor.role !== "buyer") return mapped;
+    return {
+      id: mapped.id,
+      checkoutId: mapped.checkoutId,
+      seller: mapped.seller,
+      status: mapped.status,
+      currency: mapped.currency,
+      totalAmount: mapped.totalAmount,
+      shippingAddress: mapped.shippingAddress,
+      shipment: mapped.shipment,
+      items: mapped.items,
+      createdAt: mapped.createdAt,
+      updatedAt: mapped.updatedAt
     };
   }
 

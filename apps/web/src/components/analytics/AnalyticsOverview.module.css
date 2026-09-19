@@ -1,0 +1,66 @@
+/* Hallmark · component: analytics workspace · genre: modern-minimal · theme: TopGSM Cobalt · states: default · hover · focus · active · disabled · loading · error · success */
+/* Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4 */
+.workspace { display: grid; gap: var(--space-dashboard-xl); color: var(--color-dashboard-ink); }
+.header, .cardHead { display: flex; align-items: end; justify-content: space-between; gap: var(--space-dashboard-lg); }
+.header h1, .cardHead h2, .breakdown h2 { margin: 0; font-family: var(--font-dashboard-display); font-style: normal; font-weight: 600; }
+.header h1 { font-size: clamp(var(--text-dashboard-xl), 4vw, var(--text-dashboard-2xl)); overflow-wrap: anywhere; }
+.header p, .cardHead p { max-width: 64ch; margin: var(--space-dashboard-xs) 0 0; color: var(--color-dashboard-muted); line-height: 1.7; }
+.refresh, .customRange button { min-height: 2.75rem; padding-inline: var(--space-dashboard-lg); border: 0; border-radius: var(--radius-dashboard-round); color: var(--color-dashboard-accent-ink); background: var(--color-dashboard-accent); font: inherit; font-weight: 650; white-space: nowrap; cursor: pointer; transition: transform var(--dur-dashboard-short) var(--ease-dashboard-out), opacity var(--dur-dashboard-short) var(--ease-dashboard-out); }
+.refresh:focus-visible, .customRange button:focus-visible, .presets button:focus-visible, .customRange input:focus-visible, .cardHead a:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 3px; }
+.refresh:active, .customRange button:active { transform: scale(.98); }
+.refresh:disabled, .customRange button:disabled { cursor: wait; opacity: .55; }
+.filters { display: grid; gap: var(--space-dashboard-md); padding: var(--space-dashboard-sm); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-lg); background: var(--color-dashboard-surface); box-shadow: var(--shadow-dashboard-card); }
+.presets { display: flex; gap: var(--space-dashboard-2xs); overflow-x: auto; scrollbar-width: thin; }
+.presets button { min-height: 2.5rem; padding-inline: var(--space-dashboard-md); border: 0; border-radius: var(--radius-dashboard-round); color: var(--color-dashboard-muted); background: transparent; font: inherit; font-size: var(--text-dashboard-sm); white-space: nowrap; cursor: pointer; }
+.presets button[aria-pressed="true"] { color: var(--color-dashboard-accent); background: var(--color-dashboard-accent-soft); font-weight: 700; }
+.customRange { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-dashboard-sm); padding-block-start: var(--space-dashboard-sm); border-block-start: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
+.customRange label { display: grid; gap: var(--space-dashboard-2xs); color: var(--color-dashboard-muted); font-size: var(--text-dashboard-xs); }
+.customRange input { min-width: 0; min-height: 2.75rem; padding-inline: var(--space-dashboard-sm); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-control); color: var(--color-dashboard-ink); background: var(--color-dashboard-paper); font: inherit; }
+.customRange button { grid-column: 1 / -1; }
+.metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-dashboard-sm); }
+.metrics article { min-width: 0; min-height: 9rem; padding: var(--space-dashboard-lg); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-card); background: var(--color-dashboard-surface); box-shadow: var(--shadow-dashboard-card); }
+.metrics span { display: block; color: var(--color-dashboard-muted); font-size: var(--text-dashboard-xs); }
+.metrics strong { display: block; margin-block: var(--space-dashboard-md); font-size: clamp(var(--text-dashboard-md), 3vw, var(--text-dashboard-xl)); font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.metrics small { color: var(--color-dashboard-success); font-size: var(--text-dashboard-xs); }
+.metrics small[data-tone="down"] { color: var(--color-dashboard-error); }
+.chartCard, .breakdown, .ranking, .activity { min-width: 0; padding: var(--space-dashboard-lg); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-card); background: var(--color-dashboard-surface); box-shadow: var(--shadow-dashboard-card); }
+.cardHead h2, .breakdown h2 { font-size: var(--text-dashboard-md); }
+.cardHead a { color: var(--color-dashboard-accent); font-size: var(--text-dashboard-sm); text-decoration: none; white-space: nowrap; }
+.legend { display: flex; flex-wrap: wrap; gap: var(--space-dashboard-md); color: var(--color-dashboard-muted); font-size: var(--text-dashboard-xs); }
+.legend span::before { display: inline-block; width: .6rem; height: .6rem; margin-inline-end: var(--space-dashboard-xs); border-radius: 50%; background: var(--color-dashboard-accent); content: ""; }
+.legend span[data-series="income"]::before { background: var(--color-dashboard-success); }
+.chart { width: 100%; min-height: 15rem; margin-block-start: var(--space-dashboard-lg); overflow: visible; }
+.chart path { fill: none; stroke: var(--color-dashboard-rule); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.chart polyline { fill: none; stroke: var(--color-dashboard-accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.chart polyline[data-series="income"] { stroke: var(--color-dashboard-success); }
+.chart circle { fill: var(--color-dashboard-surface); stroke: var(--color-dashboard-accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.detailGrid, .rankGrid { display: grid; gap: var(--space-dashboard-sm); }
+.breakdown ul, .ranking ol, .activity ul { display: grid; gap: 0; margin: var(--space-dashboard-md) 0 0; padding: 0; list-style: none; }
+.breakdown li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-dashboard-xs); padding-block: var(--space-dashboard-sm); border-block-start: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
+.breakdown li > div { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: var(--space-dashboard-sm); }
+.breakdown li span, .breakdown li small { color: var(--color-dashboard-muted); font-size: var(--text-dashboard-xs); }
+.breakdown li strong { font-size: var(--text-dashboard-sm); font-variant-numeric: tabular-nums; }
+.breakdown li i { display: block; align-self: center; height: .35rem; overflow: hidden; border-radius: var(--radius-dashboard-round); background: var(--color-dashboard-surface-raised); }
+.breakdown li b { display: block; height: 100%; border-radius: inherit; background: var(--color-dashboard-accent); }
+.ranking li, .activity li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-dashboard-sm); align-items: center; padding-block: var(--space-dashboard-md); border-block-start: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
+.ranking li > span { display: grid; width: 1.75rem; height: 1.75rem; place-items: center; border-radius: 50%; color: var(--color-dashboard-muted); background: var(--color-dashboard-surface-raised); font-size: var(--text-dashboard-xs); }
+.ranking li div, .activity li div { display: grid; min-width: 0; gap: var(--space-dashboard-2xs); }
+.ranking li strong, .activity li strong { overflow: hidden; font-size: var(--text-dashboard-sm); text-overflow: ellipsis; white-space: nowrap; }
+.ranking li small, .activity li small { overflow: hidden; color: var(--color-dashboard-muted); font-size: var(--text-dashboard-xs); text-overflow: ellipsis; white-space: nowrap; }
+.activity li > span { min-width: 3.8rem; padding: var(--space-dashboard-2xs) var(--space-dashboard-xs); border-radius: var(--radius-dashboard-round); color: var(--color-dashboard-success); background: var(--color-dashboard-success-soft); font-size: var(--text-dashboard-xs); text-align: center; }
+.activity li > span[data-kind="refund"] { color: var(--color-dashboard-error); background: var(--color-dashboard-error-soft); }
+.activity li > span[data-kind="payout"] { color: var(--color-dashboard-accent); background: var(--color-dashboard-accent-soft); }
+.activity li > div:last-child { text-align: end; }
+.empty { margin: var(--space-dashboard-xl) 0 0; color: var(--color-dashboard-muted); text-align: center; }
+.error, .inlineError { padding: var(--space-dashboard-md); border: var(--rule-dashboard-thin) solid var(--color-dashboard-error); border-radius: var(--radius-dashboard-control); color: var(--color-dashboard-error); background: var(--color-dashboard-error-soft); }
+.error button { min-height: 2.5rem; border: var(--rule-dashboard-thin) solid currentColor; border-radius: var(--radius-dashboard-round); color: inherit; background: transparent; cursor: pointer; }
+.skeleton { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-dashboard-sm); color: var(--color-dashboard-muted); }
+.skeleton span { grid-column: 1 / -1; }
+.skeleton i { min-height: 9rem; border-radius: var(--radius-dashboard-card); background: var(--color-dashboard-surface-raised); animation: pulse var(--dur-dashboard-loader) var(--ease-dashboard-in-out) infinite alternate; }
+.srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@keyframes pulse { to { opacity: .45; } }
+@media (hover: hover) and (pointer: fine) { .refresh:hover, .customRange button:hover { transform: translateY(-1px); } .presets button:hover { color: var(--color-dashboard-ink); background: var(--color-dashboard-surface-raised); } .cardHead a:hover { text-decoration: underline; } }
+@media (min-width: 42rem) { .customRange { grid-template-columns: repeat(2, minmax(0, 1fr)) auto; align-items: end; } .customRange button { grid-column: auto; } .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } .detailGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 72rem) { .metrics { grid-template-columns: repeat(6, minmax(0, 1fr)); } .detailGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } .rankGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 30rem) { .header, .cardHead { align-items: start; flex-direction: column; } .refresh { width: 100%; } .metrics { grid-template-columns: 1fr; } .ranking li, .activity li { grid-template-columns: auto minmax(0, 1fr); } .ranking li > strong, .activity li > div:last-child { grid-column: 2; text-align: start; } }
+@media (prefers-reduced-motion: reduce) { .refresh, .customRange button { transition-duration: var(--dur-dashboard-reduced); } .skeleton i { animation: none; opacity: .65; } }

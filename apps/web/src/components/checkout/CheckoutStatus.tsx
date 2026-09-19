@@ -34,7 +34,7 @@ export function CheckoutStatus({ locale, checkoutId }: { locale: Locale; checkou
     setBusy(groupId); setError("");
     try {
       const response = await api.post<{ paymentUrl?: string }>(`/checkouts/${checkoutId}/payment-groups/${groupId}/initiate`, {}, { headers: { "Idempotency-Key": crypto.randomUUID() } });
-      if (response.data.paymentUrl) window.location.assign(response.data.paymentUrl); else await load();
+      if (response.data.paymentUrl) window.location.assign(response.data.paymentUrl.startsWith("/pay/local/") ? `/${locale}${response.data.paymentUrl}` : response.data.paymentUrl); else await load();
     } catch { setError(c.error); setBusy(""); }
   }
 

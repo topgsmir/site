@@ -2,14 +2,16 @@ import { strict as assert } from "node:assert";
 import { after, before, describe, it } from "node:test";
 import { createHash, randomUUID } from "node:crypto";
 import { AuthRateLimitService } from "./auth-rate-limit.service";
+import { SecurityPolicyService } from "./security-policy.service";
 import { AuthService } from "./auth.service";
+import { AuthLoginSettingsService } from "./auth-login-settings.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { assertDedicatedTestDatabase } from "../../test/test-database";
 
 assertDedicatedTestDatabase();
 const prisma = new PrismaService();
-const auth = new AuthService(prisma);
-const rateLimits = new AuthRateLimitService(prisma);
+const auth = new AuthService(prisma, new AuthLoginSettingsService(prisma));
+const rateLimits = new AuthRateLimitService(prisma, new SecurityPolicyService(prisma));
 const suffix = randomUUID();
 const email = `security-${suffix}@example.com`;
 const ip = `test-${suffix}`;

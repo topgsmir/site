@@ -18,8 +18,12 @@ export type AdminSection =
   | "ai-models"
   | "ai-assistant"
   | "settings-sms"
+  | "security-rate-limit"
+  | "security-login"
+  | "security-captcha"
   | "settings-shipping"
   | "settings-usd"
+  | "settings-comments"
   | "editorial";
 
 export type AdminPanelRouteProps = {

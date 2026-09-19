@@ -1,0 +1,30 @@
+.groups { display: grid; gap: var(--space-dashboard-xl); max-width: 70rem; margin-block-start: var(--space-dashboard-xl); }
+.group { min-width: 0; }
+.group > h2 { margin-block-end: var(--space-dashboard-sm); padding-block-end: var(--space-dashboard-sm); border-block-end: 1px solid var(--color-dashboard-rule); font: 600 1.3rem var(--font-dashboard-display); }
+.list { display: grid; gap: var(--space-dashboard-sm); max-width: 70rem; margin-block-start: var(--space-dashboard-xl); }
+.group .list { margin: 0; }
+.policy { min-width: 0; padding: var(--space-dashboard-md) var(--space-dashboard-lg); border: 1px solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-card); background: var(--color-dashboard-surface-raised); }
+.policyHeader { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-dashboard-md); }
+.policyHeader > div { display: grid; gap: 2px; }
+.policyHeader h3 { font: 600 1.05rem var(--font-dashboard-display); }
+.policyHeader p { color: var(--color-dashboard-muted); font-size: var(--text-dashboard-xs); line-height: 1.5; }
+.captchaPolicy { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-dashboard-md); }
+.ratePolicy .policyHeader { margin-block-end: var(--space-dashboard-md); }
+.fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-dashboard-md); }
+.fields label { display: grid; align-content: start; gap: var(--space-dashboard-xs); min-width: 0; color: var(--color-dashboard-ink-soft); font-size: var(--text-dashboard-xs); font-weight: 600; }
+.fields input { width: 100%; min-height: 44px; padding-inline: var(--space-dashboard-md); border: 1px solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-control); background: var(--color-dashboard-paper); color: var(--color-dashboard-ink); font: inherit; font-variant-numeric: tabular-nums; }
+.fields input:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
+.policyActions { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-dashboard-md); margin-block-start: var(--space-dashboard-md); padding-block-start: var(--space-dashboard-sm); border-block-start: 1px solid var(--color-dashboard-rule); }
+.captchaPolicy .policyActions { margin: 0; padding: 0; border: 0; }
+.policyActions span { font-size: var(--text-dashboard-xs); }
+.policySuccess { color: var(--color-dashboard-success); }
+.policyPending { color: var(--color-dashboard-muted); }
+.policyError { color: var(--color-dashboard-error); }
+.policyActions button { min-height: 40px; padding-inline: var(--space-dashboard-lg); border: 1px solid var(--color-dashboard-accent); border-radius: var(--radius-dashboard-round); color: var(--color-dashboard-accent-ink); background: var(--color-dashboard-accent); font: inherit; font-weight: 600; cursor: pointer; transition: transform var(--dur-dashboard-micro) var(--ease-dashboard-out); }
+.policyActions button:disabled { cursor: not-allowed; opacity: .48; }
+.policyActions button:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .policyActions button:hover:not(:disabled) { transform: translateY(-1px); } }
+.policyActions button:active:not(:disabled) { transform: translateY(1px); }
+@media (max-width: 64rem) { .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 40rem) { .policy { padding: var(--space-dashboard-md); } .fields { grid-template-columns: 1fr; } .captchaPolicy { grid-template-columns: 1fr; } .policyActions { justify-content: space-between; } .captchaPolicy .policyActions { justify-content: flex-end; } }
+@media (prefers-reduced-motion: reduce) { .policyActions button { transition-duration: var(--dur-dashboard-reduced); } .policyActions button:active:not(:disabled) { transform: none; } }

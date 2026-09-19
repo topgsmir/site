@@ -6,6 +6,7 @@ import { IdempotencyKey } from "../../modules/auth/idempotency-key.decorator";
 import type { AuthenticatedRequest } from "../../modules/auth/platform-admin.guard";
 import { PlatformAdminGuard } from "../../modules/auth/platform-admin.guard";
 import {
+  CompleteLocalPaymentDto,
   InitiatePaymentDto,
   ListAdminPaymentTransactionsQueryDto,
   ListPaymentSellerOptionsQueryDto,
@@ -23,6 +24,24 @@ export class PaymentController {
     private readonly config: ConfigService,
     private readonly rateLimits: AuthRateLimitService
   ) {}
+
+  @Get("local/:authority")
+  @UseGuards(AuthenticatedGuard)
+  localPayment(@Req() request: AuthenticatedRequest, @Param("authority") authority: string) {
+    return this.application.localPayment(request.authenticatedUser!, authority);
+  }
+
+  @Post("local/:authority/complete")
+  @UseGuards(AuthenticatedGuard)
+  async completeLocalPayment(
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string,
+    @Param("authority") authority: string,
+    @Body() body: CompleteLocalPaymentDto
+  ) {
+    await this.rateLimits.consumePaymentCallback(authority, clientIp);
+    return this.application.completeLocalPayment(request.authenticatedUser!, authority, body.status);
+  }
 
   @Post(":providerCode")
   @UseGuards(AuthenticatedGuard)

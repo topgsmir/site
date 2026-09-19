@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE, api } from "@/lib/api/client";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
@@ -10,6 +11,7 @@ import styles from "./BridgeWorkspace.module.css";
 
 type Order = {
   id: string;
+  checkoutId?: string | null;
   status: string;
   totalAmount: string;
   currency: string;
@@ -48,6 +50,7 @@ const COPY = {
     reason: "Tell us why",
     send: "Send request",
     sent: "Refund request sent.",
+    account: "My account", continuePayment: "Continue payment", confirm: "Confirm delivery", cancel: "Cancel order", working: "Working…", actionError: "The order could not be updated.",
     error: "The order could not be loaded.",
   },
   fa: {
@@ -63,6 +66,7 @@ const COPY = {
     reason: "دلیل درخواست",
     send: "ارسال درخواست",
     sent: "درخواست بازپرداخت ارسال شد.",
+    account: "حساب من", continuePayment: "ادامه پرداخت", confirm: "تأیید تحویل", cancel: "لغو سفارش", working: "در حال انجام…", actionError: "سفارش به‌روز نشد. دوباره تلاش کنید.",
     error: "بارگذاری سفارش ممکن نبود.",
   },
   ar: {
@@ -78,9 +82,16 @@ const COPY = {
     reason: "سبب الطلب",
     send: "إرسال الطلب",
     sent: "تم إرسال طلب الاسترداد.",
+    account: "حسابي", continuePayment: "متابعة الدفع", confirm: "تأكيد التسليم", cancel: "إلغاء الطلب", working: "جارٍ التنفيذ…", actionError: "تعذر تحديث الطلب.",
     error: "تعذر تحميل الطلب.",
   },
 } as const;
+
+const STATUS: Record<Locale, Record<string, string>> = {
+  en: { pending: "Payment pending", paid: "Paid", processing: "Processing", shipped: "Shipped", awaiting_confirmation: "Awaiting confirmation", delivered: "Delivered", cancelled: "Cancelled", waiting_payment: "Waiting for payment", queued: "Queued", submitting: "Submitting", submitted: "Submitted", polling: "Checking result", manual_required: "Needs review", succeeded: "Completed", failed: "Failed", refund_requested: "Refund requested" },
+  fa: { pending: "در انتظار پرداخت", paid: "پرداخت‌شده", processing: "در حال پردازش", shipped: "ارسال‌شده", awaiting_confirmation: "در انتظار تأیید", delivered: "تحویل‌شده", cancelled: "لغوشده", waiting_payment: "در انتظار پرداخت", queued: "در صف انجام", submitting: "در حال ثبت", submitted: "ثبت‌شده", polling: "در حال بررسی نتیجه", manual_required: "نیازمند بررسی", succeeded: "انجام‌شده", failed: "ناموفق", refund_requested: "درخواست بازپرداخت ثبت‌شده" },
+  ar: { pending: "بانتظار الدفع", paid: "مدفوع", processing: "قيد المعالجة", shipped: "تم الشحن", awaiting_confirmation: "بانتظار التأكيد", delivered: "تم التسليم", cancelled: "ملغى", waiting_payment: "بانتظار الدفع", queued: "في قائمة الانتظار", submitting: "جارٍ الإرسال", submitted: "تم الإرسال", polling: "جارٍ فحص النتيجة", manual_required: "بحاجة إلى مراجعة", succeeded: "مكتمل", failed: "فشل", refund_requested: "تم طلب الاسترداد" }
+};
 
 export function BuyerOrderDetails({ locale, orderId }: { locale: Locale; orderId: string }) {
   const c = COPY[locale];
@@ -88,9 +99,11 @@ export function BuyerOrderDetails({ locale, orderId }: { locale: Locale; orderId
   const [error, setError] = useState("");
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
+      setError("");
       setOrder((await api.get<Order>(`/orders/${orderId}`)).data);
     } catch {
       setError(c.error);
@@ -116,12 +129,22 @@ export function BuyerOrderDetails({ locale, orderId }: { locale: Locale; orderId
 
   async function refund() {
     if (!bridge) return;
+    setBusy(true); setError("");
     try {
       await api.post(`/bridge/orders/${bridge.id}/refund-request`, { reason });
       setMessage(c.sent);
     } catch {
-      setError(c.error);
-    }
+      setError(c.actionError);
+    } finally { setBusy(false); }
+  }
+
+  async function transition(status: "delivered" | "cancelled") {
+    setBusy(true); setError("");
+    try {
+      await api.patch(`/orders/${orderId}/status`, { status }, { headers: { "Idempotency-Key": crypto.randomUUID() } });
+      await load();
+    } catch { setError(c.actionError); }
+    finally { setBusy(false); }
   }
 
   return (
@@ -131,8 +154,8 @@ export function BuyerOrderDetails({ locale, orderId }: { locale: Locale; orderId
           <p className={styles.brand}>{c.brand}</p>
           <h1>{order?.items[0]?.productTitle ?? `#${orderId}`}</h1>
         </div>
-        <Link className={styles.link} href={`/${locale}`}>
-          {c.back}
+        <Link className={styles.link} href={`/${locale}/account/orders` as Route}>
+          {c.account}
         </Link>
       </header>
       <main className={styles.main}>
@@ -147,7 +170,7 @@ export function BuyerOrderDetails({ locale, orderId }: { locale: Locale; orderId
               <article className={styles.card}>
                 <h2>{c.payment}</h2>
                 <span className={styles.status} data-tone={order.status === "pending" ? "warn" : "good"}>
-                  {order.status}
+                  {STATUS[locale][order.status] ?? order.status}
                 </span>
                 <strong>
                   {formatCurrencyAmount(order.totalAmount, order.currency, locale)} {currencyLabel(order.currency)}
@@ -159,7 +182,7 @@ export function BuyerOrderDetails({ locale, orderId }: { locale: Locale; orderId
                   className={styles.status}
                   data-tone={bridge?.status === "succeeded" ? "good" : bridge?.status === "failed" ? "bad" : "warn"}
                 >
-                  {bridge?.status ?? order.status}
+                  {STATUS[locale][bridge?.status ?? order.status] ?? bridge?.status ?? order.status}
                 </span>
                 <p>{c.wait}</p>
               </article>
@@ -168,9 +191,14 @@ export function BuyerOrderDetails({ locale, orderId }: { locale: Locale; orderId
                 <p>{order.seller.shopName}</p>
               </article>
             </section>
+            <div className={styles.actions}>
+              {order.status === "pending" && order.checkoutId ? <Link className={styles.link} href={`/${locale}/checkout/${order.checkoutId}` as Route}>{c.continuePayment}</Link> : null}
+              {order.status === "pending" ? <button className={styles.buttonQuiet} type="button" disabled={busy} onClick={() => void transition("cancelled")}>{busy ? c.working : c.cancel}</button> : null}
+              {(order.status === "shipped" || order.status === "awaiting_confirmation" || (order.status === "paid" && order.items.length > 0 && order.items.every((item) => item.productType === "digital"))) ? <button className={styles.button} type="button" disabled={busy} onClick={() => void transition("delivered")}>{busy ? c.working : c.confirm}</button> : null}
+            </div>
             {order.shippingAddress ? <section className={styles.section}><div className={styles.sectionHead}><h2>{locale === "fa" ? "نشانی تحویل" : locale === "ar" ? "عنوان التسليم" : "Delivery address"}</h2></div><p>{order.shippingAddress.recipientName} · {order.shippingAddress.phoneNumber}</p><p>{order.shippingAddress.province}، {order.shippingAddress.city}، {order.shippingAddress.addressLine} · {order.shippingAddress.postalCode}</p>{order.shipment ? <p>{order.shipment.carrier} · {order.shipment.trackingCode}</p> : null}</section> : null}
             {order.items.some((item) => item.digitalDelivery) ? <section className={styles.section}><div className={styles.sectionHead}><h2>{locale === "fa" ? "فایل‌های خریداری‌شده" : locale === "ar" ? "الملفات المشتراة" : "Purchased files"}</h2></div>{order.items.map((item) => item.digitalDelivery ? <p key={item.id}><a href={`${API_BASE}${item.digitalDelivery.downloadUrl}`} target="_blank" rel="noopener noreferrer">{item.productTitle} · {item.digitalDelivery.destinationHost}</a></p> : null)}</section> : null}
-            <section className={styles.section}>
+            {bridge ? <section className={styles.section}>
               <div className={styles.sectionHead}>
                 <h2>{c.inputs}</h2>
               </div>
@@ -181,7 +209,7 @@ export function BuyerOrderDetails({ locale, orderId }: { locale: Locale; orderId
                   </li>
                 ))}
               </ul>
-            </section>
+            </section> : null}
             {bridge?.result ? (
               <section className={styles.section}>
                 <div className={styles.sectionHead}>
@@ -205,8 +233,8 @@ export function BuyerOrderDetails({ locale, orderId }: { locale: Locale; orderId
                   />
                   <small>&nbsp;</small>
                 </label>
-                <button className={styles.button} disabled={reason.trim().length < 3} onClick={() => void refund()}>
-                  {c.send}
+                <button className={styles.button} disabled={busy || reason.trim().length < 3} onClick={() => void refund()}>
+                  {busy ? c.working : c.send}
                 </button>
               </section>
             ) : null}
@@ -217,7 +245,7 @@ export function BuyerOrderDetails({ locale, orderId }: { locale: Locale; orderId
             ) : null}
           </>
         ) : (
-          <p className={styles.empty}>…</p>
+          <div className={styles.empty}><p>{error || "…"}</p>{error ? <button className={styles.buttonQuiet} type="button" onClick={() => void load()}>{locale === "fa" ? "تلاش دوباره" : locale === "ar" ? "حاول مجددًا" : "Try again"}</button> : null}</div>
         )}
       </main>
     </div>

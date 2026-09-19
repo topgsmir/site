@@ -34,6 +34,7 @@ export default async function SellerDashboardPage({ params, searchParams }: Sell
   const requestedSection = query?.section;
   const initialSection = requestedSection === "products" ||
     (requestedSection === "orders" && user.permissions?.includes("orders_manage")) ||
+    (requestedSection === "shipping" && user.permissions?.includes("physical_products_manage")) ||
     (requestedSection === "bridge" && process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true") ||
     (requestedSection === "coupons" && user.permissions?.includes("coupons_manage")) ||
     (requestedSection === "blog" && user.permissions?.includes("blog_manage"))

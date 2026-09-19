@@ -66,6 +66,12 @@ export class CheckoutPaymentSelectionDto {
 
 export class CreateCheckoutDto extends QuoteCheckoutDto {
   @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @Matches(/^[a-zA-Z0-9][a-zA-Z0-9._ -]*$/)
+  trafficSource?: string;
+
+  @IsOptional()
   @ValidateNested()
   @Type(() => ShippingAddressDto)
   shippingAddress?: ShippingAddressDto;

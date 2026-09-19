@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { Prisma } from "../../prisma/client";
 import { CheckoutService } from "./checkout.service";
 
-function offer(input: { id: string; sellerId: string; type: "digital" | "physical" | "service"; price: string; stock?: number; url?: string }) {
+function offer(input: { id: string; sellerId: string; type: "digital" | "physical" | "service"; price: string; stock?: number; url?: string; physicalGranted?: boolean }) {
   return {
     id: input.id,
     price: new Prisma.Decimal(input.price),
@@ -11,7 +11,7 @@ function offer(input: { id: string; sellerId: string; type: "digital" | "physica
     digital: input.type === "digital" ? { file_reference: input.url ?? "https://uploads.example/file", max_downloads: 2 } : null,
     physical: input.type === "physical" ? { stock: input.stock ?? 10 } : null,
     listing: {
-      seller: { id: input.sellerId, shop_name: `Seller ${input.sellerId}`, commission: new Prisma.Decimal("0.1"), holdback_rate: new Prisma.Decimal("0.05") },
+      seller: { id: input.sellerId, shop_name: `Seller ${input.sellerId}`, commission: new Prisma.Decimal("0.1"), holdback_rate: new Prisma.Decimal("0.05"), permissions: input.type === "physical" && input.physicalGranted !== false ? [{ permission: "physical_products_manage" }] : [] },
       product: {
         id: `product-${input.id}`,
         title: `Product ${input.id}`,
@@ -74,6 +74,13 @@ describe("CheckoutService quotes", () => {
         });
         return /enough stock/i.test(error.message);
       }
+    );
+  });
+
+  it("rejects physical checkout after the seller grant is revoked", async () => {
+    await assert.rejects(
+      () => service([offer({ id: "00000000-0000-4000-8000-000000000109", sellerId: "seller-a", type: "physical", price: "1000", stock: 2, physicalGranted: false })]).quote({ items: [{ offerId: "00000000-0000-4000-8000-000000000109", quantity: 1 }] }),
+      (error: unknown) => error instanceof Error && /not currently available/i.test(error.message)
     );
   });
 

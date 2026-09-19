@@ -5,7 +5,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   const partitions = await generateSitemaps();
 
   return {
-    rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/*/admin", "/*/seller-dashboard"] },
+    rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/*/admin", "/*/seller-dashboard", "/*/account", "/*/orders"] },
     sitemap: partitions.map(({ id }) => `${SITEMAP_SITE_URL}/sitemap/${id}.xml`),
     host: SITEMAP_SITE_URL
   };

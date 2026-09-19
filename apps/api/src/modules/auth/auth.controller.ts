@@ -16,6 +16,9 @@ import { RegisterDto } from "./dto/register.dto";
 import { AuthRateLimitService } from "./auth-rate-limit.service";
 import { BrowserSessionMutation } from "./browser-session-mutation.decorator";
 import { readSessionToken, SESSION_COOKIE } from "./session-token";
+import { SecurityPolicyService } from "./security-policy.service";
+import { CaptchaService } from "../captcha/captcha.service";
+import { ForbiddenException } from "@nestjs/common";
 
 type HeaderResponse = {
   setHeader(name: string, value: string): void;
@@ -26,7 +29,9 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly rateLimits: AuthRateLimitService,
-    private readonly config: ConfigService
+    private readonly config: ConfigService,
+    private readonly policies: SecurityPolicyService,
+    private readonly captcha: CaptchaService
   ) {}
 
   @Post("register")
@@ -37,6 +42,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: HeaderResponse
   ) {
     await this.rateLimits.consumeRegistration(body.email, clientIp);
+    await this.verifyCaptcha("register", body.captchaToken);
     const session = await this.authService.register(body);
     this.setSessionCookie(response, session.token);
     return { user: session.user };
@@ -51,6 +57,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: HeaderResponse
   ) {
     await this.rateLimits.consumeLogin(body.identifier, clientIp);
+    await this.verifyCaptcha("login", body.captchaToken);
     const session = await this.authService.login(body);
     await this.rateLimits.clearSuccessfulLogin(body.identifier);
     this.setSessionCookie(response, session.token);
@@ -85,6 +92,12 @@ export class AuthController {
       "Set-Cookie",
       this.serializeCookie(token, this.authService.sessionTtlSeconds)
     );
+  }
+
+  private async verifyCaptcha(action: "login" | "register", token?: string) {
+    if (!(await this.policies.get(action)).captchaEnabled) return;
+    if (!token) throw new ForbiddenException("Captcha verification required");
+    await this.captcha.verify(token, action);
   }
 
   private serializeCookie(value: string, maxAge: number) {

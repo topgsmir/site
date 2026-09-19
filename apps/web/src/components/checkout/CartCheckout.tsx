@@ -7,6 +7,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import type { CheckoutDetail, CheckoutQuote } from "@topgsm/shared-types";
 import { DesignIcon } from "@/components/DesignIcon";
 import { api } from "@/lib/api/client";
+import { captchaTokenFor } from "@/lib/security-captcha";
+import { getTrafficSource } from "@/lib/traffic-source";
 import { readCart, writeCart, type CartItem } from "@/lib/cart";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import type { Locale } from "@/lib/i18n";
@@ -235,7 +237,8 @@ export function CartCheckout({ locale, signedInBuyer }: { locale: Locale; signed
   }
 
   async function requestOtp() {
-    const response = await api.post<{ challengeId: string; expiresAt: string }>("/auth/otp/request", { phoneNumber: phone });
+    const captchaToken = await captchaTokenFor("otp");
+    const response = await api.post<{ challengeId: string; expiresAt: string }>("/auth/otp/request", { phoneNumber: phone, ...(captchaToken ? { captchaToken } : {}) });
     const requestedAt = Date.now();
     setClock(requestedAt);
     setChallenge({ id: response.data.challengeId, requestedPhone: phone, expiresAt: Date.parse(response.data.expiresAt), resendAt: requestedAt + 60_000 });
@@ -258,6 +261,7 @@ export function CartCheckout({ locale, signedInBuyer }: { locale: Locale; signed
     if (!quote) return;
     const data = new FormData(form);
     const body = {
+      trafficSource: getTrafficSource(),
       items: items.map(({ offerId, quantity, serviceNote }) => ({ offerId, quantity, ...(serviceNote ? { serviceNote } : {}) })),
       paymentSelections: quote.groups.map((group) => ({ orderGroupKey: group.key, providerCode: selections[group.key] })),
       ...(quote.requiresShippingAddress ? { shippingAddress: { recipientName: data.get("recipientName"), phoneNumber: data.get("shippingPhone"), province: data.get("province"), city: data.get("city"), postalCode: data.get("postalCode"), addressLine: data.get("addressLine") } } : {})
@@ -266,7 +270,8 @@ export function CartCheckout({ locale, signedInBuyer }: { locale: Locale; signed
     const group = checkout.data.paymentGroups.find((item) => item.status === "pending");
     if (!group) { window.location.assign(`/${locale}/checkout/${checkout.data.id}`); return; }
     const payment = await api.post<{ paymentUrl?: string }>(`/checkouts/${checkout.data.id}/payment-groups/${group.id}/initiate`, {}, { headers: { "Idempotency-Key": crypto.randomUUID() } });
-    window.location.assign(payment.data.paymentUrl ?? `/${locale}/checkout/${checkout.data.id}`);
+    const paymentUrl = payment.data.paymentUrl;
+    window.location.assign(paymentUrl?.startsWith("/pay/local/") ? `/${locale}${paymentUrl}` : paymentUrl ?? `/${locale}/checkout/${checkout.data.id}`);
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {

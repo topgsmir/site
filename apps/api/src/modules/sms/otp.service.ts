@@ -4,6 +4,7 @@ import { Prisma } from "../../prisma/client";
 import { createHmac, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuthService } from "../auth/auth.service";
+import { AuthLoginSettingsService } from "../auth/auth-login-settings.service";
 import type { VerifyOtpDto } from "./dto/otp.dto";
 import { normalizeIranianPhone } from "./phone-number";
 import { SmsService } from "./sms.service";
@@ -11,7 +12,7 @@ import { SmsSettingsService } from "./sms-settings.service";
 
 @Injectable()
 export class OtpService {
-  constructor(private readonly prisma: PrismaService, private readonly auth: AuthService, private readonly sms: SmsService, private readonly config: ConfigService, private readonly settings: SmsSettingsService) {}
+  constructor(private readonly prisma: PrismaService, private readonly auth: AuthService, private readonly sms: SmsService, private readonly config: ConfigService, private readonly settings: SmsSettingsService, private readonly loginSettings: AuthLoginSettingsService) {}
 
   async request(rawPhone: string) {
     await this.assertEnabled();
@@ -73,6 +74,7 @@ export class OtpService {
   }
 
   private async assertEnabled() {
+    await this.loginSettings.assertPhoneOtpEnabled();
     if (!(await this.settings.isOtpEnabled())) {
       throw new ServiceUnavailableException("OTP sign-in is currently disabled");
     }

@@ -29,23 +29,22 @@ export class LocalGatewayAdapter extends BasePaymentAdapter implements OnModuleI
   }
 
   paymentUrl(providerReferenceId: string) {
-    const orderId = providerReferenceId.match(/^local-(.+)-\d+$/)?.[1];
-    return orderId ? `/pay/local/${orderId}` : undefined;
+    return /^local-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(providerReferenceId) ? `/pay/local/${providerReferenceId}` : undefined;
   }
 
   async initiate(input: PaymentIntentInput): Promise<PaymentIntentResult> {
     this.assertDevelopment();
     return {
-      providerReferenceId: `local-${input.orderId}-${Date.now()}`,
+      providerReferenceId: `local-${input.operationId}`,
       status: "pending",
-      paymentUrl: `/pay/local/${input.orderId}`
+      paymentUrl: `/pay/local/local-${input.operationId}`
     };
   }
 
   async verify(providerReferenceId: string) {
     this.assertDevelopment();
     return {
-      verified: providerReferenceId.startsWith("local-"),
+      verified: this.paymentUrl(providerReferenceId) !== undefined,
       referenceId: providerReferenceId
     };
   }

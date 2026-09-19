@@ -4,6 +4,7 @@ import { BridgeCheckout } from "@/components/bridge/BridgeCheckout";
 import { getCurrentUser } from "@/lib/auth/server";
 import { getDictionary, isLocale, type Locale } from "@/lib/i18n";
 import { ProductPage } from "./ProductPage";
+import { ProductComments } from "@/components/comments/ProductComments";
 import { getPublicProduct, type PublicProduct } from "./product.server";
 
 type ProductRouteProps = {
@@ -169,6 +170,7 @@ export default async function ProductRoute({ params }: ProductRouteProps) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
         />
         <BridgeCheckout locale={localeParam} product={product} signedInBuyer={user?.role === "buyer"} />
+        <ProductComments productId={product.id} locale={localeParam} />
       </>
     );
   }

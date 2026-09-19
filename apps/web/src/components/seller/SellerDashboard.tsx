@@ -28,6 +28,7 @@ import { LogoutButton } from "@/components/auth/LogoutButton";
 import { ProductPublicUrl } from "@/components/product/ProductPublicUrl";
 import { SellerBridgeWorkspace } from "@/components/bridge/SellerBridgeWorkspace";
 import { SellerOrders } from "@/components/seller/SellerOrders";
+import { SellerShippingProfileWorkspace } from "@/components/seller/SellerShippingProfileWorkspace";
 import { SellerCoupons } from "./SellerCoupons";
 import { SellerBlogPanel } from "./SellerBlogPanel";
 import { DesignIcon } from "@/components/DesignIcon";
@@ -35,8 +36,9 @@ import { PRODUCT_CREATION_COPY } from "./ProductCreationCopy";
 import styles from "./SellerDashboard.module.css";
 import creation from "./ProductCreation.module.css";
 import navigationStyles from "@/components/dashboard/DashboardNavigation.module.css";
+import { AnalyticsOverview } from "@/components/analytics/AnalyticsOverview";
 
-type DashboardSection = "overview" | "products" | "blog" | "coupons" | "orders" | "payouts" | "bridge";
+type DashboardSection = "overview" | "products" | "blog" | "coupons" | "orders" | "shipping" | "payouts" | "bridge";
 type RequestState = "idle" | "loading" | "error" | "success";
 
 type SellerDashboardProps = {
@@ -83,6 +85,7 @@ type DashboardCopy = {
   blog: string;
   coupons: string;
   orders: string;
+  shipping: string;
   payouts: string;
   account: string;
   welcome: string;
@@ -180,6 +183,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     blog: "Blog",
     coupons: "Coupons",
     orders: "Orders",
+    shipping: "Shipping profile",
     payouts: "Payouts",
     account: "Account",
     welcome: "Your selling workspace",
@@ -268,6 +272,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     blog: "وبلاگ",
     coupons: "کدهای تخفیف",
     orders: "سفارش‌ها",
+    shipping: "پروفایل ارسال",
     payouts: "تسویه‌ها",
     account: "حساب کاربری",
     welcome: "فضای مدیریت فروش شما",
@@ -356,6 +361,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     blog: "المدونة",
     coupons: "القسائم",
     orders: "الطلبات",
+    shipping: "ملف الشحن",
     payouts: "الدفعات",
     account: "الحساب",
     welcome: "مساحة إدارة مبيعاتك",
@@ -464,13 +470,13 @@ function makeOffer(id: string): OfferDraft {
   };
 }
 
-function makeDraft(): ProductDraft {
+function makeDraft(physicalGranted: boolean): ProductDraft {
   return {
     title: "",
     category: "",
     description: "",
     kind: "simple",
-    type: "physical",
+    type: physicalGranted ? "physical" : "digital",
     status: "draft",
     currency: "USD",
     optionName: "",
@@ -485,6 +491,7 @@ function Icon({ name }: { name: DashboardSection | "plus" | "search" | "close" |
     blog: <><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></>,
     coupons: <><path d="M4 7a3 3 0 0 0 3-3h13v6a2 2 0 0 0 0 4v6H7a3 3 0 0 0-3-3z"/><path d="M12 7v2M12 11v2M12 15v2"/></>,
     orders: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></>,
+    shipping: <><path d="M3 6h11v10H3z"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></>,
     payouts: <><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 15h2"/></>,
     bridge: <><path d="M8 7H6a4 4 0 0 0 0 8h2M16 7h2a4 4 0 0 1 0 8h-2"/><path d="M8 12h8"/></>,
     plus: <path d="M12 5v14M5 12h14"/>,
@@ -676,6 +683,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
   const [editError, setEditError] = useState("");
   const [sellServiceOpen, setSellServiceOpen] = useState(false);
   const productEditorRef = useRef<HTMLElement>(null);
+  const hasAnalytics = Boolean(user.permissions?.includes("analytics_view"));
 
   const loadListings = useCallback(async (cursor?: string, append = false) => {
     setListState("loading");
@@ -694,9 +702,11 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
   }, [copy.listError]);
 
   useEffect(() => {
+    if (section === "overview" && hasAnalytics) return;
+    if (section !== "overview" && section !== "products") return;
     const loadFrame = window.requestAnimationFrame(() => void loadListings());
     return () => window.cancelAnimationFrame(loadFrame);
-  }, [loadListings]);
+  }, [hasAnalytics, loadListings, section]);
 
   useEffect(() => {
     if (!editingProduct) return;
@@ -812,6 +822,9 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
     ...(user.permissions?.includes("orders_manage")
       ? [{ id: "orders" as const, label: copy.orders }]
       : []),
+    ...(user.permissions?.includes("physical_products_manage")
+      ? [{ id: "shipping" as const, label: copy.shipping }]
+      : []),
     ...(process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true"
       ? [{ id: "bridge" as const, label: copy.bridge }]
       : [])
@@ -888,6 +901,10 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
               <span>{item.label}</span>
             </button>
           ))}
+          <Link className={navigationStyles.item} href={`/${locale}/seller-dashboard/comments` as Route}>
+            <Icon name="blog" />
+            <span>{locale === "fa" ? "دیدگاه‌ها" : locale === "ar" ? "التعليقات" : "Comments"}</span>
+          </Link>
         </nav>
         <div className={styles.accountBlock}>
           <span>{copy.account}</span>
@@ -914,7 +931,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
 
         <div className={styles.sectionBody} key={section}>
           {section === "overview" ? (
-            <section aria-labelledby="catalog-snapshot-title">
+            hasAnalytics ? <AnalyticsOverview locale={locale} audience="seller" /> : <section aria-labelledby="catalog-snapshot-title">
               <div className={styles.introRow}>
                 <p>{copy.overviewDescription}</p>
                 {nextCursor ? <span className={styles.moreNote}>{copy.moreAvailable}</span> : null}
@@ -999,6 +1016,8 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
 
           {section === "orders" ? <SellerOrders locale={locale} /> : null}
 
+          {section === "shipping" ? <SellerShippingProfileWorkspace locale={locale} /> : null}
+
           {section === "payouts" ? (
             <section className={styles.unavailable} aria-labelledby="unavailable-title">
               <Icon name={section} />
@@ -1053,7 +1072,8 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
   const router = useRouter();
   const copy = COPY[locale];
   const formCopy = PRODUCT_CREATION_COPY[locale];
-  const [draft, setDraft] = useState<ProductDraft>(() => makeDraft());
+  const physicalGranted = Boolean(user.permissions?.includes("physical_products_manage"));
+  const [draft, setDraft] = useState<ProductDraft>(() => makeDraft(physicalGranted));
   const [submitState, setSubmitState] = useState<RequestState>("idle");
   const [formError, setFormError] = useState("");
   const nextVariantNumber = useRef(2);
@@ -1137,7 +1157,7 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
     }
   }
 
-  const productTypes = ["digital", "physical", "service"] as const;
+  const productTypes: Array<"digital" | "physical" | "service"> = physicalGranted ? ["digital", "physical", "service"] : ["digital", "service"];
   const productIcons = { digital: "file", physical: "layers", service: "headphones" } as const;
   const priceValues = draft.offers.map((offer) => Number(offer.price)).filter((price, index) => draft.offers[index].price.trim() && Number.isFinite(price));
   const startingPrice = priceValues.length ? formatCurrencyAmount(Math.min(...priceValues), draft.currency, locale) : null;

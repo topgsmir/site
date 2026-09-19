@@ -1,22 +1,25 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException, UnprocessableEntityException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
 import type { AppUser } from "@topgsm/shared-types";
 import { createHash } from "node:crypto";
 import { Prisma } from "../../../prisma/client";
 import { PrismaService } from "../../../prisma/prisma.service";
 import { AmadastAdapter } from "./amadast.adapter";
 import { AmadastSettingsService } from "./amadast-settings.service";
+import { SellerShippingProfileService } from "../seller-shipping-profile.service";
 
 @Injectable()
 export class AmadastShippingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly settings: AmadastSettingsService,
+    private readonly profiles: SellerShippingProfileService,
     private readonly amadast: AmadastAdapter
   ) {}
 
   async register(actor: AppUser, orderId: string, idempotencyKey: string) {
     const sellerId = await this.sellerIdFor(actor);
     const config = await this.settings.effective();
+    const sender = await this.profiles.effectiveSender(sellerId);
     const requestHash = this.hash({ action: "amadast_register", orderId });
     const existingKey = await this.prisma.amadast_shipments.findUnique({ where: { idempotency_key: idempotencyKey } });
     if (existingKey) {
@@ -30,7 +33,6 @@ export class AmadastShippingService {
         id: true,
         currency: true,
         total_amount: true,
-        seller: { select: { shop_name: true, phone_number: true } },
         shipping_address: { select: { recipient_name: true, phone_number: true, province: true, city: true, postal_code: true, address_line: true } },
         items: { select: { product_title: true, quantity: true, offer: { select: { physical: { select: { weight_grams: true } } } } } }
       }
@@ -42,8 +44,6 @@ export class AmadastShippingService {
     }
     const weight = order.items.reduce((sum, item) => sum + (item.offer.physical?.weight_grams ?? 0) * item.quantity, 0);
     if (!Number.isSafeInteger(weight) || weight < 10) throw new ConflictException("Physical offer weights must total at least 10 grams");
-    const senderMobile = this.iranianMobile(config.senderMobile || order.seller.phone_number);
-    if (!senderMobile) throw new ServiceUnavailableException("Amadast sender mobile is not configured");
     const recipientMobile = this.iranianMobile(order.shipping_address.phone_number);
     if (!recipientMobile) throw new ConflictException("The shipping phone number is invalid for Amadast");
 
@@ -71,9 +71,9 @@ export class AmadastShippingService {
         store_id: config.storeId,
         external_order_id: dispatch.id,
         recipient_name: order.shipping_address.recipient_name,
-        sender_name: (config.senderName || order.seller.shop_name).slice(0, 200),
+        sender_name: sender.senderName,
         recipient_mobile: recipientMobile,
-        sender_mobile: senderMobile,
+        sender_mobile: sender.senderMobile,
         recipient_address: order.shipping_address.address_line,
         weight,
         value: order.total_amount.toNumber(),

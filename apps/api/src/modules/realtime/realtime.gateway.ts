@@ -7,6 +7,7 @@ import { Server, Socket } from "socket.io";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuthService } from "../auth/auth.service";
 import { readSessionToken } from "../auth/session-token";
+import { CommentsService } from "../comments/comments.service";
 
 type Payload = Record<string, unknown>;
 type OrderAudience = { buyerId: string; sellerId: string };
@@ -18,7 +19,8 @@ export class RealtimeGateway implements OnGatewayConnection {
 
   constructor(
     private readonly auth: AuthService,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
+    private readonly comments: CommentsService
   ) {}
 
   async handleConnection(client: Socket) {
@@ -40,6 +42,10 @@ export class RealtimeGateway implements OnGatewayConnection {
           await client.join("platform:payouts");
         }
       } else if (user.role === "seller-admin" || user.role === "seller-staff") {
+        if (await this.comments.isLockedUser(user)) {
+          client.disconnect(true);
+          return;
+        }
         const membership = await this.prisma.seller_memberships.findFirst({
           where: {
             user_id: user.id,

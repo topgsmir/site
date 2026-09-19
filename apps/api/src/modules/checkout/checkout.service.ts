@@ -176,6 +176,7 @@ export class CheckoutService {
               buyer_id: actor.id,
               seller_id: group.seller.id,
               checkout_id: createdCheckout.id,
+              traffic_source: input.trafficSource ?? null,
               status: "pending",
               currency: "IRR",
               total_amount: gross,
@@ -275,7 +276,7 @@ export class CheckoutService {
         physical: { select: { stock: true } },
         listing: {
           select: {
-            seller: { select: { id: true, shop_name: true, commission: true, holdback_rate: true } },
+            seller: { select: { id: true, shop_name: true, commission: true, holdback_rate: true, permissions: { where: { permission: "physical_products_manage" }, select: { permission: true } } } },
             product: {
               select: {
                 id: true,
@@ -328,6 +329,12 @@ export class CheckoutService {
       if (type === "physical" && (offer.physical?.stock ?? 0) < requested.quantity) {
         throw new PublicHttpException(HttpStatus.CONFLICT, `${offer.listing.product.title} does not have enough stock`, {
           code: "CART_STOCK_INSUFFICIENT",
+          offerIds: [offer.id]
+        });
+      }
+      if (type === "physical" && offer.listing.seller.permissions.length === 0) {
+        throw new PublicHttpException(HttpStatus.CONFLICT, `${offer.listing.product.title} is not currently available for physical delivery`, {
+          code: "CART_ITEMS_UNAVAILABLE",
           offerIds: [offer.id]
         });
       }

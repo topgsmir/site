@@ -14,8 +14,6 @@ const SETTINGS_SELECT = {
   client_code_hint: true,
   user_id: true,
   store_id: true,
-  sender_name: true,
-  sender_mobile: true,
   product_type: true,
   package_type: true,
   updated_at: true
@@ -28,14 +26,12 @@ type SettingsRecord = {
   client_code_hint: string | null;
   user_id: number | null;
   store_id: number | null;
-  sender_name: string | null;
-  sender_mobile: string | null;
   product_type: number;
   package_type: number;
   updated_at: Date;
 };
 
-export type EffectiveAmadastSettings = AmadastConfig & { senderName: string | null; senderMobile: string | null };
+export type EffectiveAmadastSettings = AmadastConfig;
 
 @Injectable()
 export class AmadastSettingsService {
@@ -62,11 +58,7 @@ export class AmadastSettingsService {
     const productType = settings?.product_type ?? this.environmentInteger("AMADAST_PRODUCT_TYPE") ?? 1;
     const packageType = settings?.package_type ?? this.environmentInteger("AMADAST_PACKAGE_TYPE") ?? 1;
     if (!clientCode || !userId || !storeId) throw new ServiceUnavailableException("Amadast shipping is not configured");
-    return {
-      clientCode, userId, storeId, productType, packageType,
-      senderName: settings?.sender_name ?? this.environmentString("AMADAST_SENDER_NAME"),
-      senderMobile: settings?.sender_mobile ?? this.normalizeMobile(this.environmentString("AMADAST_SENDER_MOBILE"))
-    };
+    return { clientCode, userId, storeId, productType, packageType };
   }
 
   async update(input: UpdateShippingSettingsDto, actorUserId: string): Promise<AdminShippingSettings> {
@@ -76,9 +68,6 @@ export class AmadastSettingsService {
     const encrypted = clientCode ? this.crypto.encrypt(clientCode, this.clientCodePurpose(), "SHIPPING") : null;
     const nextUserId = Object.hasOwn(input, "userId") ? input.userId ?? null : current?.user_id ?? null;
     const nextStoreId = Object.hasOwn(input, "storeId") ? input.storeId ?? null : current?.store_id ?? null;
-    const senderName = Object.hasOwn(input, "senderName") ? input.senderName?.trim() || null : current?.sender_name ?? null;
-    const senderMobile = Object.hasOwn(input, "senderMobile") ? input.senderMobile ? this.normalizeMobile(input.senderMobile) : null : current?.sender_mobile ?? null;
-    if (input.senderMobile && !senderMobile) throw new BadRequestException("Amadast sender mobile is invalid");
     const effectiveClientCode = clientCode ?? this.databaseClientCode(current) ?? this.environmentString("AMADAST_CLIENT_CODE");
     const effectiveUserId = nextUserId ?? this.environmentInteger("AMADAST_USER_ID");
     const effectiveStoreId = nextStoreId ?? this.environmentInteger("AMADAST_STORE_ID");
@@ -89,8 +78,6 @@ export class AmadastSettingsService {
       amadast_enabled: input.enabled,
       user_id: nextUserId,
       store_id: nextStoreId,
-      sender_name: senderName,
-      sender_mobile: senderMobile,
       product_type: input.productType,
       package_type: input.packageType,
       ...(encrypted ? { encrypted_client_code: encrypted.ciphertext, encryption_key_id: encrypted.keyId, client_code_hint: clientCode!.slice(-4) } : {})
@@ -105,8 +92,8 @@ export class AmadastSettingsService {
         client_code_hint: settings.client_code_hint,
         user_id: settings.user_id,
         store_id: settings.store_id,
-        sender_name: settings.sender_name,
-        sender_mobile: settings.sender_mobile,
+        sender_name: null,
+        sender_mobile: null,
         product_type: settings.product_type,
         package_type: settings.package_type
       } });
@@ -128,8 +115,6 @@ export class AmadastSettingsService {
       credentialSource: databaseConfigured ? "database" : environmentClientCode ? "environment" : "none",
       userId: settings?.user_id ?? this.environmentInteger("AMADAST_USER_ID"),
       storeId: settings?.store_id ?? this.environmentInteger("AMADAST_STORE_ID"),
-      senderName: settings?.sender_name ?? this.environmentString("AMADAST_SENDER_NAME"),
-      senderMobile: settings?.sender_mobile ?? this.normalizeMobile(this.environmentString("AMADAST_SENDER_MOBILE")),
       productType: settings?.product_type ?? this.environmentInteger("AMADAST_PRODUCT_TYPE") ?? 1,
       packageType: settings?.package_type ?? this.environmentInteger("AMADAST_PACKAGE_TYPE") ?? 1,
       updatedAt: settings?.updated_at.toISOString() ?? null
@@ -144,11 +129,6 @@ export class AmadastSettingsService {
   private environmentInteger(key: string) {
     const value = Number(this.environmentString(key));
     return Number.isSafeInteger(value) && value > 0 && value <= 2_147_483_647 ? value : null;
-  }
-  private normalizeMobile(value: string | null) {
-    const digits = value?.replace(/\D/g, "") ?? "";
-    const normalized = digits.startsWith("0098") ? `0${digits.slice(4)}` : digits.startsWith("98") ? `0${digits.slice(2)}` : digits;
-    return /^09\d{9}$/.test(normalized) ? normalized : null;
   }
   private clientCodePurpose() { return "shipping:amadast:client-code"; }
 }

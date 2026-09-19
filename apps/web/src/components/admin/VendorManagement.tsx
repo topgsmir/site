@@ -30,15 +30,20 @@ import { ProductChangesWorkspace } from "@/components/admin/ProductChangesWorksp
 import { AiWorkspace } from "@/components/admin/AiWorkspace";
 import { CouponWorkspace } from "@/components/admin/CouponWorkspace";
 import { SmsSettingsWorkspace } from "@/components/admin/SmsSettingsWorkspace";
+import { AuthLoginSettingsWorkspace } from "@/components/admin/AuthLoginSettingsWorkspace";
+import { SecuritySettingsWorkspace } from "@/components/admin/SecuritySettingsWorkspace";
 import { ShippingSettingsWorkspace } from "@/components/admin/ShippingSettingsWorkspace";
 import { UsdSettingsWorkspace } from "@/components/admin/UsdSettingsWorkspace";
+import { AdminCommentsWorkspace } from "@/components/comments/AdminCommentsWorkspace";
 import type { AdminSection } from "@/components/admin/AdminPanelRoute";
 import navigationStyles from "@/components/dashboard/DashboardNavigation.module.css";
+import { AnalyticsOverview } from "@/components/analytics/AnalyticsOverview";
 
 
 
 const permissionOrder: VendorPermission[] = [
   "products_manage",
+  "physical_products_manage",
   "products_publish",
   "blog_manage",
   "coupons_manage",
@@ -65,6 +70,11 @@ const copy = {
     aiModels: "Models",
     aiAssistant: "AI assistant",
     settings: "Settings",
+    comments: "Comments",
+    security: "Security",
+    rateLimit: "Rate limit",
+    captcha: "CAPTCHA",
+    auth: "Sign in",
     sms: "SMS",
     shipping: "Shipping",
     usd: "USD rate",
@@ -119,6 +129,8 @@ const copy = {
     statusSuspended: "Suspended",
     productsManage: "Manage products",
     productsManageHint: "Create, edit, publish, and archive listings.",
+    physicalProductsManage: "Sell physical products",
+    physicalProductsManageHint: "Grant physical inventory and seller-managed shipping setup.",
     productsPublish: "Publish without review",
     productsPublishHint: "Allow new and edited products to become public immediately.",
     blogManage: "Manage blog posts",
@@ -170,6 +182,11 @@ const copy = {
     aiModels: "مدل‌ها",
     aiAssistant: "دستیار هوشمند",
     settings: "تنظیمات",
+    comments: "دیدگاه‌ها",
+    security: "امنیت",
+    rateLimit: "محدودیت درخواست",
+    captcha: "کپچا",
+    auth: "ورود",
     sms: "پیامک",
     shipping: "ارسال",
     usd: "نرخ دلار",
@@ -224,6 +241,8 @@ const copy = {
     statusSuspended: "تعلیق‌شده",
     productsManage: "مدیریت محصولات",
     productsManageHint: "ساخت، ویرایش، انتشار و بایگانی محصولات.",
+    physicalProductsManage: "فروش محصولات فیزیکی",
+    physicalProductsManageHint: "اجازه ثبت موجودی فیزیکی و تنظیم اطلاعات ارسال توسط فروشنده.",
     productsPublish: "انتشار بدون بررسی",
     productsPublishHint: "محصول جدید یا ویرایش‌شده را بلافاصله عمومی کنید.",
     blogManage: "مدیریت نوشته‌های وبلاگ",
@@ -275,6 +294,11 @@ const copy = {
     aiModels: "النماذج",
     aiAssistant: "المساعد الذكي",
     settings: "الإعدادات",
+    comments: "التعليقات",
+    security: "الأمان",
+    rateLimit: "حد الطلبات",
+    captcha: "التحقق البشري",
+    auth: "تسجيل الدخول",
     sms: "الرسائل النصية",
     shipping: "الشحن",
     usd: "سعر الدولار",
@@ -329,6 +353,8 @@ const copy = {
     statusSuspended: "موقوف",
     productsManage: "إدارة المنتجات",
     productsManageHint: "إنشاء القوائم وتعديلها ونشرها وأرشفتها.",
+    physicalProductsManage: "بيع المنتجات المادية",
+    physicalProductsManageHint: "منح إدارة المخزون المادي وإعداد الشحن بواسطة البائع.",
     productsPublish: "النشر دون مراجعة",
     productsPublishHint: "السماح بنشر المنتجات الجديدة والمعدلة فوراً.",
     blogManage: "إدارة مقالات المدونة",
@@ -399,6 +425,7 @@ const permissionCopy: Record<
   { title: keyof Copy; hint: keyof Copy }
 > = {
   products_manage: { title: "productsManage", hint: "productsManageHint" },
+  physical_products_manage: { title: "physicalProductsManage", hint: "physicalProductsManageHint" },
   products_publish: { title: "productsPublish", hint: "productsPublishHint" },
   blog_manage: { title: "blogManage", hint: "blogManageHint" },
   coupons_manage: { title: "couponsManage", hint: "couponsManageHint" },
@@ -472,6 +499,7 @@ export function VendorManagement({
   const [paymentServiceOpen, setPaymentServiceOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [securityOpen, setSecurityOpen] = useState(false);
   const [usdRateFailed, setUsdRateFailed] = useState(false);
   const isUsersSection = section === "vendors" || section === "staff" || section === "users";
   const usersExpanded = isUsersSection || usersOpen;
@@ -481,8 +509,10 @@ export function VendorManagement({
   const paymentServiceExpanded = isPaymentServiceSection || paymentServiceOpen;
   const isAiSection = section === "ai-models" || section === "ai-assistant";
   const aiExpanded = isAiSection || aiOpen;
-  const isSettingsSection = section === "settings-sms" || section === "settings-shipping" || section === "settings-usd";
+  const isSettingsSection = section === "settings-sms" || section === "settings-shipping" || section === "settings-usd" || section === "settings-comments";
   const settingsExpanded = isSettingsSection || settingsOpen;
+  const isSecuritySection = section === "security-rate-limit" || section === "security-login" || section === "security-captcha";
+  const securityExpanded = isSecuritySection || securityOpen;
 
   useEffect(() => {
     if (!ownerNavigation) return;
@@ -540,7 +570,7 @@ export function VendorManagement({
 
   useEffect(() => {
     const loadFrame = window.requestAnimationFrame(() => {
-      if (section === "overview" || section === "vendors") void loadVendors();
+      if (section === "vendors") void loadVendors();
       if (section === "products") void loadProducts();
     });
     return () => window.cancelAnimationFrame(loadFrame);
@@ -597,9 +627,6 @@ export function VendorManagement({
       )
     );
   }, [locale, query, vendors]);
-
-  const activeCount = vendors.filter((vendor) => vendor.status === "active").length;
-  const restrictedCount = vendors.length - activeCount;
 
   function openCreate(trigger: HTMLButtonElement) {
     panelTrigger.current = trigger;
@@ -875,6 +902,9 @@ export function VendorManagement({
               <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
             </button>
             <div className={navigationStyles.subNavigation} id="admin-settings-navigation">
+              <Link className={navigationStyles.item} href={`/${locale}/admin/settings/comments` as Route} aria-current={section === "settings-comments" ? "page" : undefined}>
+                <EditorialIcon /><span>{c.comments}</span>
+              </Link>
               <Link
                 className={navigationStyles.item}
                 href={`/${locale}/admin/settings/shipping` as Route}
@@ -903,6 +933,16 @@ export function VendorManagement({
               </Link>
             </div>
           </div>
+          <div className={navigationStyles.group} data-active={isSecuritySection} data-open={securityExpanded}>
+            <button className={navigationStyles.groupTrigger} type="button" aria-expanded={securityExpanded} aria-controls="admin-security-navigation" onClick={() => setSecurityOpen((current) => !current)}>
+              <SettingsIcon /><span>{c.security}</span><span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
+            </button>
+            <div className={navigationStyles.subNavigation} id="admin-security-navigation">
+              <Link className={navigationStyles.item} href={`/${locale}/admin/security/rate-limit` as Route} aria-current={section === "security-rate-limit" ? "page" : undefined}><SettingsIcon /><span>{c.rateLimit}</span></Link>
+              <Link className={navigationStyles.item} href={`/${locale}/admin/security/login` as Route} aria-current={section === "security-login" ? "page" : undefined}><SettingsIcon /><span>{c.auth}</span></Link>
+              <Link className={navigationStyles.item} href={`/${locale}/admin/security/captcha` as Route} aria-current={section === "security-captcha" ? "page" : undefined}><SettingsIcon /><span>{c.captcha}</span></Link>
+            </div>
+          </div>
           {process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true" ? (
             <Link className={navigationStyles.item} href={`/${locale}/admin/bridge` as Route} aria-current={section === "bridge" ? "page" : undefined}>
               <BridgeIcon />
@@ -923,39 +963,16 @@ export function VendorManagement({
 
       <main className="admin-shell" id="admin-content" ref={root}>
 
-      {section === "overview" ? <>
-      <section className="admin-hero" aria-labelledby="vendor-title">
-        <div>
-          <p>{c.greeting}, {adminName}</p>
-          <h1 id="vendor-title">{c.overview}</h1>
-          <p className="admin-hero-copy">{c.subtitle}</p>
-        </div>
-        <button className="admin-primary-button" type="button" onClick={(event) => openCreate(event.currentTarget)}>
-          <PlusIcon />
-          {c.create}
-        </button>
-      </section>
-
-      <section className="admin-metrics grid-flow-dense" aria-label={c.workspace}>
-        <article>
-          <span>{c.total}</span>
-          <strong>{vendors.length}</strong>
-        </article>
-        <article>
-          <span>{c.active}</span>
-          <strong>{activeCount}</strong>
-        </article>
-        <article>
-          <span>{c.restricted}</span>
-          <strong>{restrictedCount}</strong>
-        </article>
-      </section>
-      </> : null}
+      {section === "overview" ? <AnalyticsOverview locale={locale} audience="admin" /> : null}
 
       {section === "vendors" ? <section className="vendor-workspace grid-flow-dense" data-vendor-workspace>
         <aside className="vendor-workspace-intro" data-admin-summary>
           <h2>{c.workspace}</h2>
           <p>{c.workspaceHint}</p>
+          <button className="admin-primary-button" type="button" onClick={(event) => openCreate(event.currentTarget)}>
+            <PlusIcon />
+            {c.create}
+          </button>
           <label className="vendor-search">
             <SearchIcon />
             <span className="sr-only">{c.search}</span>
@@ -1106,8 +1123,12 @@ export function VendorManagement({
       {section === "ai-models" ? <AiWorkspace locale={locale} view="models" /> : null}
       {section === "ai-assistant" ? <AiWorkspace locale={locale} view="assistant" /> : null}
       {section === "settings-sms" ? <SmsSettingsWorkspace locale={locale} /> : null}
+      {section === "security-login" ? <AuthLoginSettingsWorkspace locale={locale} /> : null}
+      {section === "security-rate-limit" ? <SecuritySettingsWorkspace locale={locale} view="rate-limit" /> : null}
+      {section === "security-captcha" ? <SecuritySettingsWorkspace locale={locale} view="captcha" /> : null}
       {section === "settings-shipping" ? <ShippingSettingsWorkspace locale={locale} /> : null}
       {section === "settings-usd" ? <UsdSettingsWorkspace locale={locale} /> : null}
+      {section === "settings-comments" ? <AdminCommentsWorkspace locale={locale} /> : null}
 
       {panelMode ? (
         <div className="vendor-panel-layer" role="presentation">

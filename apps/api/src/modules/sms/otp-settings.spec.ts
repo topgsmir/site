@@ -3,11 +3,26 @@ import { describe, it } from "node:test";
 import type { ConfigService } from "@nestjs/config";
 import type { PrismaService } from "../../prisma/prisma.service";
 import type { AuthService } from "../auth/auth.service";
+import type { AuthLoginSettingsService } from "../auth/auth-login-settings.service";
 import { OtpService } from "./otp.service";
 import type { SmsService } from "./sms.service";
 import type { SmsSettingsService } from "./sms-settings.service";
 
 describe("OtpService SMS settings", () => {
+  it("rejects phone sign-in before creating a challenge when the method is disabled", async () => {
+    let challengeCreated = false;
+    const service = new OtpService(
+      { otp_challenges: { create: async () => { challengeCreated = true; } } } as unknown as PrismaService,
+      {} as AuthService,
+      {} as SmsService,
+      {} as ConfigService,
+      { isOtpEnabled: async () => true } as SmsSettingsService,
+      { assertPhoneOtpEnabled: async () => { throw new Error("Phone sign-in is disabled"); } } as unknown as AuthLoginSettingsService
+    );
+    await assert.rejects(() => service.request("09121234567"), /disabled/);
+    assert.equal(challengeCreated, false);
+  });
+
   it("rejects OTP requests before creating a challenge when OTP is disabled", async () => {
     let challengeCreated = false;
     const prisma = {
@@ -19,7 +34,8 @@ describe("OtpService SMS settings", () => {
       {} as AuthService,
       {} as SmsService,
       {} as ConfigService,
-      settings
+      settings,
+      { assertPhoneOtpEnabled: async () => undefined } as unknown as AuthLoginSettingsService
     );
 
     await assert.rejects(() => service.request("09121234567"), /currently disabled/i);
@@ -36,7 +52,8 @@ describe("OtpService SMS settings", () => {
       {} as AuthService,
       {} as SmsService,
       {} as ConfigService,
-      { isOtpEnabled: async () => false } as SmsSettingsService
+      { isOtpEnabled: async () => false } as SmsSettingsService,
+      { assertPhoneOtpEnabled: async () => undefined } as unknown as AuthLoginSettingsService
     );
 
     await assert.rejects(

@@ -265,20 +265,23 @@ export class PayoutService {
     if (actor.role !== "seller-admin" && actor.role !== "seller-staff") {
       throw new ForbiddenException("Seller access is required");
     }
-    const seller = await this.prisma.sellers.findFirst({
+    const membership = await this.prisma.seller_memberships.findFirst({
       where: {
         user_id: actor.id,
-        invited: false,
-        approved: true,
-        suspended_at: null,
-        permissions: { some: { permission: "payouts_request" } }
+        active: true,
+        seller: {
+          invited: false,
+          approved: true,
+          suspended_at: null,
+          permissions: { some: { permission: "payouts_request" } }
+        }
       },
-      select: { id: true }
+      select: { seller_id: true }
     });
-    if (!seller) {
+    if (!membership) {
       throw new ForbiddenException("Active seller payout permission is required");
     }
-    return seller.id;
+    return membership.seller_id;
   }
 
   private assertAdminTransition(from: payout_status, to: SetPayoutStatusDto["status"]) {

@@ -166,7 +166,7 @@ export class SellerService {
   ) {
     const current = await this.prisma.sellers.findUnique({
       where: { id: sellerId },
-      select: { id: true, user_id: true }
+      select: { id: true, user_id: true, permissions: { select: { permission: true } } }
     });
     if (!current) throw new NotFoundException("Vendor was not found");
 
@@ -214,6 +214,8 @@ export class SellerService {
         });
 
         if (input.permissions) {
+          const hadPhysicalAccess = current.permissions.some((item) => item.permission === "physical_products_manage");
+          const hasPhysicalAccess = input.permissions.includes("physical_products_manage");
           await transaction.seller_permissions.deleteMany({
             where: { seller_id: sellerId }
           });
@@ -225,6 +227,21 @@ export class SellerService {
                 granted_by_id: adminUserId
               }))
             });
+          }
+          if (hadPhysicalAccess && !hasPhysicalAccess) {
+            await transaction.seller_listings.updateMany({
+              where: { seller_id: sellerId, status: "active", product: { type: "physical" } },
+              data: { status: "archived" }
+            });
+            const disabledProfile = await transaction.seller_shipping_profiles.updateMany({
+              where: { seller_id: sellerId },
+              data: { enabled: false, updated_by_user_id: adminUserId }
+            });
+            if (disabledProfile.count === 1) {
+              await transaction.seller_shipping_profile_events.create({
+                data: { seller_id: sellerId, actor_user_id: adminUserId, enabled: false, changed_fields: ["enabled", "physical_products_manage"] }
+              });
+            }
           }
         }
 

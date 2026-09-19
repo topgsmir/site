@@ -4,6 +4,8 @@ export class RequestOtpDto {
   @IsString()
   @Matches(/^(?:\+98|0098|98|0)?9\d{9}$/)
   phoneNumber!: string;
+
+  @IsOptional() @IsString() @Matches(/^[0-9a-f-]{36}\.[0-9]{1,10}$/i) captchaToken?: string;
 }
 
 export class VerifyOtpDto extends RequestOtpDto {

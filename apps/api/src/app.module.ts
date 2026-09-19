@@ -20,6 +20,9 @@ import { AiModule } from "./integrations/ai/ai.module";
 import { DataAssistantModule } from "./modules/data-assistant/data-assistant.module";
 import { CheckoutModule } from "./modules/checkout/checkout.module";
 import { UsdRateModule } from "./modules/usd-rate/usd-rate.module";
+import { AnalyticsModule } from "./modules/analytics/analytics.module";
+import { CommentsModule } from "./modules/comments/comments.module";
+import { CaptchaModule } from "./modules/captcha/captcha.module";
 
 @Module({
   imports: [
@@ -43,6 +46,9 @@ import { UsdRateModule } from "./modules/usd-rate/usd-rate.module";
     OrderModule,
     CheckoutModule,
     UsdRateModule,
+    AnalyticsModule,
+    CommentsModule,
+    CaptchaModule,
     PayoutModule,
     RealtimeModule,
     GoghdiModule,

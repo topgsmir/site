@@ -31,7 +31,7 @@ describe("AmadastSettingsService", () => {
         shipping_setting_events: { create: async ({ data }: { data: Record<string, unknown> }) => { audited = data; return { id: "event" }; } }
       })
     } as unknown as PrismaService;
-    const result = await new AmadastSettingsService(prisma, crypto, config).update({ enabled: true, clientCode: "secret-client-code", userId: 12, storeId: 34, senderName: "TopGSM", senderMobile: "09120000000", productType: 1, packageType: 1 }, "admin-id");
+    const result = await new AmadastSettingsService(prisma, crypto, config).update({ enabled: true, clientCode: "secret-client-code", userId: 12, storeId: 34, productType: 1, packageType: 1 }, "admin-id");
     assert.equal(String(stored?.encrypted_client_code).includes("secret-client-code"), false);
     assert.equal(JSON.stringify(audited).includes("secret-client-code"), false);
     assert.equal(result.clientCodeHint, "code");
