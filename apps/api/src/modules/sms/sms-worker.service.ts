@@ -5,6 +5,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { CredentialCryptoService } from "../bridge/credential-crypto.service";
 import { SmsIrAdapter } from "./sms-ir.adapter";
 import type { SmsTemplate } from "./sms.service";
+import { SmsSettingsService } from "./sms-settings.service";
 
 type ClaimedSms = { id: string; recipient: string; template: string; parameters: Prisma.JsonValue; attempts: number };
 
@@ -14,7 +15,7 @@ export class SmsWorkerService implements OnModuleInit, OnModuleDestroy {
   private timer?: NodeJS.Timeout;
   private busy = false;
 
-  constructor(private readonly prisma: PrismaService, private readonly crypto: CredentialCryptoService, private readonly adapter: SmsIrAdapter, private readonly config: ConfigService) {}
+  constructor(private readonly prisma: PrismaService, private readonly crypto: CredentialCryptoService, private readonly adapter: SmsIrAdapter, private readonly config: ConfigService, private readonly settings: SmsSettingsService) {}
 
   onModuleInit() {
     if (this.config.get<string>("DISABLE_BACKGROUND_WORKERS") === "true") return;
@@ -47,7 +48,11 @@ export class SmsWorkerService implements OnModuleInit, OnModuleDestroy {
       const envelope = job.parameters as { ciphertext?: string; keyId?: string };
       if (!envelope.ciphertext || !envelope.keyId) throw new Error("SMS parameters are invalid");
       const parameters = JSON.parse(this.crypto.decrypt(envelope.ciphertext, envelope.keyId, `sms:${job.id}:parameters`)) as Record<string, string>;
-      await this.adapter.send(job.recipient, job.template as SmsTemplate, parameters);
+      if (await this.settings.isTestModeEnabled()) {
+        this.logger.log(`SMS test mode: ${JSON.stringify({ recipient: job.recipient, template: job.template, parameters })}`);
+      } else {
+        await this.adapter.send(job.recipient, job.template as SmsTemplate, parameters);
+      }
       await this.prisma.sms_deliveries.update({ where: { id: job.id }, data: { status: "sent", sent_at: new Date(), locked_at: null, last_error: null } });
     } catch (error) {
       const code = error instanceof Error ? error.constructor.name.slice(0, 200) : "SmsError";

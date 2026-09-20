@@ -77,3 +77,11 @@
   color: var(--signal-dark);
   font-weight: 800;
 }
+@media (min-width: 1024px) {
+  .article { margin-block: 4rem; }
+  .article header { padding-bottom: 2.5rem; }
+  .article h1 { font-size: clamp(2.1rem, 4vw, 3.7rem); }
+  .excerpt { font-size: 1.1rem; }
+  .content { margin-top: 2.5rem; font-size: 1rem; }
+  .related { margin-top: 3.5rem; }
+}

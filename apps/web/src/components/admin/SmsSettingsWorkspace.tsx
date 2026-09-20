@@ -24,6 +24,10 @@ const copy = {
     buyerFailureTemplate: "Buyer failure template ID",
     templateHint: "Use the numeric template IDs from your SMS.ir account.",
     otpTitle: "One-time password sign-in",
+    testModeTitle: "SMS test mode",
+    testModeHint: "Print SMS details, including one-time codes, in the API console instead of sending them. Anyone with access to those logs can read the codes.",
+    testModeEnabled: "Test mode is on",
+    testModeDisabled: "Test mode is off",
     otpHint: "Allow customers to request and verify a six-digit SMS code during checkout.",
     enabled: "OTP is enabled",
     disabled: "OTP is disabled",
@@ -54,6 +58,10 @@ const copy = {
     buyerFailureTemplate: "شناسه قالب ناموفق برای خریدار",
     templateHint: "شناسه‌های عددی قالب را از حساب SMS.ir وارد کنید.",
     otpTitle: "ورود با رمز یک‌بارمصرف",
+    testModeTitle: "حالت آزمایشی پیامک",
+    testModeHint: "جزئیات پیامک، از جمله کدهای یک‌بارمصرف، به‌جای ارسال در کنسول API چاپ می‌شود. افراد دارای دسترسی به گزارش‌ها می‌توانند کدها را بخوانند.",
+    testModeEnabled: "حالت آزمایشی روشن است",
+    testModeDisabled: "حالت آزمایشی خاموش است",
     otpHint: "به مشتری اجازه دهید هنگام خرید کد شش‌رقمی پیامکی دریافت و تأیید کند.",
     enabled: "رمز یک‌بارمصرف فعال است",
     disabled: "رمز یک‌بارمصرف غیرفعال است",
@@ -84,6 +92,10 @@ const copy = {
     buyerFailureTemplate: "معرّف قالب فشل المشتري",
     templateHint: "أدخل معرّفات القوالب الرقمية من حساب SMS.ir.",
     otpTitle: "تسجيل الدخول برمز لمرة واحدة",
+    testModeTitle: "وضع اختبار الرسائل",
+    testModeHint: "تُطبع تفاصيل الرسائل، بما فيها رموز الدخول، في سجل API بدلاً من إرسالها. يمكن لمن يصل إلى السجل قراءة الرموز.",
+    testModeEnabled: "وضع الاختبار مفعّل",
+    testModeDisabled: "وضع الاختبار معطّل",
     otpHint: "اسمح للعملاء بطلب رمز من ستة أرقام والتحقق منه أثناء الدفع.",
     enabled: "رمز OTP مفعّل",
     disabled: "رمز OTP معطّل",
@@ -103,6 +115,7 @@ export function SmsSettingsWorkspace({ locale }: { locale: Locale }) {
   const c = copy[locale];
   const [saved, setSaved] = useState<AdminSmsSettings | null>(null);
   const [otpEnabled, setOtpEnabled] = useState(true);
+  const [testModeEnabled, setTestModeEnabled] = useState(false);
   const [apiKey, setApiKey] = useState("");
   const [templateIds, setTemplateIds] = useState({
     otp: "",
@@ -122,6 +135,7 @@ export function SmsSettingsWorkspace({ locale }: { locale: Locale }) {
       const response = await api.get<AdminSmsSettings>("/admin/settings/sms");
       setSaved(response.data);
       setOtpEnabled(response.data.otpEnabled);
+      setTestModeEnabled(response.data.testModeEnabled);
       setApiKey("");
       setTemplateIds(Object.fromEntries(
         Object.entries(response.data.templateIds).map(([key, value]) => [key, value?.toString() ?? ""])
@@ -140,6 +154,7 @@ export function SmsSettingsWorkspace({ locale }: { locale: Locale }) {
   const numberOrNull = (value: string) => value === "" ? null : Number(value);
   const dirty = saved !== null && (
     saved.otpEnabled !== otpEnabled ||
+    saved.testModeEnabled !== testModeEnabled ||
     apiKey.trim().length > 0 ||
     (Object.keys(templateIds) as Array<keyof typeof templateIds>).some(
       (key) => saved.templateIds[key] !== numberOrNull(templateIds[key])
@@ -155,6 +170,7 @@ export function SmsSettingsWorkspace({ locale }: { locale: Locale }) {
     try {
       const response = await api.patch<AdminSmsSettings>("/admin/settings/sms", {
         otpEnabled,
+        testModeEnabled,
         ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
         otpTemplateId: numberOrNull(templateIds.otp),
         sellerNewOrderTemplateId: numberOrNull(templateIds.sellerNewOrder),
@@ -163,6 +179,7 @@ export function SmsSettingsWorkspace({ locale }: { locale: Locale }) {
       });
       setSaved(response.data);
       setOtpEnabled(response.data.otpEnabled);
+      setTestModeEnabled(response.data.testModeEnabled);
       setApiKey("");
       setTemplateIds(Object.fromEntries(
         Object.entries(response.data.templateIds).map(([key, value]) => [key, value?.toString() ?? ""])
@@ -274,6 +291,27 @@ export function SmsSettingsWorkspace({ locale }: { locale: Locale }) {
           </div>
 
           {!otpEnabled ? <p className={styles.warning}>{c.warning}</p> : null}
+          <div className={styles.settingRow}>
+            <div>
+              <h2>{c.testModeTitle}</h2>
+              <p>{c.testModeHint}</p>
+              <strong data-enabled={testModeEnabled}>{testModeEnabled ? c.testModeEnabled : c.testModeDisabled}</strong>
+            </div>
+            <label className={styles.toggle}>
+              <span className={styles.visuallyHidden}>{c.testModeTitle}</span>
+              <input
+                type="checkbox"
+                checked={testModeEnabled}
+                disabled={saving}
+                onChange={(event) => {
+                  setTestModeEnabled(event.target.checked);
+                  setMessage("");
+                  setError("");
+                }}
+              />
+              <span aria-hidden="true"><i /></span>
+            </label>
+          </div>
           <footer className={styles.actions}>
             <div aria-live="polite">
               {error ? <span className={styles.errorText}>{error}</span> : null}

@@ -6,14 +6,20 @@ import {
   HttpCode,
   HttpStatus,
   Ip,
+  Patch,
   Post,
-  Res
+  Req,
+  Res,
+  UseGuards
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AuthService } from "./auth.service";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterDto } from "./dto/register.dto";
+import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { AuthRateLimitService } from "./auth-rate-limit.service";
+import { AuthenticatedGuard } from "./authenticated.guard";
+import type { AuthenticatedRequest } from "./platform-admin.guard";
 import { BrowserSessionMutation } from "./browser-session-mutation.decorator";
 import { readSessionToken, SESSION_COOKIE } from "./session-token";
 import { SecurityPolicyService } from "./security-policy.service";
@@ -72,6 +78,17 @@ export class AuthController {
     return this.authService.getUserFromToken(
       readSessionToken(cookieHeader, authorization)
     );
+  }
+
+  @UseGuards(AuthenticatedGuard)
+  @Patch("me")
+  async updateMe(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: UpdateProfileDto,
+    @Ip() clientIp: string
+  ) {
+    await this.rateLimits.consumeProfileMutation(request.authenticatedUser!.id, clientIp);
+    return this.authService.updateProfile(request.authenticatedUser!, body);
   }
 
   @Post("logout")

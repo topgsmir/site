@@ -22,14 +22,14 @@
 .header {
   max-width: 86rem;
   margin-inline: auto;
-  padding-block-end: var(--space-dashboard-xl);
+  padding-block-end: var(--space-dashboard-md);
   border-block-end: var(--rule-dashboard-thin) solid var(--color-dashboard-rule);
 }
 
 .header h1 {
   max-width: 18ch;
   font-family: var(--font-dashboard-display);
-  font-size: clamp(var(--text-dashboard-xl), 5vw, 3.75rem);
+  font-size: clamp(var(--text-dashboard-xl), 3vw, var(--text-dashboard-2xl));
   line-height: 1.3;
   letter-spacing: -0.035em;
   overflow-wrap: anywhere;
@@ -53,15 +53,15 @@
 
 .main {
   display: grid;
-  gap: var(--space-dashboard-2xl);
+  gap: var(--space-dashboard-xl);
   width: min(86rem, 100%);
   margin-inline: auto;
-  padding-block: var(--space-dashboard-xl);
+  padding-block: var(--space-dashboard-lg);
 }
 
 .workspace {
   display: grid;
-  gap: var(--space-dashboard-2xl);
+  gap: var(--space-dashboard-xl);
   min-width: 0;
   color: var(--color-dashboard-ink);
   font-family: var(--font-dashboard-body);

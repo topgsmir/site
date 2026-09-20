@@ -9,6 +9,7 @@ import { getDirection, isLocale, locales } from "@/lib/i18n";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { GoghdiWidget } from "@/components/goghdi/GoghdiWidget";
 import { TrafficSourceCapture } from "@/components/TrafficSourceCapture";
+import { PlatformNotice } from "@/components/PlatformNotice";
 
 type LocaleLayoutProps = Readonly<{
   children: React.ReactNode;
@@ -77,6 +78,7 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
       </head>
       <body>
         <TrafficSourceCapture />
+        <PlatformNotice />
         {children}
         <GoghdiWidget />
         <ThemeToggle locale={locale} />

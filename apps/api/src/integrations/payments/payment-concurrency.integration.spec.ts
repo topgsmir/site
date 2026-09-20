@@ -28,7 +28,7 @@ let failRefund = false;
 const adapter = {
   providerCode: "zarinpal",
   displayName: "Concurrency test provider",
-  supportedCurrencies: ["IRR"],
+  supportedCurrencies: ["TOMAN"],
   supportsRefunds: true,
   availability: async () => ({ available: true, unavailabilityReason: null, configuration: null }),
   paymentUrl: (authority: string) => `/payments/${authority}`,
@@ -103,7 +103,7 @@ before(async () => {
         listing_id: listing.id,
         variant_id: variant.id,
         price: "1000",
-        currency: "IRR",
+        currency: "TOMAN",
         status: "active",
         physical: { create: { stock: 20, weight_grams: 100 } }
       }
@@ -129,7 +129,7 @@ beforeEach(() => {
 });
 
 after(async () => {
-  const emails = [buyer.email, admin.email, `payment-seller-${suffix}@example.com`];
+  const emails = [buyer.email, admin.email, `payment-seller-${suffix}@example.com`].filter((email): email is string => email !== null);
   const [attempts, sellerOrders] = await Promise.all([
     prisma.payment_attempts.findMany({ where: { order: { seller_id: sellerId } }, select: { id: true } }),
     prisma.orders.findMany({ where: { seller_id: sellerId }, select: { id: true } })
@@ -252,7 +252,7 @@ async function paidAttempt() {
   });
 }
 
-function actor(user: { id: string; full_name: string; email: string }, role: AppUser["role"]): AppUser {
+function actor(user: { id: string; full_name: string; email: string | null }, role: AppUser["role"]): AppUser {
   return { id: user.id, fullName: user.full_name, email: user.email, role };
 }
 

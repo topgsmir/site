@@ -25,7 +25,7 @@ type ZarinpalGraphqlResponse = { data?: { resource?: { id?: string } }; errors?:
 export class ZarinpalAdapter extends BasePaymentAdapter {
   readonly providerCode = "zarinpal" as const;
   readonly displayName = "Zarinpal";
-  readonly supportedCurrencies = ["IRR"] as const;
+  readonly supportedCurrencies = ["TOMAN"] as const;
 
   constructor(private readonly credentials: PaymentCredentialService) {
     super();
@@ -45,13 +45,13 @@ export class ZarinpalAdapter extends BasePaymentAdapter {
   }
 
   async initiate(input: PaymentIntentInput): Promise<PaymentIntentResult> {
-    this.assertIrr(input.amount, input.currency);
+    const rialAmount = this.toProviderRials(input.amount, input.currency);
     const credentials = await this.credentials.zarinpal();
     const result = await this.call(
       "https://payment.zarinpal.com/pg/v4/payment/request.json",
       {
         merchant_id: credentials.merchantId,
-        amount: Number(input.amount),
+        amount: rialAmount,
         callback_url: credentials.callbackUrl,
         description: `TopGSM order ${input.orderId} operation ${input.operationId}`,
         metadata: { order_id: input.orderId }
@@ -69,11 +69,11 @@ export class ZarinpalAdapter extends BasePaymentAdapter {
   }
 
   async verify(authority: string, amount: string) {
-    this.assertIrr(amount, "IRR");
+    const rialAmount = this.toProviderRials(amount, "TOMAN");
     const credentials = await this.credentials.zarinpal();
     const result = await this.call(
       "https://payment.zarinpal.com/pg/v4/payment/verify.json",
-      { merchant_id: credentials.merchantId, authority, amount: Number(amount) }
+      { merchant_id: credentials.merchantId, authority, amount: rialAmount }
     );
     const code = result.data?.code;
     return {
@@ -85,7 +85,7 @@ export class ZarinpalAdapter extends BasePaymentAdapter {
   }
 
   async inquiry(authority: string, amount: string) {
-    this.assertIrr(amount, "IRR");
+    this.toProviderRials(amount, "TOMAN");
     const credentials = await this.credentials.zarinpal();
     const result = await this.call(
       "https://payment.zarinpal.com/pg/v4/payment/inquiry.json",
@@ -95,7 +95,7 @@ export class ZarinpalAdapter extends BasePaymentAdapter {
   }
 
   async refund(input: PaymentRefundInput) {
-    this.assertIrr(input.amount, "IRR");
+    const rialAmount = this.toProviderRials(input.amount, "TOMAN");
     const accessToken = (await this.credentials.zarinpal()).refundAccessToken?.trim();
     if (!accessToken) {
       throw new ServiceUnavailableException("Zarinpal refunds are not configured");
@@ -116,7 +116,7 @@ export class ZarinpalAdapter extends BasePaymentAdapter {
           query: "mutation AddRefund($session_id: ID!, $amount: BigInteger!, $description: String, $reason: RefundReasonEnum) { resource: AddRefund(session_id: $session_id, amount: $amount, description: $description, reason: $reason) { id } }",
           variables: {
             session_id: input.providerReferenceId,
-            amount: Number(input.amount),
+            amount: rialAmount,
             description: `${input.reason.slice(0, 400)} [operation:${input.operationId}]`,
             reason: "CUSTOMER_REQUEST"
           }
@@ -160,15 +160,18 @@ export class ZarinpalAdapter extends BasePaymentAdapter {
     }
   }
 
-  private assertIrr(amount: string, currency: string) {
+  private toProviderRials(amount: string, currency: string) {
+    const match = /^([1-9]\d*)(?:\.(\d))?$/.exec(amount);
+    const rials = match ? BigInt(match[1]!) * 10n + BigInt(match[2] ?? "0") : 0n;
     if (
-      currency !== "IRR" ||
-      !/^[1-9]\d*$/.test(amount) ||
-      !Number.isSafeInteger(Number(amount))
+      currency !== "TOMAN" ||
+      !match ||
+      rials > BigInt(Number.MAX_SAFE_INTEGER)
     ) {
       throw new BadGatewayException(
-        "Zarinpal requires a positive integer IRR amount"
+        "Zarinpal requires a positive integer toman amount"
       );
     }
+    return Number(rials);
   }
 }

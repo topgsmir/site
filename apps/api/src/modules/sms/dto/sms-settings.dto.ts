@@ -5,6 +5,10 @@ export class UpdateSmsSettingsDto {
   otpEnabled!: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  testModeEnabled?: boolean;
+
+  @IsOptional()
   @IsString()
   @MinLength(8)
   @MaxLength(2000)

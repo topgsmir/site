@@ -70,7 +70,7 @@ export class SellerShippingProfileService {
         ...this.map(seller.id, seller.permissions.length > 0, seller.shipping_profile),
         shopName: seller.shop_name,
         ownerName: seller.user.full_name,
-        ownerEmail: seller.user.email,
+        ownerEmail: seller.user.email!,
         sellerStatus: seller.suspended_at ? "suspended" : seller.approved && !seller.invited ? "active" : "invited"
       })),
       nextCursor: hasMore ? page.at(-1)?.id ?? null : null
@@ -93,7 +93,7 @@ export class SellerShippingProfileService {
       ...profile,
       shopName: seller.shop_name,
       ownerName: seller.user.full_name,
-      ownerEmail: seller.user.email,
+      ownerEmail: seller.user.email!,
       sellerStatus: seller.suspended_at ? "suspended" : seller.approved && !seller.invited ? "active" : "invited"
     };
   }

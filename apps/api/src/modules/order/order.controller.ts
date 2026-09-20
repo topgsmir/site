@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Ip,
   Param,
   ParseUUIDPipe,
@@ -23,6 +24,8 @@ import {
   UpdateOrderStatusDto
 } from "./dto/order.dto";
 import { OrderService } from "./order.service";
+import { AdminOrderDetailsService } from "./admin-order-details.service";
+import { LeaderboardService } from "./leaderboard.service";
 import { AmadastShippingService } from "../../integrations/shipping/amadast/amadast-shipping.service";
 
 @Controller("orders")
@@ -30,6 +33,8 @@ import { AmadastShippingService } from "../../integrations/shipping/amadast/amad
 export class OrderController {
   constructor(
     private readonly orders: OrderService,
+    private readonly adminDetails: AdminOrderDetailsService,
+    private readonly leaderboard: LeaderboardService,
     private readonly rateLimits: AuthRateLimitService,
     private readonly amadastShipping: AmadastShippingService
   ) {}
@@ -37,6 +42,12 @@ export class OrderController {
   @Get()
   list(@Req() request: AuthenticatedRequest, @Query() query: ListOrdersQueryDto) {
     return this.orders.list(request.authenticatedUser!, query);
+  }
+
+  @Get("leaderboard")
+  async getLeaderboard(@Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+    await this.rateLimits.consumeAnalyticsRead(request.authenticatedUser!.id, clientIp);
+    return this.leaderboard.get(request.authenticatedUser!);
   }
 
   @Get(":id")
@@ -76,6 +87,17 @@ export class OrderController {
       body,
       idempotencyKey
     );
+  }
+
+  @Get("admin/:id")
+  @Header("Cache-Control", "private, no-store")
+  async getAdminDetails(
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string,
+    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string
+  ) {
+    await this.rateLimits.consumeAnalyticsRead(request.authenticatedUser!.id, clientIp);
+    return this.adminDetails.get(request.authenticatedUser!, id);
   }
 
   @Patch(":id/shipping")

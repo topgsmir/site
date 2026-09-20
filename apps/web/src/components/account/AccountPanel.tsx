@@ -1,73 +1,78 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import type { Route } from "next";
-import { useCallback, useEffect, useState } from "react";
+import { useRef, useState } from "react";
+import { gsap } from "gsap";
+import { useGSAP } from "@gsap/react";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import type { AppUser } from "@topgsm/shared-types";
-import { api } from "@/lib/api/client";
-import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import type { Locale } from "@/lib/i18n";
 import { LogoutButton } from "@/components/auth/LogoutButton";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { CustomerLeaderboard } from "./CustomerLeaderboard";
+import { AccountSettings } from "./AccountSettings";
+import { AccountOrders } from "./AccountOrders";
+import { AccountIcon } from "./AccountIcon";
+import { ACCOUNT_COPY } from "./AccountCopy";
+import { WORKSPACE_COPY } from "./AccountWorkspaceCopy";
 import styles from "./AccountPanel.module.css";
 
-type OrderSummary = {
-  id: string;
-  status: string;
-  currency: string;
-  totalAmount: string;
-  createdAt: string;
-  seller: { shopName: string };
-  items: Array<{ id: string; productTitle: string; productType: string; quantity: number }>;
-};
-type OrderPage = { items: OrderSummary[]; nextCursor: string | null };
+gsap.registerPlugin(useGSAP, ScrollTrigger);
 
-const COPY = {
-  en: { account: "My account", greeting: "Welcome back", overview: "Overview", orders: "Orders", shop: "Shop", cart: "Cart", accountDetails: "Account details", name: "Name", email: "Email", recent: "Recent orders", allOrders: "View all orders", history: "Order history", historyIntro: "Follow purchases, delivery, and downloads in one place.", empty: "No orders yet", emptyHint: "Your purchases will appear here after checkout.", browse: "Browse products", loading: "Loading orders…", error: "Orders could not be loaded.", retry: "Try again", more: "Load more", details: "View order", items: "items", status: { pending: "Payment pending", paid: "Paid", processing: "Processing", awaiting_confirmation: "Awaiting confirmation", shipped: "Shipped", delivered: "Delivered", cancelled: "Cancelled", refunded: "Refunded" } },
-  fa: { account: "حساب من", greeting: "خوش آمدید", overview: "نمای کلی", orders: "سفارش‌ها", shop: "فروشگاه", cart: "سبد خرید", accountDetails: "مشخصات حساب", name: "نام", email: "ایمیل", recent: "سفارش‌های اخیر", allOrders: "دیدن همه سفارش‌ها", history: "تاریخچه سفارش‌ها", historyIntro: "خریدها، تحویل و فایل‌های خود را یک‌جا پیگیری کنید.", empty: "هنوز سفارشی ندارید", emptyHint: "پس از خرید، سفارش‌های شما اینجا نمایش داده می‌شوند.", browse: "دیدن محصولات", loading: "در حال دریافت سفارش‌ها…", error: "دریافت سفارش‌ها ممکن نبود.", retry: "تلاش دوباره", more: "نمایش بیشتر", details: "مشاهده سفارش", items: "قلم", status: { pending: "در انتظار پرداخت", paid: "پرداخت‌شده", processing: "در حال پردازش", awaiting_confirmation: "در انتظار تأیید", shipped: "ارسال‌شده", delivered: "تحویل‌شده", cancelled: "لغوشده", refunded: "بازپرداخت‌شده" } },
-  ar: { account: "حسابي", greeting: "مرحبًا بعودتك", overview: "نظرة عامة", orders: "الطلبات", shop: "المتجر", cart: "السلة", accountDetails: "تفاصيل الحساب", name: "الاسم", email: "البريد الإلكتروني", recent: "الطلبات الأخيرة", allOrders: "عرض جميع الطلبات", history: "سجل الطلبات", historyIntro: "تابع مشترياتك وتسليماتك وملفاتك في مكان واحد.", empty: "لا توجد طلبات بعد", emptyHint: "ستظهر مشترياتك هنا بعد إتمام الدفع.", browse: "تصفح المنتجات", loading: "جارٍ تحميل الطلبات…", error: "تعذر تحميل الطلبات.", retry: "حاول مجددًا", more: "تحميل المزيد", details: "عرض الطلب", items: "عناصر", status: { pending: "بانتظار الدفع", paid: "مدفوع", processing: "قيد المعالجة", awaiting_confirmation: "بانتظار التأكيد", shipped: "تم الشحن", delivered: "تم التسليم", cancelled: "ملغى", refunded: "مسترد" } }
-} as const;
+export function AccountPanel({ locale, user, view }: { locale: Locale; user: AppUser; view: "overview" | "orders" | "settings" }) {
+  const c = ACCOUNT_COPY[locale];
+  const w = WORKSPACE_COPY[locale];
+  const [profile, setProfile] = useState(user);
+  const shell = useRef<HTMLDivElement>(null);
+  const path = view === "overview" ? "/account" : `/account/${view}`;
+  const initials = profile.fullName.trim().split(/\s+/).slice(0, 2).map((part) => Array.from(part)[0]).join("");
 
-export function AccountPanel({ locale, user, view }: { locale: Locale; user: AppUser; view: "overview" | "orders" }) {
-  const c = COPY[locale];
-  const [orders, setOrders] = useState<OrderSummary[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState("");
+  useGSAP(() => {
+    const media = gsap.matchMedia();
+    media.add("(prefers-reduced-motion: no-preference)", () => {
+      gsap.from("[data-account-enter]", { y: 14, opacity: 0, stagger: .06, duration: .55, ease: "power3.out", clearProps: "all" });
+      if (view === "overview") {
+        gsap.fromTo("[data-account-art]", { scale: 1 }, { scale: 1.07, ease: "none", scrollTrigger: { trigger: "[data-account-welcome]", start: "top top", end: "bottom top", scrub: 1, scroller: locale === "en" ? window : document.body } });
+      }
+    });
+    return () => media.revert();
+  }, { scope: shell, dependencies: [view, locale], revertOnUpdate: true });
 
-  const load = useCallback(async (next?: string) => {
-    if (next) setLoadingMore(true); else setLoading(true);
-    setError("");
-    try {
-      const response = await api.get<OrderPage>("/orders", { params: { limit: view === "overview" ? 5 : 20, ...(next ? { cursor: next } : {}) } });
-      setOrders((current) => next ? [...current, ...response.data.items] : response.data.items);
-      setCursor(response.data.nextCursor);
-    } catch {
-      setError(c.error);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, [c.error, view]);
-
-  useEffect(() => { const frame = requestAnimationFrame(() => void load()); return () => cancelAnimationFrame(frame); }, [load]);
-
-  return <div className={styles.shell}>
-    <a className="skip-link" href="#account-content">{view === "orders" ? c.history : c.overview}</a>
-    <header className={styles.topbar}><Link className={styles.brand} href={`/${locale}` as Route}>topgsm.</Link><div className={styles.toplinks}><Link href={`/${locale}/products` as Route}>{c.shop}</Link><Link href={`/${locale}/cart` as Route}>{c.cart}</Link><LogoutButton locale={locale} /></div></header>
-    <div className={styles.layout}>
-      <aside className={styles.sidebar}><span className={styles.eyebrow}>{c.account}</span><strong className={styles.identity}>{user.fullName}</strong><nav aria-label={c.account}><Link href={`/${locale}/account` as Route} aria-current={view === "overview" ? "page" : undefined}>{c.overview}</Link><Link href={`/${locale}/account/orders` as Route} aria-current={view === "orders" ? "page" : undefined}>{c.orders}</Link></nav></aside>
-      <main id="account-content" className={styles.main}>
-        <div className={styles.heading}><span className={styles.eyebrow}>{c.account}</span><h1>{view === "orders" ? c.history : `${c.greeting}, ${user.fullName}`}</h1><p>{c.historyIntro}</p></div>
-        {view === "overview" ? <section className={styles.details} aria-labelledby="account-details"><h2 id="account-details">{c.accountDetails}</h2><dl><div><dt>{c.name}</dt><dd>{user.fullName}</dd></div><div><dt>{c.email}</dt><dd dir="ltr">{user.email}</dd></div></dl></section> : null}
-        <section className={styles.orders} aria-labelledby="account-orders"><div className={styles.sectionHeading}><h2 id="account-orders">{view === "overview" ? c.recent : c.history}</h2>{view === "overview" ? <Link href={`/${locale}/account/orders` as Route}>{c.allOrders}</Link> : null}</div>
-          {loading && !orders.length ? <p className={styles.notice} role="status">{c.loading}</p> : null}
-          {error ? <div className={styles.notice} role="alert"><p>{error}</p><button type="button" onClick={() => void load(cursor && orders.length ? cursor : undefined)}>{c.retry}</button></div> : null}
-          {!loading && !error && !orders.length ? <div className={styles.empty}><h3>{c.empty}</h3><p>{c.emptyHint}</p><Link href={`/${locale}/products` as Route}>{c.browse}</Link></div> : null}
-          {orders.length ? <div className={styles.list}>{orders.map((order) => <article className={styles.order} key={order.id}><div className={styles.orderTop}><span className={styles.date}>{new Date(order.createdAt).toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" })}</span><span className={styles.status} data-status={order.status}>{c.status[order.status as keyof typeof c.status] ?? order.status}</span></div><h3>{order.items.map((item) => item.productTitle).join(" · ")}</h3><p>{order.seller.shopName} · {order.items.reduce((total, item) => total + item.quantity, 0)} {c.items}</p><div className={styles.orderBottom}><strong>{formatCurrencyAmount(order.totalAmount, order.currency, locale)} {currencyLabel(order.currency)}</strong><Link href={`/${locale}/orders/${order.id}` as Route}>{c.details}</Link></div></article>)}</div> : null}
-          {view === "orders" && cursor && !loading ? <button className={styles.more} type="button" disabled={loadingMore} onClick={() => void load(cursor)}>{loadingMore ? c.loading : c.more}</button> : null}
-        </section>
-      </main>
+  return <div className={styles.shell} ref={shell}>
+    <a className="skip-link" href="#account-content">{w.overview}</a>
+    <header className={styles.topbar}>
+      <Link className={styles.brand} href={`/${locale}` as Route} aria-label="TopGSM"><span className={styles.brandMark} aria-hidden="true"><span /><span /><span /></span><span dir="ltr">topgsm<span>.</span></span></Link>
+      <span className={styles.topbarLabel}>{w.workspace}</span>
+      <div className={styles.toplinks}>
+        <LanguageSwitcher locale={locale} hrefs={{ fa: `/fa${path}`, en: `/en${path}`, ar: `/ar${path}` }} />
+        <Link className={styles.cartLink} href={`/${locale}/cart` as Route} aria-label={c.cart}><AccountIcon name="cart" /><span>{c.cart}</span></Link>
+        <span className={styles.logout}><LogoutButton locale={locale} /></span>
+      </div>
+    </header>
+    <div className={styles.navbar}>
+      <nav className={styles.navigation} aria-label={c.account}>
+        {(["overview", "orders", "settings"] as const).map((item) => <Link key={item} href={`/${locale}/account${item === "overview" ? "" : `/${item}`}` as Route} aria-current={view === item ? "page" : undefined}><AccountIcon name={item === "settings" ? "account" : item} /><span>{item === "overview" ? c.overview : item === "orders" ? c.orders : w.settings}</span></Link>)}
+      </nav>
+      <Link href={`/${locale}/products` as Route} className={styles.storeLink}>{c.shop}<AccountIcon name="arrow" /></Link>
     </div>
+    <main id="account-content" className={styles.main} tabIndex={-1}>
+      {view === "overview" ? <section className={styles.welcome} data-account-enter data-account-welcome>
+        <div className={styles.welcomeCopy}><p className={styles.greeting}>{c.greeting}{locale === "en" ? ", " : "، "}<bdi>{profile.fullName}</bdi></p><h1>{w.welcome}</h1><p>{w.intro}</p><Link className={styles.primaryLink} href={`/${locale}/products` as Route}>{w.browse}<AccountIcon name="arrow" /></Link></div>
+        <div className={styles.welcomeArt} aria-hidden="true"><Image data-account-art src="/images/repair-studio.png" alt="" fill sizes="(max-width: 700px) 100vw, 480px" priority /><div className={styles.artCaption}><span className={styles.artDot} /><span dir="ltr">TOPGSM / REPAIR WORKSPACE</span></div></div>
+      </section> : <header className={styles.heading} data-account-enter><p className={styles.greeting}>{c.account}</p><h1>{view === "orders" ? c.history : w.settings}</h1><p>{view === "orders" ? w.ordersIntro : w.settingsIntro}</p></header>}
+      <div className={view === "orders" ? styles.fullContent : styles.content}>
+        <div className={styles.primaryColumn} data-account-enter>
+          {view === "settings" ? <AccountSettings locale={locale} user={profile} onUpdated={setProfile} /> : <AccountOrders locale={locale} view={view} />}
+          {view === "overview" ? <Link className={styles.discover} href={`/${locale}/products` as Route}><span className={styles.discoverIcon}><AccountIcon name="file" /></span><span><strong>{w.discover}</strong><span>{w.discoverHint}</span></span><AccountIcon name="arrow" /></Link> : null}
+        </div>
+        {view !== "orders" ? <aside className={styles.secondaryColumn} aria-label={w.profile} data-account-enter>
+          <section className={styles.profile} aria-labelledby="profile-card-title"><div className={styles.profileTop}><span className={styles.avatar} aria-hidden="true">{initials}</span><span><span className={styles.greeting}>{w.member}</span><h2 id="profile-card-title"><bdi>{profile.fullName}</bdi></h2></span></div><dl>{profile.email ? <div><dt>{c.email}</dt><dd><bdi>{profile.email}</bdi></dd></div> : null}{profile.username ? <div><dt>{locale === "fa" ? "نام کاربری" : locale === "ar" ? "اسم المستخدم" : "Username"}</dt><dd><bdi>@{profile.username}</bdi></dd></div> : null}</dl><p>{w.profileHint}</p>{view === "overview" ? <Link className={styles.editLink} href={`/${locale}/account/settings` as Route}>{w.edit}<AccountIcon name="arrow" /></Link> : <span className={styles.profileNote}><AccountIcon name="account" />{w.savedDetails}</span>}</section>
+          {view === "overview" ? <CustomerLeaderboard locale={locale} /> : null}
+        </aside> : null}
+      </div>
+      <footer className={styles.footer}><span dir="ltr">topgsm.</span><p>{w.footer}</p><Link href={`/${locale}/products` as Route}>{c.shop}<AccountIcon name="arrow" /></Link></footer>
+    </main>
   </div>;
 }

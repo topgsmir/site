@@ -10,6 +10,7 @@ const SETTINGS_ID = 1;
 
 const SETTINGS_SELECT = {
   otp_enabled: true,
+  test_mode_enabled: true,
   encrypted_api_key: true,
   encryption_key_id: true,
   api_key_hint: true,
@@ -22,6 +23,7 @@ const SETTINGS_SELECT = {
 
 type SettingsRecord = {
   otp_enabled: boolean;
+  test_mode_enabled: boolean;
   encrypted_api_key: string | null;
   encryption_key_id: string | null;
   api_key_hint: string | null;
@@ -67,6 +69,14 @@ export class SmsSettingsService {
     return settings?.otp_enabled ?? true;
   }
 
+  async isTestModeEnabled(): Promise<boolean> {
+    const settings = await this.prisma.sms_settings.findUnique({
+      where: { id: SETTINGS_ID },
+      select: { test_mode_enabled: true }
+    });
+    return settings?.test_mode_enabled ?? false;
+  }
+
   async credentialsFor(template: SmsTemplate) {
     const settings = await this.read();
     const apiKey = this.databaseApiKey(settings) ?? this.environmentApiKey();
@@ -79,6 +89,7 @@ export class SmsSettingsService {
 
   async update(input: UpdateSmsSettingsDto, actorUserId: string): Promise<AdminSmsSettings> {
     const current = await this.read();
+    const testModeEnabled = input.testModeEnabled ?? current?.test_mode_enabled ?? false;
     const apiKey = input.apiKey?.trim();
     if (input.apiKey !== undefined && !apiKey) {
       throw new BadRequestException("SMS.ir API key cannot be blank");
@@ -89,6 +100,7 @@ export class SmsSettingsService {
       : null;
     const data = {
       otp_enabled: input.otpEnabled,
+      test_mode_enabled: testModeEnabled,
       ...(encrypted ? {
         encrypted_api_key: encrypted.ciphertext,
         encryption_key_id: encrypted.keyId,
@@ -104,7 +116,7 @@ export class SmsSettingsService {
     const effectiveOtpTemplateId = Object.hasOwn(input, "otpTemplateId")
       ? input.otpTemplateId ?? this.environmentTemplateId("otp")
       : current?.otp_template_id ?? this.environmentTemplateId("otp");
-    if (input.otpEnabled && (!effectiveApiKey || !effectiveOtpTemplateId)) {
+    if (input.otpEnabled && !testModeEnabled && (!effectiveApiKey || !effectiveOtpTemplateId)) {
       throw new BadRequestException("Configure the SMS.ir API key and OTP template before enabling OTP");
     }
 
@@ -121,6 +133,7 @@ export class SmsSettingsService {
           settings_id: SETTINGS_ID,
           actor_user_id: actorUserId,
           otp_enabled: updated.otp_enabled,
+          test_mode_enabled: updated.test_mode_enabled,
           credentials_changed: Boolean(encrypted),
           api_key_hint: updated.api_key_hint,
           otp_template_id: updated.otp_template_id,
@@ -147,6 +160,7 @@ export class SmsSettingsService {
     const databaseConfigured = Boolean(settings?.encrypted_api_key && settings.encryption_key_id);
     return {
       otpEnabled: settings?.otp_enabled ?? true,
+      testModeEnabled: settings?.test_mode_enabled ?? false,
       provider: "sms_ir",
       apiKeyConfigured: databaseConfigured || Boolean(environmentApiKey),
       apiKeyHint: databaseConfigured ? settings?.api_key_hint ?? null : environmentApiKey?.slice(-4) ?? null,

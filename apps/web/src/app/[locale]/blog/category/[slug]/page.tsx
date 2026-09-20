@@ -36,5 +36,10 @@ export default async function CategoryPage({ params }: { params: Promise<{ local
   } catch (error) {
     if (isApiNotFound(error)) notFound();
   }
-  return <BlogIndex locale={locale} posts={page?.items ?? []} heading={page?.collection.name ?? slug.replaceAll("-", " ")} />;
+  const alternateSlugs = page?.collection.alternateSlugs;
+  return <BlogIndex locale={locale} posts={page?.items ?? []} heading={page?.collection.name ?? slug.replaceAll("-", " ")} languageHrefs={alternateSlugs ? {
+    fa: `/fa/blog/category/${encodeURIComponent(alternateSlugs.fa)}`,
+    en: `/en/blog/category/${encodeURIComponent(alternateSlugs.en)}`,
+    ar: `/ar/blog/category/${encodeURIComponent(alternateSlugs.ar)}`
+  } : undefined} />;
 }

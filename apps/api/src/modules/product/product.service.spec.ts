@@ -15,6 +15,64 @@ function serviceWith(prisma: unknown) {
   );
 }
 
+describe("public product search", () => {
+  it("matches multiple terms and Persian digit variants while retaining public visibility rules", async () => {
+    let query: { where: { status: string; type: unknown; variants: unknown; AND: Array<{ OR: Array<{ title?: { contains: string }; slug?: { contains: string }; category?: { contains: string } }> }> } } | undefined;
+    const service = serviceWith({ products: { findMany: async (input: typeof query) => { query = input; return []; } } });
+
+    assert.deepEqual(await service.listPublic({ search: "آیفون ۱۵", limit: 8 }), []);
+    assert.equal(query?.where.status, "active");
+    assert.deepEqual(query?.where.type, { not: "bridge" });
+    assert.ok(query?.where.variants);
+    assert.equal(query?.where.AND.length, 2);
+    const numberMatches = query?.where.AND[1].OR.flatMap((field) => [field.title?.contains, field.slug?.contains, field.category?.contains]);
+    assert.ok(numberMatches?.includes("15"));
+    assert.ok(numberMatches?.includes("۱۵"));
+  });
+
+  it("does not expose bridge products through the type filter when bridge is disabled", async () => {
+    const service = serviceWith({ products: { findMany: async () => assert.fail("bridge search must not query products") } });
+    assert.deepEqual(await service.listPublic({ type: "bridge", limit: 8 }), []);
+  });
+});
+
+describe("managed product lists", () => {
+  it("applies admin filters and a stable page order in the database", async () => {
+    let query: Record<string, unknown> | undefined;
+    const service = serviceWith({ products: { findMany: async (input: Record<string, unknown>) => { query = input; return []; } } });
+    await service.listAdminProducts({ search: "phone", category: "accessories", status: "active", type: "physical", kind: "variable", sort: "title_asc", limit: 20 });
+    assert.deepEqual(query?.where, {
+      type: "physical", kind: "variable", status: "active",
+      category: { contains: "accessories", mode: "insensitive" },
+      OR: [
+        { title: { contains: "phone", mode: "insensitive" } },
+        { slug: { contains: "phone", mode: "insensitive" } },
+        { category: { contains: "phone", mode: "insensitive" } }
+      ]
+    });
+    assert.deepEqual(query?.orderBy, [{ title: "asc" }, { id: "desc" }]);
+    assert.equal(query?.take, 21);
+  });
+
+  it("keeps filtered seller listings scoped to the authenticated seller", async () => {
+    let query: Record<string, unknown> | undefined;
+    const service = serviceWith({ seller_listings: { findMany: async (input: Record<string, unknown>) => { query = input; return []; } } });
+    await service.listSellerListings(ACTOR_ID, { search: "charger", listingStatus: "active", status: "draft", sort: "created_desc", cursor: PRODUCT_ID, limit: 10 });
+    assert.deepEqual(query?.where, {
+      seller_id: ACTOR_ID,
+      status: "active",
+      product: { is: { status: "draft", OR: [
+        { title: { contains: "charger", mode: "insensitive" } },
+        { slug: { contains: "charger", mode: "insensitive" } },
+        { category: { contains: "charger", mode: "insensitive" } }
+      ] } }
+    });
+    assert.deepEqual(query?.cursor, { id: PRODUCT_ID });
+    assert.equal(query?.skip, 1);
+    assert.deepEqual(query?.orderBy, [{ created_at: "desc" }, { id: "desc" }]);
+  });
+});
+
 describe("admin product editing", () => {
   it("updates an arbitrary catalog product and returns the admin summary", async () => {
     let updateInput: unknown;

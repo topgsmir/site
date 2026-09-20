@@ -1,9 +1,9 @@
-.main { width: min(1280px, calc(100% - 80px)); margin-inline: auto; padding-bottom: 100px; }
-.intro { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 64px 24px; }
-.introIcon { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 18px; color: var(--signal); background: var(--signal-soft); margin-bottom: 24px; }
-.intro h1 { font-size: clamp(2.2rem, 4.5vw, 4rem); font-weight: 550; letter-spacing: -.04em; line-height: 1.4; }
-.intro p { margin-top: 18px; font-size: 1rem; color: var(--muted); line-height: 1.9; }
-.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-block: 20px; }
+.main { width: min(1280px, calc(100% - 80px)); margin-inline: auto; padding-bottom: 48px; }
+.intro { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 24px; }
+.introIcon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 14px; color: var(--signal); background: var(--signal-soft); margin-bottom: 12px; }
+.intro h1 { font-size: clamp(1.8rem, 3vw, 2.5rem); font-weight: 550; letter-spacing: -.03em; line-height: 1.25; }
+.intro p { margin-top: 8px; font-size: 1rem; color: var(--muted); line-height: 1.6; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-block: 12px; }
 .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .filters button { min-height: 44px; padding: 10px 18px; border: 0; border-radius: 999px; color: var(--muted); background: transparent; font-size: .8rem; cursor: pointer; }
 .filters button[aria-pressed="true"] { color: var(--signal-dark); background: var(--signal-soft); }
@@ -13,6 +13,9 @@
 .search input::placeholder { color: var(--muted); }
 .search:focus-within { outline: 3px solid var(--signal); outline-offset: 3px; }
 .resultCount { margin: 16px 0 24px; font-size: .75rem; color: var(--muted); }
+.more { display: block; min-height: 46px; margin: 30px auto 0; padding: 10px 24px; border: 1px solid var(--line); border-radius: 999px; color: var(--signal-dark); background: var(--paper-bright); cursor: pointer; }
+.more:hover { border-color: var(--signal); }
+.moreError { margin-top: 22px; color: var(--muted); text-align: center; font-size: .82rem; }
 .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
 .card { min-width: 0; display: flex; flex-direction: column; padding: 8px; border-radius: 26px; border: 1px solid var(--line); background: var(--paper-bright); transition: transform 200ms var(--ease), box-shadow 200ms ease; }
 .artwork { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; min-height: 260px; border-radius: 20px; color: var(--signal); background: linear-gradient(135deg, var(--signal-soft), var(--paper)); }
@@ -35,5 +38,13 @@
 .main :is(button, a):focus-visible { outline: 3px solid var(--signal); outline-offset: 4px; }
 @media (hover: hover) and (pointer: fine) { .card:hover { transform: translateY(-4px); box-shadow: var(--shadow-dashboard-float); } .card:hover .artwork > svg { transform: rotate(0); } }
 @media (max-width: 1000px) { .toolbar { align-items: stretch; flex-direction: column; } .search { width: 100%; } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 600px) { .main { width: calc(100% - 40px); } .intro { padding: 40px 0; } .intro h1 { font-size: 2rem; } .intro p { font-size: .9rem; } .filters { gap: 2px; } .filters button { padding-inline: 12px; font-size: .74rem; } .grid { grid-template-columns: 1fr; } }
+@media (min-width: 1001px) {
+  .grid { gap: 18px; }
+  .artwork { min-height: 200px; gap: 18px; }
+  .artwork > svg { width: 68px; height: 68px; padding: 14px; }
+  .artwork > img { height: 200px; }
+  .content { padding: 18px 14px 14px; }
+  .content > div { margin-top: 22px; }
+}
+@media (max-width: 600px) { .main { width: calc(100% - 40px); } .intro { padding: 20px 0; } .intro h1 { font-size: 2rem; } .intro p { font-size: .9rem; } .filters { gap: 2px; } .filters button { padding-inline: 12px; font-size: .74rem; } .grid { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .card, .artwork > svg { transition: none; } .card:hover { transform: none; } }

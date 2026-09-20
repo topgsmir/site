@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 
-export type DesignIconName = "arrow" | "file" | "layers" | "headphones" | "check" | "spark" | "search" | "bag";
+export type DesignIconName = "arrow" | "file" | "layers" | "headphones" | "check" | "spark" | "search" | "bag" | "globe";
 const paths: Record<DesignIconName, string> = {
   arrow: "M5 12h14m-6-6 6 6-6 6",
   file: "M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Zm0 0v6h6M8 13h8M8 17h5",
@@ -9,7 +9,8 @@ const paths: Record<DesignIconName, string> = {
   check: "m5 12 4 4L19 6",
   spark: "m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4L12 3Z",
   search: "M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z",
-  bag: "M4 8h16l-1 13H5L4 8Zm4 1V6a4 4 0 0 1 8 0v3"
+  bag: "M4 8h16l-1 13H5L4 8Zm4 1V6a4 4 0 0 1 8 0v3",
+  globe: "M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0ZM2 12h20M12 2c3 2.7 4.5 6 4.5 10S15 19.3 12 22M12 2C9 4.7 7.5 8 7.5 12S9 19.3 12 22"
 };
 export function DesignIcon({ name, ...props }: SVGProps<SVGSVGElement> & { name: DesignIconName }) {
   return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path d={paths[name]} /></svg>;

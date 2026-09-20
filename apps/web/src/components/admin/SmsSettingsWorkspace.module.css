@@ -1,11 +1,12 @@
-.workspace { min-width: 0; padding: var(--space-dashboard-xl) clamp(var(--space-dashboard-md), 4vw, var(--space-dashboard-2xl)); color: var(--color-dashboard-ink); background: var(--color-dashboard-paper); font-family: var(--font-dashboard-body); }
-.header { padding-block-end: var(--space-dashboard-xl); border-block-end: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
+.workspace { min-width: 0; container-type: inline-size; padding: var(--space-dashboard-md) clamp(var(--space-dashboard-md), 4vw, var(--space-dashboard-2xl)); color: var(--color-dashboard-ink); background: var(--color-dashboard-paper); font-family: var(--font-dashboard-body); }
+.header { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1fr); align-items: end; column-gap: var(--space-dashboard-lg); padding-block-end: var(--space-dashboard-md); border-block-end: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
 .header span { color: var(--color-dashboard-accent); font-size: var(--text-dashboard-xs); font-weight: 700; }
-.header h1 { margin-block-start: var(--space-dashboard-xs); font-family: var(--font-dashboard-display); font-size: clamp(2rem, 5vw, 4rem); font-weight: 600; letter-spacing: -.04em; line-height: 1.05; }
-.header p { max-width: 65ch; margin-block-start: var(--space-dashboard-sm); color: var(--color-dashboard-muted); line-height: 1.7; }
-.form { display: grid; max-width: 56rem; margin-block-start: var(--space-dashboard-xl); border-block: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
-.credentials { display: grid; gap: var(--space-dashboard-lg); padding-block: var(--space-dashboard-xl); border-block-end: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
-.credentials > div { display: grid; gap: var(--space-dashboard-xs); }
+.header h1 { grid-column: 1; min-width: 0; margin-block-start: var(--space-dashboard-2xs); overflow-wrap: anywhere; font-family: var(--font-dashboard-display); font-size: clamp(var(--text-dashboard-xl), 3vw, var(--text-dashboard-2xl)); font-weight: 600; letter-spacing: -.03em; line-height: 1.3; }
+.header p { grid-column: 2; grid-row: 1 / span 2; max-width: 65ch; color: var(--color-dashboard-muted); line-height: 1.6; }
+.form { display: grid; container-type: inline-size; margin-block-start: var(--space-dashboard-md); border-block-end: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
+.credentials { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-dashboard-lg); padding-block: var(--space-dashboard-lg); border-block-end: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
+.credentials > div { display: grid; grid-row: 1 / span 2; align-content: start; gap: var(--space-dashboard-xs); }
+.credentials > label, .credentials fieldset { grid-column: 2; }
 .credentials h2 { font-family: var(--font-dashboard-display); font-size: var(--text-dashboard-lg); }
 .credentials p, .credentials small, .credentials legend { max-width: 68ch; color: var(--color-dashboard-muted); font-size: var(--text-dashboard-sm); line-height: 1.7; }
 .credentials strong { width: fit-content; color: var(--color-dashboard-error); font-size: var(--text-dashboard-xs); }
@@ -16,7 +17,7 @@
 .credentials input:disabled { cursor: wait; opacity: .55; }
 .credentials fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-dashboard-md); padding: 0; border: 0; }
 .credentials legend { grid-column: 1 / -1; margin-block-end: var(--space-dashboard-sm); }
-.settingRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-dashboard-xl); padding-block: var(--space-dashboard-xl); }
+.settingRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-dashboard-lg); padding-block: var(--space-dashboard-lg); }
 .settingRow > div { display: grid; gap: var(--space-dashboard-xs); }
 .settingRow h2 { font-family: var(--font-dashboard-display); font-size: var(--text-dashboard-lg); }
 .settingRow p { max-width: 58ch; color: var(--color-dashboard-muted); font-size: var(--text-dashboard-sm); line-height: 1.7; }
@@ -48,10 +49,12 @@
 @keyframes pulse { to { opacity: .35; } }
 @media (hover: hover) and (pointer: fine) { .actions button:hover:not(:disabled), .error button:hover { transform: translateY(-1px); } }
 .actions button:active:not(:disabled), .error button:active { transform: translateY(1px); }
+@container (max-width: 52rem) { .header { grid-template-columns: minmax(0, 1fr); } .header p { grid-column: 1; grid-row: auto; margin-block-start: var(--space-dashboard-xs); } }
+@container (max-width: 52rem) { .credentials { grid-template-columns: minmax(0, 1fr); } .credentials > div { grid-row: auto; } .credentials > label, .credentials fieldset { grid-column: auto; } }
 @media (max-width: 40rem) { .credentials fieldset, .settingRow { grid-template-columns: minmax(0, 1fr); } .toggle { justify-self: start; } .actions { align-items: stretch; flex-direction: column; } .actions button { width: 100%; } }
 @media (prefers-reduced-motion: reduce) { .toggle > span:last-child, .toggle i, .actions button, .error button { transition-duration: var(--dur-dashboard-reduced); } .skeleton i { animation: none; } .actions button:active:not(:disabled), .error button:active { transform: none; } }
 
-.profiles { display: grid; gap: var(--space-dashboard-lg); margin-block-start: var(--space-dashboard-2xl); padding-block-start: var(--space-dashboard-xl); border-block-start: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
+.profiles { display: grid; gap: var(--space-dashboard-lg); margin-block-start: var(--space-dashboard-lg); padding-block-start: var(--space-dashboard-md); border-block-start: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
 .profiles > header { display: flex; align-items: end; justify-content: space-between; gap: var(--space-dashboard-lg); }
 .profiles > header > div { display: grid; gap: var(--space-dashboard-xs); }
 .profiles h2 { font-family: var(--font-dashboard-display); font-size: var(--text-dashboard-xl); }

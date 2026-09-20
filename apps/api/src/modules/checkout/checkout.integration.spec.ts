@@ -18,7 +18,7 @@ const suffix = randomUUID();
 const adapter = {
   providerCode: "zarinpal",
   displayName: "Zarinpal test",
-  supportedCurrencies: ["IRR"],
+  supportedCurrencies: ["TOMAN"],
   supportsRefunds: true,
   availability: async () => ({ available: true, unavailabilityReason: null, configuration: null }),
   paymentUrl: (authority: string) => `https://pay.example/${authority}`,
@@ -29,7 +29,7 @@ const adapter = {
 } satisfies BasePaymentAdapter;
 const paymentService = {
   get: () => adapter,
-  listProviders: async () => [{ code: "zarinpal", name: "Zarinpal test", available: true, unavailabilityReason: null, currencies: ["IRR"], supportsRefunds: true, configuration: null }],
+  listProviders: async () => [{ code: "zarinpal", name: "Zarinpal test", available: true, unavailabilityReason: null, currencies: ["TOMAN"], supportsRefunds: true, configuration: null }],
   initiateWithProvider: (_code: string, input: PaymentIntentInput) => adapter.initiate(input)
 } as unknown as PaymentService;
 const application = new PaymentApplicationService(prisma, paymentService, {} as PaymentCredentialService);
@@ -52,8 +52,8 @@ before(async () => {
     const digitalVariant = await tx.product_variants.create({ data: { product_id: digitalProduct.id, option_signature: "b".repeat(64) } });
     const physicalListing = await tx.seller_listings.create({ data: { seller_id: sellers[0]!.id, product_id: physicalProduct.id } });
     const digitalListing = await tx.seller_listings.create({ data: { seller_id: sellers[1]!.id, product_id: digitalProduct.id } });
-    const physicalOffer = await tx.seller_offers.create({ data: { listing_id: physicalListing.id, variant_id: physicalVariant.id, price: "1000", currency: "IRR", physical: { create: { stock: 3, weight_grams: 100 } } } });
-    const digitalOffer = await tx.seller_offers.create({ data: { listing_id: digitalListing.id, variant_id: digitalVariant.id, price: "2000", currency: "IRR", digital: { create: { file_reference: "https://uploads.example/test.zip", max_downloads: 2 } } } });
+    const physicalOffer = await tx.seller_offers.create({ data: { listing_id: physicalListing.id, variant_id: physicalVariant.id, price: "1000", currency: "TOMAN", physical: { create: { stock: 3, weight_grams: 100 } } } });
+    const digitalOffer = await tx.seller_offers.create({ data: { listing_id: digitalListing.id, variant_id: digitalVariant.id, price: "2000", currency: "TOMAN", digital: { create: { file_reference: "https://uploads.example/test.zip", max_downloads: 2 } } } });
     await tx.payment_method_configs.upsert({ where: { provider_code: "zarinpal" }, create: { provider_code: "zarinpal", enabled: true }, update: { enabled: true } });
     return { buyerUser, physicalOffer, digitalOffer };
   });

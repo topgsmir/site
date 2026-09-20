@@ -418,19 +418,32 @@ export interface BlogChangesPage {
 export interface AdminUserSummary {
   id: string;
   fullName: string;
-  email: string;
+  username: string | null;
+  email: string | null;
   phoneNumber: string | null;
+  role: string;
   orderCount: number;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface AdminUsersPage {
   items: AdminUserSummary[];
-  nextCursor: string | null;
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export interface AdminUserHistoryPage {
+  items: { id: string; at: string | null; title: string; details: Record<string, string | number | boolean | null> }[];
+  page: number;
+  pageSize: number;
+  total: number;
 }
 
 export interface AdminSmsSettings {
   otpEnabled: boolean;
+  testModeEnabled: boolean;
   provider: "sms_ir";
   apiKeyConfigured: boolean;
   apiKeyHint: string | null;
@@ -508,7 +521,6 @@ export interface AdminUsdRateSettings {
   selectedProvider: UsdRateProviderId;
   providers: AdminUsdRateProviderQuote[];
   currentRateToman: string | null;
-  currentRateIrr: string | null;
   rateSource: UsdRateProviderId | "manual" | null;
   rateUpdatedAt: string | null;
   cronStatus: "never" | "running" | "success" | "failed" | "cancelled";
@@ -575,7 +587,7 @@ export interface AdminPaymentTransaction {
   buyer: {
     id: string;
     fullName: string;
-    email: string;
+    email: string | null;
   };
   seller: {
     id: string;
@@ -634,7 +646,7 @@ export interface CheckoutQuoteGroup {
 }
 
 export interface CheckoutQuote {
-  currency: "IRR";
+  currency: "TOMAN";
   totalAmount: string;
   groups: CheckoutQuoteGroup[];
   commonPaymentMethods: CheckoutPaymentMethod[];
@@ -644,7 +656,7 @@ export interface CheckoutQuote {
 export interface CheckoutDetail {
   id: string;
   status: "pending_payment" | "partially_paid" | "paid" | "expired" | "cancelled";
-  currency: "IRR";
+  currency: "TOMAN";
   totalAmount: string;
   expiresAt: string;
   createdAt: string;
@@ -670,7 +682,7 @@ export interface CheckoutDetail {
     provider: string;
     status: "pending" | "paid" | "failed" | "expired";
     amount: string;
-    currency: "IRR";
+    currency: "TOMAN";
     orderIds: string[];
     expiresAt: string;
     latestAttempt: null | { status: PaymentTransactionStatus; authority: string | null; failure_code: string | null };
@@ -694,7 +706,8 @@ export type Role =
 export interface AppUser {
   id: string;
   fullName: string;
-  email: string;
+  username?: string | null;
+  email: string | null;
   role: Role;
   permissions?: VendorPermission[];
   isPlatformOwner?: boolean;
@@ -765,7 +778,7 @@ export interface AnalyticsActivityItem {
 
 export interface AnalyticsOverview {
   scope: AnalyticsScope;
-  currency: "IRR";
+  currency: "TOMAN";
   range: {
     from: string;
     to: string;

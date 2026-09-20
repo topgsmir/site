@@ -16,7 +16,7 @@ function setup(status = "pending") {
     payment_attempts: {
       findFirst: async (input: unknown) => {
         query = input;
-        return { status, amount: { toString: () => "120000" }, currency: "IRR", order_id: "order-id", checkout_payment_group: { checkout_id: "checkout-id", expires_at: new Date(Date.now() + 60000) } };
+        return { status, amount: { toString: () => "120000" }, currency: "TOMAN", order_id: "order-id", checkout_payment_group: { checkout_id: "checkout-id", expires_at: new Date(Date.now() + 60000) } };
       },
       updateMany: async (input: unknown) => { mutation = input; return { count: 1 }; }
     }

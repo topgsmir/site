@@ -11,15 +11,15 @@ import type {
 } from "@topgsm/shared-types";
 import Link from "next/link";
 import type { Route } from "next";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import type { Locale } from "@/lib/i18n";
 import styles from "./ProductChangesWorkspace.module.css";
 
 const COPY = {
-  en: { title: "Product change history", intro: "A permanent record of catalog edits, reviews, and restores.", empty: "No product changes have been recorded yet.", loading: "Loading change history…", error: "Change history could not be loaded.", restore: "Restore this version", undo: "Undo this change", confirm: "Confirm restore", restoring: "Restoring…", restored: "Version restored.", more: "Load more", fields: "Changed", by: "by", product: "Product", create: "Created", update: "Edited", review: "Reviewed", restoreAction: "Restored" },
-  fa: { title: "تاریخچه تغییرات محصول", intro: "گزارش دائمی ویرایش‌ها، بررسی‌ها و بازگردانی‌های کاتالوگ.", empty: "هنوز تغییری برای محصولات ثبت نشده است.", loading: "در حال دریافت تاریخچه…", error: "دریافت تاریخچه تغییرات ممکن نبود.", restore: "بازگردانی این نسخه", undo: "لغو این تغییر", confirm: "تأیید بازگردانی", restoring: "در حال بازگردانی…", restored: "نسخه بازگردانی شد.", more: "نمایش بیشتر", fields: "تغییرها", by: "توسط", product: "محصول", create: "ایجاد شد", update: "ویرایش شد", review: "بررسی شد", restoreAction: "بازگردانی شد" },
-  ar: { title: "سجل تغييرات المنتج", intro: "سجل دائم لتعديلات الكتالوج والمراجعات وعمليات الاستعادة.", empty: "لم تُسجّل تغييرات على المنتجات بعد.", loading: "جارٍ تحميل السجل…", error: "تعذر تحميل سجل التغييرات.", restore: "استعادة هذا الإصدار", undo: "التراجع عن هذا التغيير", confirm: "تأكيد الاستعادة", restoring: "جارٍ الاستعادة…", restored: "تمت استعادة الإصدار.", more: "تحميل المزيد", fields: "التغييرات", by: "بواسطة", product: "المنتج", create: "تم الإنشاء", update: "تم التعديل", review: "تمت المراجعة", restoreAction: "تمت الاستعادة" }
+  en: { title: "Product change history", intro: "A permanent record of catalog edits, reviews, and restores.", empty: "No product changes have been recorded yet.", loading: "Loading change history…", error: "Change history could not be loaded.", restore: "Restore this version", undo: "Undo this change", confirm: "Confirm restore", restoring: "Restoring…", restored: "Version restored.", page: "Page", previous: "Previous", next: "Next", retry: "Try again", fields: "Changed", by: "by", product: "Product", create: "Created", update: "Edited", review: "Reviewed", restoreAction: "Restored" },
+  fa: { title: "تاریخچه تغییرات محصول", intro: "گزارش دائمی ویرایش‌ها، بررسی‌ها و بازگردانی‌های کاتالوگ.", empty: "هنوز تغییری برای محصولات ثبت نشده است.", loading: "در حال دریافت تاریخچه…", error: "دریافت تاریخچه تغییرات ممکن نبود.", restore: "بازگردانی این نسخه", undo: "لغو این تغییر", confirm: "تأیید بازگردانی", restoring: "در حال بازگردانی…", restored: "نسخه بازگردانی شد.", page: "صفحه", previous: "قبلی", next: "بعدی", retry: "تلاش دوباره", fields: "تغییرها", by: "توسط", product: "محصول", create: "ایجاد شد", update: "ویرایش شد", review: "بررسی شد", restoreAction: "بازگردانی شد" },
+  ar: { title: "سجل تغييرات المنتج", intro: "سجل دائم لتعديلات الكتالوج والمراجعات وعمليات الاستعادة.", empty: "لم تُسجّل تغييرات على المنتجات بعد.", loading: "جارٍ تحميل السجل…", error: "تعذر تحميل سجل التغييرات.", restore: "استعادة هذا الإصدار", undo: "التراجع عن هذا التغيير", confirm: "تأكيد الاستعادة", restoring: "جارٍ الاستعادة…", restored: "تمت استعادة الإصدار.", page: "صفحة", previous: "السابق", next: "التالي", retry: "حاول مجدداً", fields: "التغييرات", by: "بواسطة", product: "المنتج", create: "تم الإنشاء", update: "تم التعديل", review: "تمت المراجعة", restoreAction: "تمت الاستعادة" }
 } as const;
 
 const BULK_COPY = {
@@ -42,8 +42,11 @@ export function ProductChangesWorkspace({
   const c = COPY[locale];
   const bulkCopy = BULK_COPY[locale];
   const [items, setItems] = useState<ProductChangeEvent[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [cursors, setCursors] = useState<(string | null)[]>([null]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [historyError, setHistoryError] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [confirmKey, setConfirmKey] = useState<string | null>(null);
@@ -59,25 +62,30 @@ export function ProductChangesWorkspace({
   const [bulkPreview, setBulkPreview] = useState<ProductBulkUndoPreview | null>(null);
   const [bulkOperationId, setBulkOperationId] = useState("");
   const [bulkBusy, setBulkBusy] = useState<"preview" | "execute" | "">("");
+  const requestId = useRef(0);
 
-  const load = useCallback(async (nextCursor?: string) => {
+  const load = useCallback(async (cursor: string | null) => {
+    const id = ++requestId.current;
     setLoading(true);
-    setError("");
+    setHistoryError("");
+    setItems([]);
+    setNextCursor(null);
     try {
       const path = productId ? `/products/admin/${productId}/changes` : "/products/admin/changes";
       const response = await api.get<ProductChangesPage>(path, {
-        params: { limit: compact ? 8 : 30, ...(nextCursor ? { cursor: nextCursor } : {}) }
+        params: { limit: compact ? 8 : 30, ...(cursor ? { cursor } : {}) }
       });
-      setItems((current) => nextCursor ? [...current, ...response.data.items] : response.data.items);
-      setCursor(response.data.nextCursor);
+      if (id !== requestId.current) return;
+      setItems(response.data.items);
+      setNextCursor(response.data.nextCursor);
     } catch {
-      setError(c.error);
+      if (id === requestId.current) setHistoryError(c.error);
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
   }, [c.error, compact, productId]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(cursors[page] ?? null); }, [cursors, load, page]);
   useEffect(() => {
     if (compact) return;
     void api.get<Vendor[]>("/seller/vendors")
@@ -88,6 +96,17 @@ export function ProductChangesWorkspace({
   function clearBulkPreview() {
     setBulkPreview(null);
     setBulkOperationId("");
+  }
+
+  function resetHistory() {
+    setPage(0);
+    setCursors([null]);
+  }
+
+  function goNext() {
+    if (!nextCursor) return;
+    setCursors((current) => [...current.slice(0, page + 1), nextCursor]);
+    setPage((current) => current + 1);
   }
 
   function bulkPayload() {
@@ -130,7 +149,7 @@ export function ProductChangesWorkspace({
       });
       setMessage(`${response.data.undoneCount} ${bulkCopy.done}`);
       clearBulkPreview();
-      await load();
+      resetHistory();
     } catch {
       setError(c.error);
     } finally {
@@ -151,7 +170,7 @@ export function ProductChangesWorkspace({
       onRestored?.(response.data);
       setMessage(c.restored);
       setConfirmKey(null);
-      await load();
+      resetHistory();
     } catch {
       setError(c.error);
     } finally {
@@ -182,10 +201,11 @@ export function ProductChangesWorkspace({
           {bulkPreview?.changeCount ? <button className={styles.dangerButton} type="button" disabled={Boolean(bulkBusy)} onClick={() => void executeBulkUndo()}>{bulkBusy === "execute" ? bulkCopy.executing : bulkCopy.execute}</button> : null}
         </div>
       </section> : null}
+      {historyError ? <p className={styles.error} role="alert">{historyError} <button type="button" onClick={() => void load(cursors[page] ?? null)}>{c.retry}</button></p> : null}
       {error ? <p className={styles.error} role="alert">{error}</p> : null}
       {message ? <p className={styles.message} role="status">{message}</p> : null}
       {loading && !items.length ? <p className={styles.empty}>{c.loading}</p> : null}
-      {!loading && !items.length ? <p className={styles.empty}>{c.empty}</p> : null}
+      {!loading && !historyError && !items.length ? <p className={styles.empty}>{c.empty}</p> : null}
       <ol className={styles.timeline}>
         {items.map((event) => (
           <li key={event.id}>
@@ -214,7 +234,13 @@ export function ProductChangesWorkspace({
           </li>
         ))}
       </ol>
-      {cursor && !loading ? <button className={styles.more} type="button" onClick={() => void load(cursor)}>{c.more}</button> : null}
+      {(page > 0 || nextCursor) ? <nav className={styles.pagination} aria-label={c.page}>
+        <span>{c.page} {(page + 1).toLocaleString(locale)}</span>
+        <div>
+          <button type="button" disabled={page === 0 || loading} onClick={() => setPage((current) => current - 1)}>{c.previous}</button>
+          <button type="button" disabled={!nextCursor || loading} onClick={goNext}>{c.next}</button>
+        </div>
+      </nav> : null}
     </section>
   );
 }

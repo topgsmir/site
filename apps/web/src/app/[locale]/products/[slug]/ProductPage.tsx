@@ -17,6 +17,8 @@ import type { PublicProduct, PublicProductOffer, PublicProductVariant } from "./
 import styles from "./ProductPage.module.css";
 import { CART_EVENT, cartQuantity, readCart, writeCart } from "@/lib/cart";
 import { ProductComments } from "@/components/comments/ProductComments";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { HeaderSearch } from "@/components/HeaderSearch";
 
 type ProductCopy = ReturnType<typeof getDictionary>["product"];
 type ButtonState = "idle" | "loading" | "success" | "error";
@@ -105,6 +107,10 @@ export function ProductPage({
   }, []);
 
   function addToCart() {
+    if (buttonState === "success") {
+      router.push(`/${locale}/cart`);
+      return;
+    }
     if (!selectedOffer || unavailable) return;
     setButtonState("loading");
 
@@ -178,18 +184,15 @@ export function ProductPage({
           <strong dir="ltr" translate="no">topgsm.</strong>
         </Link>
         <div className={styles.navigationTools}>
-          <nav className={styles.languages} aria-label={copy.language}>
-            {(["fa", "en", "ar"] as const).map((code) => (
-              <Link
-                key={code}
-                href={`/${code}/products/${encodeURIComponent(product.slug)}` as Route}
-                hrefLang={code}
-                aria-current={code === locale ? "page" : undefined}
-              >
-                {code.toUpperCase()}
-              </Link>
-            ))}
-          </nav>
+          <HeaderSearch locale={locale} />
+          <LanguageSwitcher
+            locale={locale}
+            hrefs={{
+              fa: `/fa/products/${encodeURIComponent(product.slug)}`,
+              en: `/en/products/${encodeURIComponent(product.slug)}`,
+              ar: `/ar/products/${encodeURIComponent(product.slug)}`
+            }}
+          />
           <Link href={`/${locale}/cart` as Route} className={styles.cartIndicator} aria-label={`${countLabel} ${copy.itemCount}`}>
             <span>{copy.cart}</span><strong>{countLabel}</strong>
           </Link>

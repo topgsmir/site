@@ -9,7 +9,7 @@ const COPY = {
   ar: { issue: "المجلة التقنية لسوق الهواتف", home: "الرئيسية", blog: "المقالات", sellers: "البائعون", tagline: "أدلة تقنية ومقارنات وخبرة مباشرة من البائعين." }
 } as const;
 
-export function BlogHeader({ locale }: { locale: Locale }) { return <PublicHeader locale={locale} current="journal" />; }
+export function BlogHeader({ locale, languageHrefs }: { locale: Locale; languageHrefs?: Record<Locale, string> }) { return <PublicHeader locale={locale} current="journal" languageHrefs={languageHrefs} />; }
 
 export function BlogFooter({ locale }: { locale: Locale }) {
   const copy = COPY[locale];

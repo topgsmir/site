@@ -1,0 +1,21 @@
+.card { overflow: hidden; border: 1px solid var(--color-dashboard-rule); border-radius: 14px; background: var(--color-dashboard-surface); }
+.card h2 { margin: 0; padding: 25px 28px; border-bottom: 1px solid var(--color-dashboard-rule); font-size: 1.05rem; font-weight: 600; }
+.card form { display: grid; gap: 28px; padding: 28px; }
+.field { display: grid; grid-template-columns: 155px minmax(0, 1fr); align-items: start; gap: 24px; }
+.field > div { display: grid; gap: 10px; }
+.card label { padding-block: 13px; font-size: .82rem; font-weight: 550; }
+.card input { width: 100%; min-height: 48px; padding: 11px 14px; border: 1px solid var(--color-dashboard-rule); border-radius: 8px; color: var(--color-dashboard-ink); background: var(--color-dashboard-paper); font: inherit; font-size: .88rem; transition: border-color 180ms ease, background-color 180ms ease; }
+.card input:hover { border-color: var(--color-dashboard-muted); }
+.card input:focus { background: var(--color-dashboard-surface); border-color: var(--color-dashboard-accent); }
+.card input[dir="ltr"] { text-align: left; }
+.hint { margin: 0; max-width: 52ch; color: var(--color-dashboard-muted); font-size: .73rem; line-height: 1.85; }
+.error, .success { margin: 0; padding: 14px 16px; border-radius: 8px; font-size: .82rem; line-height: 1.7; }
+.error { color: var(--color-dashboard-error); background: var(--color-dashboard-error-soft); }
+.success { color: var(--color-dashboard-success); background: var(--color-dashboard-success-soft); }
+.actions { display: flex; justify-content: flex-end; padding-top: 24px; border-top: 1px solid var(--color-dashboard-rule); }
+.card button { min-height: 46px; padding: 10px 23px; border: 1px solid transparent; border-radius: 8px; color: var(--color-dashboard-accent-ink); background: var(--color-dashboard-accent); font: inherit; font-size: .82rem; font-weight: 600; cursor: pointer; }
+.card button:hover:not(:disabled) { background: var(--color-dashboard-focus); }
+.card button:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 1050px) { .field { grid-template-columns: minmax(0, 1fr); gap: 8px; } .card label { padding: 0; } }
+@media (max-width: 600px) { .card h2 { padding: 20px; } .card form { gap: 22px; padding: 22px 20px; } .actions button { width: 100%; } }
+@media (prefers-reduced-motion: reduce) { .card input { transition: none; } }

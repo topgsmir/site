@@ -114,6 +114,33 @@
   .sectionHeading { gap: 30px; }
   .reassurance { gap: 60px; }
 }
+@media (min-width: 801px) {
+  .hero { gap: 40px; padding-block: 48px 52px; }
+  .kicker { margin-bottom: 16px; }
+  .hero h1 { font-size: clamp(2.4rem, 3.6vw, 3.6rem); }
+  .page[dir="rtl"] .hero h1 { font-size: clamp(2.4rem, 3.5vw, 3.5rem); }
+  .heroBody { margin-top: 18px; font-size: .95rem; line-height: 1.8; }
+  .heroActions { margin-top: 24px; }
+  .primary, .secondary { min-height: 46px; gap: 14px; padding-block: 10px; }
+  .heroNote { margin-top: 22px; }
+  .heroImage { aspect-ratio: 1.35; }
+  .heroVisual figcaption { min-height: 56px; }
+  .platforms { padding-block: 16px 44px; }
+  .section { padding-block: 72px; }
+  .sectionHeading { margin-bottom: 28px; }
+  .sectionHeading h2, .reassurance h2, .support h2 { font-size: clamp(1.75rem, 2.5vw, 2.45rem); }
+  .service { padding: 24px; }
+  .serviceIcon { width: 46px; height: 46px; margin-bottom: 24px; }
+  .service p { margin-bottom: 24px; }
+  .shopSection { padding-block: 56px; }
+  .productArtwork { min-height: 190px; }
+  .productArtwork > svg { width: 60px; height: 60px; }
+  .productInfo { padding-block: 16px 12px; }
+  .productInfo > div { margin-top: 18px; }
+  .reassurance { gap: 64px; padding-block: 60px 96px; }
+  .support { padding-block: 56px; }
+  .footer { padding-top: 56px; }
+}
 @media (max-width: 800px) {
   .header, .hero, .platforms, .section, .reassurance, .support, .footer { width: calc(100% - 40px); }
   .hero { grid-template-columns: 1fr; gap: 40px; padding-block: 48px 42px; }

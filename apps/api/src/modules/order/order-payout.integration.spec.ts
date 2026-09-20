@@ -110,7 +110,7 @@ before(async () => {
         listing_id: listing.id,
         variant_id: variant.id,
         price: "1001",
-        currency: "IRR",
+        currency: "TOMAN",
         status: "active",
         physical: { create: { stock: 3, weight_grams: 250 } }
       }
@@ -128,9 +128,9 @@ before(async () => {
 });
 
 after(async () => {
-  const emails = [buyer, secondBuyer, thirdBuyer, sellerActor, admin].map(
-    (actor) => actor.email
-  );
+  const emails = [buyer, secondBuyer, thirdBuyer, sellerActor, admin]
+    .map((actor) => actor.email)
+    .filter((email): email is string => email !== null);
   await prisma.outbox_events.deleteMany({
     where: { payload: { path: ["sellerId"], equals: sellerId } }
   });
@@ -275,7 +275,7 @@ describe("secure order and payout persistence", () => {
 });
 
 function thisActor(
-  user: { id: string; full_name: string; email: string },
+  user: { id: string; full_name: string; email: string | null },
   role: AppUser["role"]
 ): AppUser {
   return { id: user.id, fullName: user.full_name, email: user.email, role };

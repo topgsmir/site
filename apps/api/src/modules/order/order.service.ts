@@ -70,6 +70,15 @@ const buyerOrderSummarySelect = {
   items: { select: { id: true, product_title: true, product_type: true, quantity: true } }
 } satisfies Prisma.ordersSelect;
 
+const adminOrderDirectorySelect = {
+  id: true, status: true, currency: true, total_amount: true, traffic_source: true, created_at: true,
+  seller: { select: { shop_name: true } },
+  buyer: { select: { full_name: true, email: true, phone_number: true } },
+  shipping_address: { select: { recipient_name: true, province: true, city: true, address_line: true, postal_code: true } },
+  shipment: { select: { carrier: true, tracking_code: true } },
+  items: { select: { id: true, product_title: true, product_type: true, quantity: true } }
+} satisfies Prisma.ordersSelect;
+
 type OrderRecord = Prisma.ordersGetPayload<{ select: typeof orderSelect }>;
 
 @Injectable()
@@ -84,7 +93,32 @@ export class OrderService {
   ) {}
 
   async list(actor: AppUser, input: ListOrdersQueryDto) {
-    const where = await this.scope(actor);
+    if (input.view === "directory" && !this.hasPlatformPermission(actor, "orders_manage")) {
+      throw new ForbiddenException("Platform order access is required");
+    }
+    const from = input.dateFrom ? new Date(`${input.dateFrom}T00:00:00.000Z`) : undefined;
+    const to = input.dateTo ? new Date(`${input.dateTo}T00:00:00.000Z`) : undefined;
+    if ((from && (Number.isNaN(from.getTime()) || from.toISOString().slice(0, 10) !== input.dateFrom)) ||
+        (to && (Number.isNaN(to.getTime()) || to.toISOString().slice(0, 10) !== input.dateTo)) ||
+        (from && to && from > to)) throw new BadRequestException("Invalid order date range");
+    const term = input.search?.trim();
+    if (term && term.length < 3) throw new BadRequestException("Order search needs at least 3 characters");
+    const where: Prisma.ordersWhereInput = {
+      ...await this.scope(actor),
+      ...(input.status ? { status: input.status as order_status } : {}),
+      ...(input.productType ? { items: { some: { product_type: input.productType as product_type } } } : {}),
+      ...(from || to ? { created_at: { ...(from ? { gte: from } : {}), ...(to ? { lt: new Date(to.getTime() + 86_400_000) } : {}) } } : {}),
+      ...(term ? { OR: [
+        { id: { contains: term, mode: "insensitive" } },
+        { buyer: { full_name: { contains: term, mode: "insensitive" } } },
+        { buyer: { email: { contains: term, mode: "insensitive" } } },
+        { buyer: { phone_number: { contains: term } } },
+        { seller: { shop_name: { contains: term, mode: "insensitive" } } },
+        { items: { some: { product_title: { contains: term, mode: "insensitive" } } } },
+        { traffic_source: { contains: term, mode: "insensitive" } }
+      ] } : {})
+    };
+    const direction = input.sort === "oldest" ? "asc" : "desc";
     if (input.cursor) {
       const cursor = await this.prisma.orders.findFirst({
         where: { ...where, id: input.cursor },
@@ -92,12 +126,40 @@ export class OrderService {
       });
       if (!cursor) throw new NotFoundException("Order page cursor was not found");
     }
+    if (input.view === "directory") {
+      const rows = await this.prisma.orders.findMany({
+        where,
+        ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+        take: input.limit + 1,
+        orderBy: [{ created_at: direction }, { id: direction }],
+        select: adminOrderDirectorySelect
+      });
+      const hasMore = rows.length > input.limit;
+      const page = hasMore ? rows.slice(0, input.limit) : rows;
+      return {
+        items: page.map((order) => ({
+          id: order.id, status: order.status, currency: order.currency.trim(),
+          totalAmount: order.total_amount.toString(), trafficSource: order.traffic_source,
+          createdAt: order.created_at.toISOString(),
+          seller: { shopName: order.seller.shop_name },
+          buyer: { fullName: order.buyer.full_name, email: order.buyer.email, phoneNumber: order.buyer.phone_number },
+          shippingAddress: order.shipping_address ? {
+            recipientName: order.shipping_address.recipient_name, province: order.shipping_address.province,
+            city: order.shipping_address.city, addressLine: order.shipping_address.address_line,
+            postalCode: order.shipping_address.postal_code.trim()
+          } : null,
+          shipment: order.shipment ? { carrier: order.shipment.carrier, trackingCode: order.shipment.tracking_code } : null,
+          items: order.items.map((item) => ({ id: item.id, productTitle: item.product_title, productType: item.product_type, quantity: item.quantity }))
+        })),
+        nextCursor: hasMore ? page.at(-1)?.id ?? null : null
+      };
+    }
     if (actor.role === "buyer") {
       const rows = await this.prisma.orders.findMany({
         where,
         ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
         take: input.limit + 1,
-        orderBy: [{ created_at: "desc" }, { id: "desc" }],
+        orderBy: [{ created_at: direction }, { id: direction }],
         select: buyerOrderSummarySelect
       });
       const hasMore = rows.length > input.limit;
@@ -124,7 +186,7 @@ export class OrderService {
       where,
       ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
       take: input.limit + 1,
-      orderBy: [{ created_at: "desc" }, { id: "desc" }],
+      orderBy: [{ created_at: direction }, { id: direction }],
       select: orderSelect
     });
     const hasMore = rows.length > input.limit;
@@ -243,7 +305,7 @@ export class OrderService {
         }
 
         const offerCurrency = offer.currency.trim();
-        if ((offerCurrency !== "IRR" && offerCurrency !== "USD") || (offerCurrency === "IRR" && !offer.price.isInteger())) {
+        if ((offerCurrency !== "TOMAN" && offerCurrency !== "USD") || (offerCurrency === "TOMAN" && !offer.price.isInteger())) {
           throw new BadRequestException("The offer currency or precision is unsupported");
         }
         if (offerCurrency === "USD" && !this.usdRates) {
@@ -264,9 +326,9 @@ export class OrderService {
         }
 
         const unitPrice = offerCurrency === "USD"
-          ? offer.price.mul(await this.usdRates!.getIrrPerUsd(transaction)).toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP)
+          ? offer.price.mul(await this.usdRates!.getTomanPerUsd(transaction)).toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP)
           : offer.price;
-        const currency = "IRR";
+        const currency = "TOMAN";
         const gross = unitPrice.mul(input.quantity);
         const commission = gross
           .mul(offer.listing.seller.commission)

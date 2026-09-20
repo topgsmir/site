@@ -148,7 +148,7 @@ export class CheckoutService {
         const createdCheckout = await tx.checkouts.create({
           data: {
             buyer_id: actor.id,
-            currency: "IRR",
+            currency: "TOMAN",
             total_amount: new Prisma.Decimal(quote.totalAmount),
             idempotency_key: idempotencyKey,
             request_hash: requestHash,
@@ -178,7 +178,7 @@ export class CheckoutService {
               checkout_id: createdCheckout.id,
               traffic_source: input.trafficSource ?? null,
               status: "pending",
-              currency: "IRR",
+              currency: "TOMAN",
               total_amount: gross,
               commission_rate: new Prisma.Decimal(group.commissionRate),
               holdback_rate: new Prisma.Decimal(group.holdbackRate),
@@ -193,7 +193,7 @@ export class CheckoutService {
                   commission_amount: commission,
                   holdback_amount: holdback,
                   payable_amount: gross.minus(commission).minus(holdback),
-                  currency: "IRR"
+                  currency: "TOMAN"
                 }
               }
             },
@@ -231,7 +231,7 @@ export class CheckoutService {
               checkout_id: createdCheckout.id,
               provider,
               amount,
-              currency: "IRR",
+              currency: "TOMAN",
               expires_at: expiresAt,
               orders: { create: orders.map((order) => ({ order_id: order.id, amount: order.amount })) }
             }
@@ -305,10 +305,10 @@ export class CheckoutService {
       });
     }
     const currencies = new Set(offers.map((offer) => offer.currency.trim()));
-    if ([...currencies].some((currency) => currency !== "IRR" && currency !== "USD")) {
-      throw new BadRequestException("Only IRR and USD offers can be purchased");
+    if ([...currencies].some((currency) => currency !== "TOMAN" && currency !== "USD")) {
+      throw new BadRequestException("Only toman and USD offers can be purchased");
     }
-    const irrPerUsd = currencies.has("USD") ? await this.usdRates.getIrrPerUsd(db) : null;
+    const tomanPerUsd = currencies.has("USD") ? await this.usdRates.getTomanPerUsd(db) : null;
     const configs = await db.payment_method_configs.findMany({
       where: { enabled: true, provider_code: { in: providers.map((provider) => provider.code) } },
       select: { provider_code: true, seller_rules: { select: { seller_id: true } }, product_type_rules: { select: { product_type: true } } }
@@ -323,8 +323,8 @@ export class CheckoutService {
       const offer = offerById.get(requested.offerId)!;
       const type = offer.listing.product.type as ProductType;
       const offerCurrency = offer.currency.trim();
-      if (offerCurrency === "IRR" && !offer.price.isInteger()) {
-        throw new BadRequestException("IRR offers must use integer prices");
+      if (offerCurrency === "TOMAN" && !offer.price.isInteger()) {
+        throw new BadRequestException("Toman offers must use integer prices");
       }
       if (type === "physical" && (offer.physical?.stock ?? 0) < requested.quantity) {
         throw new PublicHttpException(HttpStatus.CONFLICT, `${offer.listing.product.title} does not have enough stock`, {
@@ -351,7 +351,7 @@ export class CheckoutService {
         commissionRate: offer.listing.seller.commission.toString(), holdbackRate: offer.listing.seller.holdback_rate.toString(), items: [], total: new Prisma.Decimal(0)
       };
       const unitPrice = offerCurrency === "USD"
-        ? offer.price.mul(irrPerUsd!).toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP)
+        ? offer.price.mul(tomanPerUsd!).toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP)
         : offer.price;
       const total = unitPrice.mul(requested.quantity);
       group.items.push({
@@ -378,7 +378,7 @@ export class CheckoutService {
     if (quotedGroups.some((group) => group.paymentMethods.length === 0)) throw new ServiceUnavailableException("One or more seller groups have no available payment method");
     const commonPaymentMethods = providers.filter((provider) => quotedGroups.every((group) => group.paymentMethods.some((method) => method.code === provider.code)));
     const total = quotedGroups.reduce((sum, group) => sum.add(group.total), new Prisma.Decimal(0));
-    return { currency: "IRR", totalAmount: total.toString(), groups: quotedGroups, commonPaymentMethods, requiresShippingAddress: quotedGroups.some((group) => group.productType === "physical") };
+    return { currency: "TOMAN", totalAmount: total.toString(), groups: quotedGroups, commonPaymentMethods, requiresShippingAddress: quotedGroups.some((group) => group.productType === "physical") };
   }
 
   private mapCheckoutImage(

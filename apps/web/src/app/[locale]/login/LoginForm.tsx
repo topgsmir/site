@@ -13,6 +13,16 @@ import { captchaTokenFor } from "@/lib/security-captcha";
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
+function normalizeDigits(value: string) {
+  return value
+    .replace(/[۰-۹]/g, (digit) => String(digit.charCodeAt(0) - 0x06f0))
+    .replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 0x0660));
+}
+
+function normalizePhoneInput(value: string) {
+  return normalizeDigits(value).replace(/[\s().-]/g, "");
+}
+
 type AuthCopy = {
   title: string;
   description: string;
@@ -24,6 +34,11 @@ type AuthCopy = {
   sendCode: string;
   verifyCode: string;
   firstPhoneHint: string;
+  codeSentTo: string;
+  codeExpiresIn: string;
+  codeExpired: string;
+  resendCode: string;
+  changePhone: string;
   firstEmailHint: string;
   invalidCredentials: string;
   methodsError: string;
@@ -85,10 +100,18 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
   const [identifier, setIdentifier] = useState("");
   const [challengeId, setChallengeId] = useState("");
   const [requestedPhone, setRequestedPhone] = useState("");
+  const [codeExpiresAt, setCodeExpiresAt] = useState(0);
+  const [now, setNow] = useState(Date.now());
   const [needsName, setNeedsName] = useState(false);
   const [captchaPolicies, setCaptchaPolicies] = useState<Record<"login" | "register", boolean> | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaReset, setCaptchaReset] = useState(0);
+
+  useEffect(() => {
+    if (!challengeId) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [challengeId]);
 
   useEffect(() => {
     let active = true;
@@ -114,6 +137,25 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
     return () => { active = false; };
   }, [copy.methodsError]);
 
+  async function requestCode(phoneNumber: string) {
+    const otpCaptchaToken = await captchaTokenFor("otp");
+    const response = await fetch(`${API_BASE}/auth/otp/request`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phoneNumber, ...(otpCaptchaToken ? { captchaToken: otpCaptchaToken } : {}) }) });
+    const data = await response.json().catch(() => null) as { challengeId?: string; expiresAt?: string; message?: string } | null;
+    if (!response.ok || !data?.challengeId) throw new Error(data?.message || copy.genericError);
+    setChallengeId(data.challengeId);
+    setRequestedPhone(phoneNumber);
+    setCodeExpiresAt(data.expiresAt ? Date.parse(data.expiresAt) : Date.now() + 5 * 60_000);
+    setNow(Date.now());
+  }
+
+  async function resendCode() {
+    setIsSubmitting(true);
+    setError("");
+    try { await requestCode(normalizedPhone); }
+    catch (requestError) { setError(requestError instanceof Error ? requestError.message : copy.genericError); }
+    finally { setIsSubmitting(false); }
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
@@ -121,16 +163,12 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
 
     const form = new FormData(event.currentTarget);
     if (phoneMode) {
-      const phoneNumber = identifier.trim();
+      const phoneNumber = normalizedPhone;
       try {
-        if (!challengeId || phoneNumber !== requestedPhone) {
-          const otpCaptchaToken = await captchaTokenFor("otp");
-          const response = await fetch(`${API_BASE}/auth/otp/request`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phoneNumber, ...(otpCaptchaToken ? { captchaToken: otpCaptchaToken } : {}) }) });
-          const data = await response.json().catch(() => null) as { challengeId?: string; message?: string } | null;
-          if (!response.ok || !data?.challengeId) throw new Error(data?.message || copy.genericError);
-          setChallengeId(data.challengeId); setRequestedPhone(phoneNumber);
+        if (!challengeId || phoneNumber !== requestedPhone || codeExpiresAt <= Date.now()) {
+          await requestCode(phoneNumber);
         } else {
-          const response = await fetch(`${API_BASE}/auth/otp/verify`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phoneNumber, challengeId, code: String(form.get("code") ?? ""), ...(String(form.get("fullName") ?? "").trim() ? { fullName: String(form.get("fullName")) } : {}), ...(String(form.get("email") ?? "").trim() ? { email: String(form.get("email")) } : {}) }) });
+          const response = await fetch(`${API_BASE}/auth/otp/verify`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phoneNumber, challengeId, code: String(form.get("code") ?? ""), ...(String(form.get("fullName") ?? "").trim() ? { fullName: String(form.get("fullName")) } : {}) }) });
           const data = await response.json().catch(() => null) as { user?: AuthUser; message?: string } | null;
           if (!response.ok || !data?.user) throw new Error(data?.message || copy.genericError);
           router.push(destinationFor(data.user, locale, nextPath) as Route); router.refresh();
@@ -194,9 +232,12 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
   }
 
   const trimmedIdentifier = identifier.trim();
-  const phoneCandidate = /^[+\d]+$/.test(trimmedIdentifier) && trimmedIdentifier.length > 0;
-  const phoneValid = /^(?:\+98|0098|98|0)?9\d{9}$/.test(trimmedIdentifier);
+  const normalizedPhone = normalizePhoneInput(trimmedIdentifier);
+  const phoneCandidate = /^[+\d]+$/.test(normalizedPhone) && /\d/.test(normalizedPhone);
+  const phoneValid = /^(?:\+98|0098|98|0)?9\d{9}$/.test(normalizedPhone);
   const phoneMode = phoneCandidate;
+  const codeSecondsLeft = Math.max(0, Math.ceil((codeExpiresAt - now) / 1000));
+  const codeTime = `${Math.floor(codeSecondsLeft / 60)}:${String(codeSecondsLeft % 60).padStart(2, "0")}`;
   const methodUnavailable = methods !== null && trimmedIdentifier.length > 0 && (
     phoneMode ? !methods.phoneOtpEnabled : !methods.emailPasswordEnabled
   );
@@ -231,6 +272,7 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
                 setIdentifier(event.target.value);
                 setChallengeId("");
                 setRequestedPhone("");
+                setCodeExpiresAt(0);
                 setNeedsName(false);
                 setCaptchaToken(null);
                 setError("");
@@ -238,7 +280,7 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
               required
             />
           </label>
-          {phoneMode ? challengeId ? <><label><span>{copy.code}</span><input name="code" type="text" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required /></label><p className="auth-flow-hint">{copy.firstPhoneHint}</p><label><span>{copy.fullName}</span><input name="fullName" type="text" autoComplete="name" minLength={2} maxLength={120} /></label><label><span>{copy.email}</span><input name="email" type="email" autoComplete="email" maxLength={254} /></label></> : null : trimmedIdentifier ? <>
+          {phoneMode ? challengeId ? <><div className="auth-code-meta"><p>{copy.codeSentTo} <b dir="ltr">{requestedPhone}</b></p><button type="button" onClick={() => { setChallengeId(""); setRequestedPhone(""); setCodeExpiresAt(0); setError(""); }}>{copy.changePhone}</button></div><label><span>{copy.code}</span><input className="auth-code-input" name="code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} autoFocus dir="ltr" onInput={(event) => { event.currentTarget.value = normalizeDigits(event.currentTarget.value).replace(/\D/g, "").slice(0, 6); }} required={codeSecondsLeft > 0} /></label><p className="auth-code-timer" role="status">{codeSecondsLeft ? `${copy.codeExpiresIn} ${codeTime}` : copy.codeExpired}</p><p className="auth-flow-hint">{copy.firstPhoneHint}</p><label><span>{copy.fullName}</span><input name="fullName" type="text" autoComplete="given-name" minLength={2} maxLength={120} /></label><button className="auth-resend" type="button" disabled={isSubmitting} onClick={() => void resendCode()}>{copy.resendCode}</button></> : null : trimmedIdentifier ? <>
           <label>
             <span>{copy.password}</span>
             <input
@@ -250,7 +292,7 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
               required
             />
           </label>
-          {needsName && trimmedIdentifier.includes("@") ? <><p className="auth-flow-hint">{copy.firstEmailHint}</p><label><span>{copy.fullName}</span><input name="fullName" type="text" autoComplete="name" minLength={2} maxLength={100} /></label></> : null}</> : null}
+          {needsName && trimmedIdentifier.includes("@") ? <><p className="auth-flow-hint">{copy.firstEmailHint}</p><label><span>{copy.fullName}</span><input name="fullName" type="text" autoComplete="given-name" minLength={2} maxLength={100} /></label></> : null}</> : null}
 
           {phoneMode && !phoneValid ? <p className="auth-flow-hint" role="status">{copy.phoneInvalid}</p> : null}
           {methodUnavailable ? <p className="auth-error" role="status">{copy.methodUnavailable}</p> : null}
@@ -258,7 +300,7 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
           {error ? <p className="auth-error" role="alert">{error}</p> : null}
 
           <button className="auth-submit" type="submit" disabled={isSubmitting || !canSubmit}>
-            {isSubmitting ? copy.submitting : phoneMode ? challengeId ? copy.verifyCode : copy.sendCode : copy.loginAction}
+            {isSubmitting ? copy.submitting : phoneMode ? challengeId && codeSecondsLeft ? copy.verifyCode : copy.sendCode : copy.loginAction}
           </button>
         </form>
         <Link className="auth-back" href={`/${locale}`}>{copy.backHome}</Link>

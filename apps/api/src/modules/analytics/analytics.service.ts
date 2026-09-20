@@ -96,7 +96,7 @@ export class AnalyticsService {
 
     return {
       scope,
-      currency: "IRR",
+      currency: "TOMAN",
       range: {
         ...range,
         timezone: input.timezone,

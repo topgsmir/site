@@ -60,7 +60,6 @@
 }
 
 .navigationTools,
-.languages,
 .cartIndicator {
   display: flex;
   align-items: center;
@@ -68,27 +67,6 @@
 
 .navigationTools {
   gap: var(--space-product-sm);
-}
-
-.languages {
-  gap: var(--space-product-2xs);
-}
-
-.languages a {
-  display: grid;
-  min-width: calc(var(--space-product-xl) + var(--space-product-2xs));
-  min-height: calc(var(--space-product-xl) + var(--space-product-2xs));
-  place-items: center;
-  color: var(--color-product-muted);
-  font-size: var(--text-product-xs);
-  white-space: nowrap;
-}
-
-.languages a[aria-current="page"] {
-  color: var(--color-product-accent);
-  text-decoration: underline;
-  text-decoration-thickness: var(--rule-product-thin);
-  text-underline-offset: var(--space-product-2xs);
 }
 
 .cartIndicator {
@@ -698,7 +676,6 @@
     transform: translateY(calc(var(--rule-product-thin) * -1));
   }
 
-  .languages a:hover,
   .breadcrumb a:hover,
   .footer a:hover {
     color: var(--color-product-accent);
@@ -818,9 +795,17 @@
 .purchasePanel h2, .description h2, .specification h2, .support h2 { font-weight: 550; line-height: 1.4; }
 .offerSummary .price { font-family: var(--font-product-body); font-weight: 550; }
 .addButton, .mobileCart button { border-radius: 999px; font-weight: 550; }
-.languages a[aria-current="page"] { text-decoration: none; border-radius: 50%; background: var(--color-product-accent-soft); }
 .support { border-radius: 28px; }
 @media (max-width: 600px) { .hero { padding: 20px; border-radius: 24px; } }
 
 .brandSymbol { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 14px; background: var(--color-product-accent-soft); color: var(--color-product-accent); }
 .brand strong { font-family: var(--font-outfit), sans-serif; font-size: 1.7rem; font-weight: 600; letter-spacing: -.06em; }
+@media (min-width: 1024px) {
+  .navigation { min-height: 72px; }
+  .brand strong { font-size: 1.45rem; }
+  .brandSymbol { width: 36px; height: 36px; }
+  .hero { padding: clamp(22px, 3vw, 36px); border-radius: 24px; }
+  .identityPlate { margin-top: 22px; padding-inline: 16px; }
+  .identityPlate > div { padding-block: 10px; }
+  .purchasePanel { padding: clamp(20px, 2vw, 28px); }
+}

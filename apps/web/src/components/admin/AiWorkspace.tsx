@@ -925,7 +925,7 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
                         {c.pricing}:{" "}
                         {profile.inputPricePerMillionUsd === null
                           ? "—"
-                          : `$${profile.inputPricePerMillionUsd} IN · $${profile.outputPricePerMillionUsd} OUT / 1M`}
+                          : `${formatUsd(profile.inputPricePerMillionUsd, locale)} IN · ${formatUsd(profile.outputPricePerMillionUsd, locale)} OUT / 1M`}
                       </small>
                     </div>
                     <i data-status={profile.status}>

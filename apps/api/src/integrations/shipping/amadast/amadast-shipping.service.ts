@@ -39,7 +39,8 @@ export class AmadastShippingService {
     });
     if (!order) throw new NotFoundException("A processing physical order was not found");
     if (!order.shipping_address) throw new ConflictException("The order has no shipping address");
-    if (order.currency.trim() !== "IRR" || !order.total_amount.isInteger() || order.total_amount.lt(10_000) || order.total_amount.gt(2_147_483_647)) {
+    const providerValue = order.total_amount.mul(10);
+    if (order.currency.trim() !== "TOMAN" || !providerValue.isInteger() || providerValue.lt(10_000) || providerValue.gt(2_147_483_647)) {
       throw new ConflictException("The order value is outside Amadast limits");
     }
     const weight = order.items.reduce((sum, item) => sum + (item.offer.physical?.weight_grams ?? 0) * item.quantity, 0);
@@ -76,7 +77,7 @@ export class AmadastShippingService {
         sender_mobile: sender.senderMobile,
         recipient_address: order.shipping_address.address_line,
         weight,
-        value: order.total_amount.toNumber(),
+        value: providerValue.toNumber(),
         product_type: config.productType,
         package_type: config.packageType,
         recipient_postal_code: order.shipping_address.postal_code.trim(),

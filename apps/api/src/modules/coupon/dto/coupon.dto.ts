@@ -14,7 +14,7 @@ import {
 } from "class-validator";
 
 const COUPON_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{2,31}$/;
-const CURRENCY_PATTERN = /^[A-Za-z]{3}$/;
+const CURRENCY_PATTERN = /^TOMAN$/;
 const MONEY_PATTERN = /^(?:0|[1-9]\d{0,15})(?:\.\d{1,4})?$/;
 
 export class ListCouponsQueryDto {

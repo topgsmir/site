@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import type { AdminComment, CommentPage, CommentSettings, CommentStatus, CommentPostingPolicy, CommentPublicationPolicy } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
-import styles from "./Comments.module.css";
+import styles from "./AdminCommentsWorkspace.module.css";
 
 const copy = {
   en: { title: "Comments", intro: "Set the posting rules, review comments, and resolve spam reports.", lock: "Require seller replies", lockHint: "A seller with an unanswered approved comment can only use the comments workspace.", posting: "Who may comment", purchasers: "Verified purchasers", buyers: "Signed-in buyers", guests: "Guests too", publication: "Signed-in comment publication", approval: "Admin approval", immediate: "Immediately", guestHint: "Guest comments always require approval.", risk: "Immediate publication can let one signed-in buyer lock every seller. Use approval or verified purchasers if that risk is unacceptable.", save: "Save settings", saved: "Settings saved.", all: "All comments", spamQueue: "Spam review", search: "Search comment, product, or author", searchButton: "Search", allStatuses: "All statuses", pending: "Pending", approved: "Published", rejected: "Rejected", spam_review: "Spam review", spam: "Spam", approve: "Approve", reject: "Reject / hide", confirmSpam: "Confirm spam", restore: "Restore", more: "Load more", empty: "No comments match this view.", error: "Comments could not be loaded.", actionError: "Action failed. Refresh and try again.", loading: "Loading…" },
@@ -59,20 +59,20 @@ export function AdminCommentsWorkspace({ locale }: { locale: Locale }) {
   }
 
   return <main className={styles.section} dir={locale === "en" ? "ltr" : "rtl"}>
-    <header className={styles.header}><span>Settings / Comments</span><h1>{c.title}</h1><p>{c.intro}</p></header>
+    <header className={styles.header}><h1>{c.title}</h1><p>{c.intro}</p></header>
     {error ? <p className={styles.error} role="alert">{error}</p> : null}{message ? <p className={styles.success} role="status">{message}</p> : null}
     {settings ? <form className={styles.settings} onSubmit={save}>
-      <label className={styles.toggle}><input type="checkbox" checked={lock} onChange={(event) => setLock(event.target.checked)} /><strong>{c.lock}</strong></label><small>{c.lockHint}</small>
-      <label>{c.posting}<select value={posting} onChange={(event) => setPosting(event.target.value as CommentPostingPolicy)}><option value="purchasers">{c.purchasers}</option><option value="buyers">{c.buyers}</option><option value="guests">{c.guests}</option></select></label>
-      <label>{c.publication}<select value={publication} onChange={(event) => setPublication(event.target.value as CommentPublicationPolicy)}><option value="approval">{c.approval}</option><option value="immediate">{c.immediate}</option></select></label><small>{c.guestHint}</small>
+      <div className={styles.settingRow}><div><strong>{c.lock}</strong><small>{c.lockHint}</small></div><label className={styles.toggle}><span className={styles.visuallyHidden}>{c.lock}</span><input type="checkbox" checked={lock} disabled={saving} onChange={(event) => setLock(event.target.checked)} /><span aria-hidden="true"><i /></span></label></div>
+      <div className={styles.selectGrid}><label>{c.posting}<select value={posting} disabled={saving} onChange={(event) => setPosting(event.target.value as CommentPostingPolicy)}><option value="purchasers">{c.purchasers}</option><option value="buyers">{c.buyers}</option><option value="guests">{c.guests}</option></select></label>
+      <label>{c.publication}<select value={publication} disabled={saving} onChange={(event) => setPublication(event.target.value as CommentPublicationPolicy)}><option value="approval">{c.approval}</option><option value="immediate">{c.immediate}</option></select><small>{c.guestHint}</small></label></div>
       {lock && posting !== "purchasers" && publication === "immediate" ? <p className={styles.notice} role="status">{c.risk}</p> : null}
-      <div><button className={styles.primary} type="submit" disabled={saving}>{c.save}</button></div>
-    </form> : <p>{c.loading}</p>}
-    <div className={styles.tabs}><button type="button" aria-pressed={filter !== "spam_review"} onClick={() => setFilter("")}>{c.all}</button><button type="button" aria-pressed={filter === "spam_review"} onClick={() => setFilter("spam_review")}>{c.spamQueue}</button></div>
+      <div className={styles.settingsActions}><button className={styles.primary} type="submit" disabled={saving}>{c.save}</button></div>
+    </form> : <p className={styles.loading}>{c.loading}</p>}
+    <div className={styles.tabs}><button type="button" aria-pressed={filter === ""} onClick={() => setFilter("")}>{c.all}</button><button type="button" aria-pressed={filter === "spam_review"} onClick={() => setFilter("spam_review")}>{c.spamQueue}</button></div>
     <form className={styles.toolbar} onSubmit={(event) => { event.preventDefault(); setAppliedSearch(search.trim()); }}><input aria-label={c.search} placeholder={c.search} value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} /><button type="submit">{c.searchButton}</button><select aria-label={c.allStatuses} value={filter} onChange={(event) => setFilter(event.target.value as CommentStatus | "")}><option value="">{c.allStatuses}</option>{(["pending", "approved", "rejected", "spam_review", "spam"] as const).map((value) => <option key={value} value={value}>{c[value]}</option>)}</select></form>
-    {loading && !items.length ? <p>{c.loading}</p> : null}{!loading && !items.length ? <p className={styles.empty}>{c.empty}</p> : null}
+    {loading && !items.length ? <p className={styles.loading} role="status">{c.loading}</p> : null}{!loading && !items.length && !error ? <p className={styles.empty}>{c.empty}</p> : null}
     <div className={styles.list}>{items.map((item) => <article className={styles.card} key={item.id}>
-      <div className={styles.meta}><strong>{item.productTitle}</strong><span>{item.authorName}</span><time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleDateString(locale)}</time><span>{c[item.status]}</span></div><p>{item.body}</p>
+      <div className={styles.meta}><strong>{item.productTitle}</strong><span>{item.authorName}</span><time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleDateString(locale)}</time><span className={styles.status} data-status={item.status}>{c[item.status]}</span></div><p className={styles.body}>{item.body}</p>
       {item.replies.map((reply, index) => reply.body ? <div className={styles.reply} key={index}><strong>{reply.sellerName}</strong><p>{reply.body}</p></div> : null)}
       <div className={styles.actions}>{item.status === "pending" ? <><button type="button" disabled={busy === item.id} onClick={() => void moderate(item.id, "approve")}>{c.approve}</button><button className={styles.danger} type="button" disabled={busy === item.id} onClick={() => void moderate(item.id, "reject")}>{c.reject}</button></> : null}
       {item.status === "approved" ? <button className={styles.danger} type="button" disabled={busy === item.id} onClick={() => void moderate(item.id, "reject")}>{c.reject}</button> : null}

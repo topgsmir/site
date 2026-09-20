@@ -11,6 +11,7 @@ import type {
 } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
+import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import styles from "./PaymentServiceWorkspace.module.css";
 
 const copy = {
@@ -82,6 +83,7 @@ const copy = {
     loading: "Loading payment service…",
     loadMore: "Load more transactions",
     filters: "Find a transaction",
+    moreFilters: "More filters",
     referenceSearch: "Order, transaction, authority, or provider reference",
     referenceSearchHint: "Enter the complete identifier (at least 2 characters).",
     filterStatus: "Status",
@@ -185,6 +187,7 @@ const copy = {
     loading: "در حال بارگذاری سرویس پرداخت…",
     loadMore: "نمایش تراکنش‌های بیشتر",
     filters: "پیدا کردن تراکنش",
+    moreFilters: "فیلترهای بیشتر",
     referenceSearch: "شناسه سفارش، تراکنش، Authority یا مرجع درگاه",
     referenceSearchHint: "شناسه کامل را با دست‌کم ۲ نویسه وارد کنید.",
     filterStatus: "وضعیت",
@@ -288,6 +291,7 @@ const copy = {
     loading: "جارٍ تحميل خدمة الدفع…",
     loadMore: "تحميل معاملات إضافية",
     filters: "العثور على معاملة",
+    moreFilters: "مزيد من المرشحات",
     referenceSearch: "معرف الطلب أو المعاملة أو مرجع الموفر",
     referenceSearchHint: "أدخل المعرف الكامل بحرفين على الأقل.",
     filterStatus: "الحالة",
@@ -566,8 +570,9 @@ export function PaymentServiceWorkspace({
   return (
     <section className={styles.workspace} aria-labelledby="payment-service-title">
       <header className={styles.hero}>
-        <h1 id="payment-service-title">{c.title}</h1>
-        <span>{c.intro}</span>
+        <span className={styles.heroEyebrow}>{c.eyebrow}</span>
+        <h1 id="payment-service-title">{view === "transactions" ? c.transactions : c.title}</h1>
+        <span>{view === "transactions" ? c.transactionsHint : c.intro}</span>
       </header>
 
       {error ? <p className={styles.error} role="alert">{error}</p> : null}
@@ -852,100 +857,80 @@ export function PaymentServiceWorkspace({
         })()}
       </section> : null}
 
-      {view === "transactions" ? <section className={styles.section} aria-labelledby="payment-transactions-title">
-        <header className={styles.sectionHeader}>
-          <div>
-            <h2 id="payment-transactions-title">{c.transactions}</h2>
-            <p>{c.transactionsHint}</p>
-          </div>
-          {!loading ? <strong>{transactionTotal.toLocaleString(locale)}</strong> : null}
-        </header>
-
+      {view === "transactions" ? <section className={styles.transactionsSection} aria-label={c.transactions}>
         <form className={styles.transactionFilters} onSubmit={(event) => {
           event.preventDefault();
           applyTransactionFilters();
         }}>
-          <header>
-            <h3>{c.filters}</h3>
-            <p>{c.referenceSearchHint}</p>
-          </header>
-          <label className={styles.filterSearch}>
-            <span>{c.referenceSearch}</span>
-            <input
-              type="search"
-              minLength={2}
-              value={draftFilters.query}
-              onChange={(event) => setDraftFilters((current) => ({ ...current, query: event.currentTarget.value }))}
-            />
-          </label>
-          <label>
-            <span>{c.filterStatus}</span>
-            <select
-              value={draftFilters.status}
-              onChange={(event) => setDraftFilters((current) => ({
-                ...current,
-                status: event.currentTarget.value as TransactionFilters["status"]
-              }))}
-            >
-              <option value="">{c.allOptions}</option>
-              {(["created", "initiating", "initiation_unknown", "pending", "succeeded", "refund_pending", "refund_unknown", "failed", "refunded"] as PaymentTransactionStatus[]).map((status) => (
-                <option key={status} value={status}>{statusLabel(status, c)}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>{c.filterProvider}</span>
-            <select
-              value={draftFilters.providerCode}
-              onChange={(event) => setDraftFilters((current) => ({ ...current, providerCode: event.currentTarget.value }))}
-            >
-              <option value="">{c.allOptions}</option>
-              {methods.map((method) => <option key={method.code} value={method.code}>{method.name}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>{c.filterSeller}</span>
-            <input
-              type="search"
-              list="payment-transaction-sellers"
-              value={transactionSellerText}
-              placeholder={c.chooseSeller}
-              onChange={(event) => {
-                const value = event.currentTarget.value;
-                const selected = sellerOptions.find((seller) => sellerOptionLabel(seller) === value);
-                setTransactionSellerText(value);
-                setDraftFilters((current) => ({ ...current, sellerId: selected?.id ?? "" }));
-                setActiveSellerSearch({ code: "transactions", query: value });
-              }}
-            />
-            <datalist id="payment-transaction-sellers">
-              {sellerOptions.map((seller) => <option key={seller.id} value={sellerOptionLabel(seller)} />)}
-            </datalist>
-          </label>
-          <label>
-            <span>{c.filterFrom}</span>
-            <input
-              type="date"
-              value={draftFilters.from}
-              max={draftFilters.to || undefined}
-              onChange={(event) => setDraftFilters((current) => ({ ...current, from: event.currentTarget.value }))}
-            />
-          </label>
-          <label>
-            <span>{c.filterTo}</span>
-            <input
-              type="date"
-              value={draftFilters.to}
-              min={draftFilters.from || undefined}
-              onChange={(event) => setDraftFilters((current) => ({ ...current, to: event.currentTarget.value }))}
-            />
-          </label>
-          <footer>
+          <div className={styles.filterPrimary}>
+            <label className={styles.filterSearch}>
+              <span>{c.referenceSearch}</span>
+              <input
+                type="search"
+                minLength={2}
+                value={draftFilters.query}
+                onChange={(event) => setDraftFilters((current) => ({ ...current, query: event.currentTarget.value }))}
+              />
+              <small>{c.referenceSearchHint}</small>
+            </label>
             <button className={styles.applyFilters} type="submit">{c.applyFilters}</button>
-            {Object.values(appliedFilters).some(Boolean) || Object.values(draftFilters).some(Boolean) ? (
+          </div>
+          <details className={styles.filterDisclosure}>
+            <summary>{c.moreFilters}<span aria-hidden="true">⌄</span></summary>
+            <div className={styles.filterFields}>
+              <label>
+                <span>{c.filterStatus}</span>
+                <select value={draftFilters.status} onChange={(event) => setDraftFilters((current) => ({
+                  ...current,
+                  status: event.currentTarget.value as TransactionFilters["status"]
+                }))}>
+                  <option value="">{c.allOptions}</option>
+                  {(["created", "initiating", "initiation_unknown", "pending", "succeeded", "refund_pending", "refund_unknown", "failed", "refunded"] as PaymentTransactionStatus[]).map((status) => (
+                    <option key={status} value={status}>{statusLabel(status, c)}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>{c.filterProvider}</span>
+                <select value={draftFilters.providerCode} onChange={(event) => setDraftFilters((current) => ({ ...current, providerCode: event.currentTarget.value }))}>
+                  <option value="">{c.allOptions}</option>
+                  {methods.map((method) => <option key={method.code} value={method.code}>{method.name}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>{c.filterSeller}</span>
+                <input
+                  type="search"
+                  list="payment-transaction-sellers"
+                  value={transactionSellerText}
+                  placeholder={c.chooseSeller}
+                  onChange={(event) => {
+                    const value = event.currentTarget.value;
+                    const selected = sellerOptions.find((seller) => sellerOptionLabel(seller) === value);
+                    setTransactionSellerText(value);
+                    setDraftFilters((current) => ({ ...current, sellerId: selected?.id ?? "" }));
+                    setActiveSellerSearch({ code: "transactions", query: value });
+                  }}
+                />
+                <datalist id="payment-transaction-sellers">
+                  {sellerOptions.map((seller) => <option key={seller.id} value={sellerOptionLabel(seller)} />)}
+                </datalist>
+              </label>
+              <label>
+                <span>{c.filterFrom}</span>
+                <input type="date" value={draftFilters.from} max={draftFilters.to || undefined} onChange={(event) => setDraftFilters((current) => ({ ...current, from: event.currentTarget.value }))} />
+              </label>
+              <label>
+                <span>{c.filterTo}</span>
+                <input type="date" value={draftFilters.to} min={draftFilters.from || undefined} onChange={(event) => setDraftFilters((current) => ({ ...current, to: event.currentTarget.value }))} />
+              </label>
+            </div>
+          </details>
+          {Object.values(appliedFilters).some(Boolean) || Object.values(draftFilters).some(Boolean) ? (
+            <div className={styles.filterActions}>
               <button className={styles.clearFilters} type="button" onClick={clearTransactionFilters}>{c.resetFilters}</button>
-            ) : null}
-          </footer>
+            </div>
+          ) : null}
         </form>
 
         {Object.entries(appliedFilters).some(([, value]) => Boolean(value)) ? (
@@ -958,9 +943,9 @@ export function PaymentServiceWorkspace({
           </div>
         ) : null}
 
-        {!loading && !error ? <p className={styles.resultCount} aria-live="polite">
-          <strong>{transactionTotal.toLocaleString(locale)}</strong> {c.results}
-        </p> : null}
+        {!loading && !error ? <div className={styles.resultsHeading} aria-live="polite">
+          <p className={styles.resultCount}><strong>{transactionTotal.toLocaleString(locale)}</strong> {c.results}</p>
+        </div> : null}
 
         {!loading && !error && transactions.length === 0 ? (
           <div className={styles.empty}>
@@ -970,54 +955,58 @@ export function PaymentServiceWorkspace({
         ) : null}
 
         {transactions.length ? <div className={styles.transactionLedger}>
-          <div className={styles.ledgerHeader} aria-hidden="true">
-            <span>{c.order}</span><span>{c.parties}</span><span>{c.method}</span><span>{c.amount}</span><span>{c.status}</span><span>{c.created}</span><span />
-          </div>
           {transactions.map((transaction) => {
             const expanded = expandedTransactions.has(transaction.id);
             return <article className={styles.transactionRow} key={transaction.id}>
-              <div data-label={c.order}>
-                <code dir="ltr">{shortId(transaction.orderId)}</code>
-                <small dir="ltr">{transaction.providerReferenceId ?? transaction.authority ?? c.noReference}</small>
-              </div>
-              <div data-label={c.parties}>
-                <strong>{transaction.buyer.fullName}</strong>
-                <small>{transaction.seller.shopName}</small>
-              </div>
-              <div data-label={c.method}><span dir="ltr">{transaction.provider}</span></div>
-              <div data-label={c.amount}>
-                <strong dir="ltr" className={styles.amount}>{formatAmount(transaction.amount, locale)}</strong>
-                <small dir="ltr">{transaction.currency}</small>
-              </div>
-              <div data-label={c.status}>
+              <div className={styles.transactionOverview}>
+                <div className={styles.transactionIdentity}>
+                  <span className={styles.transactionLabel}>{c.order}</span>
+                  <code dir="ltr">{shortId(transaction.orderId)}</code>
+                  <time dateTime={transaction.createdAt}>{new Date(transaction.createdAt).toLocaleString(locale)}</time>
+                </div>
+                <div className={styles.transactionPayment}>
+                  <span className={styles.transactionLabel}>{c.amount}</span>
+                  <strong dir="ltr" className={styles.amount}>{formatCurrencyAmount(transaction.amount, transaction.currency, locale)} <small>{currencyLabel(transaction.currency)}</small></strong>
+                </div>
                 <span className={styles.status} data-status={transaction.status}>{statusLabel(transaction.status, c)}</span>
               </div>
-              <div data-label={c.created}>
-                <time dateTime={transaction.createdAt}>{new Date(transaction.createdAt).toLocaleString(locale)}</time>
+              <div className={styles.transactionSummary}>
+                <div>
+                  <span className={styles.transactionLabel}>{c.parties}</span>
+                  <strong>{transaction.buyer.fullName}</strong>
+                  <small>{transaction.seller.shopName}</small>
+                </div>
+                <div>
+                  <span className={styles.transactionLabel}>{c.method}</span>
+                  <strong>{methods.find((method) => method.code === transaction.provider)?.name ?? transaction.provider}</strong>
+                </div>
+                <button
+                  className={styles.detailsToggle}
+                  type="button"
+                  aria-expanded={expanded}
+                  aria-controls={`transaction-${transaction.id}-details`}
+                  onClick={() => setExpandedTransactions((current) => {
+                    const next = new Set(current);
+                    if (next.has(transaction.id)) next.delete(transaction.id);
+                    else next.add(transaction.id);
+                    return next;
+                  })}
+                >{expanded ? c.hideDetails : c.details}</button>
               </div>
-              <button
-                className={styles.detailsToggle}
-                type="button"
-                aria-expanded={expanded}
-                aria-controls={`transaction-${transaction.id}-details`}
-                onClick={() => setExpandedTransactions((current) => {
-                  const next = new Set(current);
-                  if (next.has(transaction.id)) next.delete(transaction.id);
-                  else next.add(transaction.id);
-                  return next;
-                })}
-              >{expanded ? c.hideDetails : c.details}</button>
-              {expanded ? <dl className={styles.transactionDetails} id={`transaction-${transaction.id}-details`}>
-                <div><dt>{c.transactionId}</dt><dd dir="ltr">{transaction.id}</dd></div>
-                <div><dt>{c.order}</dt><dd dir="ltr">{transaction.orderId}</dd></div>
-                <div><dt>{c.authority}</dt><dd dir="ltr">{transaction.authority ?? c.notRecorded}</dd></div>
-                <div><dt>{c.providerReference}</dt><dd dir="ltr">{transaction.providerReferenceId ?? c.notRecorded}</dd></div>
-                <div><dt>{c.buyerEmail}</dt><dd dir="ltr">{transaction.buyer.email}</dd></div>
-                <div><dt>{c.failureCode}</dt><dd dir="ltr">{transaction.failureCode ?? c.notRecorded}</dd></div>
-                <div><dt>{c.verifiedAt}</dt><dd>{formatDate(transaction.verifiedAt, locale, c.notRecorded)}</dd></div>
-                <div><dt>{c.refundedAt}</dt><dd>{formatDate(transaction.refundedAt, locale, c.notRecorded)}</dd></div>
-                <div><dt>{c.updatedAt}</dt><dd>{formatDate(transaction.updatedAt, locale, c.notRecorded)}</dd></div>
-              </dl> : null}
+              <div className={styles.detailsPanel} id={`transaction-${transaction.id}-details`} hidden={!expanded}>
+                <h3>{c.details}</h3>
+                <dl className={styles.transactionDetails}>
+                  <div><dt>{c.transactionId}</dt><dd dir="ltr">{transaction.id}</dd></div>
+                  <div><dt>{c.order}</dt><dd dir="ltr">{transaction.orderId}</dd></div>
+                  <div><dt>{c.authority}</dt><dd dir="ltr">{transaction.authority ?? c.notRecorded}</dd></div>
+                  <div><dt>{c.providerReference}</dt><dd dir="ltr">{transaction.providerReferenceId ?? c.notRecorded}</dd></div>
+                  <div><dt>{c.buyerEmail}</dt><dd dir="ltr">{transaction.buyer.email}</dd></div>
+                  <div><dt>{c.failureCode}</dt><dd dir="ltr">{transaction.failureCode ?? c.notRecorded}</dd></div>
+                  <div><dt>{c.verifiedAt}</dt><dd>{formatDate(transaction.verifiedAt, locale, c.notRecorded)}</dd></div>
+                  <div><dt>{c.refundedAt}</dt><dd>{formatDate(transaction.refundedAt, locale, c.notRecorded)}</dd></div>
+                  <div><dt>{c.updatedAt}</dt><dd>{formatDate(transaction.updatedAt, locale, c.notRecorded)}</dd></div>
+                </dl>
+              </div>
             </article>;
           })}
         </div> : null}
@@ -1039,13 +1028,6 @@ function shortId(value: string) {
 
 function sellerOptionLabel(seller: AdminPaymentSellerOption) {
   return `${seller.shopName} · ${shortId(seller.id)}`;
-}
-
-function formatAmount(value: string, locale: Locale) {
-  const [integer, rawFraction = ""] = value.split(".");
-  const fraction = rawFraction.replace(/0+$/, "");
-  const formattedInteger = BigInt(integer).toLocaleString(locale);
-  return fraction ? `${formattedInteger}.${fraction}` : formattedInteger;
 }
 
 function formatDate(value: string | null, locale: Locale, fallback: string) {

@@ -8,6 +8,15 @@ datasource db {
   provider = "postgresql"
 }
 
+model platform_notice {
+  id         Int      @id @default(1)
+  message    String   @db.Text
+  enabled    Boolean  @default(false)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("platform_notice")
+}
+
 enum user_role {
   platform_admin
   platform_staff
@@ -267,7 +276,7 @@ model users {
   id                           String                         @id @default(uuid()) @map("id")
   full_name                    String                         @map("full_name")
   username                     String?                        @unique @map("username")
-  email                        String                         @unique @map("email")
+  email                        String?                        @unique @map("email")
   password_hash                String?                        @map("password_hash")
   phone_number                 String?                        @unique @map("phone_number") @db.VarChar(16)
   role                         user_role                      @map("role")
@@ -317,9 +326,25 @@ model users {
   comment_replies              product_comment_assignments[]  @relation("comment_replier")
   comment_flags                product_comments[]             @relation("comment_flagger")
   comment_moderation_events    product_comment_events[]
+  admin_profile_changes        admin_user_profile_changes[] @relation("profile_subject")
+  performed_profile_changes    admin_user_profile_changes[] @relation("profile_editor")
 
   @@index([role, created_at(sort: Desc), id(sort: Desc)])
+  @@index([username(ops: raw("gin_trgm_ops"))], type: Gin, map: "users_username_trgm_idx")
   @@map("users")
+}
+
+model admin_user_profile_changes {
+  id            String   @id @default(uuid()) @db.Uuid
+  user_id       String
+  actor_user_id String
+  before_data   Json
+  after_data    Json
+  created_at    DateTime @default(now()) @db.Timestamptz(3)
+  user          users    @relation("profile_subject", fields: [user_id], references: [id], onDelete: Restrict)
+  actor         users    @relation("profile_editor", fields: [actor_user_id], references: [id], onDelete: Restrict)
+
+  @@index([user_id, created_at(sort: Desc), id(sort: Desc)])
 }
 
 model ai_model_profiles {
@@ -680,9 +705,9 @@ model coupons {
   seller_id            String               @map("seller_id")
   code                 String               @map("code") @db.VarChar(32)
   discount_type        coupon_discount_type @map("discount_type")
-  discount_value       Decimal              @map("discount_value") @db.Decimal(20, 4)
-  currency             String               @map("currency") @db.Char(3)
-  minimum_order_amount Decimal?             @map("minimum_order_amount") @db.Decimal(20, 4)
+  discount_value       Decimal              @map("discount_value") @db.Decimal(21, 5)
+  currency             String               @map("currency") @db.VarChar(5)
+  minimum_order_amount Decimal?             @map("minimum_order_amount") @db.Decimal(21, 5)
   maximum_redemptions  Int?                 @map("maximum_redemptions")
   redeemed_count       Int                  @default(0) @map("redeemed_count")
   starts_at            DateTime             @default(now()) @map("starts_at") @db.Timestamptz(3)
@@ -983,6 +1008,7 @@ model products {
   @@index([status, created_at, id])
   @@index([title(ops: raw("gin_trgm_ops"))], type: Gin, map: "products_title_trgm_idx")
   @@index([slug(ops: raw("gin_trgm_ops"))], type: Gin, map: "products_slug_trgm_idx")
+  @@index([category(ops: raw("gin_trgm_ops"))], type: Gin, map: "products_category_trgm_idx")
   @@map("products")
 }
 
@@ -1136,8 +1162,8 @@ model seller_offers {
   id                     String                   @id @default(uuid()) @map("id")
   listing_id             String                   @map("listing_id")
   variant_id             String                   @map("variant_id")
-  price                  Decimal                  @map("price") @db.Decimal(20, 4)
-  currency               String                   @map("currency") @db.Char(3)
+  price                  Decimal                  @map("price") @db.Decimal(21, 5)
+  currency               String                   @map("currency") @db.VarChar(5)
   seller_sku             String?                  @map("seller_sku") @db.VarChar(100)
   status                 listing_status           @default(active) @map("status")
   created_at             DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -1200,7 +1226,7 @@ model orders {
   buyer_id         String                          @map("buyer_id")
   seller_id        String                          @map("seller_id")
   status           order_status                    @default(pending) @map("status")
-  currency         String                          @map("currency") @db.Char(3)
+  currency         String                          @map("currency") @db.VarChar(5)
   total_amount     Decimal                         @map("total_amount") @db.Decimal(20, 4)
   commission_rate  Decimal                         @map("commission_rate") @db.Decimal(9, 6)
   holdback_rate    Decimal                         @map("holdback_rate") @db.Decimal(9, 6)
@@ -1226,6 +1252,8 @@ model orders {
   @@index([buyer_id, created_at, id])
   @@index([seller_id, created_at, id])
   @@index([checkout_id, created_at, id])
+  @@index([created_at, id])
+  @@index([status, created_at, id])
   @@map("orders")
 }
 
@@ -1300,7 +1328,7 @@ model payout_ledger {
   commission_amount Decimal         @map("commission_amount") @db.Decimal(20, 4)
   holdback_amount   Decimal         @map("holdback_amount") @db.Decimal(20, 4)
   payable_amount    Decimal         @map("payable_amount") @db.Decimal(20, 4)
-  currency          String          @map("currency") @db.Char(3)
+  currency          String          @map("currency") @db.VarChar(5)
   status            payout_status   @default(draft) @map("status")
   requested_at      DateTime?       @db.Timestamptz(3)
   approved_at       DateTime?       @db.Timestamptz(3)
@@ -1512,7 +1540,7 @@ model payment_attempts {
   provider                  String                   @map("provider") @db.VarChar(32)
   status                    payment_attempt_status   @default(created) @map("status")
   amount                    Decimal                  @map("amount") @db.Decimal(20, 4)
-  currency                  String                   @map("currency") @db.Char(3)
+  currency                  String                   @map("currency") @db.VarChar(5)
   idempotency_key           String                   @map("idempotency_key") @db.Uuid
   authority                 String?                  @map("authority") @db.VarChar(128)
   provider_ref_id           String?                  @map("provider_ref_id") @db.VarChar(100)
@@ -1542,7 +1570,7 @@ model checkouts {
   id              String                    @id @default(uuid()) @map("id")
   buyer_id        String                    @map("buyer_id")
   status          checkout_status           @default(pending_payment) @map("status")
-  currency        String                    @map("currency") @db.Char(3)
+  currency        String                    @map("currency") @db.VarChar(5)
   total_amount    Decimal                   @map("total_amount") @db.Decimal(20, 4)
   idempotency_key String                    @map("idempotency_key") @db.Uuid
   request_hash    String                    @map("request_hash") @db.Char(64)
@@ -1565,7 +1593,7 @@ model checkout_payment_groups {
   provider    String                          @map("provider") @db.VarChar(32)
   status      checkout_payment_group_status   @default(pending) @map("status")
   amount      Decimal                         @map("amount") @db.Decimal(20, 4)
-  currency    String                          @map("currency") @db.Char(3)
+  currency    String                          @map("currency") @db.VarChar(5)
   expires_at  DateTime                        @map("expires_at") @db.Timestamptz(3)
   created_at  DateTime                        @default(now()) @map("created_at") @db.Timestamptz(3)
   updated_at  DateTime                        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -1759,6 +1787,7 @@ model sms_deliveries {
 model sms_settings {
   id                           Int                  @id @default(1) @map("id") @db.SmallInt
   otp_enabled                  Boolean              @default(true) @map("otp_enabled")
+  test_mode_enabled            Boolean              @default(false) @map("test_mode_enabled")
   encrypted_api_key            String?              @map("encrypted_api_key") @db.Text
   encryption_key_id            String?              @map("encryption_key_id")
   api_key_hint                 String?              @map("api_key_hint")
@@ -1799,6 +1828,7 @@ model sms_setting_events {
   settings_id                  Int          @map("settings_id") @db.SmallInt
   actor_user_id                String       @map("actor_user_id")
   otp_enabled                  Boolean      @map("otp_enabled")
+  test_mode_enabled            Boolean      @default(false) @map("test_mode_enabled")
   credentials_changed          Boolean      @default(false) @map("credentials_changed")
   api_key_hint                 String?      @map("api_key_hint")
   otp_template_id              Int?         @map("otp_template_id")

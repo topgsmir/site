@@ -42,11 +42,6 @@ export class OtpService {
     }
 
     const userId = await this.prisma.$transaction(async (transaction) => {
-      const consumed = await transaction.otp_challenges.updateMany({
-        where: { id: challenge.id, status: "pending", expires_at: { gt: new Date() }, attempts: { lt: 5 } },
-        data: { status: "consumed", consumed_at: new Date() }
-      });
-      if (consumed.count !== 1) throw new ConflictException("OTP challenge was already used");
       const byPhone = await transaction.users.findUnique({ where: { phone_number: phone } });
       const email = input.email?.trim().toLowerCase();
       if (byPhone) {
@@ -56,12 +51,20 @@ export class OtpService {
           if (owner && owner.id !== byPhone.id) throw new ConflictException("Email belongs to another account; use account recovery");
           throw new ConflictException("Email does not match this buyer account");
         }
-        return byPhone.id;
+      } else {
+        if (!input.fullName?.trim()) throw new BadRequestException("Name is required for a new buyer");
+        if (email) {
+          const byEmail = await transaction.users.findUnique({ where: { email } });
+          if (byEmail) throw new ConflictException("Email belongs to another account; use account recovery");
+        }
       }
-      if (!input.fullName || !email) throw new BadRequestException("Full name and email are required for a new buyer");
-      const byEmail = await transaction.users.findUnique({ where: { email } });
-      if (byEmail) throw new ConflictException("Email belongs to another account; use account recovery");
-      const user = await transaction.users.create({ data: { full_name: input.fullName.trim(), email, phone_number: phone, role: "buyer" } });
+      const consumed = await transaction.otp_challenges.updateMany({
+        where: { id: challenge.id, status: "pending", expires_at: { gt: new Date() }, attempts: { lt: 5 } },
+        data: { status: "consumed", consumed_at: new Date() }
+      });
+      if (consumed.count !== 1) throw new ConflictException("OTP challenge was already used");
+      if (byPhone) return byPhone.id;
+      const user = await transaction.users.create({ data: { full_name: input.fullName!.trim(), email: email ?? null, phone_number: phone, role: "buyer" } });
       return user.id;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     return this.auth.createSessionForUser(userId);

@@ -20,6 +20,7 @@ import {
 import { PrismaService } from "../../prisma/prisma.service";
 import type { LoginDto } from "./dto/login.dto";
 import type { RegisterDto } from "./dto/register.dto";
+import type { UpdateProfileDto } from "./dto/update-profile.dto";
 import { AuthLoginSettingsService } from "./auth-login-settings.service";
 
 const SCRYPT_COST = 16_384;
@@ -32,7 +33,8 @@ const DUMMY_HASH = `scrypt$${SCRYPT_COST}$${SCRYPT_BLOCK_SIZE}$${SCRYPT_PARALLEL
 type StoredUser = {
   id: string;
   full_name: string;
-  email: string;
+  username?: string | null;
+  email: string | null;
   role:
     | "platform_admin"
     | "platform_staff"
@@ -132,6 +134,7 @@ export class AuthService {
           select: {
             id: true,
             full_name: true,
+            username: true,
             email: true,
             role: true,
             sellers: {
@@ -155,6 +158,36 @@ export class AuthService {
     }
 
     return this.toPublicUser(session.user);
+  }
+
+  async updateProfile(actor: AppUser, input: UpdateProfileDto): Promise<AppUser> {
+    const fullName = input.fullName?.trim();
+    const email = input.email?.trim().toLowerCase();
+    if (fullName !== undefined && fullName.length < 2) {
+      throw new BadRequestException("Full name must contain at least 2 characters");
+    }
+    if (email !== undefined && !email) {
+      throw new BadRequestException("Email cannot be empty");
+    }
+    const data = {
+      ...(fullName !== undefined ? { full_name: fullName } : {}),
+      ...(email !== undefined ? { email } : {}),
+      ...(input.username !== undefined ? { username: input.username } : {})
+    };
+    if (!Object.keys(data).length) throw new BadRequestException("No profile fields supplied");
+    try {
+      const updated = await this.prisma.users.update({
+        where: { id: actor.id },
+        data,
+        select: { full_name: true, email: true, username: true }
+      });
+      return { ...actor, fullName: updated.full_name, email: updated.email, username: updated.username };
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        throw new ConflictException("Email or username is already in use");
+      }
+      throw error;
+    }
   }
 
   async revokeSession(token: string | undefined) {
@@ -235,6 +268,7 @@ export class AuthService {
     const publicUser: AppUser = {
       id: user.id,
       fullName: user.full_name,
+      username: user.username ?? null,
       email: user.email,
       role: user.role.replaceAll("_", "-") as Role
     };

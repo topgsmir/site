@@ -89,6 +89,26 @@ export class AuthRateLimitService {
     });
   }
 
+  async consumeProfileMutation(userId: string, clientIp: string) {
+    await this.consume({
+      action: "profile",
+      scope: "ip",
+      value: this.normalizeIp(clientIp),
+      limit: 30,
+      windowSeconds: 900,
+      blockSeconds: 900
+    });
+    await this.consume({
+      action: "profile",
+      scope: "account",
+      value: userId,
+      limit: 10,
+      windowSeconds: 900,
+      blockSeconds: 900
+    });
+    await this.pruneStaleBuckets();
+  }
+
   async consumeOrderMutation(userId: string, clientIp: string) {
     await this.consumeSensitiveMutation("order", userId, clientIp);
   }

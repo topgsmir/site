@@ -5,12 +5,14 @@ import { VendorManagement } from "@/components/admin/VendorManagement";
 
 export type AdminSection =
   | "overview"
+  | "statistics"
   | "vendors"
   | "users"
   | "products"
   | "product-changes"
   | "coupons"
   | "orders"
+  | "order-detail"
   | "payment-transactions"
   | "payment-methods"
   | "staff"
@@ -24,6 +26,7 @@ export type AdminSection =
   | "settings-shipping"
   | "settings-usd"
   | "settings-comments"
+  | "settings-notice"
   | "editorial";
 
 export type AdminPanelRouteProps = {
@@ -31,9 +34,10 @@ export type AdminPanelRouteProps = {
     locale: string;
   }>;
   section: AdminSection;
+  orderId?: string;
 };
 
-export async function AdminPanelRoute({ params, section }: AdminPanelRouteProps) {
+export async function AdminPanelRoute({ params, section, orderId }: AdminPanelRouteProps) {
   const { locale } = await params;
 
   if (!isLocale(locale)) {
@@ -58,6 +62,7 @@ export async function AdminPanelRoute({ params, section }: AdminPanelRouteProps)
       locale={locale}
       adminName={user.fullName}
       section={section}
+      orderId={orderId}
       ownerNavigation={user.role === "platform-admin"}
     />
   );

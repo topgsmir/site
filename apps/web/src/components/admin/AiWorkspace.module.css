@@ -1,8 +1,8 @@
 /* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V4 · component: model picker · genre: modern-minimal · theme: TopGSM Cobalt · states: default · hover · focus · active · disabled · loading · error · success · contrast: pass (40–41) */
-.workspace { min-width: 0; padding: var(--space-dashboard-xl) clamp(var(--space-dashboard-md), 4vw, var(--space-dashboard-2xl)); color: var(--color-dashboard-ink); background: var(--color-dashboard-paper); font-family: var(--font-dashboard-body); }
-.header { display: flex; align-items: end; justify-content: space-between; gap: var(--space-dashboard-xl); padding-block-end: var(--space-dashboard-xl); border-block-end: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
-.header h1 { min-width: 0; overflow-wrap: anywhere; font-family: var(--font-dashboard-display); font-size: clamp(2rem, 5vw, 4.5rem); font-style: normal; font-weight: 600; line-height: 1.05; }
-.header p { max-width: 65ch; margin-block-start: var(--space-dashboard-sm); color: var(--color-dashboard-muted); line-height: 1.8; }
+.workspace { min-width: 0; padding: var(--space-dashboard-lg) clamp(var(--space-dashboard-md), 4vw, var(--space-dashboard-2xl)); color: var(--color-dashboard-ink); background: var(--color-dashboard-paper); font-family: var(--font-dashboard-body); }
+.header { display: flex; align-items: end; justify-content: space-between; gap: var(--space-dashboard-lg); padding-block-end: var(--space-dashboard-md); border-block-end: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
+.header h1 { min-width: 0; overflow-wrap: anywhere; font-family: var(--font-dashboard-display); font-size: clamp(var(--text-dashboard-xl), 3vw, var(--text-dashboard-2xl)); font-style: normal; font-weight: 600; line-height: 1.25; }
+.header p { max-width: 65ch; margin-block-start: var(--space-dashboard-xs); color: var(--color-dashboard-muted); line-height: 1.6; }
 .header > span { max-width: 28ch; color: var(--color-dashboard-accent); font-size: var(--text-dashboard-xs); text-align: end; }
 .assistantWorkspace { --assistant-viewport-offset: calc(var(--space-dashboard-2xl) + var(--space-dashboard-2xl) + var(--space-dashboard-sm)); width: 100%; max-width: none; margin-inline: auto; padding: var(--space-dashboard-xs) 0 0; }
 /* Constrain the shared row so loaded history cannot push the composer below the clipped panel. */

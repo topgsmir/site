@@ -36,5 +36,10 @@ export default async function TagPage({ params }: { params: Promise<{ locale: st
   } catch (error) {
     if (isApiNotFound(error)) notFound();
   }
-  return <BlogIndex locale={locale} posts={page?.items ?? []} heading={`#${page?.collection.name ?? slug}`} />;
+  const alternateSlugs = page?.collection.alternateSlugs;
+  return <BlogIndex locale={locale} posts={page?.items ?? []} heading={`#${page?.collection.name ?? slug}`} languageHrefs={alternateSlugs ? {
+    fa: `/fa/blog/tag/${encodeURIComponent(alternateSlugs.fa)}`,
+    en: `/en/blog/tag/${encodeURIComponent(alternateSlugs.en)}`,
+    ar: `/ar/blog/tag/${encodeURIComponent(alternateSlugs.ar)}`
+  } : undefined} />;
 }

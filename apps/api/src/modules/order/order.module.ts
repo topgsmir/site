@@ -5,10 +5,12 @@ import { UsdRateModule } from "../usd-rate/usd-rate.module";
 import { ShippingModule } from "../../integrations/shipping/shipping.module";
 import { OrderController } from "./order.controller";
 import { OrderService } from "./order.service";
+import { LeaderboardService } from "./leaderboard.service";
+import { AdminOrderDetailsService } from "./admin-order-details.service";
 
 @Module({
   imports: [AuthModule, BridgeModule, UsdRateModule, ShippingModule],
   controllers: [OrderController],
-  providers: [OrderService]
+  providers: [OrderService, LeaderboardService, AdminOrderDetailsService]
 })
 export class OrderModule {}

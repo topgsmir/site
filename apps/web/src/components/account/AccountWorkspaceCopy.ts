@@ -1,0 +1,32 @@
+export const WORKSPACE_COPY = {
+  en: {
+    workspace: "Your repair workspace", welcome: "Ready for your next repair?", intro: "Your purchases, files, and account. All within reach.",
+    discover: "Find your next tool", discoverHint: "Explore files, software, and tools for your workbench.",
+    profile: "Your profile", edit: "Edit details", profileHint: "Keep your name and contact details up to date.",
+    settings: "Account settings", settingsIntro: "A few details that make this workspace yours.", ordersIntro: "From checkout to delivery. Pick up where you left off.",
+    search: "Search loaded orders", searchHint: "Product, shop, or order number", all: "All orders", active: "In progress", complete: "Completed", closed: "Cancelled / refunded",
+    noMatch: "No matching orders", noMatchHint: "Try another search or show all orders.", clear: "Clear filters", loadedHint: "Search and filters apply to the orders loaded below.",
+    order: "Order", products: "Products", amount: "Amount", status: "Status", quantity: "Quantity", expand: "Show items", footer: "Built for your next repair.",
+    member: "TopGSM member", overview: "Your workspace", browse: "Explore the store", savedDetails: "Your account details", pointsHint: "A place among the repair community.",
+  },
+  fa: {
+    workspace: "میز کار شما", welcome: "آمادهٔ تعمیر بعدی هستید؟", intro: "خریدها، فایل‌ها و اطلاعات حساب، همیشه در دسترس شما.",
+    discover: "ابزار تعمیر بعدی را پیدا کنید", discoverHint: "فایل، نرم‌افزار و ابزار مورد نیازتان را در فروشگاه ببینید.",
+    profile: "پروفایل شما", edit: "ویرایش اطلاعات", profileHint: "نام و اطلاعات تماس خود را به‌روز نگه دارید.",
+    settings: "تنظیمات حساب", settingsIntro: "اطلاعاتی که حساب شما را کامل می‌کند.", ordersIntro: "از پرداخت تا تحویل، سفارش‌هایتان را اینجا پیگیری کنید.",
+    search: "جست‌وجو در سفارش‌های دریافت‌شده", searchHint: "محصول، فروشگاه یا شماره سفارش", all: "همه سفارش‌ها", active: "در جریان", complete: "تکمیل‌شده", closed: "لغو یا بازپرداخت",
+    noMatch: "سفارشی پیدا نشد", noMatchHint: "عبارت دیگری جست‌وجو کنید یا همه سفارش‌ها را ببینید.", clear: "پاک کردن فیلترها", loadedHint: "جست‌وجو و فیلترها روی سفارش‌های دریافت‌شده اعمال می‌شوند.",
+    order: "سفارش", products: "محصولات", amount: "مبلغ", status: "وضعیت", quantity: "تعداد", expand: "دیدن اقلام", footer: "همراه شما در تعمیر بعدی.",
+    member: "عضو تاپ جی‌اس‌ام", overview: "میز کار شما", browse: "رفتن به فروشگاه", savedDetails: "اطلاعات حساب شما", pointsHint: "جایگاه شما در جمع تعمیرکاران.",
+  },
+  ar: {
+    workspace: "مساحة عملك", welcome: "جاهز للإصلاح التالي؟", intro: "مشترياتك وملفاتك وحسابك. كلها في متناول يدك.",
+    discover: "اعثر على أداتك التالية", discoverHint: "استكشف الملفات والبرامج والأدوات لعملك.",
+    profile: "ملفك الشخصي", edit: "تعديل البيانات", profileHint: "حافظ على تحديث اسمك وبيانات الاتصال.",
+    settings: "إعدادات الحساب", settingsIntro: "بيانات بسيطة تجعل هذه المساحة خاصة بك.", ordersIntro: "من الدفع إلى التسليم. تابع طلباتك هنا.",
+    search: "البحث في الطلبات المحمّلة", searchHint: "المنتج أو المتجر أو رقم الطلب", all: "كل الطلبات", active: "قيد التنفيذ", complete: "مكتملة", closed: "ملغاة / مستردة",
+    noMatch: "لا توجد طلبات مطابقة", noMatchHint: "جرّب بحثًا آخر أو اعرض كل الطلبات.", clear: "مسح الفلاتر", loadedHint: "يُطبّق البحث والفلاتر على الطلبات المحمّلة أدناه.",
+    order: "الطلب", products: "المنتجات", amount: "المبلغ", status: "الحالة", quantity: "الكمية", expand: "عرض العناصر", footer: "معك في الإصلاح التالي.",
+    member: "عضو TopGSM", overview: "مساحة عملك", browse: "استكشف المتجر", savedDetails: "بيانات حسابك", pointsHint: "مكانك بين مجتمع الفنيين.",
+  },
+} as const;

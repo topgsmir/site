@@ -56,8 +56,11 @@ export const getProduct = cache((slug: string) =>
   request<PublicProduct>(`/products/${encodeRouteSegment(slug)}`)
 );
 
-export function getProducts() {
-  return request<PublicProductSummary[]>("/products?limit=50");
+export function getProducts(search = "", type = "all") {
+  const params = new URLSearchParams({ limit: "50" });
+  if (search.trim()) params.set("search", search.trim().slice(0, 100));
+  if (type !== "all") params.set("type", type);
+  return request<PublicProductSummary[]>(`/products?${params}`);
 }
 
 export function isApiNotFound(error: unknown) {

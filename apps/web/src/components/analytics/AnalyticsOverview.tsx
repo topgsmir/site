@@ -15,15 +15,15 @@ type Range = { from: string; to: string };
 
 const COPY = {
   en: {
-    title: "Sales and income", intro: "Track verified sales, earned income, refunds, and payout movement.", refresh: "Refresh", retry: "Try again", loading: "Loading analytics…", error: "Analytics could not be loaded.", empty: "No financial activity in this period.",
+    title: "Sales and income", intro: "Track verified sales, earned income, refunds, and payout movement.", summaryTitle: "Statistics at a glance", summaryIntro: "Sales and income over the last 30 days.", viewStatistics: "View all statistics", refresh: "Refresh", retry: "Try again", loading: "Loading analytics…", error: "Analytics could not be loaded.", empty: "No financial activity in this period.",
     today: "Today", d7: "7 days", d30: "30 days", d90: "90 days", ytd: "Year to date", m12: "12 months", custom: "Custom", from: "From", to: "To", apply: "Apply", compared: "Previous period", noComparison: "No previous activity", grossSales: "Gross sales", netSales: "Net sales", adminIncome: "Commission income", sellerIncome: "Net earned", paidOrders: "Paid orders", unitsSold: "Units sold", averageOrder: "Average order", settled: "Settled payouts", liability: "Outstanding liability", refunds: "Refunds", commission: "Commission", holdback: "Holdback", salesTrend: "Sales and income trend", sales: "Sales", income: "Income", financial: "Gross-to-net", orders: "Order status", productTypes: "Product mix", payouts: "Payout pipeline", products: "Top products", categories: "Top categories", sellers: "Top sellers", activity: "Recent financial activity", ordersCount: "orders", units: "units", amount: "Amount", date: "Date", status: "Status", viewOrders: "View orders", viewProducts: "View products", viewSellers: "View sellers"
   },
   fa: {
-    title: "فروش و درآمد", intro: "فروش‌های تأییدشده، درآمد، بازپرداخت و جریان تسویه را بررسی کنید.", refresh: "تازه‌سازی", retry: "تلاش دوباره", loading: "در حال دریافت آمار…", error: "دریافت آمار انجام نشد.", empty: "در این بازه فعالیت مالی ثبت نشده است.",
+    title: "فروش و درآمد", intro: "فروش‌های تأییدشده، درآمد، بازپرداخت و جریان تسویه را بررسی کنید.", summaryTitle: "آمار در یک نگاه", summaryIntro: "فروش و درآمد ۳۰ روز گذشته.", viewStatistics: "مشاهده همه آمار", refresh: "تازه‌سازی", retry: "تلاش دوباره", loading: "در حال دریافت آمار…", error: "دریافت آمار انجام نشد.", empty: "در این بازه فعالیت مالی ثبت نشده است.",
     today: "امروز", d7: "۷ روز", d30: "۳۰ روز", d90: "۹۰ روز", ytd: "از ابتدای سال", m12: "۱۲ ماه", custom: "بازه دلخواه", from: "از", to: "تا", apply: "اعمال", compared: "نسبت به بازه قبل", noComparison: "بدون فعالیت قبلی", grossSales: "فروش ناخالص", netSales: "فروش خالص", adminIncome: "درآمد کارمزد", sellerIncome: "درآمد خالص", paidOrders: "سفارش پرداخت‌شده", unitsSold: "تعداد فروش", averageOrder: "میانگین سفارش", settled: "تسویه‌شده", liability: "بدهی تسویه‌نشده", refunds: "بازپرداخت", commission: "کارمزد", holdback: "ذخیره", salesTrend: "روند فروش و درآمد", sales: "فروش", income: "درآمد", financial: "از ناخالص تا خالص", orders: "وضعیت سفارش‌ها", productTypes: "ترکیب محصولات", payouts: "روند تسویه", products: "محصولات برتر", categories: "دسته‌های برتر", sellers: "فروشندگان برتر", activity: "فعالیت مالی اخیر", ordersCount: "سفارش", units: "عدد", amount: "مبلغ", date: "تاریخ", status: "وضعیت", viewOrders: "مشاهده سفارش‌ها", viewProducts: "مشاهده محصولات", viewSellers: "مشاهده فروشندگان"
   },
   ar: {
-    title: "المبيعات والدخل", intro: "تابع المبيعات المؤكدة والدخل والمبالغ المستردة وحركة الدفعات.", refresh: "تحديث", retry: "حاول مجدداً", loading: "جارٍ تحميل التحليلات…", error: "تعذر تحميل التحليلات.", empty: "لا يوجد نشاط مالي في هذه الفترة.",
+    title: "المبيعات والدخل", intro: "تابع المبيعات المؤكدة والدخل والمبالغ المستردة وحركة الدفعات.", summaryTitle: "الإحصاءات باختصار", summaryIntro: "المبيعات والدخل خلال آخر 30 يوماً.", viewStatistics: "عرض جميع الإحصاءات", refresh: "تحديث", retry: "حاول مجدداً", loading: "جارٍ تحميل التحليلات…", error: "تعذر تحميل التحليلات.", empty: "لا يوجد نشاط مالي في هذه الفترة.",
     today: "اليوم", d7: "7 أيام", d30: "30 يوماً", d90: "90 يوماً", ytd: "منذ بداية السنة", m12: "12 شهراً", custom: "مخصص", from: "من", to: "إلى", apply: "تطبيق", compared: "مقارنة بالفترة السابقة", noComparison: "لا يوجد نشاط سابق", grossSales: "إجمالي المبيعات", netSales: "صافي المبيعات", adminIncome: "دخل العمولة", sellerIncome: "صافي الدخل", paidOrders: "الطلبات المدفوعة", unitsSold: "الوحدات المباعة", averageOrder: "متوسط الطلب", settled: "دفعات مسوّاة", liability: "التزامات معلقة", refunds: "مبالغ مستردة", commission: "العمولة", holdback: "المبلغ المحجوز", salesTrend: "اتجاه المبيعات والدخل", sales: "المبيعات", income: "الدخل", financial: "من الإجمالي إلى الصافي", orders: "حالة الطلبات", productTypes: "مزيج المنتجات", payouts: "مسار الدفعات", products: "أفضل المنتجات", categories: "أفضل الفئات", sellers: "أفضل البائعين", activity: "النشاط المالي الأخير", ordersCount: "طلبات", units: "وحدات", amount: "المبلغ", date: "التاريخ", status: "الحالة", viewOrders: "عرض الطلبات", viewProducts: "عرض المنتجات", viewSellers: "عرض البائعين"
   }
 } as const;
@@ -58,7 +58,7 @@ function readInitialRange(): { preset: Preset; range: Range } {
 }
 
 function money(value: string, locale: Locale) {
-  return `${formatCurrencyAmount(value, "IRR", locale)} ${currencyLabel("IRR")}`;
+  return `${formatCurrencyAmount(value, "TOMAN", locale)} ${currencyLabel("TOMAN")}`;
 }
 
 function metricChange(metric: AnalyticsMetric, copy: (typeof COPY)[Locale], locale: Locale) {
@@ -73,9 +73,9 @@ function safeRatio(value: string, maximum: bigint) {
   return Number((current * 10_000n) / maximum) / 10_000;
 }
 
-export function AnalyticsOverview({ locale, audience }: { locale: Locale; audience: Audience }) {
+export function AnalyticsOverview({ locale, audience, compact = false }: { locale: Locale; audience: Audience; compact?: boolean }) {
   const copy = COPY[locale];
-  const initial = useMemo(readInitialRange, []);
+  const initial = useMemo(() => compact ? { preset: "30d" as const, range: rangeFor("30d") } : readInitialRange(), [compact]);
   const [preset, setPreset] = useState<Preset>(initial.preset);
   const [range, setRange] = useState<Range>(initial.range);
   const [draft, setDraft] = useState<Range>(initial.range);
@@ -98,11 +98,12 @@ export function AnalyticsOverview({ locale, audience }: { locale: Locale; audien
 
   useEffect(() => { void refreshKey; const frame = requestAnimationFrame(() => void load()); return () => cancelAnimationFrame(frame); }, [load, refreshKey]);
   useEffect(() => {
+    if (compact) return;
     const url = new URL(window.location.href);
     url.searchParams.set("analyticsFrom", range.from);
     url.searchParams.set("analyticsTo", range.to);
     window.history.replaceState(window.history.state, "", url);
-  }, [range]);
+  }, [compact, range]);
 
   function choosePreset(next: Exclude<Preset, "custom">) {
     const nextRange = rangeFor(next);
@@ -113,6 +114,7 @@ export function AnalyticsOverview({ locale, audience }: { locale: Locale; audien
     ? [[copy.grossSales, data.summary.grossSales, true], [copy.netSales, data.summary.netSales, true], [copy.adminIncome, data.summary.income, true], [copy.paidOrders, data.summary.paidOrders, false], [copy.averageOrder, data.summary.averageOrderValue, true], [copy.liability, { value: data.summary.outstandingLiability, previousValue: "0", changePercent: null }, true]] as const
     : [[copy.grossSales, data.summary.grossSales, true], [copy.netSales, data.summary.netSales, true], [copy.sellerIncome, data.summary.income, true], [copy.paidOrders, data.summary.paidOrders, false], [copy.settled, data.summary.settledPayouts, true], [copy.liability, { value: data.summary.outstandingLiability, previousValue: "0", changePercent: null }, true]] as const
     : [];
+  const visibleMetrics = compact ? metrics.filter((_, index) => index === 0 || index === 2 || index === 3) : metrics;
 
   const chartMaximum = data?.series.reduce((maximum, point) => {
     const values = [point.grossSales, point.income].map((value) => BigInt(value.split(".")[0] || "0"));
@@ -128,13 +130,15 @@ export function AnalyticsOverview({ locale, audience }: { locale: Locale; audien
     ? { orders: `/${locale}/admin/orders`, products: `/${locale}/admin/products`, sellers: `/${locale}/admin/vendors` }
     : { orders: `/${locale}/seller-dashboard?section=orders`, products: `/${locale}/seller-dashboard?section=products`, sellers: `/${locale}/seller-dashboard` };
 
-  return <section className={styles.workspace} aria-labelledby="analytics-title">
+  const statisticsHref = audience === "admin" ? `/${locale}/admin/statistics` : `/${locale}/seller-dashboard?section=statistics`;
+
+  return <section className={styles.workspace} data-compact={compact} aria-labelledby="analytics-title">
     <header className={styles.header}>
-      <div><h1 id="analytics-title">{copy.title}</h1><p>{copy.intro}</p></div>
-      <button className={styles.refresh} type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading}>{copy.refresh}</button>
+      <div>{compact && audience === "seller" ? <h2 id="analytics-title">{copy.summaryTitle}</h2> : <h1 id="analytics-title">{compact ? copy.summaryTitle : copy.title}</h1>}<p>{compact ? copy.summaryIntro : copy.intro}</p></div>
+      {compact ? <Link className={styles.refresh} href={statisticsHref as Route}>{copy.viewStatistics}</Link> : <button className={styles.refresh} type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading}>{copy.refresh}</button>}
     </header>
 
-    <div className={styles.filters} aria-label={copy.custom}>
+    {!compact ? <div className={styles.filters} aria-label={copy.custom}>
       <div className={styles.presets} role="group" aria-label={copy.custom}>
         {(["today", "7d", "30d", "90d", "ytd", "12m"] as const).map((item) => <button key={item} type="button" aria-pressed={preset === item} onClick={() => choosePreset(item)}>{item === "today" ? copy.today : item === "7d" ? copy.d7 : item === "30d" ? copy.d30 : item === "90d" ? copy.d90 : item === "ytd" ? copy.ytd : copy.m12}</button>)}
         <button type="button" aria-pressed={preset === "custom"} onClick={() => setPreset("custom")}>{copy.custom}</button>
@@ -144,24 +148,24 @@ export function AnalyticsOverview({ locale, audience }: { locale: Locale; audien
         <label><span>{copy.to}</span><input type="date" value={draft.to} min={draft.from} max={dateInTehran()} onChange={(event) => setDraft((current) => ({ ...current, to: event.target.value }))}/></label>
         <button type="submit" disabled={!draft.from || !draft.to || draft.from > draft.to}>{copy.apply}</button>
       </form> : null}
-    </div>
+    </div> : null}
 
-    {loading && !data ? <div className={styles.skeleton} aria-live="polite"><span>{copy.loading}</span>{Array.from({ length: 6 }, (_, index) => <i key={index}/>)}</div> : null}
+    {loading && !data ? <div className={styles.skeleton} aria-live="polite"><span>{copy.loading}</span>{Array.from({ length: compact ? 3 : 6 }, (_, index) => <i key={index}/>)}</div> : null}
     {error && !data ? <div className={styles.error} role="alert"><p>{error}</p><button type="button" onClick={() => void load()}>{copy.retry}</button></div> : null}
     {data ? <>
       {error ? <p className={styles.inlineError} role="status">{error}</p> : null}
       <div className={styles.metrics} aria-label={copy.title} aria-busy={loading}>
-        {metrics.map(([label, metric, monetary]) => <article key={label}><span>{label}</span><strong>{monetary ? money(metric.value, locale) : new Intl.NumberFormat(locale).format(Number(metric.value))}</strong><small data-tone={metric.changePercent !== null && metric.changePercent < 0 ? "down" : "up"}>{metricChange(metric, copy, locale)}</small></article>)}
+        {visibleMetrics.map(([label, metric, monetary]) => <article key={label}><span>{label}</span><strong>{monetary ? money(metric.value, locale) : new Intl.NumberFormat(locale).format(Number(metric.value))}</strong><small data-tone={metric.changePercent !== null && metric.changePercent < 0 ? "down" : "up"}>{metricChange(metric, copy, locale)}</small></article>)}
       </div>
 
-      <article className={styles.chartCard}>
+      {!compact ? <><article className={styles.chartCard}>
         <div className={styles.cardHead}><div><h2>{copy.salesTrend}</h2><p>{new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(`${data.range.from}T00:00:00Z`))} — {new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(`${data.range.to}T00:00:00Z`))}</p></div><div className={styles.legend}><span data-series="sales">{copy.sales}</span><span data-series="income">{copy.income}</span></div></div>
         {data.series.length ? <svg className={styles.chart} viewBox="0 0 720 250" role="img" aria-label={copy.salesTrend} preserveAspectRatio="none">
           <path d="M28 38H692M28 98H692M28 158H692M28 218H692" />
           <polyline data-series="sales" points={chartPoints("grossSales")}/><polyline data-series="income" points={chartPoints("income")}/>
           {data.series.map((point, index, points) => { const x = points.length <= 1 ? 360 : 28 + (index / (points.length - 1)) * 664; const y = 218 - safeRatio(point.grossSales, chartMaximum) * 180; return <circle key={point.bucket} cx={x} cy={y} r="4"><title>{point.bucket}: {money(point.grossSales, locale)}</title></circle>; })}
         </svg> : <p className={styles.empty}>{copy.empty}</p>}
-        <table className={styles.srOnly}><caption>{copy.salesTrend}</caption><thead><tr><th>{copy.date}</th><th>{copy.sales}</th><th>{copy.income}</th><th>{copy.refunds}</th></tr></thead><tbody>{data.series.map((point) => <tr key={point.bucket}><td>{point.bucket}</td><td>{point.grossSales}</td><td>{point.income}</td><td>{point.refunds}</td></tr>)}</tbody></table>
+        <table className={styles.srOnly}><caption>{copy.salesTrend}</caption><thead><tr><th>{copy.date}</th><th>{copy.sales}</th><th>{copy.income}</th><th>{copy.refunds}</th></tr></thead><tbody>{data.series.map((point) => <tr key={point.bucket}><td>{point.bucket}</td><td>{money(point.grossSales, locale)}</td><td>{money(point.income, locale)}</td><td>{money(point.refunds, locale)}</td></tr>)}</tbody></table>
       </article>
 
       <div className={styles.detailGrid}>
@@ -180,6 +184,7 @@ export function AnalyticsOverview({ locale, audience }: { locale: Locale; audien
         <div className={styles.cardHead}><h2>{copy.activity}</h2><Link href={links.orders as Route}>{copy.viewOrders}</Link></div>
         {data.recentActivity.length ? <ul>{data.recentActivity.map((item) => <li key={`${item.kind}:${item.id}`}><span data-kind={item.kind}>{item.kind}</span><div><strong>{item.label}</strong><small>{item.secondaryLabel}</small></div><div><strong>{money(item.amount, locale)}</strong><small>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.occurredAt))} · {item.status}</small></div></li>)}</ul> : <p className={styles.empty}>{copy.empty}</p>}
       </article>
+      </> : null}
     </> : null}
   </section>;
 }

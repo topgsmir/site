@@ -12,7 +12,7 @@ function couponRecord(overrides: Record<string, unknown> = {}) {
     code: "WELCOME10",
     discount_type: "percentage" as const,
     discount_value: new Prisma.Decimal("10"),
-    currency: "IRR",
+    currency: "TOMAN",
     minimum_order_amount: null,
     maximum_redemptions: null,
     redeemed_count: 0,
@@ -49,13 +49,13 @@ describe("CouponService", () => {
       code: "welcome10",
       discountType: "percentage",
       discountValue: "10",
-      currency: "irr",
+      currency: "toman",
       active: true
     });
 
     assert.equal(written?.seller_id, "seller-1");
     assert.equal(written?.code, "WELCOME10");
-    assert.equal(written?.currency, "IRR");
+    assert.equal(written?.currency, "TOMAN");
     assert.equal(result.code, "WELCOME10");
   });
 
@@ -71,7 +71,7 @@ describe("CouponService", () => {
         code: "TOO_MUCH",
         discountType: "percentage",
         discountValue: "100.01",
-        currency: "IRR",
+        currency: "TOMAN",
         active: true
       }),
       /cannot exceed 100/
@@ -81,7 +81,7 @@ describe("CouponService", () => {
         code: "BAD_TIME",
         discountType: "fixed",
         discountValue: "1000",
-        currency: "IRR",
+        currency: "TOMAN",
         startsAt: "2026-09-08T00:00:00.000Z",
         expiresAt: "2026-09-07T00:00:00.000Z",
         active: true
@@ -167,7 +167,7 @@ describe("CouponService", () => {
       code: "ADMIN10",
       discountType: "percentage",
       discountValue: "10",
-      currency: "IRR",
+      currency: "TOMAN",
       active: true
     });
 

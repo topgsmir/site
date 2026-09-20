@@ -7,7 +7,7 @@ function adapter(code: "zarinpal" | "local-country-gateway", available: boolean)
   return {
     providerCode: code,
     displayName: code === "zarinpal" ? "Zarinpal" : "Local test gateway",
-    supportedCurrencies: ["IRR"],
+    supportedCurrencies: ["TOMAN"],
     supportsRefunds: true,
     availability: async () => ({
       available,
@@ -34,7 +34,7 @@ describe("PaymentService", () => {
         name: "Local test gateway",
         available: false,
         unavailabilityReason: "development_only",
-        currencies: ["IRR"],
+        currencies: ["TOMAN"],
         supportsRefunds: true,
         configuration: null
       },
@@ -43,7 +43,7 @@ describe("PaymentService", () => {
         name: "Zarinpal",
         available: true,
         unavailabilityReason: null,
-        currencies: ["IRR"],
+        currencies: ["TOMAN"],
         supportsRefunds: true,
         configuration: null
       }
@@ -54,7 +54,7 @@ describe("PaymentService", () => {
       sellerId: "seller-id",
       buyerId: "buyer-id",
       amount: "120000",
-      currency: "IRR"
+      currency: "TOMAN"
     }), { providerReferenceId: "reference", status: "pending" });
   });
 });

@@ -22,6 +22,7 @@ describe("SmsSettingsService", () => {
 
     assert.deepEqual(settings, {
       otpEnabled: true,
+      testModeEnabled: false,
       provider: "sms_ir",
       apiKeyConfigured: false,
       apiKeyHint: null,
@@ -51,6 +52,7 @@ describe("SmsSettingsService", () => {
             persistedData = create;
             return {
               otp_enabled: true,
+              test_mode_enabled: false,
               encrypted_api_key: create.encrypted_api_key,
               encryption_key_id: create.encryption_key_id,
               api_key_hint: create.api_key_hint,
@@ -74,6 +76,7 @@ describe("SmsSettingsService", () => {
     const service = new SmsSettingsService(prisma, crypto, config);
     const settings = await service.update({
       otpEnabled: true,
+      testModeEnabled: false,
       apiKey: "secret-sms-api-key",
       otpTemplateId: 123,
       sellerNewOrderTemplateId: 234,
@@ -90,6 +93,7 @@ describe("SmsSettingsService", () => {
       settings_id: 1,
       actor_user_id: "admin-id",
       otp_enabled: true,
+      test_mode_enabled: false,
       credentials_changed: true,
       api_key_hint: "-key",
       otp_template_id: 123,
@@ -109,11 +113,39 @@ describe("SmsSettingsService", () => {
 
     await assert.rejects(
       () => new SmsSettingsService(prisma, crypto, config).update(
-        { otpEnabled: true },
+        { otpEnabled: true, testModeEnabled: false },
         "admin-id"
       ),
       /API key and OTP template/
     );
+  });
+
+  it("allows OTP in test mode without SMS.ir credentials", async () => {
+    const prisma = {
+      sms_settings: { findUnique: async () => null },
+      $transaction: async (callback: (client: unknown) => unknown) => callback({
+        sms_settings: { upsert: async () => ({
+          otp_enabled: true,
+          test_mode_enabled: true,
+          encrypted_api_key: null,
+          encryption_key_id: null,
+          api_key_hint: null,
+          otp_template_id: null,
+          seller_new_order_template_id: null,
+          buyer_success_template_id: null,
+          buyer_failure_template_id: null,
+          updated_at: new Date()
+        }) },
+        sms_setting_events: { create: async () => ({ id: "event-id" }) }
+      })
+    } as unknown as PrismaService;
+
+    const settings = await new SmsSettingsService(prisma, crypto, config).update(
+      { otpEnabled: true, testModeEnabled: true },
+      "admin-id"
+    );
+    assert.equal(settings.testModeEnabled, true);
+    assert.equal(settings.apiKeyConfigured, false);
   });
 
   it("uses encrypted database credentials for delivery without exposing them", async () => {
@@ -122,6 +154,7 @@ describe("SmsSettingsService", () => {
       sms_settings: {
         findUnique: async () => ({
           otp_enabled: true,
+          test_mode_enabled: false,
           encrypted_api_key: encrypted.ciphertext,
           encryption_key_id: encrypted.keyId,
           api_key_hint: "-key",

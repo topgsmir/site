@@ -10,15 +10,14 @@ const copy = {
   en: {
     eyebrow: "Platform settings / USD",
     title: "USD exchange rate",
-    intro: "Choose the market source used to convert USD offers into integer IRR checkout totals.",
+    intro: "Choose the market source used to convert USD offers into integer toman checkout totals.",
     automation: "Automatic refresh",
     automationHint: "Fetch the selected public market source every three hours. Disabling it keeps the last saved rate.",
     enabled: "Cron is enabled",
     disabled: "Cron is disabled",
     rate: "USD sell price",
-    rateHint: "Enter the value in toman. One toman is converted to 10 IRR at checkout.",
+    rateHint: "Enter the value in toman. This rate is used directly at checkout.",
     toman: "toman",
-    irr: "IRR per USD",
     source: "Current source",
     sourceAuto: "AlanChand",
     sourceManual: "Manual override",
@@ -55,15 +54,14 @@ const copy = {
   fa: {
     eyebrow: "تنظیمات پلتفرم / دلار",
     title: "نرخ دلار",
-    intro: "منبع بازار مورد استفاده برای تبدیل قیمت‌های دلاری به مبلغ صحیح ریالی در پرداخت را انتخاب کنید.",
+    intro: "منبع بازار مورد استفاده برای تبدیل قیمت‌های دلاری به مبلغ صحیح تومانی در پرداخت را انتخاب کنید.",
     automation: "به‌روزرسانی خودکار",
     automationHint: "هر سه ساعت منبع عمومی انتخاب‌شده بررسی می‌شود. با غیرفعال‌سازی، آخرین نرخ ذخیره‌شده باقی می‌ماند.",
     enabled: "کرون فعال است",
     disabled: "کرون غیرفعال است",
     rate: "قیمت فروش دلار",
-    rateHint: "مبلغ را به تومان وارد کنید؛ هر تومان هنگام پرداخت به ۱۰ ریال تبدیل می‌شود.",
+    rateHint: "مبلغ را به تومان وارد کنید؛ همین نرخ هنگام پرداخت استفاده می‌شود.",
     toman: "تومان",
-    irr: "ریال برای هر دلار",
     source: "منبع نرخ فعلی",
     sourceAuto: "الان‌چند",
     sourceManual: "ثبت دستی",
@@ -100,15 +98,14 @@ const copy = {
   ar: {
     eyebrow: "إعدادات المنصة / الدولار",
     title: "سعر صرف الدولار",
-    intro: "اختر مصدر السوق المستخدم لتحويل العروض الدولارية إلى إجماليات صحيحة بالريال الإيراني.",
+    intro: "اختر مصدر السوق المستخدم لتحويل العروض الدولارية إلى إجماليات صحيحة بالتومان.",
     automation: "التحديث التلقائي",
     automationHint: "يتم فحص مصدر السوق العام المحدد كل ثلاث ساعات. عند التعطيل يبقى آخر سعر محفوظ.",
     enabled: "مهمة cron مفعّلة",
     disabled: "مهمة cron معطّلة",
     rate: "سعر بيع الدولار",
-    rateHint: "أدخل القيمة بالتومان؛ يحوّل كل تومان إلى 10 ريالات عند الدفع.",
+    rateHint: "أدخل القيمة بالتومان؛ يُستخدم هذا السعر مباشرة عند الدفع.",
     toman: "تومان",
-    irr: "ريال لكل دولار",
     source: "مصدر السعر الحالي",
     sourceAuto: "AlanChand",
     sourceManual: "إدخال يدوي",
@@ -231,7 +228,7 @@ export function UsdSettingsWorkspace({ locale }: { locale: Locale }) {
       {saved.cronStatus === "failed" ? <div className={styles.warning} role="alert"><strong>{c.warning}</strong><span>{c.errorCode}: <code>{saved.lastErrorCode ?? "UNKNOWN"}</code></span></div> : null}
       <div className={styles.heroRate}>
         <div><span>{c.rate}</span><strong>{saved.currentRateToman ? formatter.format(Number(saved.currentRateToman)) : "—"}<small>{c.toman}</small></strong><p>{c.source}: {sourceLabel}</p></div>
-        <div><span>{c.irr}</span><strong>{saved.currentRateIrr ? formatter.format(Number(saved.currentRateIrr)) : "—"}</strong><a href={saved.sourceUrl} target="_blank" rel="noopener noreferrer">{c.sourceLink}</a></div>
+        <div><span>{c.sourceLink}</span><a href={saved.sourceUrl} target="_blank" rel="noopener noreferrer">{saved.sourceUrl}</a></div>
       </div>
       <div className={styles.settingRow}>
         <div><h2>{c.automation}</h2><p>{c.automationHint}</p><strong data-enabled={automationEnabled}>{automationEnabled ? c.enabled : c.disabled}</strong></div>

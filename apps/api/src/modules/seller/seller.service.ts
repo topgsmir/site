@@ -304,7 +304,7 @@ export class SellerService {
     blog_review_required: boolean;
     created_at: Date;
     updated_at: Date;
-    user: { full_name: string; email: string };
+    user: { full_name: string; email: string | null };
     permissions: Array<{ permission: Vendor["permissions"][number] }>;
     _count: { listings: number; orders: number };
   }): Vendor {
@@ -318,7 +318,7 @@ export class SellerService {
       id: seller.id,
       shopName: seller.shop_name,
       ownerName: seller.user.full_name,
-      ownerEmail: seller.user.email,
+      ownerEmail: seller.user.email!,
       phoneNumber: seller.phone_number,
       status,
       commission: Number(seller.commission),

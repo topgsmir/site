@@ -2,10 +2,13 @@
 /* Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4 */
 .workspace { display: grid; gap: var(--space-dashboard-xl); color: var(--color-dashboard-ink); }
 .header, .cardHead { display: flex; align-items: end; justify-content: space-between; gap: var(--space-dashboard-lg); }
-.header h1, .cardHead h2, .breakdown h2 { margin: 0; font-family: var(--font-dashboard-display); font-style: normal; font-weight: 600; }
+.header h1, .header h2, .cardHead h2, .breakdown h2 { margin: 0; font-family: var(--font-dashboard-display); font-style: normal; font-weight: 600; }
 .header h1 { font-size: clamp(var(--text-dashboard-xl), 4vw, var(--text-dashboard-2xl)); overflow-wrap: anywhere; }
+.header h2 { font-size: var(--text-dashboard-xl); }
+.workspace[data-compact="true"] .header h1 { font-size: var(--text-dashboard-xl); }
 .header p, .cardHead p { max-width: 64ch; margin: var(--space-dashboard-xs) 0 0; color: var(--color-dashboard-muted); line-height: 1.7; }
 .refresh, .customRange button { min-height: 2.75rem; padding-inline: var(--space-dashboard-lg); border: 0; border-radius: var(--radius-dashboard-round); color: var(--color-dashboard-accent-ink); background: var(--color-dashboard-accent); font: inherit; font-weight: 650; white-space: nowrap; cursor: pointer; transition: transform var(--dur-dashboard-short) var(--ease-dashboard-out), opacity var(--dur-dashboard-short) var(--ease-dashboard-out); }
+.refresh { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 .refresh:focus-visible, .customRange button:focus-visible, .presets button:focus-visible, .customRange input:focus-visible, .cardHead a:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 3px; }
 .refresh:active, .customRange button:active { transform: scale(.98); }
 .refresh:disabled, .customRange button:disabled { cursor: wait; opacity: .55; }
@@ -18,6 +21,7 @@
 .customRange input { min-width: 0; min-height: 2.75rem; padding-inline: var(--space-dashboard-sm); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-control); color: var(--color-dashboard-ink); background: var(--color-dashboard-paper); font: inherit; }
 .customRange button { grid-column: 1 / -1; }
 .metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-dashboard-sm); }
+.workspace[data-compact="true"] .metrics { grid-template-columns: 1fr; }
 .metrics article { min-width: 0; min-height: 9rem; padding: var(--space-dashboard-lg); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-card); background: var(--color-dashboard-surface); box-shadow: var(--shadow-dashboard-card); }
 .metrics span { display: block; color: var(--color-dashboard-muted); font-size: var(--text-dashboard-xs); }
 .metrics strong { display: block; margin-block: var(--space-dashboard-md); font-size: clamp(var(--text-dashboard-md), 3vw, var(--text-dashboard-xl)); font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
@@ -60,7 +64,7 @@
 .srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @keyframes pulse { to { opacity: .45; } }
 @media (hover: hover) and (pointer: fine) { .refresh:hover, .customRange button:hover { transform: translateY(-1px); } .presets button:hover { color: var(--color-dashboard-ink); background: var(--color-dashboard-surface-raised); } .cardHead a:hover { text-decoration: underline; } }
-@media (min-width: 42rem) { .customRange { grid-template-columns: repeat(2, minmax(0, 1fr)) auto; align-items: end; } .customRange button { grid-column: auto; } .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } .detailGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 42rem) { .customRange { grid-template-columns: repeat(2, minmax(0, 1fr)) auto; align-items: end; } .customRange button { grid-column: auto; } .metrics, .workspace[data-compact="true"] .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } .detailGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 72rem) { .metrics { grid-template-columns: repeat(6, minmax(0, 1fr)); } .detailGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } .rankGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 30rem) { .header, .cardHead { align-items: start; flex-direction: column; } .refresh { width: 100%; } .metrics { grid-template-columns: 1fr; } .ranking li, .activity li { grid-template-columns: auto minmax(0, 1fr); } .ranking li > strong, .activity li > div:last-child { grid-column: 2; text-align: start; } }
+@media (max-width: 30rem) { .header, .cardHead { align-items: start; flex-direction: column; } .refresh { width: 100%; } .metrics, .workspace[data-compact="true"] .metrics { grid-template-columns: 1fr; } .ranking li, .activity li { grid-template-columns: auto minmax(0, 1fr); } .ranking li > strong, .activity li > div:last-child { grid-column: 2; text-align: start; } }
 @media (prefers-reduced-motion: reduce) { .refresh, .customRange button { transition-duration: var(--dur-dashboard-reduced); } .skeleton i { animation: none; opacity: .65; } }

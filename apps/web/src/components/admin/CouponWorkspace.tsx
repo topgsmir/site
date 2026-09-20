@@ -163,7 +163,7 @@ const emptyDraft: CouponDraft = {
   code: "",
   discountType: "percentage",
   discountValue: "",
-  currency: "IRR",
+  currency: "TOMAN",
   minimumOrderAmount: "",
   maximumRedemptions: "",
   startsAt: "",
@@ -336,7 +336,7 @@ export function CouponWorkspace({ locale }: { locale: Locale }) {
           <label><span>{c.code}</span><input required minLength={3} maxLength={32} pattern="[A-Za-z0-9][A-Za-z0-9_-]{2,31}" value={draft.code} onChange={(event) => update("code", event.target.value.toUpperCase())} /></label>
           <label><span>{c.type}</span><select value={draft.discountType} onChange={(event) => update("discountType", event.target.value as CouponDiscountType)}><option value="percentage">{c.percentage}</option><option value="fixed">{c.fixed}</option></select></label>
           <label><span>{c.value}</span><input required inputMode="decimal" pattern="(?:0|[1-9][0-9]*)(?:\.[0-9]{1,4})?" value={draft.discountValue} onChange={(event) => update("discountValue", event.target.value)} /></label>
-          <label><span>{c.currency}</span><input required minLength={3} maxLength={3} pattern="[A-Za-z]{3}" value={draft.currency} onChange={(event) => update("currency", event.target.value.toUpperCase())} /></label>
+          <label><span>{c.currency}</span><strong>تومان</strong></label>
           <label><span>{c.minimum} <small>{c.optional}</small></span><input inputMode="decimal" pattern="(?:0|[1-9][0-9]*)(?:\.[0-9]{1,4})?" value={draft.minimumOrderAmount} onChange={(event) => update("minimumOrderAmount", event.target.value)} /></label>
           <label><span>{c.maximum} <small>{c.optional}</small></span><input type="number" min="1" max="1000000000" value={draft.maximumRedemptions} onChange={(event) => update("maximumRedemptions", event.target.value)} /></label>
           <label><span>{c.starts} <small>{c.optional}</small></span><input type="datetime-local" value={draft.startsAt} onChange={(event) => update("startsAt", event.target.value)} /></label>

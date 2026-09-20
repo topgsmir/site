@@ -15,7 +15,11 @@ export function BlogArticle({ locale, post }: { locale: Locale; post: PublicBlog
   return (
     <div className="blog-shell">
       <a className="skip-link" href="#article-content">Skip to article</a>
-      <BlogHeader locale={locale} />
+      <BlogHeader locale={locale} languageHrefs={{
+        fa: `/fa/blog/${encodeURIComponent(post.alternateSlugs.fa)}`,
+        en: `/en/blog/${encodeURIComponent(post.alternateSlugs.en)}`,
+        ar: `/ar/blog/${encodeURIComponent(post.alternateSlugs.ar)}`
+      }} />
       <main id="article-content" className="long-document">
         <nav className="article-breadcrumbs" aria-label="Breadcrumb">
           <Link href={`/${locale}/blog` as Route}>{locale === "fa" ? "مقالات" : locale === "ar" ? "المقالات" : "Journal"}</Link>

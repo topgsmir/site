@@ -23,6 +23,7 @@ import { UsdRateModule } from "./modules/usd-rate/usd-rate.module";
 import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { CommentsModule } from "./modules/comments/comments.module";
 import { CaptchaModule } from "./modules/captcha/captcha.module";
+import { PlatformNoticeModule } from "./modules/platform-notice/platform-notice.module";
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { CaptchaModule } from "./modules/captcha/captcha.module";
     AnalyticsModule,
     CommentsModule,
     CaptchaModule,
+    PlatformNoticeModule,
     PayoutModule,
     RealtimeModule,
     GoghdiModule,

@@ -15,12 +15,14 @@ export function BlogIndex({
   locale,
   posts,
   heading,
-  description
+  description,
+  languageHrefs
 }: {
   locale: Locale;
   posts: BlogPostSummary[];
   heading?: string;
   description?: string;
+  languageHrefs?: Record<Locale, string>;
 }) {
   const copy = COPY[locale];
   const [featured, ...latest] = posts;
@@ -28,7 +30,7 @@ export function BlogIndex({
   return (
     <div className="blog-shell">
       <a className="skip-link" href="#journal-content">Skip to content</a>
-      <BlogHeader locale={locale} />
+      <BlogHeader locale={locale} languageHrefs={languageHrefs} />
       <main id="journal-content" className="journal-index">
         <header className="journal-intro">
           <p>{copy.eyebrow}</p>

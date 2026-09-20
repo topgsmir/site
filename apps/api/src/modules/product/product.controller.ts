@@ -24,6 +24,8 @@ import {
   BulkUndoProductChangesDto,
   CreateProductDto,
   ListProductsQueryDto,
+  ManageProductsQueryDto,
+  SellerProductsQueryDto,
   PreviewBulkUndoProductChangesDto,
   ReviewProductDto,
   RestoreProductChangeDto,
@@ -52,7 +54,7 @@ export class ProductController {
   @Get("mine")
   @UseGuards(SellerProductsGuard)
   listMine(
-    @Query() query: ListProductsQueryDto,
+    @Query() query: SellerProductsQueryDto,
     @Req() request: AuthenticatedRequest
   ) {
     return this.productService.listSellerListings(
@@ -64,7 +66,7 @@ export class ProductController {
   @Get("admin")
   @RequirePlatformPermission("catalog_view")
   @UseGuards(PlatformPermissionGuard)
-  listForAdmin(@Query() query: ListProductsQueryDto) {
+  listForAdmin(@Query() query: ManageProductsQueryDto) {
     return this.productService.listAdminProducts(query);
   }
 

@@ -17,7 +17,6 @@ import {
   FormEvent,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState
 } from "react";
@@ -38,8 +37,14 @@ import creation from "./ProductCreation.module.css";
 import navigationStyles from "@/components/dashboard/DashboardNavigation.module.css";
 import { AnalyticsOverview } from "@/components/analytics/AnalyticsOverview";
 
-type DashboardSection = "overview" | "products" | "blog" | "coupons" | "orders" | "shipping" | "payouts" | "bridge";
+type DashboardSection = "overview" | "statistics" | "products" | "blog" | "coupons" | "orders" | "shipping" | "payouts" | "bridge";
 type RequestState = "idle" | "loading" | "error" | "success";
+
+const FILTER_COPY = {
+  en: { category: "Category", allTypes: "All types", allKinds: "All structures", allListingStatuses: "All listing statuses", sort: "Sort by", updatedDesc: "Recently updated", updatedAsc: "Least recently updated", createdDesc: "Newest created", createdAsc: "Oldest created", titleAsc: "Title A–Z", titleDesc: "Title Z–A", previous: "Previous", next: "Next", page: "Page" },
+  fa: { category: "دسته‌بندی", allTypes: "همه نوع‌ها", allKinds: "همه ساختارها", allListingStatuses: "همه وضعیت‌های فهرست", sort: "مرتب‌سازی", updatedDesc: "تازه‌ترین ویرایش", updatedAsc: "قدیمی‌ترین ویرایش", createdDesc: "جدیدترین ایجاد", createdAsc: "قدیمی‌ترین ایجاد", titleAsc: "عنوان از آ تا ی", titleDesc: "عنوان از ی تا آ", previous: "قبلی", next: "بعدی", page: "صفحه" },
+  ar: { category: "الفئة", allTypes: "كل الأنواع", allKinds: "كل البنى", allListingStatuses: "كل حالات العرض", sort: "ترتيب حسب", updatedDesc: "آخر تحديث", updatedAsc: "أقدم تحديث", createdDesc: "الأحدث إنشاءً", createdAsc: "الأقدم إنشاءً", titleAsc: "العنوان تصاعدياً", titleDesc: "العنوان تنازلياً", previous: "السابق", next: "التالي", page: "صفحة" }
+} as const;
 
 type SellerDashboardProps = {
   locale: Locale;
@@ -80,6 +85,7 @@ type DashboardCopy = {
   brand: string;
   workspace: string;
   overview: string;
+  statistics: string;
   sellService: string;
   products: string;
   blog: string;
@@ -178,6 +184,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     brand: "TOP GSM",
     workspace: "Seller workspace",
     overview: "Overview",
+    statistics: "Statistics",
     sellService: "Sell service",
     products: "Products",
     blog: "Blog",
@@ -267,6 +274,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     brand: "TOP GSM",
     workspace: "فضای کاری فروشنده",
     overview: "نمای کلی",
+    statistics: "آمار",
     sellService: "خدمات فروش",
     products: "محصولات",
     blog: "وبلاگ",
@@ -356,6 +364,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     brand: "TOP GSM",
     workspace: "مساحة عمل البائع",
     overview: "نظرة عامة",
+    statistics: "الإحصاءات",
     sellService: "خدمات البيع",
     products: "المنتجات",
     blog: "المدونة",
@@ -444,7 +453,7 @@ const COPY: Record<Locale, DashboardCopy> = {
 };
 
 const MONEY_PATTERN = /^(?:0|[1-9]\d{0,15})(?:\.\d{1,4})?$/;
-const CURRENCY_PATTERN = /^[A-Za-z]{3}$/;
+const CURRENCY_PATTERN = /^(?:TOMAN|USD)$/;
 const HTTPS_URL_PATTERN = /^https:\/\/\S{1,2040}$/i;
 
 const PRODUCT_IMAGE_COPY = {
@@ -478,7 +487,7 @@ function makeDraft(physicalGranted: boolean): ProductDraft {
     kind: "simple",
     type: physicalGranted ? "physical" : "digital",
     status: "draft",
-    currency: "USD",
+    currency: "TOMAN",
     optionName: "",
     offers: [makeOffer("variant-1")]
   };
@@ -487,6 +496,7 @@ function makeDraft(physicalGranted: boolean): ProductDraft {
 function Icon({ name }: { name: DashboardSection | "plus" | "search" | "close" | "box" }) {
   const paths = {
     overview: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
+    statistics: <><path d="M4 20V11M10 20V5M16 20v-8M22 20V8"/><path d="M2 20h20"/></>,
     products: <><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/></>,
     blog: <><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></>,
     coupons: <><path d="M4 7a3 3 0 0 0 3-3h13v6a2 2 0 0 0 0 4v6H7a3 3 0 0 0-3-3z"/><path d="M12 7v2M12 11v2M12 15v2"/></>,
@@ -522,6 +532,7 @@ function validateDraft(draft: ProductDraft) {
 
   return draft.offers.every((offer) => {
     if (!MONEY_PATTERN.test(offer.price.trim())) return false;
+    if (draft.currency === "TOMAN" && !/^\d+$/.test(offer.price.trim())) return false;
     if (draft.kind === "variable" && !offer.optionValue.trim()) return false;
     if (draft.type === "digital") {
       return HTTPS_URL_PATTERN.test(offer.fileReference.trim()) && Number.isInteger(Number(offer.maxDownloads)) && Number(offer.maxDownloads) >= 0;
@@ -606,7 +617,7 @@ function OfferFields({
       <div className={styles.threeColumns}>
         <label className={styles.field}>
           <span>{copy.price}</span>
-          <input required inputMode="decimal" pattern="(?:0|[1-9][0-9]{0,15})(?:\.[0-9]{1,4})?" value={offer.price} onChange={(event) => update(offer.id, "price", event.target.value)} />
+          <input required inputMode="decimal" pattern={draft.currency === "TOMAN" ? "(?:0|[1-9][0-9]{0,15})" : "(?:0|[1-9][0-9]{0,15})(?:\\.[0-9]{1,4})?"} value={offer.price} onChange={(event) => update(offer.id, "price", event.target.value)} />
         </label>
         <label className={styles.field}>
           <span>{copy.sellerSku}</span>
@@ -673,33 +684,60 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
   const [section, setSection] = useState<DashboardSection>(initialSection);
   const [listings, setListings] = useState<SellerListing[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [pageCursors, setPageCursors] = useState<Array<string | null>>([null]);
+  const [listPage, setListPage] = useState(0);
   const [listState, setListState] = useState<RequestState>("loading");
   const [listError, setListError] = useState("");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [debouncedCategory, setDebouncedCategory] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProductStatus | "all">("all");
+  const [typeFilter, setTypeFilter] = useState<ProductType | "all">("all");
+  const [kindFilter, setKindFilter] = useState<ProductKind | "all">("all");
+  const [listingStatusFilter, setListingStatusFilter] = useState<"all" | "draft" | "active" | "archived">("all");
+  const [sort, setSort] = useState("updated_desc");
   const [editingProduct, setEditingProduct] = useState<SellerListing | null>(null);
   const [editDraft, setEditDraft] = useState({ title: "", category: "", description: "", status: "draft" as ProductStatus });
   const [editState, setEditState] = useState<RequestState>("idle");
   const [editError, setEditError] = useState("");
   const [sellServiceOpen, setSellServiceOpen] = useState(false);
   const productEditorRef = useRef<HTMLElement>(null);
+  const listRequestId = useRef(0);
   const hasAnalytics = Boolean(user.permissions?.includes("analytics_view"));
 
-  const loadListings = useCallback(async (cursor?: string, append = false) => {
+  useEffect(() => {
+    const timer = window.setTimeout(() => { setDebouncedSearch(search.trim()); setDebouncedCategory(categoryFilter.trim()); }, 300);
+    return () => window.clearTimeout(timer);
+  }, [search, categoryFilter]);
+
+  const loadListings = useCallback(async (cursor: string | null = null, page = 0) => {
+    const requestId = ++listRequestId.current;
     setListState("loading");
     setListError("");
     try {
       const response = await api.get<SellerListingsPage>("/products/mine", {
-        params: { limit: 20, ...(cursor ? { cursor } : {}) }
+        params: { limit: 20, ...(cursor ? { cursor } : {}),
+          ...(section === "products" && debouncedSearch ? { search: debouncedSearch } : {}),
+          ...(section === "products" && debouncedCategory ? { category: debouncedCategory } : {}),
+          ...(section === "products" && statusFilter !== "all" ? { status: statusFilter } : {}),
+          ...(section === "products" && typeFilter !== "all" ? { type: typeFilter } : {}),
+          ...(section === "products" && kindFilter !== "all" ? { kind: kindFilter } : {}),
+          ...(section === "products" && listingStatusFilter !== "all" ? { listingStatus: listingStatusFilter } : {}),
+          ...(section === "products" ? { sort } : {}) }
       });
-      setListings((current) => append ? [...current, ...response.data.items] : response.data.items);
+      if (requestId !== listRequestId.current) return;
+      setListings(response.data.items);
       setNextCursor(response.data.nextCursor);
+      setListPage(page);
+      setPageCursors((current) => page === 0 ? [null] : current.slice(0, page + 1));
       setListState("success");
     } catch (error) {
+      if (requestId !== listRequestId.current) return;
       setListError(requestError(error, copy.listError));
       setListState("error");
     }
-  }, [copy.listError]);
+  }, [copy.listError, section, debouncedSearch, debouncedCategory, statusFilter, typeFilter, kindFilter, listingStatusFilter, sort]);
 
   useEffect(() => {
     if (section === "overview" && hasAnalytics) return;
@@ -729,21 +767,15 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
     return () => { window.removeEventListener("keydown", onKeyDown); previousFocus?.focus(); };
   }, [editingProduct]);
 
-  const visibleListings = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase(locale);
-    return listings.filter((listing) => {
-      const matchesStatus = statusFilter === "all" || listing.product.status === statusFilter;
-      const matchesQuery = !query || [listing.product.title, listing.product.category ?? "", listing.product.slug]
-        .some((value) => value.toLocaleLowerCase(locale).includes(query));
-      return matchesStatus && matchesQuery;
-    });
-  }, [listings, locale, search, statusFilter]);
-
   const activeListings = listings.filter((listing) => listing.status === "active").length;
   const offersShown = listings.reduce((total, listing) => total + listing.offers.length, 0);
 
   function selectSection(next: DashboardSection) {
     setSection(next);
+    const url = new URL(window.location.href);
+    if (next === "overview") url.searchParams.delete("section");
+    else url.searchParams.set("section", next);
+    window.history.replaceState(window.history.state, "", url);
     document.querySelector("main")?.focus({ preventScroll: true });
   }
 
@@ -856,6 +888,10 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
             <Icon name="overview" />
             <span>{copy.overview}</span>
           </button>
+          {hasAnalytics ? <button className={navigationStyles.item} type="button" aria-current={section === "statistics" ? "page" : undefined} onClick={() => selectSection("statistics")} data-state="default">
+            <Icon name="statistics" />
+            <span>{copy.statistics}</span>
+          </button> : null}
           <div
             className={navigationStyles.group}
             data-active={isSellServiceSection}
@@ -931,7 +967,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
 
         <div className={styles.sectionBody} key={section}>
           {section === "overview" ? (
-            hasAnalytics ? <AnalyticsOverview locale={locale} audience="seller" /> : <section aria-labelledby="catalog-snapshot-title">
+            hasAnalytics ? <AnalyticsOverview locale={locale} audience="seller" compact /> : <section aria-labelledby="catalog-snapshot-title">
               <div className={styles.introRow}>
                 <p>{copy.overviewDescription}</p>
                 {nextCursor ? <span className={styles.moreNote}>{copy.moreAvailable}</span> : null}
@@ -965,6 +1001,8 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
             </section>
           ) : null}
 
+          {section === "statistics" && hasAnalytics ? <AnalyticsOverview locale={locale} audience="seller" /> : null}
+
           {section === "products" ? (
             <section aria-labelledby="products-title">
               <div className={styles.introRow}>
@@ -984,27 +1022,33 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
                   <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ProductStatus | "all")}>
                     <option value="all">{copy.allStatuses}</option>
                     <option value="draft">{copy.draft}</option>
+                    <option value="pending_review">{copy.pending_review}</option>
                     <option value="active">{copy.active}</option>
                     <option value="archived">{copy.archived}</option>
                   </select>
                 </label>
+                <label className={styles.filterField}><span className={styles.srOnly}>{FILTER_COPY[locale].category}</span><input value={categoryFilter} maxLength={100} placeholder={FILTER_COPY[locale].category} onChange={(event) => setCategoryFilter(event.target.value)} /></label>
+                <label className={styles.filterField}><span className={styles.srOnly}>{copy.type}</span><select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as ProductType | "all")}><option value="all">{FILTER_COPY[locale].allTypes}</option><option value="digital">{copy.digital}</option><option value="physical">{copy.physical}</option><option value="service">{copy.service}</option><option value="bridge">{copy.bridge}</option></select></label>
+                <label className={styles.filterField}><span className={styles.srOnly}>{copy.kind}</span><select value={kindFilter} onChange={(event) => setKindFilter(event.target.value as ProductKind | "all")}><option value="all">{FILTER_COPY[locale].allKinds}</option><option value="simple">{copy.simple}</option><option value="variable">{copy.variable}</option></select></label>
+                <label className={styles.filterField}><span className={styles.srOnly}>{FILTER_COPY[locale].allListingStatuses}</span><select value={listingStatusFilter} onChange={(event) => setListingStatusFilter(event.target.value as typeof listingStatusFilter)}><option value="all">{FILTER_COPY[locale].allListingStatuses}</option><option value="draft">{copy.draft}</option><option value="active">{copy.active}</option><option value="archived">{copy.archived}</option></select></label>
+                <label className={styles.filterField}><span className={styles.srOnly}>{FILTER_COPY[locale].sort}</span><select value={sort} onChange={(event) => setSort(event.target.value)}><option value="updated_desc">{FILTER_COPY[locale].updatedDesc}</option><option value="updated_asc">{FILTER_COPY[locale].updatedAsc}</option><option value="created_desc">{FILTER_COPY[locale].createdDesc}</option><option value="created_asc">{FILTER_COPY[locale].createdAsc}</option><option value="title_asc">{FILTER_COPY[locale].titleAsc}</option><option value="title_desc">{FILTER_COPY[locale].titleDesc}</option></select></label>
               </div>
               <ProductList
                 copy={copy}
                 locale={locale}
-                listings={visibleListings}
+                listings={listings}
                 state={listState}
                 error={listError}
-                emptySearch={Boolean(search.trim()) || statusFilter !== "all"}
+                emptySearch={Boolean(search.trim() || categoryFilter.trim()) || statusFilter !== "all" || typeFilter !== "all" || kindFilter !== "all" || listingStatusFilter !== "all"}
                 onRetry={() => void loadListings()}
                 onAdd={openProductPage}
                 onEdit={openProductEditor}
               />
-              {nextCursor && listState !== "loading" ? (
-                <button className={styles.loadMoreButton} type="button" onClick={() => void loadListings(nextCursor, true)}>
-                  {copy.loadMore}
-                </button>
-              ) : null}
+              <nav className={styles.productPagination} aria-label={copy.products}>
+                <button className={styles.loadMoreButton} type="button" disabled={listState === "loading" || listPage === 0} onClick={() => void loadListings(pageCursors[listPage - 1], listPage - 1)}>{FILTER_COPY[locale].previous}</button>
+                <span aria-live="polite">{FILTER_COPY[locale].page} {listPage + 1}</span>
+                <button className={styles.loadMoreButton} type="button" disabled={listState === "loading" || !nextCursor} onClick={() => { if (!nextCursor) return; setPageCursors((current) => [...current.slice(0, listPage + 1), nextCursor]); void loadListings(nextCursor, listPage + 1); }}>{FILTER_COPY[locale].next}</button>
+              </nav>
             </section>
           ) : null}
 
@@ -1072,11 +1116,32 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
   const router = useRouter();
   const copy = COPY[locale];
   const formCopy = PRODUCT_CREATION_COPY[locale];
+  const imageCopy = PRODUCT_IMAGE_COPY[locale];
   const physicalGranted = Boolean(user.permissions?.includes("physical_products_manage"));
   const [draft, setDraft] = useState<ProductDraft>(() => makeDraft(physicalGranted));
   const [submitState, setSubmitState] = useState<RequestState>("idle");
   const [formError, setFormError] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [createdProductId, setCreatedProductId] = useState<string | null>(null);
   const nextVariantNumber = useRef(2);
+
+  useEffect(() => {
+    if (!imageFile) { setImagePreview(null); return; }
+    const url = URL.createObjectURL(imageFile);
+    setImagePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [imageFile]);
+
+  function selectImage(file: File | undefined) {
+    if (!file) return;
+    if (!(["image/webp", "image/svg+xml"].includes(file.type)) || file.size > 8 * 1024 * 1024) {
+      setFormError(formCopy.imageInvalid);
+      return;
+    }
+    setImageFile(file);
+    setFormError("");
+  }
 
   function updateDraft<K extends keyof ProductDraft>(key: K, value: ProductDraft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -1118,7 +1183,7 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
 
   async function createProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!validateDraft(draft)) {
+    if (!createdProductId && !validateDraft(draft)) {
       setFormError(copy.formIncomplete);
       setSubmitState("error");
       return;
@@ -1147,12 +1212,22 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
       offers
     };
 
+    let productId = createdProductId;
     try {
-      await api.post<SellerListing>("/products", payload);
+      if (!productId) {
+        const response = await api.post<SellerListing>("/products", payload);
+        productId = response.data.product.id;
+        setCreatedProductId(productId);
+      }
+      if (imageFile) {
+        const body = new FormData();
+        body.append("file", imageFile);
+        await api.post(`/products/${productId}/image`, body);
+      }
       setSubmitState("success");
       router.replace(`/${locale}/seller-dashboard?section=products`);
     } catch (error) {
-      setFormError(requestError(error, copy.createError));
+      setFormError(requestError(error, productId ? formCopy.imageUploadError : copy.createError));
       setSubmitState("error");
     }
   }
@@ -1178,6 +1253,10 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
               <label className={`${styles.field} ${creation.titleField}`}><span>{copy.title}</span><input required minLength={2} maxLength={200} placeholder={formCopy.titlePlaceholder} value={draft.title} onChange={(event) => updateDraft("title", event.target.value)} /></label>
               <label className={styles.field}><span>{copy.description}<small>{formCopy.optional}</small></span><textarea maxLength={10000} placeholder={formCopy.descriptionPlaceholder} value={draft.description} onChange={(event) => updateDraft("description", event.target.value)} /></label>
               <label className={styles.field}><span>{copy.category}<small>{formCopy.optional}</small></span><input maxLength={100} value={draft.category} onChange={(event) => updateDraft("category", event.target.value)} /></label>
+              <div className={creation.imageField}>
+                <div className={creation.imagePreview}>{imagePreview ? <Image unoptimized src={imagePreview} alt="" width={120} height={120} /> : <DesignIcon name="layers" />}</div>
+                <div><strong>{imageCopy.title}</strong><small>{imageCopy.hint}</small><label className={creation.imagePicker}>{imageFile ? imageCopy.replace : imageCopy.choose}<input type="file" accept="image/webp,image/svg+xml" disabled={submitState === "loading"} onChange={(event) => { selectImage(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>{imageFile ? <button className={creation.imageRemove} type="button" disabled={submitState === "loading"} onClick={() => setImageFile(null)}>{imageCopy.remove}</button> : null}</div>
+              </div>
             </section>
             <fieldset className={creation.deliveryCard}>
               <legend>{formCopy.delivery}</legend>
@@ -1187,7 +1266,7 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
               <header className={creation.sectionHeading}><span><DesignIcon name="layers" /></span><div><h2 id="product-pricing">{formCopy.configuration}</h2><p>{formCopy.configurationHint}</p></div></header>
               <div className={creation.kindOptions} role="group" aria-label={copy.productKind}>{(["simple", "variable"] as const).map((kind) => <button key={kind} type="button" aria-pressed={draft.kind === kind} onClick={() => changeKind(kind)}><strong>{copy[kind]}</strong><span>{formCopy[kind]}</span></button>)}</div>
               <div className={creation.pricingSettings}>
-                <label className={styles.currencyField}><span>{copy.currency}</span><input required minLength={3} maxLength={3} pattern="[A-Za-z]{3}" dir="ltr" value={draft.currency} onChange={(event) => updateDraft("currency", event.target.value.toUpperCase())} /></label>
+                <label className={styles.currencyField}><span>{copy.currency}</span><select required value={draft.currency} onChange={(event) => updateDraft("currency", event.target.value)}><option value="USD">USD</option><option value="TOMAN">تومان</option></select></label>
                 {draft.kind === "variable" ? <label className={styles.field}><span>{copy.optionName}</span><input required maxLength={50} value={draft.optionName} onChange={(event) => updateDraft("optionName", event.target.value)} aria-describedby="option-name-hint" /><small id="option-name-hint">{copy.optionNameHint}</small></label> : null}
               </div>
               <div className={creation.offers}>{draft.offers.map((offer, index) => <OfferFields key={offer.id} copy={copy} draft={draft} offer={offer} index={index} canRemove={draft.kind === "variable" && draft.offers.length > 1} update={updateOffer} remove={removeVariant} />)}</div>
@@ -1196,7 +1275,7 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
           </div>
           <aside className={creation.sidebar}>
             <section className={creation.preview} aria-labelledby="product-preview"><span className={creation.eyebrow} id="product-preview">{formCopy.preview}</span><div className={creation.previewIcon}><DesignIcon name={productIcons[draft.type as keyof typeof productIcons] ?? "layers"} /></div><span className={creation.previewCategory}>{draft.category.trim() || formCopy.noCategory}</span><h2>{draft.title.trim() || formCopy.untitled}</h2><p>{copy[draft.type]}<span>·</span>{copy[draft.kind]}</p><div className={creation.previewPrice}>{startingPrice ? <><small>{draft.kind === "variable" ? formCopy.from : copy.price}</small><strong>{startingPrice}<span>{currencyLabel(draft.currency)}</span></strong></> : <span>{formCopy.pricePending}</span>}</div></section>
-            <section className={creation.publish}><h2>{formCopy.summary}</h2><p>{formCopy.summaryHint}</p><label className={styles.field}><span>{copy.publishState}</span><select value={draft.status} onChange={(event) => updateDraft("status", event.target.value as ProductStatus)}><option value="draft">{copy.draft}</option><option value="active">{copy.active}</option></select></label><p className={creation.statusHint}>{draft.status === "draft" ? formCopy.draftHint : formCopy.activeHint}</p><div className={creation.readiness} data-ready={validateDraft(draft)}><DesignIcon name="check" /><span>{validateDraft(draft) ? formCopy.ready : formCopy.incomplete}</span></div><div aria-live="polite">{formError ? <p className={creation.error} role="alert">{formError}</p> : null}</div><button className={styles.primaryButton} type="submit" disabled={submitState === "loading"} data-state={submitState}>{submitState === "loading" ? copy.creatingProduct : copy.createProduct}<DesignIcon name="arrow" /></button><Link className={creation.cancel} href={`/${locale}/seller-dashboard?section=products`}>{copy.cancel}</Link></section>
+            <section className={creation.publish}><h2>{formCopy.summary}</h2><p>{formCopy.summaryHint}</p><label className={styles.field}><span>{copy.publishState}</span><select value={draft.status} disabled={Boolean(createdProductId)} onChange={(event) => updateDraft("status", event.target.value as ProductStatus)}><option value="draft">{copy.draft}</option><option value="active">{copy.active}</option></select></label><p className={creation.statusHint}>{draft.status === "draft" ? formCopy.draftHint : formCopy.activeHint}</p><div className={creation.readiness} data-ready={validateDraft(draft)}><DesignIcon name="check" /><span>{validateDraft(draft) ? formCopy.ready : formCopy.incomplete}</span></div><div aria-live="polite">{formError ? <p className={creation.error} role="alert">{formError}</p> : null}</div><button className={styles.primaryButton} type="submit" disabled={submitState === "loading"} data-state={submitState}>{submitState === "loading" ? copy.creatingProduct : createdProductId ? formCopy.retryImage : copy.createProduct}<DesignIcon name="arrow" /></button><Link className={creation.cancel} href={`/${locale}/seller-dashboard?section=products`}>{copy.cancel}</Link></section>
           </aside>
         </form>
       </main>

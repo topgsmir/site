@@ -7,7 +7,7 @@ function offer(input: { id: string; sellerId: string; type: "digital" | "physica
   return {
     id: input.id,
     price: new Prisma.Decimal(input.price),
-    currency: "IRR",
+    currency: "TOMAN",
     digital: input.type === "digital" ? { file_reference: input.url ?? "https://uploads.example/file", max_downloads: 2 } : null,
     physical: input.type === "physical" ? { stock: input.stock ?? 10 } : null,
     listing: {
@@ -32,7 +32,7 @@ function service(offers: ReturnType<typeof offer>[]) {
   const payments = {
     listProviders: async () => [{ code: "zarinpal", name: "Zarinpal", available: true }]
   };
-  const usdRates = { getIrrPerUsd: async () => new Prisma.Decimal("2327500") };
+  const usdRates = { getTomanPerUsd: async () => new Prisma.Decimal("232750") };
   return new CheckoutService(prisma as never, payments as never, {} as never, usdRates as never);
 }
 
@@ -105,12 +105,12 @@ describe("CheckoutService quotes", () => {
     );
   });
 
-  it("converts USD offers to integer IRR using the current sell rate", async () => {
+  it("converts USD offers to integer toman using the current sell rate", async () => {
     const usdOffer = offer({ id: "00000000-0000-4000-8000-000000000106", sellerId: "seller-a", type: "physical", price: "12.50" });
     usdOffer.currency = "USD";
     const result = await service([usdOffer]).quote({ items: [{ offerId: usdOffer.id, quantity: 2 }] });
-    assert.equal(result.currency, "IRR");
-    assert.equal(result.groups[0]!.items[0]!.unitPrice, "29093750");
-    assert.equal(result.totalAmount, "58187500");
+    assert.equal(result.currency, "TOMAN");
+    assert.equal(result.groups[0]!.items[0]!.unitPrice, "2909375");
+    assert.equal(result.totalAmount, "5818750");
   });
 });

@@ -135,6 +135,39 @@
   --radius-product-round: 999px;
 }
 
+@media (min-width: 1024px) {
+  :root {
+    --space-dashboard-sm: 0.625rem;
+    --space-dashboard-md: 0.875rem;
+    --space-dashboard-lg: 1.25rem;
+    --space-dashboard-xl: 2rem;
+    --space-dashboard-2xl: 3rem;
+    --space-dashboard-3xl: 4.5rem;
+    --text-dashboard-base: 0.9375rem;
+    --text-dashboard-md: 1.125rem;
+    --text-dashboard-lg: 1.375rem;
+    --text-dashboard-xl: 1.75rem;
+    --text-dashboard-2xl: 2.125rem;
+    --radius-dashboard-md: 1.25rem;
+    --radius-dashboard-lg: 1.75rem;
+    --space-product-sm: 0.625rem;
+    --space-product-md: 0.875rem;
+    --space-product-lg: 1.25rem;
+    --space-product-xl: 2rem;
+    --space-product-2xl: 3rem;
+    --space-product-3xl: 4.5rem;
+    --space-product-4xl: 7rem;
+    --text-product-base: 0.9375rem;
+    --text-product-md: 1.125rem;
+    --text-product-lg: 1.375rem;
+    --text-product-xl: 1.75rem;
+    --text-product-2xl: 2.125rem;
+    --text-product-3xl: 2.625rem;
+    --text-product-display: clamp(2.25rem, 3vw + 0.75rem, 3.5rem);
+    --radius-product-md: 1.25rem;
+  }
+}
+
 html[data-theme="dark"] {
   --shadow-dashboard-card: 0 3px 16px rgb(5 9 20 / 10%);
   --shadow-dashboard-float: 0 16px 48px rgb(5 9 20 / 20%);

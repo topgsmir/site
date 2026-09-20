@@ -1,9 +1,9 @@
 /* Hallmark · pre-emit critique: P4 H5 E4 S5 R5 V4 */
 .page { min-height: 100svh; padding: clamp(1rem, 3vw, 3rem); color: var(--color-product-ink); background: var(--color-product-paper); font-family: var(--font-product-body); }
-.pageHeader { display: flex; align-items: end; justify-content: space-between; gap: var(--space-product-xl); max-width: 92rem; margin: 0 auto var(--space-product-xl); }
+.pageHeader { display: flex; align-items: end; justify-content: space-between; gap: var(--space-product-lg); max-width: 92rem; margin: 0 auto var(--space-product-lg); }
 .pageHeader a:first-child { display: inline-flex; min-height: 2.75rem; align-items: center; color: var(--color-product-accent); font-size: var(--text-product-sm); font-weight: 600; white-space: nowrap; }
-.pageHeader h1 { margin: var(--space-product-sm) 0 0; font-family: var(--font-product-display); font-size: clamp(2rem, 4vw, 3.75rem); font-style: normal; font-weight: 560; letter-spacing: -.045em; line-height: 1; overflow-wrap: anywhere; }
-.pageHeader p { max-width: 42rem; margin-top: var(--space-product-md); color: var(--color-product-muted); line-height: 1.7; }
+.pageHeader h1 { margin: var(--space-product-xs) 0 0; font-family: var(--font-product-display); font-size: clamp(var(--text-product-xl), 3vw, 2.5rem); font-style: normal; font-weight: 560; letter-spacing: -.03em; line-height: 1.25; overflow-wrap: anywhere; }
+.pageHeader p { max-width: 42rem; margin-top: var(--space-product-sm); color: var(--color-product-muted); line-height: 1.6; }
 .publicLink { display: inline-flex; min-height: 2.75rem; align-items: center; padding-inline: var(--space-product-md); border: var(--rule-dashboard-thin) solid var(--color-product-rule); border-radius: var(--radius-product-round); background: var(--color-product-surface); color: var(--color-product-accent); font-weight: 600; white-space: nowrap; }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(18rem, 26rem); gap: var(--space-product-lg); max-width: 92rem; margin-inline: auto; align-items: start; }
 .primary, .sidebar, .sellers, .offerList { display: grid; gap: var(--space-product-lg); min-width: 0; }

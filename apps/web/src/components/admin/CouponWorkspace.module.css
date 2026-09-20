@@ -1,7 +1,7 @@
-.workspace { display: grid; min-width: 0; gap: var(--space-dashboard-xl); padding-block: var(--space-dashboard-xl) var(--space-dashboard-3xl); color: var(--color-dashboard-ink); }
+.workspace { display: grid; min-width: 0; gap: var(--space-dashboard-lg); padding-block: var(--space-dashboard-lg) var(--space-dashboard-2xl); color: var(--color-dashboard-ink); }
 .hero { display: grid; gap: var(--space-dashboard-xs); max-width: 52rem; }
 .hero > span { color: var(--color-dashboard-accent-strong); font-size: var(--text-dashboard-xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.hero h1 { font-family: var(--font-dashboard-display); font-size: clamp(var(--text-dashboard-xl), 4vw, 3.25rem); font-weight: 600; line-height: 1.2; letter-spacing: -.04em; }
+.hero h1 { min-width: 0; overflow-wrap: anywhere; font-family: var(--font-dashboard-display); font-size: clamp(var(--text-dashboard-xl), 3vw, var(--text-dashboard-2xl)); font-weight: 600; line-height: 1.25; letter-spacing: -.03em; }
 .hero p { color: var(--color-dashboard-muted); line-height: 1.8; }
 .form, .coupon, .message { border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-panel); background: var(--color-dashboard-surface); box-shadow: var(--shadow-dashboard-card); }
 .form { display: grid; gap: var(--space-dashboard-lg); padding: var(--space-dashboard-lg); }

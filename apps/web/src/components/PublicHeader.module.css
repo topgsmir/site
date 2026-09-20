@@ -5,14 +5,11 @@
 .brand strong { display: block; direction: ltr; font-family: var(--font-outfit), sans-serif; font-size: 1.8rem; font-weight: 650; letter-spacing: -.07em; line-height: 1.1; }
 .brand strong span { color: var(--signal); }
 .brand small { display: block; margin-top: 5px; color: var(--muted); font-size: .7rem; }
-.navigation, .actions, .languages { display: flex; align-items: center; }
+.navigation, .actions { display: flex; align-items: center; }
 .navigation { gap: 28px; font-size: .84rem; color: var(--ink-soft); }
 .navigation a { display: flex; align-items: center; min-height: 44px; white-space: nowrap; }
 .navigation a[aria-current="page"] { color: var(--signal); }
 .actions { gap: 22px; }
-.languages { direction: ltr; gap: 4px; }
-.languages a { display: grid; place-items: center; min-width: 32px; min-height: 44px; font-family: var(--font-outfit), sans-serif; font-size: .7rem; color: var(--muted); }
-.languages a[aria-current="page"] { color: var(--signal); font-weight: 650; }
 .account { display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 44px; padding: 0 18px; border: 1px solid var(--line); border-radius: 999px; font-size: .8rem; white-space: nowrap; background: var(--paper-bright); transition: transform 160ms var(--ease); }
 .account svg { width: 16px; }
 :global([dir="rtl"]) .account svg { transform: rotate(180deg); }
@@ -25,7 +22,13 @@
 .cart strong { display: grid; place-items: center; min-width: 24px; height: 24px; padding-inline: 6px; border-radius: 999px; color: var(--on-signal); background: var(--signal); font-size: .7rem; }
 @media (hover: hover) and (pointer: fine) { .navigation a:hover { color: var(--signal); } }
 @media (max-width: 1120px) { .navigation { gap: 18px; } .actions { gap: 12px; } }
-@media (max-width: 900px) { .languages { display: none; } }
+@media (min-width: 801px) {
+  .header { min-height: 80px; }
+  .symbol { width: 38px; height: 38px; border-radius: 12px; }
+  .brand strong { font-size: 1.55rem; }
+  .navigation { gap: 20px; }
+  .actions { gap: 14px; }
+}
 @media (max-width: 800px) {
   .header { width: calc(100% - 40px); flex-wrap: wrap; gap: 8px 16px; padding-block: 20px 12px; }
   .brand small { display: none; }
@@ -34,12 +37,7 @@
   .account { padding-inline: 14px; font-size: .74rem; }
 }
 @media (prefers-reduced-motion: reduce) { .account { transition: none; } }
-.languageMenu { display: none; position: relative; font-size: .75rem; }
-.languageMenu summary { display: grid; place-items: center; width: 40px; min-height: 44px; border-radius: 14px; color: var(--signal); background: var(--signal-soft); font-family: var(--font-outfit), sans-serif; list-style: none; cursor: pointer; }
-.languageMenu summary::-webkit-details-marker { display: none; }
-.languageMenu summary:focus-visible { outline: 3px solid var(--signal); outline-offset: 3px; }
-.languageMenu nav { position: absolute; z-index: 5; inset-inline-end: 0; top: calc(100% + 8px); min-width: 130px; padding: 8px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper-bright); box-shadow: var(--shadow-dashboard-float); }
-.languageMenu nav a { display: flex; align-items: center; min-height: 44px; padding: 8px 12px; border-radius: 10px; }
-.languageMenu nav a[aria-current="page"] { background: var(--signal-soft); color: var(--signal); }
-@media (max-width: 900px) { .languageMenu { display: block; } }
 @media (max-width: 440px) { .actions { gap: 6px; } .brand { gap: 8px; } .brand strong { font-size: 1.55rem; } .symbol { width: 36px; height: 36px; border-radius: 12px; } .account { padding-inline: 12px; gap: 8px; } .account svg { display: none; } }
+@media (max-width: 600px) { .cart > span { display: none; } }
+@media (max-width: 390px) { .symbol { display: none; } }
+@media (max-width: 440px) { .actions { width: 100%; margin-inline-start: 0; justify-content: space-between; } }

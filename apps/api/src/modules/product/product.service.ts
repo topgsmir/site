@@ -16,6 +16,8 @@ import type {
   CreateProductDto,
   CreateProductOfferDto,
   ListProductsQueryDto,
+  ManageProductsQueryDto,
+  SellerProductsQueryDto,
   PreviewBulkUndoProductChangesDto,
   UpdateAdminProductDto,
   UpdateProductDto,
@@ -214,6 +216,23 @@ type ProductSnapshot = {
   status: "draft" | "pending_review" | "active" | "archived";
 };
 
+function searchVariants(term: string) {
+  const canonical = term
+    .replace(/[يى]/gu, "ی")
+    .replace(/ك/gu, "ک")
+    .replace(/[٠-٩۰-۹]/gu, (digit) => {
+      const code = digit.charCodeAt(0);
+      return String(code >= 0x06f0 ? code - 0x06f0 : code - 0x0660);
+    });
+  return [...new Set([
+    term,
+    canonical,
+    canonical.replace(/ی/gu, "ي").replace(/ک/gu, "ك"),
+    canonical.replace(/[0-9]/gu, (digit) => String.fromCharCode(0x06f0 + Number(digit))),
+    canonical.replace(/[0-9]/gu, (digit) => String.fromCharCode(0x0660 + Number(digit)))
+  ])];
+}
+
 const productSnapshotFields = ["title", "slug", "description", "category", "status"] as const;
 
 type AdminProductRecord = Prisma.productsGetPayload<{
@@ -277,11 +296,20 @@ export class ProductService {
   }
 
   async listPublic(input: ListProductsQueryDto) {
+    if (input.type === "bridge" && !this.bridgeEnabled()) return [];
+    const terms = input.search?.trim().split(/\s+/u).filter(Boolean).slice(0, 8) ?? [];
     const products = await this.prisma.products.findMany({
       where: {
         status: "active",
-        ...(this.bridgeEnabled() ? {} : { type: { not: "bridge" as const } }),
-        variants: { some: { offers: { some: activeOfferWhere } } }
+        ...(input.type ? { type: input.type } : this.bridgeEnabled() ? {} : { type: { not: "bridge" as const } }),
+        variants: { some: { offers: { some: activeOfferWhere } } },
+        ...(terms.length ? { AND: terms.map((term) => ({
+          OR: searchVariants(term).flatMap((variant) => [
+            { title: { contains: variant, mode: "insensitive" as const } },
+            { slug: { contains: variant, mode: "insensitive" as const } },
+            { category: { contains: variant, mode: "insensitive" as const } }
+          ])
+        })) } : {})
       },
       ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
       take: input.limit,
@@ -495,13 +523,20 @@ export class ProductService {
 
   async listSellerListings(
     sellerId: string,
-    input: ListProductsQueryDto
+    input: SellerProductsQueryDto
   ) {
+    const productWhere = this.manageProductWhere(input);
     const listings = await this.prisma.seller_listings.findMany({
-      where: { seller_id: sellerId },
+      where: {
+        seller_id: sellerId,
+        ...(input.listingStatus ? { status: input.listingStatus } : {}),
+        ...(Object.keys(productWhere).length ? { product: { is: productWhere } } : {})
+      },
       ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
       take: input.limit + 1,
-      orderBy: [{ updated_at: "desc" }, { id: "desc" }],
+      orderBy: input.sort?.startsWith("title_")
+        ? [{ product: { title: input.sort.endsWith("asc") ? "asc" : "desc" } }, { id: "desc" }]
+        : [{ [input.sort?.startsWith("created_") ? "created_at" : "updated_at"]: input.sort?.endsWith("asc") ? "asc" : "desc" }, { id: "desc" }],
       select: sellerListingSelect
     });
     const hasMore = listings.length > input.limit;
@@ -513,11 +548,14 @@ export class ProductService {
     };
   }
 
-  async listAdminProducts(input: ListProductsQueryDto) {
+  async listAdminProducts(input: ManageProductsQueryDto) {
     const products = await this.prisma.products.findMany({
+      where: this.manageProductWhere(input),
       ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
       take: input.limit + 1,
-      orderBy: [{ updated_at: "desc" }, { id: "desc" }],
+      orderBy: input.sort?.startsWith("title_")
+        ? [{ title: input.sort.endsWith("asc") ? "asc" : "desc" }, { id: "desc" }]
+        : [{ [input.sort?.startsWith("created_") ? "created_at" : "updated_at"]: input.sort?.endsWith("asc") ? "asc" : "desc" }, { id: "desc" }],
       select: adminProductSelect
     });
     const hasMore = products.length > input.limit;
@@ -526,6 +564,22 @@ export class ProductService {
     return {
       items: page.map((product) => this.toAdminProduct(product)),
       nextCursor: hasMore ? page.at(-1)?.id ?? null : null
+    };
+  }
+
+  private manageProductWhere(input: ManageProductsQueryDto): Prisma.productsWhereInput {
+    const search = input.search?.trim();
+    const category = input.category?.trim();
+    return {
+      ...(input.type ? { type: input.type } : {}),
+      ...(input.kind ? { kind: input.kind } : {}),
+      ...(input.status ? { status: input.status } : {}),
+      ...(category ? { category: { contains: category, mode: "insensitive" as const } } : {}),
+      ...(search ? { OR: [
+        { title: { contains: search, mode: "insensitive" as const } },
+        { slug: { contains: search, mode: "insensitive" as const } },
+        { category: { contains: search, mode: "insensitive" as const } }
+      ] } : {})
     };
   }
 
@@ -786,10 +840,15 @@ export class ProductService {
           where: { id: offerId },
           select: {
             id: true,
+            price: true,
+            currency: true,
             listing: { select: { product: { select: { type: true } } } }
           }
         });
         if (!offer) throw new NotFoundException("Seller offer was not found");
+        if (input.price !== undefined || input.currency !== undefined) {
+          this.assertOfferMoney(input.price === undefined ? offer.price : new Prisma.Decimal(input.price), input.currency ?? offer.currency.trim());
+        }
 
         const detail = this.detailFromInput(input);
         if (detail) this.assertFulfillment(offer.listing.product.type, input);
@@ -1215,11 +1274,16 @@ export class ProductService {
           where: { id: offerId, listing: { seller_id: sellerId } },
           select: {
             id: true,
+            price: true,
+            currency: true,
             listing_id: true,
             listing: { select: { product: { select: { type: true } } } }
           }
         });
         if (!offer) throw new NotFoundException("Seller offer was not found");
+        if (input.price !== undefined || input.currency !== undefined) {
+          this.assertOfferMoney(input.price === undefined ? offer.price : new Prisma.Decimal(input.price), input.currency ?? offer.currency.trim());
+        }
         if (offer.listing.product.type === "physical") {
           const grant = await transaction.seller_permissions.findUnique({
             where: { seller_id_permission: { seller_id: sellerId, permission: "physical_products_manage" } },
@@ -1438,6 +1502,7 @@ export class ProductService {
     input: CreateProductOfferDto | AddSellerOfferDto
   ) {
     this.assertFulfillment(productType, input);
+    this.assertOfferMoney(new Prisma.Decimal(input.price), input.currency);
     const offer = await transaction.seller_offers.create({
       data: {
         listing_id: listingId,
@@ -1477,6 +1542,12 @@ export class ProductService {
       });
     } else if (productType === "bridge") {
       await transaction.seller_offer_bridge.create({ data: { offer_id: offer.id } });
+    }
+  }
+
+  private assertOfferMoney(price: Prisma.Decimal, currency: string) {
+    if (currency.toUpperCase() === "TOMAN" && !price.isInteger()) {
+      throw new BadRequestException("Toman offers must use integer prices");
     }
   }
 

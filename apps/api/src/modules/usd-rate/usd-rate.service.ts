@@ -42,7 +42,7 @@ export class UsdRateService {
     return this.map(settings, await providers.getQuotes());
   }
 
-  async getIrrPerUsd(db: RateDb = this.prisma) {
+  async getTomanPerUsd(db: RateDb = this.prisma) {
     const settings = await db.usd_exchange_rate_settings.findUnique({
       where: { id: SETTINGS_ID },
       select: { rate_toman: true }
@@ -53,7 +53,7 @@ export class UsdRateService {
         message: "The USD exchange rate is not configured"
       });
     }
-    return settings.rate_toman.mul(10);
+    return settings.rate_toman;
   }
 
   async update(input: UpdateUsdRateSettingsDto, actorUserId: string): Promise<AdminUsdRateSettings> {
@@ -116,7 +116,6 @@ export class UsdRateService {
       selectedProvider,
       providers,
       currentRateToman: rateToman,
-      currentRateIrr: settings.rate_toman?.mul(10).toString() ?? null,
       rateSource: settings.rate_source as AdminUsdRateSettings["rateSource"],
       rateUpdatedAt: settings.rate_updated_at?.toISOString() ?? null,
       cronStatus: settings.last_run_status as AdminUsdRateSettings["cronStatus"],

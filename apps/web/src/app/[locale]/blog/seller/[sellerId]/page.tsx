@@ -36,5 +36,9 @@ export default async function SellerAuthorPage({ params }: { params: Promise<{ l
   } catch (error) {
     if (isApiNotFound(error)) notFound();
   }
-  return <BlogIndex locale={locale} posts={page?.items ?? []} heading={page?.collection.name ?? (locale === "fa" ? "نوشته‌های فروشنده" : "Seller articles")} />;
+  return <BlogIndex locale={locale} posts={page?.items ?? []} heading={page?.collection.name ?? (locale === "fa" ? "نوشته‌های فروشنده" : "Seller articles")} languageHrefs={page ? {
+    fa: `/fa/blog/seller/${encodeURIComponent(sellerId)}`,
+    en: `/en/blog/seller/${encodeURIComponent(sellerId)}`,
+    ar: `/ar/blog/seller/${encodeURIComponent(sellerId)}`
+  } : undefined} />;
 }

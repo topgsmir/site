@@ -13,6 +13,7 @@ describe("SmsSettingsController", () => {
         calls.push("update");
         return {
           otpEnabled: false,
+          testModeEnabled: false,
           provider: "sms_ir" as const,
           apiKeyConfigured: true,
           apiKeyHint: "-key",
@@ -32,7 +33,7 @@ describe("SmsSettingsController", () => {
     await controller.update(
       { authenticatedUser: { id: "admin-id" } } as AuthenticatedRequest,
       "203.0.113.10",
-      { otpEnabled: false, apiKey: "secret-sms-api-key", otpTemplateId: 123 }
+      { otpEnabled: false, testModeEnabled: false, apiKey: "secret-sms-api-key", otpTemplateId: 123 }
     );
 
     assert.deepEqual(calls, ["limit:admin-id:203.0.113.10", "update"]);

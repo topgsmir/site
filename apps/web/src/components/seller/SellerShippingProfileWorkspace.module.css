@@ -1,7 +1,7 @@
-.workspace { display: grid; gap: var(--space-dashboard-xl); max-width: 58rem; }
-.workspace > header { display: grid; gap: var(--space-dashboard-xs); padding-block-end: var(--space-dashboard-lg); border-block-end: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
+.workspace { display: grid; gap: var(--space-dashboard-lg); max-width: 58rem; }
+.workspace > header { display: grid; gap: var(--space-dashboard-xs); padding-block-end: var(--space-dashboard-md); border-block-end: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
 .workspace > header > span { color: var(--color-dashboard-accent); font-size: var(--text-dashboard-xs); font-weight: 700; }
-.workspace h1 { font-family: var(--font-dashboard-display); font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1; }
+.workspace h1 { min-width: 0; overflow-wrap: anywhere; font-family: var(--font-dashboard-display); font-size: clamp(var(--text-dashboard-xl), 3vw, var(--text-dashboard-2xl)); line-height: 1.25; }
 .workspace p, .workspace small { color: var(--color-dashboard-muted); line-height: 1.65; }
 .workspace form { display: grid; gap: var(--space-dashboard-lg); }
 .toggle { display: flex !important; align-items: start; gap: var(--space-dashboard-md) !important; padding: var(--space-dashboard-lg); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-card); background: var(--color-dashboard-surface-raised); }

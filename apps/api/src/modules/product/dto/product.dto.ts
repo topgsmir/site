@@ -31,10 +31,19 @@ type ProductStatus = (typeof productStatuses)[number];
 type ListingStatus = (typeof listingStatuses)[number];
 
 const MONEY_PATTERN = /^(?:0|[1-9]\d{0,15})(?:\.\d{1,4})?$/;
-const CURRENCY_PATTERN = /^[A-Za-z]{3}$/;
+const CURRENCY_PATTERN = /^(?:TOMAN|USD)$/;
 const SLUG_PATTERN = /^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u;
 
 export class ListProductsQueryDto {
+  @IsOptional()
+  @IsIn(productTypes)
+  type?: (typeof productTypes)[number];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  search?: string;
+
   @IsOptional()
   @IsUUID("4")
   cursor?: string;
@@ -306,6 +315,31 @@ export class UpdateProductDto {
   @IsOptional()
   @IsIn(productStatuses)
   status?: ProductStatus;
+}
+
+export class ManageProductsQueryDto extends ListProductsQueryDto {
+  @IsOptional()
+  @IsIn(productStatuses)
+  status?: ProductStatus;
+
+  @IsOptional()
+  @IsIn(productKinds)
+  kind?: ProductKind;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  category?: string;
+
+  @IsOptional()
+  @IsIn(["updated_desc", "updated_asc", "created_desc", "created_asc", "title_asc", "title_desc"])
+  sort?: "updated_desc" | "updated_asc" | "created_desc" | "created_asc" | "title_asc" | "title_desc";
+}
+
+export class SellerProductsQueryDto extends ManageProductsQueryDto {
+  @IsOptional()
+  @IsIn(listingStatuses)
+  listingStatus?: ListingStatus;
 }
 
 export class UpdateAdminProductDto extends UpdateProductDto {

@@ -42,6 +42,14 @@ export class ListOrdersQueryDto {
   @Min(1)
   @Max(50)
   limit = 20;
+
+  @IsOptional() @IsString() @MinLength(3) @MaxLength(100) search?: string;
+  @IsOptional() @IsIn(["pending", "paid", "processing", "shipped", "awaiting_confirmation", "delivered", "cancelled"]) status?: string;
+  @IsOptional() @IsIn(["digital", "physical", "service", "bridge"]) productType?: string;
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) dateFrom?: string;
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) dateTo?: string;
+  @IsOptional() @IsIn(["newest", "oldest"]) sort?: "newest" | "oldest";
+  @IsOptional() @IsIn(["directory"]) view?: "directory";
 }
 
 export class UpdateOrderStatusDto {

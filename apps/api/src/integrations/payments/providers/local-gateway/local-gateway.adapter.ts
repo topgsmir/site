@@ -11,7 +11,7 @@ import {
 export class LocalGatewayAdapter extends BasePaymentAdapter implements OnModuleInit {
   readonly providerCode = "local-country-gateway" as const;
   readonly displayName = "Local test gateway";
-  readonly supportedCurrencies = ["IRR"] as const;
+  readonly supportedCurrencies = ["TOMAN"] as const;
 
   constructor(private readonly config: ConfigService) {
     super();

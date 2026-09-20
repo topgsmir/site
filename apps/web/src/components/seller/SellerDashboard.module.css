@@ -107,7 +107,7 @@
 .field input:focus-visible,
 .field select:focus-visible,
 .field textarea:focus-visible,
-.currencyField input:focus-visible {
+.currencyField select:focus-visible {
   outline-color: var(--color-dashboard-focus);
 }
 
@@ -214,15 +214,15 @@
 .main {
   width: 100%;
   min-width: 0;
-  padding: var(--space-dashboard-xl) clamp(var(--space-dashboard-md), 4vw, var(--space-dashboard-2xl));
+  padding: var(--space-dashboard-lg) clamp(var(--space-dashboard-md), 4vw, var(--space-dashboard-2xl));
   outline: none;
 }
 
 .pageHeader {
   display: grid;
-  gap: var(--space-dashboard-lg);
+  gap: var(--space-dashboard-md);
   align-items: end;
-  padding-block-end: var(--space-dashboard-xl);
+  padding-block-end: var(--space-dashboard-md);
   border-block-end: 0;
 }
 
@@ -413,7 +413,7 @@
 }
 
 .metricStrip {
-  margin-block-start: var(--space-dashboard-xl);
+  margin-block-start: var(--space-dashboard-lg);
   overflow: hidden;
   border: 0;
   border-radius: var(--radius-dashboard-md);
@@ -455,7 +455,7 @@
 }
 
 .workspaceBlock {
-  margin-block-start: var(--space-dashboard-2xl);
+  margin-block-start: var(--space-dashboard-lg);
 }
 
 .blockHeading {
@@ -495,6 +495,7 @@
 }
 
 .searchField input,
+.filterField input,
 .filterField select {
   width: 100%;
   min-width: 0;
@@ -514,6 +515,8 @@
   padding-inline: var(--space-dashboard-sm);
   cursor: pointer;
 }
+.filterField input { padding-inline: var(--space-dashboard-sm); }
+.productPagination { display: flex; align-items: center; justify-content: center; gap: var(--space-dashboard-sm); margin-block-start: var(--space-dashboard-md); }
 
 .tableWrap {
   max-width: 100%;
@@ -951,7 +954,7 @@
 .field input,
 .field select,
 .field textarea,
-.currencyField input {
+.currencyField select {
   width: 100%;
   min-width: 0;
   min-height: 2.75rem;
@@ -978,7 +981,7 @@
 .field input:disabled,
 .field select:disabled,
 .field textarea:disabled,
-.currencyField input:disabled {
+.currencyField select:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
@@ -986,28 +989,28 @@
 .field input[aria-invalid="true"],
 .field select[aria-invalid="true"],
 .field textarea[aria-invalid="true"],
-.currencyField input[aria-invalid="true"] {
+.currencyField select[aria-invalid="true"] {
   border-color: var(--color-dashboard-error);
 }
 
 .field input:active,
 .field select:active,
 .field textarea:active,
-.currencyField input:active {
+.currencyField select:active {
   border-color: var(--color-dashboard-rule-strong);
 }
 
 .field input[data-state="success"],
 .field select[data-state="success"],
 .field textarea[data-state="success"],
-.currencyField input[data-state="success"] {
+.currencyField select[data-state="success"] {
   border-color: var(--color-dashboard-success);
 }
 
 .field input[data-state="loading"],
 .field select[data-state="loading"],
 .field textarea[data-state="loading"],
-.currencyField input[data-state="loading"] {
+.currencyField select[data-state="loading"] {
   cursor: wait;
   opacity: 0.72;
 }
@@ -1094,7 +1097,7 @@
   .field input:hover,
   .field select:hover,
   .field textarea:hover,
-  .currencyField input:hover,
+  .currencyField select:hover,
   .searchField:hover,
   .filterField:hover {
     background: var(--color-dashboard-surface-raised);
@@ -1261,7 +1264,7 @@
   .filterField,
   .field input,
   .field select,
-  .currencyField input {
+  .currencyField select {
     min-height: 3rem;
   }
 }
@@ -1289,7 +1292,7 @@
   .field input,
   .field select,
   .field textarea,
-  .currencyField input {
+  .currencyField select {
     transition-duration: var(--dur-dashboard-reduced);
   }
 
@@ -1347,3 +1350,11 @@
   .productTable th, .productTable td { padding-block: 1.3rem; }
 }
 .brandBlock strong { font-family: var(--font-outfit), sans-serif; font-size: 1.7rem; font-weight: 600; letter-spacing: -.06em; }
+@media (min-width: 1024px) {
+  .brandBlock strong { font-size: 1.45rem; }
+  .main { padding-block: var(--space-dashboard-md); }
+  .pageHeader h1, .creationHeader h1 { font-size: clamp(1.75rem, 2.5vw, 2.2rem); }
+  .metricStrip dl > div { min-height: 104px; }
+  .metricStrip dd { font-size: 1.8rem; }
+  .productTable th, .productTable td { padding-block: 1rem; }
+}

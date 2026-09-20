@@ -12,6 +12,9 @@ import type {
   AdminProductSummary,
   AdminProductsPage,
   AdminUsdRateSettings,
+  ProductKind,
+  ProductStatus,
+  ProductType,
   Vendor,
   VendorPermission,
   VendorStatus
@@ -24,7 +27,8 @@ import { AdminBridgeWorkspace } from "@/components/bridge/AdminBridgeWorkspace";
 import { StaffWorkspace } from "@/components/admin/StaffWorkspace";
 import { UsersWorkspace } from "@/components/admin/UsersWorkspace";
 import { AdminBlogWorkspace } from "@/components/admin/AdminBlogWorkspace";
-import { OrdersWorkspace } from "@/components/seller/SellerOrders";
+import { AdminOrdersWorkspace } from "@/components/admin/AdminOrdersWorkspace";
+import { AdminOrderDetails } from "@/components/admin/AdminOrderDetails";
 import { PaymentServiceWorkspace } from "@/components/admin/PaymentServiceWorkspace";
 import { ProductChangesWorkspace } from "@/components/admin/ProductChangesWorkspace";
 import { AiWorkspace } from "@/components/admin/AiWorkspace";
@@ -34,6 +38,7 @@ import { AuthLoginSettingsWorkspace } from "@/components/admin/AuthLoginSettings
 import { SecuritySettingsWorkspace } from "@/components/admin/SecuritySettingsWorkspace";
 import { ShippingSettingsWorkspace } from "@/components/admin/ShippingSettingsWorkspace";
 import { UsdSettingsWorkspace } from "@/components/admin/UsdSettingsWorkspace";
+import { NoticeSettingsWorkspace } from "@/components/admin/NoticeSettingsWorkspace";
 import { AdminCommentsWorkspace } from "@/components/comments/AdminCommentsWorkspace";
 import type { AdminSection } from "@/components/admin/AdminPanelRoute";
 import navigationStyles from "@/components/dashboard/DashboardNavigation.module.css";
@@ -58,6 +63,7 @@ const copy = {
     admin: "Platform admin",
     navigation: "Admin navigation",
     overview: "Overview",
+    statistics: "Statistics",
     users: "Users",
     vendors: "Vendors",
     sellService: "Sales service",
@@ -152,6 +158,25 @@ const copy = {
     listings: "Listings",
     catalogEmpty: "No products have been created yet.",
     catalogLoadError: "Products could not be loaded. Refresh and try again.",
+    productSearch: "Search title, URL, or category",
+    allStatuses: "All statuses",
+    allTypes: "All types",
+    allKinds: "All structures",
+    productType: "Product type",
+    productKind: "Product structure",
+    digital: "Digital", physical: "Physical", service: "Service", bridge: "Bridge", simple: "Simple", variable: "Variable",
+    categoryFilter: "Filter category",
+    sortBy: "Sort by",
+    newestUpdated: "Recently updated",
+    oldestUpdated: "Least recently updated",
+    newestCreated: "Newest created",
+    oldestCreated: "Oldest created",
+    titleAscending: "Title A–Z",
+    titleDescending: "Title Z–A",
+    previousPage: "Previous",
+    nextPage: "Next",
+    page: "Page",
+    noMatchingProducts: "No products match these filters.",
     loadMore: "Load more",
     editProduct: "Edit product",
     editProductHint: "Update the shared catalog record. Changes affect every seller listing for this product.",
@@ -170,6 +195,7 @@ const copy = {
     admin: "مدیر پلتفرم",
     navigation: "ناوبری مدیریت",
     overview: "نمای کلی",
+    statistics: "آمار",
     users: "کاربران",
     vendors: "فروشنده‌ها",
     sellService: "سرویس فروش",
@@ -264,6 +290,25 @@ const copy = {
     listings: "فهرست‌ها",
     catalogEmpty: "هنوز محصولی ساخته نشده است.",
     catalogLoadError: "محصولات بارگذاری نشدند. صفحه را تازه کنید.",
+    productSearch: "جست‌وجوی عنوان، نشانی یا دسته‌بندی",
+    allStatuses: "همه وضعیت‌ها",
+    allTypes: "همه نوع‌ها",
+    allKinds: "همه ساختارها",
+    productType: "نوع محصول",
+    productKind: "ساختار محصول",
+    digital: "دیجیتال", physical: "فیزیکی", service: "خدمات", bridge: "بریج", simple: "ساده", variable: "متغیر",
+    categoryFilter: "فیلتر دسته‌بندی",
+    sortBy: "مرتب‌سازی",
+    newestUpdated: "تازه‌ترین ویرایش",
+    oldestUpdated: "قدیمی‌ترین ویرایش",
+    newestCreated: "جدیدترین ایجاد",
+    oldestCreated: "قدیمی‌ترین ایجاد",
+    titleAscending: "عنوان از آ تا ی",
+    titleDescending: "عنوان از ی تا آ",
+    previousPage: "قبلی",
+    nextPage: "بعدی",
+    page: "صفحه",
+    noMatchingProducts: "محصولی با این فیلترها پیدا نشد.",
     loadMore: "بارگذاری بیشتر",
     editProduct: "ویرایش محصول",
     editProductHint: "رکورد مشترک کاتالوگ را ویرایش کنید. تغییرات روی فهرست همه فروشندگان این محصول اعمال می‌شود.",
@@ -282,6 +327,7 @@ const copy = {
     admin: "مدير المنصة",
     navigation: "تنقل الإدارة",
     overview: "نظرة عامة",
+    statistics: "الإحصاءات",
     users: "المستخدمون",
     vendors: "البائعون",
     sellService: "خدمة المبيعات",
@@ -376,6 +422,25 @@ const copy = {
     listings: "القوائم",
     catalogEmpty: "لم يتم إنشاء أي منتج بعد.",
     catalogLoadError: "تعذر تحميل المنتجات. حدّث الصفحة وحاول مجدداً.",
+    productSearch: "ابحث بالعنوان أو الرابط أو الفئة",
+    allStatuses: "كل الحالات",
+    allTypes: "كل الأنواع",
+    allKinds: "كل البنى",
+    productType: "نوع المنتج",
+    productKind: "بنية المنتج",
+    digital: "رقمي", physical: "مادي", service: "خدمة", bridge: "جسر", simple: "بسيط", variable: "متغير",
+    categoryFilter: "تصفية الفئة",
+    sortBy: "ترتيب حسب",
+    newestUpdated: "آخر تحديث",
+    oldestUpdated: "أقدم تحديث",
+    newestCreated: "الأحدث إنشاءً",
+    oldestCreated: "الأقدم إنشاءً",
+    titleAscending: "العنوان تصاعدياً",
+    titleDescending: "العنوان تنازلياً",
+    previousPage: "السابق",
+    nextPage: "التالي",
+    page: "صفحة",
+    noMatchingProducts: "لا توجد منتجات تطابق هذه المرشحات.",
     loadMore: "تحميل المزيد",
     editProduct: "تعديل المنتج",
     editProductHint: "حدّث سجل الكتالوج المشترك. تؤثر التغييرات على قوائم جميع البائعين لهذا المنتج.",
@@ -469,11 +534,13 @@ export function VendorManagement({
   locale,
   adminName,
   section,
+  orderId,
   ownerNavigation
 }: {
   locale: Locale;
   adminName: string;
   section: AdminSection;
+  orderId?: string;
   ownerNavigation: boolean;
 }) {
   const c = copy[locale];
@@ -492,8 +559,19 @@ export function VendorManagement({
   const [error, setError] = useState("");
   const [products, setProducts] = useState<AdminProductSummary[]>([]);
   const [productsCursor, setProductsCursor] = useState<string | null>(null);
+  const [productPageCursors, setProductPageCursors] = useState<Array<string | null>>([null]);
+  const [productPage, setProductPage] = useState(0);
+  const [productSearch, setProductSearch] = useState("");
+  const [debouncedProductSearch, setDebouncedProductSearch] = useState("");
+  const [productCategory, setProductCategory] = useState("");
+  const [debouncedProductCategory, setDebouncedProductCategory] = useState("");
+  const [productStatus, setProductStatus] = useState<ProductStatus | "">("");
+  const [productType, setProductType] = useState<ProductType | "">("");
+  const [productKind, setProductKind] = useState<ProductKind | "">("");
+  const [productSort, setProductSort] = useState("updated_desc");
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState("");
+  const productRequestId = useRef(0);
   const [usersOpen, setUsersOpen] = useState(false);
   const [salesServiceOpen, setSalesServiceOpen] = useState(false);
   const [paymentServiceOpen, setPaymentServiceOpen] = useState(false);
@@ -503,13 +581,13 @@ export function VendorManagement({
   const [usdRateFailed, setUsdRateFailed] = useState(false);
   const isUsersSection = section === "vendors" || section === "staff" || section === "users";
   const usersExpanded = isUsersSection || usersOpen;
-  const isSalesServiceSection = section === "products" || section === "product-changes" || section === "coupons" || section === "orders";
+  const isSalesServiceSection = section === "products" || section === "product-changes" || section === "coupons" || section === "orders" || section === "order-detail";
   const salesServiceExpanded = isSalesServiceSection || salesServiceOpen;
   const isPaymentServiceSection = section === "payment-transactions" || section === "payment-methods";
   const paymentServiceExpanded = isPaymentServiceSection || paymentServiceOpen;
   const isAiSection = section === "ai-models" || section === "ai-assistant";
   const aiExpanded = isAiSection || aiOpen;
-  const isSettingsSection = section === "settings-sms" || section === "settings-shipping" || section === "settings-usd" || section === "settings-comments";
+  const isSettingsSection = section === "settings-sms" || section === "settings-shipping" || section === "settings-usd" || section === "settings-comments" || section === "settings-notice";
   const settingsExpanded = isSettingsSection || settingsOpen;
   const isSecuritySection = section === "security-rate-limit" || section === "security-login" || section === "security-captcha";
   const securityExpanded = isSecuritySection || securityOpen;
@@ -546,21 +624,39 @@ export function VendorManagement({
     }
   }, [c.loadError]);
 
-  const loadProducts = useCallback(async (cursor?: string) => {
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedProductSearch(productSearch.trim());
+      setDebouncedProductCategory(productCategory.trim());
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [productSearch, productCategory]);
+
+  const loadProducts = useCallback(async (cursor: string | null = null, page = 0) => {
+    const requestId = ++productRequestId.current;
     setProductsLoading(true);
     setProductsError("");
     try {
       const response = await api.get<AdminProductsPage>("/products/admin", {
-        params: { limit: 20, ...(cursor ? { cursor } : {}) }
+        params: { limit: 20, ...(cursor ? { cursor } : {}),
+          ...(debouncedProductSearch ? { search: debouncedProductSearch } : {}),
+          ...(debouncedProductCategory ? { category: debouncedProductCategory } : {}),
+          ...(productStatus ? { status: productStatus } : {}),
+          ...(productType ? { type: productType } : {}),
+          ...(productKind ? { kind: productKind } : {}), sort: productSort }
       });
-      setProducts((current) => cursor ? [...current, ...response.data.items] : response.data.items);
+      if (requestId !== productRequestId.current) return;
+      setProducts(response.data.items);
       setProductsCursor(response.data.nextCursor);
+      setProductPage(page);
+      setProductPageCursors((current) => page === 0 ? [null] : current.slice(0, page + 1));
     } catch {
+      if (requestId !== productRequestId.current) return;
       setProductsError(c.catalogLoadError);
     } finally {
-      setProductsLoading(false);
+      if (requestId === productRequestId.current) setProductsLoading(false);
     }
-  }, [c.catalogLoadError]);
+  }, [c.catalogLoadError, debouncedProductSearch, debouncedProductCategory, productStatus, productType, productKind, productSort]);
 
   const closePanel = useCallback(() => {
     setPanelMode(null);
@@ -723,6 +819,10 @@ export function VendorManagement({
             <OverviewIcon />
             <span>{c.overview}</span>
           </Link>
+          <Link className={navigationStyles.item} href={`/${locale}/admin/statistics` as Route} aria-current={section === "statistics" ? "page" : undefined}>
+            <StatisticsIcon />
+            <span>{c.statistics}</span>
+          </Link>
           <div
             className={navigationStyles.group}
             data-active={isUsersSection}
@@ -810,7 +910,7 @@ export function VendorManagement({
               <Link
                 className={navigationStyles.item}
                 href={`/${locale}/admin/orders` as Route}
-                aria-current={section === "orders" ? "page" : undefined}
+                aria-current={section === "orders" || section === "order-detail" ? "page" : undefined}
               >
                 <OrdersIcon />
                 <span>{c.orders}</span>
@@ -902,6 +1002,9 @@ export function VendorManagement({
               <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
             </button>
             <div className={navigationStyles.subNavigation} id="admin-settings-navigation">
+              <Link className={navigationStyles.item} href={`/${locale}/admin/settings/notice` as Route} aria-current={section === "settings-notice" ? "page" : undefined}>
+                <EditorialIcon /><span>{locale === "fa" ? "اطلاعیه" : locale === "ar" ? "الإشعار" : "Notice"}</span>
+              </Link>
               <Link className={navigationStyles.item} href={`/${locale}/admin/settings/comments` as Route} aria-current={section === "settings-comments" ? "page" : undefined}>
                 <EditorialIcon /><span>{c.comments}</span>
               </Link>
@@ -963,7 +1066,8 @@ export function VendorManagement({
 
       <main className="admin-shell" id="admin-content" ref={root}>
 
-      {section === "overview" ? <AnalyticsOverview locale={locale} audience="admin" /> : null}
+      {section === "overview" ? <AnalyticsOverview locale={locale} audience="admin" compact /> : null}
+      {section === "statistics" ? <AnalyticsOverview locale={locale} audience="admin" /> : null}
 
       {section === "vendors" ? <section className="vendor-workspace grid-flow-dense" data-vendor-workspace>
         <aside className="vendor-workspace-intro" data-admin-summary>
@@ -1066,8 +1170,16 @@ export function VendorManagement({
             <p>{c.catalogHint}</p>
           </div>
         </header>
+        <div className="admin-product-filters">
+          <label><span>{c.productSearch}</span><input type="search" maxLength={100} value={productSearch} onChange={(event) => setProductSearch(event.target.value)} /></label>
+          <label><span>{c.categoryFilter}</span><input maxLength={100} value={productCategory} onChange={(event) => setProductCategory(event.target.value)} /></label>
+          <label><span>{c.status}</span><select value={productStatus} onChange={(event) => setProductStatus(event.target.value as ProductStatus | "")}><option value="">{c.allStatuses}</option><option value="draft">{c.statusDraft}</option><option value="pending_review">{c.statusPendingReview}</option><option value="active">{c.statusPublished}</option><option value="archived">{c.statusArchived}</option></select></label>
+          <label><span>{c.productType}</span><select value={productType} onChange={(event) => setProductType(event.target.value as ProductType | "")}><option value="">{c.allTypes}</option><option value="digital">{c.digital}</option><option value="physical">{c.physical}</option><option value="service">{c.service}</option><option value="bridge">{c.bridge}</option></select></label>
+          <label><span>{c.productKind}</span><select value={productKind} onChange={(event) => setProductKind(event.target.value as ProductKind | "")}><option value="">{c.allKinds}</option><option value="simple">{c.simple}</option><option value="variable">{c.variable}</option></select></label>
+          <label><span>{c.sortBy}</span><select value={productSort} onChange={(event) => setProductSort(event.target.value)}><option value="updated_desc">{c.newestUpdated}</option><option value="updated_asc">{c.oldestUpdated}</option><option value="created_desc">{c.newestCreated}</option><option value="created_asc">{c.oldestCreated}</option><option value="title_asc">{c.titleAscending}</option><option value="title_desc">{c.titleDescending}</option></select></label>
+        </div>
         {productsError ? <p className="admin-notice is-error" role="alert">{productsError}</p> : null}
-        {!productsLoading && !products.length ? <p className="vendor-empty">{c.catalogEmpty}</p> : null}
+        {!productsLoading && !products.length ? <p className="vendor-empty">{productSearch || productCategory || productStatus || productType || productKind ? c.noMatchingProducts : c.catalogEmpty}</p> : null}
         {products.length ? (
           <div className="admin-product-list">
             {products.map((product) => (
@@ -1096,18 +1208,19 @@ export function VendorManagement({
             ))}
           </div>
         ) : null}
-        {productsCursor && !productsLoading ? (
-          <button className="admin-secondary-button admin-products-more" type="button" onClick={() => void loadProducts(productsCursor)}>
-            {c.loadMore}
-          </button>
-        ) : null}
+        <nav className="admin-product-pagination" aria-label={c.catalog}>
+          <button className="admin-secondary-button" type="button" disabled={productsLoading || productPage === 0} onClick={() => void loadProducts(productPageCursors[productPage - 1], productPage - 1)}>{c.previousPage}</button>
+          <span aria-live="polite">{c.page} {productPage + 1}</span>
+          <button className="admin-secondary-button" type="button" disabled={productsLoading || !productsCursor} onClick={() => { if (!productsCursor) return; setProductPageCursors((current) => [...current.slice(0, productPage + 1), productsCursor]); void loadProducts(productsCursor, productPage + 1); }}>{c.nextPage}</button>
+        </nav>
       </section> : null}
 
       {section === "product-changes" ? <ProductChangesWorkspace locale={locale} /> : null}
 
       {section === "coupons" ? <CouponWorkspace locale={locale} /> : null}
 
-      {section === "orders" ? <OrdersWorkspace locale={locale} audience="admin" /> : null}
+      {section === "orders" ? <AdminOrdersWorkspace locale={locale} /> : null}
+      {section === "order-detail" && orderId ? <AdminOrderDetails locale={locale} orderId={orderId} /> : null}
 
       {section === "payment-transactions" ? <PaymentServiceWorkspace locale={locale} view="transactions" /> : null}
 
@@ -1129,6 +1242,7 @@ export function VendorManagement({
       {section === "settings-shipping" ? <ShippingSettingsWorkspace locale={locale} /> : null}
       {section === "settings-usd" ? <UsdSettingsWorkspace locale={locale} /> : null}
       {section === "settings-comments" ? <AdminCommentsWorkspace locale={locale} /> : null}
+      {section === "settings-notice" ? <NoticeSettingsWorkspace locale={locale} /> : null}
 
       {panelMode ? (
         <div className="vendor-panel-layer" role="presentation">
@@ -1286,6 +1400,10 @@ function PlusIcon() {
 
 function OverviewIcon() {
   return <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="5" height="5" rx="1" /><rect x="12" y="3" width="5" height="5" rx="1" /><rect x="3" y="12" width="5" height="5" rx="1" /><rect x="12" y="12" width="5" height="5" rx="1" /></svg>;
+}
+
+function StatisticsIcon() {
+  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 17V9M8 17V4M13 17v-6M18 17V7M2 17h17" /></svg>;
 }
 
 function NavIcon({ children }: { children: ReactNode }) {
