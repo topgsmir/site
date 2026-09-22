@@ -20,6 +20,7 @@ export type AdminSection =
   | "ai-models"
   | "ai-assistant"
   | "settings-sms"
+  | "settings-goghdi"
   | "security-rate-limit"
   | "security-login"
   | "security-captcha"
@@ -27,7 +28,9 @@ export type AdminSection =
   | "settings-usd"
   | "settings-comments"
   | "settings-notice"
-  | "editorial";
+  | "settings-backup"
+  | "editorial"
+  | "uploads";
 
 export type AdminPanelRouteProps = {
   params: Promise<{
@@ -46,13 +49,13 @@ export async function AdminPanelRoute({ params, section, orderId }: AdminPanelRo
 
   const user = await requireUser(
     locale,
-    section === "editorial" ? ["platform-admin", "platform-staff"] : ["platform-admin"]
+    section === "editorial" || section === "uploads" ? ["platform-admin", "platform-staff"] : ["platform-admin"]
   );
 
   if (
-    section === "editorial" &&
+    (section === "editorial" || section === "uploads") &&
     user.role === "platform-staff" &&
-    !user.platformPermissions?.includes("blog_manage")
+    !user.platformPermissions?.includes(section === "editorial" ? "blog_manage" : "uploads_manage")
   ) {
     redirect(`/${locale}`);
   }
@@ -64,6 +67,7 @@ export async function AdminPanelRoute({ params, section, orderId }: AdminPanelRo
       section={section}
       orderId={orderId}
       ownerNavigation={user.role === "platform-admin"}
+      platformPermissions={user.platformPermissions ?? []}
     />
   );
 }

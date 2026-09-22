@@ -31,6 +31,7 @@ export class OtpController {
     const phone = normalizeIranianPhone(body.phoneNumber);
     await this.rateLimits.consumeOtp(phone, clientIp);
     const session = await this.otp.verify(body);
+    if ("registrationRequired" in session) return session;
     response.setHeader("Set-Cookie", this.cookie(session.token));
     return { user: session.user };
   }

@@ -28,6 +28,9 @@ export async function getCurrentUser(): Promise<AppUser | null> {
 export function dashboardFor(user: AppUser, locale: Locale) {
   if (user.role === "platform-admin") return `/${locale}/admin`;
   if (user.role === "platform-staff") {
+    if (user.platformPermissions?.includes("uploads_manage")) {
+      return `/${locale}/admin/uploads`;
+    }
     if (user.platformPermissions?.includes("blog_manage")) {
       return `/${locale}/admin/blog`;
     }

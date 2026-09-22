@@ -23,7 +23,7 @@
 .heroNote { display: flex; align-items: center; gap: 8px; margin-top: 32px; color: var(--muted); font-size: .72rem; }
 .heroNote svg { width: 16px; height: 16px; color: var(--color-dashboard-success); }
 .heroVisual { min-width: 0; margin: 0; padding: 8px; border-radius: 32px; background: var(--paper-bright); box-shadow: var(--shadow-dashboard-float); }
-.heroImage { position: relative; aspect-ratio: 1.12; overflow: hidden; border-radius: 25px; background: #eeedf3; }
+.heroImage { position: relative; aspect-ratio: 1.12; overflow: hidden; border-radius: 25px; background: var(--color-dashboard-surface-raised); }
 .heroImage img { object-fit: cover; }
 .heroVisual figcaption { display: flex; align-items: center; gap: 10px; min-height: 68px; padding: 10px 14px; font-size: .75rem; color: var(--ink-soft); }
 .captionIcon { display: grid; place-items: center; width: 34px; height: 34px; color: var(--signal); background: var(--signal-soft); border-radius: 50%; }

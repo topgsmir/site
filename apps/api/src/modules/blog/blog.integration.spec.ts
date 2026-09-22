@@ -87,6 +87,11 @@ describe("immutable multilingual blog workflow", () => {
       relatedProductIds: [productId]
     });
     assert.equal(saved.relatedProducts.length, 1);
+    assert.equal(await prisma.blog_revision_media.count({ where: {
+      asset_id: mediaId,
+      usage: "cover",
+      revision: { post_id: postId, revision_number: saved.revision }
+    } }), 1);
     assert.equal((await blog.submit(sellerActor, postId)).state, "pending_review");
     await assert.rejects(() => blog.getPublic("en", `en-repair-guide-${suffix}-v1`), NotFoundException);
 

@@ -15,6 +15,7 @@ import type {
   ProductKind,
   ProductStatus,
   ProductType,
+  PlatformPermission,
   Vendor,
   VendorPermission,
   VendorStatus
@@ -34,6 +35,7 @@ import { ProductChangesWorkspace } from "@/components/admin/ProductChangesWorksp
 import { AiWorkspace } from "@/components/admin/AiWorkspace";
 import { CouponWorkspace } from "@/components/admin/CouponWorkspace";
 import { SmsSettingsWorkspace } from "@/components/admin/SmsSettingsWorkspace";
+import { GoghdiSettingsWorkspace } from "@/components/admin/GoghdiSettingsWorkspace";
 import { AuthLoginSettingsWorkspace } from "@/components/admin/AuthLoginSettingsWorkspace";
 import { SecuritySettingsWorkspace } from "@/components/admin/SecuritySettingsWorkspace";
 import { ShippingSettingsWorkspace } from "@/components/admin/ShippingSettingsWorkspace";
@@ -43,6 +45,11 @@ import { AdminCommentsWorkspace } from "@/components/comments/AdminCommentsWorks
 import type { AdminSection } from "@/components/admin/AdminPanelRoute";
 import navigationStyles from "@/components/dashboard/DashboardNavigation.module.css";
 import { AnalyticsOverview } from "@/components/analytics/AnalyticsOverview";
+import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
+import { useNewOrderCount } from "@/components/dashboard/useNewOrderCount";
+import { DashboardMobileNavigation } from "@/components/dashboard/DashboardMobileNavigation";
+import { UploadsWorkspace } from "@/components/admin/UploadsWorkspace";
+import { BackupRestoreWorkspace } from "@/components/admin/BackupRestoreWorkspace";
 
 
 
@@ -72,16 +79,19 @@ const copy = {
     paymentMethods: "Payment methods",
     catalog: "Product catalog",
     editorial: "Editorial",
+    uploads: "Uploads",
     ai: "Artificial intelligence",
     aiModels: "Models",
     aiAssistant: "AI assistant",
     settings: "Settings",
     comments: "Comments",
+    backupRestore: "Backup & Restore",
     security: "Security",
     rateLimit: "Rate limit",
     captcha: "CAPTCHA",
     auth: "Sign in",
     sms: "SMS",
+    goghdi: "Goghdi chat",
     shipping: "Shipping",
     usd: "USD rate",
     usdAlert: "Automatic USD refresh failed",
@@ -104,6 +114,7 @@ const copy = {
     productChanges: "Product changes",
     coupons: "Coupons",
     orders: "Orders",
+    newOrders: "new orders",
     permissions: "Permissions",
     manage: "Manage vendor",
     showAccess: "Show access",
@@ -115,6 +126,8 @@ const copy = {
     ownerEmail: "Owner email",
     shopName: "Shop name",
     phone: "Phone number",
+    goghdiAgentId: "Goghdi agent ID",
+    goghdiAgentHint: "The 24-character agent ID from the seller's Goghdi account. Order chats are assigned directly to this agent.",
     password: "Temporary password",
     optionalPassword: "New password (optional)",
     status: "Account status",
@@ -204,16 +217,19 @@ const copy = {
     paymentMethods: "روش‌های پرداخت",
     catalog: "کاتالوگ محصولات",
     editorial: "بلاگ",
+    uploads: "بارگذاری‌ها",
     ai: "هوش مصنوعی",
     aiModels: "مدل‌ها",
     aiAssistant: "دستیار هوشمند",
     settings: "تنظیمات",
     comments: "دیدگاه‌ها",
+    backupRestore: "پشتیبان‌گیری و بازیابی",
     security: "امنیت",
     rateLimit: "محدودیت درخواست",
     captcha: "کپچا",
     auth: "ورود",
     sms: "پیامک",
+    goghdi: "گفت‌وگوی Goghdi",
     shipping: "ارسال",
     usd: "نرخ دلار",
     usdAlert: "به‌روزرسانی خودکار دلار ناموفق بود",
@@ -236,6 +252,7 @@ const copy = {
     productChanges: "تغییرات محصولات",
     coupons: "کدهای تخفیف",
     orders: "سفارش",
+    newOrders: "سفارش جدید",
     permissions: "دسترسی‌ها",
     manage: "مدیریت فروشنده",
     showAccess: "نمایش دسترسی",
@@ -247,6 +264,8 @@ const copy = {
     ownerEmail: "ایمیل مالک",
     shopName: "نام فروشگاه",
     phone: "شماره تماس",
+    goghdiAgentId: "شناسه عامل Goghdi",
+    goghdiAgentHint: "شناسه ۲۴ نویسه‌ای عامل از حساب Goghdi فروشنده. گفت‌وگوی سفارش مستقیم به این عامل اختصاص می‌یابد.",
     password: "رمز عبور موقت",
     optionalPassword: "رمز عبور جدید (اختیاری)",
     status: "وضعیت حساب",
@@ -336,16 +355,19 @@ const copy = {
     paymentMethods: "طرق الدفع",
     catalog: "كتالوج المنتجات",
     editorial: "التحرير",
+    uploads: "الملفات المرفوعة",
     ai: "الذكاء الاصطناعي",
     aiModels: "النماذج",
     aiAssistant: "المساعد الذكي",
     settings: "الإعدادات",
     comments: "التعليقات",
+    backupRestore: "النسخ والاستعادة",
     security: "الأمان",
     rateLimit: "حد الطلبات",
     captcha: "التحقق البشري",
     auth: "تسجيل الدخول",
     sms: "الرسائل النصية",
+    goghdi: "دردشة Goghdi",
     shipping: "الشحن",
     usd: "سعر الدولار",
     usdAlert: "فشل التحديث التلقائي للدولار",
@@ -368,6 +390,7 @@ const copy = {
     productChanges: "تغييرات المنتجات",
     coupons: "القسائم",
     orders: "الطلبات",
+    newOrders: "طلبات جديدة",
     permissions: "الصلاحيات",
     manage: "إدارة البائع",
     showAccess: "عرض الصلاحيات",
@@ -379,6 +402,8 @@ const copy = {
     ownerEmail: "بريد المالك",
     shopName: "اسم المتجر",
     phone: "رقم الهاتف",
+    goghdiAgentId: "معرّف وكيل Goghdi",
+    goghdiAgentHint: "معرّف الوكيل المكوّن من 24 حرفاً من حساب Goghdi للبائع. تُسند محادثات الطلب مباشرة إلى هذا الوكيل.",
     password: "كلمة مرور مؤقتة",
     optionalPassword: "كلمة مرور جديدة (اختياري)",
     status: "حالة الحساب",
@@ -464,6 +489,7 @@ type VendorFormState = {
   ownerEmail: string;
   shopName: string;
   phoneNumber: string;
+  goghdiAgentId: string;
   password: string;
   status: VendorStatus;
   commission: string;
@@ -477,6 +503,7 @@ const emptyForm: VendorFormState = {
   ownerEmail: "",
   shopName: "",
   phoneNumber: "",
+  goghdiAgentId: "",
   password: "",
   status: "active",
   commission: "10",
@@ -506,6 +533,7 @@ function formFromVendor(vendor: Vendor): VendorFormState {
     ownerEmail: vendor.ownerEmail,
     shopName: vendor.shopName,
     phoneNumber: vendor.phoneNumber ?? "",
+    goghdiAgentId: vendor.goghdiAgentId ?? "",
     password: "",
     status: vendor.status,
     commission: String(vendor.commission * 100),
@@ -535,13 +563,15 @@ export function VendorManagement({
   adminName,
   section,
   orderId,
-  ownerNavigation
+  ownerNavigation,
+  platformPermissions
 }: {
   locale: Locale;
   adminName: string;
   section: AdminSection;
   orderId?: string;
   ownerNavigation: boolean;
+  platformPermissions: PlatformPermission[];
 }) {
   const c = copy[locale];
   const root = useRef<HTMLElement>(null);
@@ -579,6 +609,9 @@ export function VendorManagement({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [securityOpen, setSecurityOpen] = useState(false);
   const [usdRateFailed, setUsdRateFailed] = useState(false);
+  const { count: newOrderCount } = useNewOrderCount(ownerNavigation);
+  const canManageBlog = ownerNavigation || platformPermissions.includes("blog_manage");
+  const canManageUploads = ownerNavigation || platformPermissions.includes("uploads_manage");
   const isUsersSection = section === "vendors" || section === "staff" || section === "users";
   const usersExpanded = isUsersSection || usersOpen;
   const isSalesServiceSection = section === "products" || section === "product-changes" || section === "coupons" || section === "orders" || section === "order-detail";
@@ -587,10 +620,39 @@ export function VendorManagement({
   const paymentServiceExpanded = isPaymentServiceSection || paymentServiceOpen;
   const isAiSection = section === "ai-models" || section === "ai-assistant";
   const aiExpanded = isAiSection || aiOpen;
-  const isSettingsSection = section === "settings-sms" || section === "settings-shipping" || section === "settings-usd" || section === "settings-comments" || section === "settings-notice";
+  const isSettingsSection = section === "settings-sms" || section === "settings-goghdi" || section === "settings-shipping" || section === "settings-usd" || section === "settings-comments" || section === "settings-notice" || section === "settings-backup";
   const settingsExpanded = isSettingsSection || settingsOpen;
   const isSecuritySection = section === "security-rate-limit" || section === "security-login" || section === "security-captcha";
   const securityExpanded = isSecuritySection || securityOpen;
+  const currentSectionLabel = ({
+    overview: c.overview,
+    statistics: c.statistics,
+    vendors: c.vendors,
+    users: c.users,
+    products: c.products,
+    "product-changes": c.productChanges,
+    coupons: c.coupons,
+    orders: c.orders,
+    "order-detail": c.orders,
+    "payment-transactions": c.paymentTransactions,
+    "payment-methods": c.paymentMethods,
+    staff: c.staff,
+    bridge: "Bridge",
+    "ai-models": c.aiModels,
+    "ai-assistant": c.aiAssistant,
+    "settings-sms": c.sms,
+    "settings-goghdi": c.goghdi,
+    "security-rate-limit": c.rateLimit,
+    "security-login": c.auth,
+    "security-captcha": c.captcha,
+    "settings-shipping": c.shipping,
+    "settings-usd": c.usd,
+    "settings-comments": c.comments,
+    "settings-notice": locale === "fa" ? "اطلاعیه" : locale === "ar" ? "الإشعار" : "Notice",
+    "settings-backup": c.backupRestore,
+    editorial: c.editorial,
+    uploads: c.uploads
+  } satisfies Record<AdminSection, string>)[section];
 
   useEffect(() => {
     if (!ownerNavigation) return;
@@ -723,6 +785,7 @@ export function VendorManagement({
       )
     );
   }, [locale, query, vendors]);
+  const activeProductFilterCount = [productSearch.trim(), productCategory.trim(), productStatus, productType, productKind, productSort !== "updated_desc"].filter(Boolean).length;
 
   function openCreate(trigger: HTMLButtonElement) {
     panelTrigger.current = trigger;
@@ -768,6 +831,7 @@ export function VendorManagement({
       ownerEmail: form.ownerEmail,
       shopName: form.shopName,
       phoneNumber: form.phoneNumber,
+      goghdiAgentId: form.goghdiAgentId.trim() || null,
       ...(form.password ? { password: form.password } : {}),
       status: form.status,
       commission: Number(form.commission) / 100,
@@ -804,12 +868,20 @@ export function VendorManagement({
   return (
     <div className="admin-dashboard-shell">
       <a className="skip-link" href="#admin-content">{c.skip}</a>
-      <aside className="admin-rail">
+      <DashboardMobileNavigation locale={locale} title={ownerNavigation ? c.admin : c.staff} currentLabel={currentSectionLabel} shortcuts={ownerNavigation ? [
+        { label: c.overview, icon: <OverviewIcon />, active: section === "overview", href: `/${locale}/admin` as Route },
+        { label: c.orders, icon: <OrdersIcon />, active: section === "orders" || section === "order-detail", count: newOrderCount, href: `/${locale}/admin/orders` as Route },
+        { label: c.products, icon: <ProductsIcon />, active: section === "products", href: `/${locale}/admin/products` as Route }
+      ] : [
+        ...(canManageUploads ? [{ label: c.uploads, icon: <UploadsIcon />, active: section === "uploads", href: `/${locale}/admin/uploads` as Route }] : []),
+        ...(canManageBlog ? [{ label: c.editorial, icon: <EditorialIcon />, active: section === "editorial", href: `/${locale}/admin/blog` as Route }] : [])
+      ]}>
+      <aside className="admin-rail" data-navigation-surface data-mobile-open={true}>
         <Link className="admin-brand" href={`/${locale}`} aria-label="Top GSM">
           <span className="admin-brand-symbol"><DesignIcon name="layers" /></span>
           <span dir="ltr" translate="no">topgsm.</span>
         </Link>
-        <nav className={navigationStyles.navigation} aria-label={c.navigation}>
+        <nav id="admin-panel-navigation" className={navigationStyles.navigation} aria-label={c.navigation} data-mobile-open={true}>
           {ownerNavigation ? <>
           <Link
             className={navigationStyles.item}
@@ -914,6 +986,13 @@ export function VendorManagement({
               >
                 <OrdersIcon />
                 <span>{c.orders}</span>
+                <strong
+                  className={navigationStyles.count}
+                  aria-label={`${newOrderCount.toLocaleString(locale)} ${c.newOrders}`}
+                  title={`${newOrderCount.toLocaleString(locale)} ${c.newOrders}`}
+                >
+                  {newOrderCount.toLocaleString(locale)}
+                </strong>
               </Link>
             </div>
           </div>
@@ -953,10 +1032,14 @@ export function VendorManagement({
             </div>
           </div>
           </> : null}
-          <Link className={navigationStyles.item} href={`/${locale}/admin/blog` as Route} aria-current={section === "editorial" ? "page" : undefined}>
+          {canManageUploads ? <Link className={navigationStyles.item} href={`/${locale}/admin/uploads` as Route} aria-current={section === "uploads" ? "page" : undefined}>
+            <UploadsIcon />
+            <span>{c.uploads}</span>
+          </Link> : null}
+          {canManageBlog ? <Link className={navigationStyles.item} href={`/${locale}/admin/blog` as Route} aria-current={section === "editorial" ? "page" : undefined}>
             <EditorialIcon />
             <span>{c.editorial}</span>
-          </Link>
+          </Link> : null}
           {ownerNavigation ? <>
           <div
             className={navigationStyles.group}
@@ -1008,6 +1091,9 @@ export function VendorManagement({
               <Link className={navigationStyles.item} href={`/${locale}/admin/settings/comments` as Route} aria-current={section === "settings-comments" ? "page" : undefined}>
                 <EditorialIcon /><span>{c.comments}</span>
               </Link>
+              <Link className={navigationStyles.item} href={`/${locale}/admin/settings/backup` as Route} aria-current={section === "settings-backup" ? "page" : undefined}>
+                <SettingsIcon /><span>{c.backupRestore}</span>
+              </Link>
               <Link
                 className={navigationStyles.item}
                 href={`/${locale}/admin/settings/shipping` as Route}
@@ -1023,6 +1109,10 @@ export function VendorManagement({
               >
                 <SmsIcon />
                 <span>{c.sms}</span>
+              </Link>
+              <Link className={navigationStyles.item} href={`/${locale}/admin/settings/goghdi` as Route} aria-current={section === "settings-goghdi" ? "page" : undefined}>
+                <SmsIcon />
+                <span>{c.goghdi}</span>
               </Link>
               <Link
                 className={navigationStyles.item}
@@ -1054,7 +1144,7 @@ export function VendorManagement({
           ) : null}
           </> : null}
         </nav>
-        <div className="admin-rail-account">
+        <div className="admin-rail-account" data-mobile-open={true}>
           <span>{c.account}</span>
           <div className="admin-identity">
             <span>{ownerNavigation ? c.admin : c.staff}</span>
@@ -1063,6 +1153,7 @@ export function VendorManagement({
           <LogoutButton locale={locale} />
         </div>
       </aside>
+      </DashboardMobileNavigation>
 
       <main className="admin-shell" id="admin-content" ref={root}>
 
@@ -1077,19 +1168,9 @@ export function VendorManagement({
             <PlusIcon />
             {c.create}
           </button>
-          <label className="vendor-search">
-            <SearchIcon />
-            <span className="sr-only">{c.search}</span>
-            <input
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={c.search}
-              name="vendorSearch"
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </label>
+          <CollapsibleFilters className="vendor-filter-disclosure" surface={false} locale={locale} title={c.search} activeCount={query.trim() ? 1 : 0}>
+            <label className="vendor-search"><SearchIcon /><span className="sr-only">{c.search}</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={c.search} name="vendorSearch" autoComplete="off" spellCheck={false} /></label>
+          </CollapsibleFilters>
         </aside>
 
         <div className="vendor-list" aria-busy={loading}>
@@ -1170,14 +1251,14 @@ export function VendorManagement({
             <p>{c.catalogHint}</p>
           </div>
         </header>
-        <div className="admin-product-filters">
+        <CollapsibleFilters className="admin-product-filter-panel" locale={locale} title={c.productSearch} activeCount={activeProductFilterCount}><div className="admin-product-filters">
           <label><span>{c.productSearch}</span><input type="search" maxLength={100} value={productSearch} onChange={(event) => setProductSearch(event.target.value)} /></label>
           <label><span>{c.categoryFilter}</span><input maxLength={100} value={productCategory} onChange={(event) => setProductCategory(event.target.value)} /></label>
           <label><span>{c.status}</span><select value={productStatus} onChange={(event) => setProductStatus(event.target.value as ProductStatus | "")}><option value="">{c.allStatuses}</option><option value="draft">{c.statusDraft}</option><option value="pending_review">{c.statusPendingReview}</option><option value="active">{c.statusPublished}</option><option value="archived">{c.statusArchived}</option></select></label>
           <label><span>{c.productType}</span><select value={productType} onChange={(event) => setProductType(event.target.value as ProductType | "")}><option value="">{c.allTypes}</option><option value="digital">{c.digital}</option><option value="physical">{c.physical}</option><option value="service">{c.service}</option><option value="bridge">{c.bridge}</option></select></label>
           <label><span>{c.productKind}</span><select value={productKind} onChange={(event) => setProductKind(event.target.value as ProductKind | "")}><option value="">{c.allKinds}</option><option value="simple">{c.simple}</option><option value="variable">{c.variable}</option></select></label>
           <label><span>{c.sortBy}</span><select value={productSort} onChange={(event) => setProductSort(event.target.value)}><option value="updated_desc">{c.newestUpdated}</option><option value="updated_asc">{c.oldestUpdated}</option><option value="created_desc">{c.newestCreated}</option><option value="created_asc">{c.oldestCreated}</option><option value="title_asc">{c.titleAscending}</option><option value="title_desc">{c.titleDescending}</option></select></label>
-        </div>
+        </div></CollapsibleFilters>
         {productsError ? <p className="admin-notice is-error" role="alert">{productsError}</p> : null}
         {!productsLoading && !products.length ? <p className="vendor-empty">{productSearch || productCategory || productStatus || productType || productKind ? c.noMatchingProducts : c.catalogEmpty}</p> : null}
         {products.length ? (
@@ -1233,9 +1314,11 @@ export function VendorManagement({
       {section === "bridge" ? <AdminBridgeWorkspace locale={locale} /> : null}
 
       {section === "editorial" ? <AdminBlogWorkspace locale={locale} /> : null}
+      {section === "uploads" ? <UploadsWorkspace locale={locale} /> : null}
       {section === "ai-models" ? <AiWorkspace locale={locale} view="models" /> : null}
       {section === "ai-assistant" ? <AiWorkspace locale={locale} view="assistant" /> : null}
       {section === "settings-sms" ? <SmsSettingsWorkspace locale={locale} /> : null}
+      {section === "settings-goghdi" ? <GoghdiSettingsWorkspace locale={locale} /> : null}
       {section === "security-login" ? <AuthLoginSettingsWorkspace locale={locale} /> : null}
       {section === "security-rate-limit" ? <SecuritySettingsWorkspace locale={locale} view="rate-limit" /> : null}
       {section === "security-captcha" ? <SecuritySettingsWorkspace locale={locale} view="captcha" /> : null}
@@ -1243,6 +1326,7 @@ export function VendorManagement({
       {section === "settings-usd" ? <UsdSettingsWorkspace locale={locale} /> : null}
       {section === "settings-comments" ? <AdminCommentsWorkspace locale={locale} /> : null}
       {section === "settings-notice" ? <NoticeSettingsWorkspace locale={locale} /> : null}
+      {section === "settings-backup" ? <BackupRestoreWorkspace locale={locale} /> : null}
 
       {panelMode ? (
         <div className="vendor-panel-layer" role="presentation">
@@ -1263,6 +1347,7 @@ export function VendorManagement({
                 <Field name="ownerName" label={c.ownerName} value={form.ownerName} onChange={(value) => updateField("ownerName", value)} autoComplete="name" />
                 <Field name="ownerEmail" label={c.ownerEmail} type="email" value={form.ownerEmail} onChange={(value) => updateField("ownerEmail", value)} autoComplete="email" spellCheck={false} />
                 <Field name="phoneNumber" label={c.phone} type="tel" value={form.phoneNumber} onChange={(value) => updateField("phoneNumber", value)} required={false} autoComplete="tel" />
+                <Field name="goghdiAgentId" label={c.goghdiAgentId} value={form.goghdiAgentId} onChange={(value) => updateField("goghdiAgentId", value)} required={false} minLength={24} maxLength={24} autoComplete="off" spellCheck={false} />
                 <Field
                   name="password"
                   label={panelMode === "create" ? c.password : c.optionalPassword}
@@ -1285,6 +1370,8 @@ export function VendorManagement({
                 <PercentField name="commission" label={c.commission} value={form.commission} onChange={(value) => updateField("commission", value)} />
                 <PercentField name="holdbackRate" label={c.holdback} value={form.holdbackRate} onChange={(value) => updateField("holdbackRate", value)} />
               </div>
+
+              <p className="vendor-form-hint">{c.goghdiAgentHint}</p>
 
               <fieldset className="permission-fieldset">
                 <legend>{c.accessTitle}</legend>
@@ -1346,6 +1433,7 @@ function Field({
   type = "text",
   required = true,
   minLength,
+  maxLength,
   autoComplete = "off",
   spellCheck
 }: {
@@ -1356,6 +1444,7 @@ function Field({
   type?: string;
   required?: boolean;
   minLength?: number;
+  maxLength?: number;
   autoComplete?: string;
   spellCheck?: boolean;
 }) {
@@ -1369,6 +1458,7 @@ function Field({
         onChange={(event) => onChange(event.target.value)}
         required={required}
         minLength={minLength}
+        maxLength={maxLength}
         autoComplete={autoComplete}
         spellCheck={spellCheck}
       />
@@ -1465,6 +1555,10 @@ function PaymentMethodsIcon() {
 
 function EditorialIcon() {
   return <NavIcon><path d="M5 4h14v16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" /><path d="M7 8h8M7 12h8M7 16h5M19 6h2v12a2 2 0 0 1-2 2" /></NavIcon>;
+}
+
+function UploadsIcon() {
+  return <NavIcon><path d="M4 5h16v14H4z" /><path d="m7 15 3-3 2 2 3-4 3 5M8 9h.01" /></NavIcon>;
 }
 
 function AiServiceIcon() {

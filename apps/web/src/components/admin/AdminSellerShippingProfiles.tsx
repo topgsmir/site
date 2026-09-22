@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { AdminSellerShippingProfile, AdminSellerShippingProfilesPage } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
+import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
 import styles from "./SmsSettingsWorkspace.module.css";
 
 const copy = {
@@ -79,7 +80,8 @@ export function AdminSellerShippingProfiles({ locale }: { locale: Locale }) {
   const change = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((current) => current ? { ...current, [key]: value } : current);
 
   return <section className={styles.profiles} aria-labelledby="seller-shipping-profiles-title">
-    <header><div><h2 id="seller-shipping-profiles-title">{c.title}</h2><p>{c.intro}</p></div><input type="search" value={search} placeholder={c.search} onChange={(event) => setSearch(event.target.value)} /></header>
+    <header><div><h2 id="seller-shipping-profiles-title">{c.title}</h2><p>{c.intro}</p></div></header>
+    <CollapsibleFilters locale={locale} title={c.search} activeCount={search.trim() ? 1 : 0}><input className={styles.profileSearch} aria-label={c.search} type="search" value={search} placeholder={c.search} onChange={(event) => setSearch(event.target.value)} /></CollapsibleFilters>
     {error && !editing ? <p className={styles.errorText} role="alert">{error}</p> : null}
     {!loading && items.length === 0 ? <p className={styles.empty}>{c.noResults}</p> : null}
     <div className={styles.profileGrid}>{items.map((profile) => <article key={profile.sellerId} className={styles.profileCard}>

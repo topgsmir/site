@@ -36,14 +36,17 @@ import styles from "./SellerDashboard.module.css";
 import creation from "./ProductCreation.module.css";
 import navigationStyles from "@/components/dashboard/DashboardNavigation.module.css";
 import { AnalyticsOverview } from "@/components/analytics/AnalyticsOverview";
+import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
+import { useNewOrderCount } from "@/components/dashboard/useNewOrderCount";
+import { DashboardMobileNavigation } from "@/components/dashboard/DashboardMobileNavigation";
 
 type DashboardSection = "overview" | "statistics" | "products" | "blog" | "coupons" | "orders" | "shipping" | "payouts" | "bridge";
 type RequestState = "idle" | "loading" | "error" | "success";
 
 const FILTER_COPY = {
-  en: { category: "Category", allTypes: "All types", allKinds: "All structures", allListingStatuses: "All listing statuses", sort: "Sort by", updatedDesc: "Recently updated", updatedAsc: "Least recently updated", createdDesc: "Newest created", createdAsc: "Oldest created", titleAsc: "Title A–Z", titleDesc: "Title Z–A", previous: "Previous", next: "Next", page: "Page" },
-  fa: { category: "دسته‌بندی", allTypes: "همه نوع‌ها", allKinds: "همه ساختارها", allListingStatuses: "همه وضعیت‌های فهرست", sort: "مرتب‌سازی", updatedDesc: "تازه‌ترین ویرایش", updatedAsc: "قدیمی‌ترین ویرایش", createdDesc: "جدیدترین ایجاد", createdAsc: "قدیمی‌ترین ایجاد", titleAsc: "عنوان از آ تا ی", titleDesc: "عنوان از ی تا آ", previous: "قبلی", next: "بعدی", page: "صفحه" },
-  ar: { category: "الفئة", allTypes: "كل الأنواع", allKinds: "كل البنى", allListingStatuses: "كل حالات العرض", sort: "ترتيب حسب", updatedDesc: "آخر تحديث", updatedAsc: "أقدم تحديث", createdDesc: "الأحدث إنشاءً", createdAsc: "الأقدم إنشاءً", titleAsc: "العنوان تصاعدياً", titleDesc: "العنوان تنازلياً", previous: "السابق", next: "التالي", page: "صفحة" }
+  en: { filters: "Find and filter", filtersHint: "Narrow the catalog by product details or listing state.", activeFilters: "active filters", clear: "Clear filters", category: "Category", productStatus: "Product status", productType: "Product type", productKind: "Structure", listingStatus: "Listing status", allTypes: "All types", allKinds: "All structures", allListingStatuses: "All listing statuses", sort: "Sort by", updatedDesc: "Recently updated", updatedAsc: "Least recently updated", createdDesc: "Newest created", createdAsc: "Oldest created", titleAsc: "Title A–Z", titleDesc: "Title Z–A", previous: "Previous", next: "Next", page: "Page" },
+  fa: { filters: "جست‌وجو و فیلتر", filtersHint: "محصولات را بر اساس مشخصات یا وضعیت فهرست محدود کنید.", activeFilters: "فیلتر فعال", clear: "پاک کردن فیلترها", category: "دسته‌بندی", productStatus: "وضعیت محصول", productType: "نوع محصول", productKind: "ساختار", listingStatus: "وضعیت فهرست", allTypes: "همه نوع‌ها", allKinds: "همه ساختارها", allListingStatuses: "همه وضعیت‌های فهرست", sort: "مرتب‌سازی", updatedDesc: "تازه‌ترین ویرایش", updatedAsc: "قدیمی‌ترین ویرایش", createdDesc: "جدیدترین ایجاد", createdAsc: "قدیمی‌ترین ایجاد", titleAsc: "عنوان از آ تا ی", titleDesc: "عنوان از ی تا آ", previous: "قبلی", next: "بعدی", page: "صفحه" },
+  ar: { filters: "البحث والتصفية", filtersHint: "ضيّق قائمة المنتجات حسب التفاصيل أو حالة العرض.", activeFilters: "فلاتر نشطة", clear: "مسح الفلاتر", category: "الفئة", productStatus: "حالة المنتج", productType: "نوع المنتج", productKind: "البنية", listingStatus: "حالة العرض", allTypes: "كل الأنواع", allKinds: "كل البنى", allListingStatuses: "كل حالات العرض", sort: "ترتيب حسب", updatedDesc: "آخر تحديث", updatedAsc: "أقدم تحديث", createdDesc: "الأحدث إنشاءً", createdAsc: "الأقدم إنشاءً", titleAsc: "العنوان تصاعدياً", titleDesc: "العنوان تنازلياً", previous: "السابق", next: "التالي", page: "صفحة" }
 } as const;
 
 type SellerDashboardProps = {
@@ -53,6 +56,18 @@ type SellerDashboardProps = {
 };
 
 type SellerProductCreationProps = Omit<SellerDashboardProps, "initialSection">;
+
+type ServiceInputDraft = {
+  id: string;
+  key: string;
+  label: string;
+  type: "text" | "textarea" | "password";
+  required: boolean;
+  placeholder: string;
+  helpText: string;
+  minimumLength: string;
+  maximumLength: string;
+};
 
 type OfferDraft = {
   id: string;
@@ -67,6 +82,7 @@ type OfferDraft = {
   serviceType: string;
   estimatedHours: string;
   instructions: string;
+  serviceInputs: ServiceInputDraft[];
 };
 
 type ProductDraft = {
@@ -91,6 +107,7 @@ type DashboardCopy = {
   blog: string;
   coupons: string;
   orders: string;
+  newOrders: string;
   shipping: string;
   payouts: string;
   account: string;
@@ -160,6 +177,20 @@ type DashboardCopy = {
   serviceType: string;
   estimatedHours: string;
   instructions: string;
+  customerQuestions: string;
+  customerQuestionsHint: string;
+  addQuestion: string;
+  questionLabel: string;
+  questionType: string;
+  textAnswer: string;
+  longAnswer: string;
+  passwordAnswer: string;
+  requiredAnswer: string;
+  placeholder: string;
+  helpText: string;
+  minimumLength: string;
+  maximumLength: string;
+  removeQuestion: string;
   addVariant: string;
   removeVariant: string;
   cancel: string;
@@ -190,6 +221,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     blog: "Blog",
     coupons: "Coupons",
     orders: "Orders",
+    newOrders: "new orders",
     shipping: "Shipping profile",
     payouts: "Payouts",
     account: "Account",
@@ -259,6 +291,20 @@ const COPY: Record<Locale, DashboardCopy> = {
     serviceType: "Service type",
     estimatedHours: "Estimated hours",
     instructions: "Buyer instructions",
+    customerQuestions: "Customer questions",
+    customerQuestionsHint: "Ask only for the details needed to complete this service. Password answers are encrypted and never saved in the customer’s browser.",
+    addQuestion: "Add question",
+    questionLabel: "Question",
+    questionType: "Answer type",
+    textAnswer: "Short text",
+    longAnswer: "Long text",
+    passwordAnswer: "Password or secret",
+    requiredAnswer: "Required answer",
+    placeholder: "Placeholder",
+    helpText: "Help text",
+    minimumLength: "Minimum length",
+    maximumLength: "Maximum length",
+    removeQuestion: "Remove question",
     addVariant: "Add variant",
     removeVariant: "Remove variant",
     cancel: "Cancel",
@@ -280,6 +326,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     blog: "وبلاگ",
     coupons: "کدهای تخفیف",
     orders: "سفارش‌ها",
+    newOrders: "سفارش جدید",
     shipping: "پروفایل ارسال",
     payouts: "تسویه‌ها",
     account: "حساب کاربری",
@@ -349,6 +396,20 @@ const COPY: Record<Locale, DashboardCopy> = {
     serviceType: "نوع خدمت",
     estimatedHours: "زمان تخمینی به ساعت",
     instructions: "دستورالعمل خریدار",
+    customerQuestions: "پرسش‌های مشتری",
+    customerQuestionsHint: "فقط اطلاعات لازم برای انجام خدمت را بپرسید. پاسخ‌های رمز عبور رمزگذاری می‌شوند و در مرورگر مشتری ذخیره نمی‌شوند.",
+    addQuestion: "افزودن پرسش",
+    questionLabel: "پرسش",
+    questionType: "نوع پاسخ",
+    textAnswer: "متن کوتاه",
+    longAnswer: "متن بلند",
+    passwordAnswer: "رمز عبور یا اطلاعات محرمانه",
+    requiredAnswer: "پاسخ اجباری",
+    placeholder: "متن راهنما",
+    helpText: "توضیح تکمیلی",
+    minimumLength: "حداقل طول",
+    maximumLength: "حداکثر طول",
+    removeQuestion: "حذف پرسش",
     addVariant: "افزودن تنوع",
     removeVariant: "حذف تنوع",
     cancel: "انصراف",
@@ -370,6 +431,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     blog: "المدونة",
     coupons: "القسائم",
     orders: "الطلبات",
+    newOrders: "طلبات جديدة",
     shipping: "ملف الشحن",
     payouts: "الدفعات",
     account: "الحساب",
@@ -439,6 +501,20 @@ const COPY: Record<Locale, DashboardCopy> = {
     serviceType: "نوع الخدمة",
     estimatedHours: "الساعات المقدرة",
     instructions: "تعليمات المشتري",
+    customerQuestions: "أسئلة العميل",
+    customerQuestionsHint: "اطلب فقط المعلومات اللازمة لتنفيذ الخدمة. تُشفّر إجابات كلمات المرور ولا تُحفظ في متصفح العميل.",
+    addQuestion: "إضافة سؤال",
+    questionLabel: "السؤال",
+    questionType: "نوع الإجابة",
+    textAnswer: "نص قصير",
+    longAnswer: "نص طويل",
+    passwordAnswer: "كلمة مرور أو بيانات سرية",
+    requiredAnswer: "إجابة مطلوبة",
+    placeholder: "نص توضيحي",
+    helpText: "نص مساعد",
+    minimumLength: "الحد الأدنى للطول",
+    maximumLength: "الحد الأقصى للطول",
+    removeQuestion: "حذف السؤال",
     addVariant: "إضافة متغير",
     removeVariant: "إزالة المتغير",
     cancel: "إلغاء",
@@ -475,7 +551,8 @@ function makeOffer(id: string): OfferDraft {
     weightGrams: "0",
     serviceType: "",
     estimatedHours: "1",
-    instructions: ""
+    instructions: "",
+    serviceInputs: []
   };
 }
 
@@ -540,7 +617,15 @@ function validateDraft(draft: ProductDraft) {
     if (draft.type === "physical") {
       return Number.isInteger(Number(offer.stock)) && Number(offer.stock) >= 0 && Number.isInteger(Number(offer.weightGrams)) && Number(offer.weightGrams) >= 0;
     }
-    return Boolean(offer.serviceType.trim()) && Number.isInteger(Number(offer.estimatedHours)) && Number(offer.estimatedHours) >= 1;
+    if (!offer.serviceType.trim() || !Number.isInteger(Number(offer.estimatedHours)) || Number(offer.estimatedHours) < 1) return false;
+    const keys = new Set<string>();
+    return offer.serviceInputs.every((field) => {
+      const minimumLength = Number(field.minimumLength || 0);
+      const maximumLength = Number(field.maximumLength || 2000);
+      if (!field.label.trim() || keys.has(field.key)) return false;
+      keys.add(field.key);
+      return Number.isInteger(minimumLength) && Number.isInteger(maximumLength) && minimumLength >= 0 && maximumLength >= 1 && minimumLength <= maximumLength && maximumLength <= 2000;
+    });
   });
 }
 
@@ -577,7 +662,17 @@ function buildOffer(draft: ProductDraft, offer: OfferDraft) {
     service: {
       serviceType: offer.serviceType.trim(),
       estimatedHours: Number(offer.estimatedHours),
-      ...(offer.instructions.trim() ? { instructions: offer.instructions.trim() } : {})
+      ...(offer.instructions.trim() ? { instructions: offer.instructions.trim() } : {}),
+      inputs: offer.serviceInputs.map((field) => ({
+        key: field.key,
+        label: field.label.trim(),
+        type: field.type,
+        required: field.required,
+        minimumLength: Number(field.minimumLength || 0),
+        maximumLength: Number(field.maximumLength || 2000),
+        ...(field.placeholder.trim() ? { placeholder: field.placeholder.trim() } : {}),
+        ...(field.helpText.trim() ? { helpText: field.helpText.trim() } : {})
+      }))
     }
   };
 }
@@ -589,15 +684,21 @@ function OfferFields({
   index,
   canRemove,
   update,
-  remove
+  remove,
+  addServiceInput,
+  updateServiceInput,
+  removeServiceInput
 }: {
   copy: DashboardCopy;
   draft: ProductDraft;
   offer: OfferDraft;
   index: number;
   canRemove: boolean;
-  update: (id: string, key: keyof OfferDraft, value: string) => void;
+  update: (id: string, key: Exclude<keyof OfferDraft, "serviceInputs">, value: string) => void;
   remove: (id: string) => void;
+  addServiceInput: (offerId: string) => void;
+  updateServiceInput: <K extends keyof ServiceInputDraft>(offerId: string, inputId: string, key: K, value: ServiceInputDraft[K]) => void;
+  removeServiceInput: (offerId: string, inputId: string) => void;
 }) {
   return (
     <fieldset className={styles.offerGroup}>
@@ -662,10 +763,26 @@ function OfferFields({
         </label>
       ) : null}
       {draft.type === "service" ? (
-        <label className={styles.field}>
-          <span>{copy.instructions}</span>
-          <textarea maxLength={5000} value={offer.instructions} onChange={(event) => update(offer.id, "instructions", event.target.value)} />
-        </label>
+        <>
+          <label className={styles.field}>
+            <span>{copy.instructions}</span>
+            <textarea maxLength={5000} value={offer.instructions} onChange={(event) => update(offer.id, "instructions", event.target.value)} />
+          </label>
+          <section className={creation.questionBuilder} aria-label={copy.customerQuestions}>
+            <header><div><h3>{copy.customerQuestions}</h3><p>{copy.customerQuestionsHint}</p></div>{offer.serviceInputs.length < 10 ? <button type="button" onClick={() => addServiceInput(offer.id)}><Icon name="plus" />{copy.addQuestion}</button> : null}</header>
+            {offer.serviceInputs.map((field) => <fieldset key={field.id} className={creation.questionCard}>
+              <div className={creation.questionGrid}>
+                <label className={styles.field}><span>{copy.questionLabel}</span><input required maxLength={120} value={field.label} onChange={(event) => updateServiceInput(offer.id, field.id, "label", event.target.value)} /></label>
+                <label className={styles.field}><span>{copy.questionType}</span><select value={field.type} onChange={(event) => updateServiceInput(offer.id, field.id, "type", event.target.value as ServiceInputDraft["type"])}><option value="text">{copy.textAnswer}</option><option value="textarea">{copy.longAnswer}</option><option value="password">{copy.passwordAnswer}</option></select></label>
+                <label className={styles.field}><span>{copy.placeholder}</span><input maxLength={160} value={field.placeholder} onChange={(event) => updateServiceInput(offer.id, field.id, "placeholder", event.target.value)} /></label>
+                <label className={styles.field}><span>{copy.helpText}</span><input maxLength={300} value={field.helpText} onChange={(event) => updateServiceInput(offer.id, field.id, "helpText", event.target.value)} /></label>
+                <label className={styles.field}><span>{copy.minimumLength}</span><input required type="number" min="0" max="2000" step="1" value={field.minimumLength} onChange={(event) => updateServiceInput(offer.id, field.id, "minimumLength", event.target.value)} /></label>
+                <label className={styles.field}><span>{copy.maximumLength}</span><input required type="number" min="1" max="2000" step="1" value={field.maximumLength} onChange={(event) => updateServiceInput(offer.id, field.id, "maximumLength", event.target.value)} /></label>
+              </div>
+              <footer><label className={creation.requiredToggle}><input type="checkbox" checked={field.required} onChange={(event) => updateServiceInput(offer.id, field.id, "required", event.target.checked)} /><span>{copy.requiredAnswer}</span></label><button type="button" onClick={() => removeServiceInput(offer.id, field.id)}>{copy.removeQuestion}</button></footer>
+            </fieldset>)}
+          </section>
+        </>
       ) : null}
       {canRemove ? (
         <button className={styles.removeButton} type="button" onClick={() => remove(offer.id)}>
@@ -705,6 +822,8 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
   const productEditorRef = useRef<HTMLElement>(null);
   const listRequestId = useRef(0);
   const hasAnalytics = Boolean(user.permissions?.includes("analytics_view"));
+  const canManageOrders = Boolean(user.permissions?.includes("orders_manage"));
+  const { count: newOrderCount, refresh: refreshNewOrderCount } = useNewOrderCount(canManageOrders);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { setDebouncedSearch(search.trim()); setDebouncedCategory(categoryFilter.trim()); }, 300);
@@ -769,6 +888,17 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
 
   const activeListings = listings.filter((listing) => listing.status === "active").length;
   const offersShown = listings.reduce((total, listing) => total + listing.offers.length, 0);
+  const activeProductFilterCount = [search.trim(), categoryFilter.trim(), statusFilter !== "all", typeFilter !== "all", kindFilter !== "all", listingStatusFilter !== "all", sort !== "updated_desc"].filter(Boolean).length;
+
+  function clearProductFilters() {
+    setSearch("");
+    setCategoryFilter("");
+    setStatusFilter("all");
+    setTypeFilter("all");
+    setKindFilter("all");
+    setListingStatusFilter("all");
+    setSort("updated_desc");
+  }
 
   function selectSection(next: DashboardSection) {
     setSection(next);
@@ -851,7 +981,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
     ...(user.permissions?.includes("coupons_manage")
       ? [{ id: "coupons" as const, label: copy.coupons }]
       : []),
-    ...(user.permissions?.includes("orders_manage")
+    ...(canManageOrders
       ? [{ id: "orders" as const, label: copy.orders }]
       : []),
     ...(user.permissions?.includes("physical_products_manage")
@@ -872,12 +1002,19 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
 
   return (
     <div className={styles.shell}>
-      <aside className={styles.rail}>
+      <DashboardMobileNavigation locale={locale} title={copy.workspace} currentLabel={copy[section]} shortcuts={[
+        { label: copy.overview, icon: <Icon name="overview" />, active: section === "overview", onClick: () => selectSection("overview") },
+        ...(canManageOrders ? [{ label: copy.orders, icon: <Icon name="orders" />, active: section === "orders", count: newOrderCount, onClick: () => selectSection("orders") }] : []),
+        { label: copy.products, icon: <Icon name="products" />, active: section === "products", onClick: () => selectSection("products") }
+      ]}>
+      <aside className={styles.rail} data-navigation-surface data-mobile-open={true}>
         <div className={styles.brandBlock}>
-          <strong dir="ltr" translate="no">topgsm.</strong>
-          <span>{copy.workspace}</span>
+          <span className={styles.brandIdentity}>
+            <strong dir="ltr" translate="no">topgsm.</strong>
+            <span>{copy.workspace}</span>
+          </span>
         </div>
-        <nav className={navigationStyles.navigation} aria-label={copy.workspace}>
+        <nav id="seller-panel-navigation" className={navigationStyles.navigation} aria-label={copy.workspace} data-mobile-open={true}>
           <button
             className={navigationStyles.item}
             type="button"
@@ -920,6 +1057,15 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
                 >
                   <Icon name={item.id} />
                   <span>{item.label}</span>
+                  {item.id === "orders" ? (
+                    <strong
+                      className={navigationStyles.count}
+                      aria-label={`${newOrderCount.toLocaleString(locale)} ${copy.newOrders}`}
+                      title={`${newOrderCount.toLocaleString(locale)} ${copy.newOrders}`}
+                    >
+                      {newOrderCount.toLocaleString(locale)}
+                    </strong>
+                  ) : null}
                 </button>
               ))}
             </div>
@@ -942,7 +1088,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
             <span>{locale === "fa" ? "دیدگاه‌ها" : locale === "ar" ? "التعليقات" : "Comments"}</span>
           </Link>
         </nav>
-        <div className={styles.accountBlock}>
+        <div className={styles.accountBlock} data-mobile-open={true}>
           <span>{copy.account}</span>
           <strong>{user.fullName}</strong>
           <small>{user.email}</small>
@@ -950,6 +1096,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
           <LogoutButton locale={locale} />
         </div>
       </aside>
+      </DashboardMobileNavigation>
 
       <main className={styles.main} tabIndex={-1}>
         <header className={styles.pageHeader}>
@@ -1011,28 +1158,18 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
                   <p>{copy.productsDescription}</p>
                 </div>
               </div>
-              <div className={styles.filters}>
-                <label className={styles.searchField}>
-                  <span className={styles.srOnly}>{copy.searchProducts}</span>
-                  <Icon name="search" />
-                  <input type="search" value={search} placeholder={copy.searchProducts} onChange={(event) => setSearch(event.target.value)} />
-                </label>
-                <label className={styles.filterField}>
-                  <span className={styles.srOnly}>{copy.status}</span>
-                  <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ProductStatus | "all")}>
-                    <option value="all">{copy.allStatuses}</option>
-                    <option value="draft">{copy.draft}</option>
-                    <option value="pending_review">{copy.pending_review}</option>
-                    <option value="active">{copy.active}</option>
-                    <option value="archived">{copy.archived}</option>
-                  </select>
-                </label>
-                <label className={styles.filterField}><span className={styles.srOnly}>{FILTER_COPY[locale].category}</span><input value={categoryFilter} maxLength={100} placeholder={FILTER_COPY[locale].category} onChange={(event) => setCategoryFilter(event.target.value)} /></label>
-                <label className={styles.filterField}><span className={styles.srOnly}>{copy.type}</span><select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as ProductType | "all")}><option value="all">{FILTER_COPY[locale].allTypes}</option><option value="digital">{copy.digital}</option><option value="physical">{copy.physical}</option><option value="service">{copy.service}</option><option value="bridge">{copy.bridge}</option></select></label>
-                <label className={styles.filterField}><span className={styles.srOnly}>{copy.kind}</span><select value={kindFilter} onChange={(event) => setKindFilter(event.target.value as ProductKind | "all")}><option value="all">{FILTER_COPY[locale].allKinds}</option><option value="simple">{copy.simple}</option><option value="variable">{copy.variable}</option></select></label>
-                <label className={styles.filterField}><span className={styles.srOnly}>{FILTER_COPY[locale].allListingStatuses}</span><select value={listingStatusFilter} onChange={(event) => setListingStatusFilter(event.target.value as typeof listingStatusFilter)}><option value="all">{FILTER_COPY[locale].allListingStatuses}</option><option value="draft">{copy.draft}</option><option value="active">{copy.active}</option><option value="archived">{copy.archived}</option></select></label>
-                <label className={styles.filterField}><span className={styles.srOnly}>{FILTER_COPY[locale].sort}</span><select value={sort} onChange={(event) => setSort(event.target.value)}><option value="updated_desc">{FILTER_COPY[locale].updatedDesc}</option><option value="updated_asc">{FILTER_COPY[locale].updatedAsc}</option><option value="created_desc">{FILTER_COPY[locale].createdDesc}</option><option value="created_asc">{FILTER_COPY[locale].createdAsc}</option><option value="title_asc">{FILTER_COPY[locale].titleAsc}</option><option value="title_desc">{FILTER_COPY[locale].titleDesc}</option></select></label>
-              </div>
+              <CollapsibleFilters className={styles.filterPanel} locale={locale} title={FILTER_COPY[locale].filters} description={FILTER_COPY[locale].filtersHint} activeCount={activeProductFilterCount}>
+                {activeProductFilterCount > 0 ? <div className={styles.filterActions}><button type="button" onClick={clearProductFilters}><Icon name="close" />{FILTER_COPY[locale].clear}</button></div> : null}
+                <div className={styles.filters}>
+                  <label className={`${styles.filterControl} ${styles.searchControl}`}><span>{copy.searchProducts}</span><span className={styles.searchField}><Icon name="search" /><input type="search" value={search} placeholder={copy.searchProducts} onChange={(event) => setSearch(event.target.value)} /></span></label>
+                  <label className={styles.filterControl}><span>{FILTER_COPY[locale].category}</span><span className={styles.filterField}><input value={categoryFilter} maxLength={100} placeholder={FILTER_COPY[locale].category} onChange={(event) => setCategoryFilter(event.target.value)} /></span></label>
+                  <label className={styles.filterControl}><span>{FILTER_COPY[locale].productStatus}</span><span className={styles.filterField}><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ProductStatus | "all")}><option value="all">{copy.allStatuses}</option><option value="draft">{copy.draft}</option><option value="pending_review">{copy.pending_review}</option><option value="active">{copy.active}</option><option value="archived">{copy.archived}</option></select></span></label>
+                  <label className={styles.filterControl}><span>{FILTER_COPY[locale].productType}</span><span className={styles.filterField}><select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as ProductType | "all")}><option value="all">{FILTER_COPY[locale].allTypes}</option><option value="digital">{copy.digital}</option><option value="physical">{copy.physical}</option><option value="service">{copy.service}</option><option value="bridge">{copy.bridge}</option></select></span></label>
+                  <label className={styles.filterControl}><span>{FILTER_COPY[locale].productKind}</span><span className={styles.filterField}><select value={kindFilter} onChange={(event) => setKindFilter(event.target.value as ProductKind | "all")}><option value="all">{FILTER_COPY[locale].allKinds}</option><option value="simple">{copy.simple}</option><option value="variable">{copy.variable}</option></select></span></label>
+                  <label className={styles.filterControl}><span>{FILTER_COPY[locale].listingStatus}</span><span className={styles.filterField}><select value={listingStatusFilter} onChange={(event) => setListingStatusFilter(event.target.value as typeof listingStatusFilter)}><option value="all">{FILTER_COPY[locale].allListingStatuses}</option><option value="draft">{copy.draft}</option><option value="active">{copy.active}</option><option value="archived">{copy.archived}</option></select></span></label>
+                  <label className={styles.filterControl}><span>{FILTER_COPY[locale].sort}</span><span className={styles.filterField}><select value={sort} onChange={(event) => setSort(event.target.value)}><option value="updated_desc">{FILTER_COPY[locale].updatedDesc}</option><option value="updated_asc">{FILTER_COPY[locale].updatedAsc}</option><option value="created_desc">{FILTER_COPY[locale].createdDesc}</option><option value="created_asc">{FILTER_COPY[locale].createdAsc}</option><option value="title_asc">{FILTER_COPY[locale].titleAsc}</option><option value="title_desc">{FILTER_COPY[locale].titleDesc}</option></select></span></label>
+                </div>
+              </CollapsibleFilters>
               <ProductList
                 copy={copy}
                 locale={locale}
@@ -1058,7 +1195,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
 
           {section === "bridge" ? <SellerBridgeWorkspace locale={locale} /> : null}
 
-          {section === "orders" ? <SellerOrders locale={locale} /> : null}
+          {section === "orders" ? <SellerOrders locale={locale} onOrderUpdated={refreshNewOrderCount} /> : null}
 
           {section === "shipping" ? <SellerShippingProfileWorkspace locale={locale} /> : null}
 
@@ -1162,12 +1299,61 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
     setFormError("");
   }
 
-  function updateOffer(id: string, key: keyof OfferDraft, value: string) {
+  function updateOffer(id: string, key: Exclude<keyof OfferDraft, "serviceInputs">, value: string) {
     setDraft((current) => ({
       ...current,
       offers: current.offers.map((offer) => offer.id === id ? { ...offer, [key]: value } : offer)
     }));
     if (formError) setFormError("");
+  }
+
+  function addServiceInput(offerId: string) {
+    setDraft((current) => ({
+      ...current,
+      offers: current.offers.map((offer) => {
+        if (offer.id !== offerId || offer.serviceInputs.length >= 10) return offer;
+        const token = crypto.randomUUID().replaceAll("-", "").slice(0, 16);
+        return {
+          ...offer,
+          serviceInputs: [...offer.serviceInputs, {
+            id: `question-${token}`,
+            key: `field_${token}`,
+            label: "",
+            type: "text",
+            required: true,
+            placeholder: "",
+            helpText: "",
+            minimumLength: "0",
+            maximumLength: "2000"
+          }]
+        };
+      })
+    }));
+    if (formError) setFormError("");
+  }
+
+  function updateServiceInput<K extends keyof ServiceInputDraft>(
+    offerId: string,
+    inputId: string,
+    key: K,
+    value: ServiceInputDraft[K]
+  ) {
+    setDraft((current) => ({
+      ...current,
+      offers: current.offers.map((offer) => offer.id === offerId
+        ? { ...offer, serviceInputs: offer.serviceInputs.map((field) => field.id === inputId ? { ...field, [key]: value } : field) }
+        : offer)
+    }));
+    if (formError) setFormError("");
+  }
+
+  function removeServiceInput(offerId: string, inputId: string) {
+    setDraft((current) => ({
+      ...current,
+      offers: current.offers.map((offer) => offer.id === offerId
+        ? { ...offer, serviceInputs: offer.serviceInputs.filter((field) => field.id !== inputId) }
+        : offer)
+    }));
   }
 
   function addVariant() {
@@ -1269,7 +1455,7 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
                 <label className={styles.currencyField}><span>{copy.currency}</span><select required value={draft.currency} onChange={(event) => updateDraft("currency", event.target.value)}><option value="USD">USD</option><option value="TOMAN">تومان</option></select></label>
                 {draft.kind === "variable" ? <label className={styles.field}><span>{copy.optionName}</span><input required maxLength={50} value={draft.optionName} onChange={(event) => updateDraft("optionName", event.target.value)} aria-describedby="option-name-hint" /><small id="option-name-hint">{copy.optionNameHint}</small></label> : null}
               </div>
-              <div className={creation.offers}>{draft.offers.map((offer, index) => <OfferFields key={offer.id} copy={copy} draft={draft} offer={offer} index={index} canRemove={draft.kind === "variable" && draft.offers.length > 1} update={updateOffer} remove={removeVariant} />)}</div>
+              <div className={creation.offers}>{draft.offers.map((offer, index) => <OfferFields key={offer.id} copy={copy} draft={draft} offer={offer} index={index} canRemove={draft.kind === "variable" && draft.offers.length > 1} update={updateOffer} remove={removeVariant} addServiceInput={addServiceInput} updateServiceInput={updateServiceInput} removeServiceInput={removeServiceInput} />)}</div>
               {draft.kind === "variable" && draft.offers.length < 100 ? <button className={styles.addVariantButton} type="button" onClick={addVariant}><Icon name="plus" />{copy.addVariant}</button> : null}
             </section>
           </div>

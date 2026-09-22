@@ -37,3 +37,31 @@ test("GET /orders/leaderboard reaches the leaderboard route before /orders/:id",
     await app.close();
   }
 });
+
+test("GET /orders/new-count reaches the count route before /orders/:id", async () => {
+  const module = await Test.createTestingModule({
+    controllers: [OrderController],
+    providers: [
+      { provide: OrderService, useValue: { newOrderCount: () => ({ count: 3 }), get: () => { throw new Error("order route matched"); } } },
+      { provide: AdminOrderDetailsService, useValue: {} },
+      { provide: LeaderboardService, useValue: {} },
+      { provide: AuthRateLimitService, useValue: {} },
+      { provide: AmadastShippingService, useValue: {} }
+    ]
+  }).overrideGuard(AuthenticatedGuard).useValue({
+    canActivate: (context: { switchToHttp(): { getRequest(): { authenticatedUser?: { id: string; role: string } } } }) => {
+      context.switchToHttp().getRequest().authenticatedUser = { id: "admin-1", role: "platform-admin" };
+      return true;
+    }
+  }).compile();
+  const app = module.createNestApplication();
+  try {
+    await app.listen(0, "127.0.0.1");
+    const port = (app.getHttpServer().address() as AddressInfo).port;
+    const response = await fetch(`http://127.0.0.1:${port}/orders/new-count`);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { count: 3 });
+  } finally {
+    await app.close();
+  }
+});

@@ -3,6 +3,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   ArrayUnique,
+  IsBoolean,
   IsArray,
   IsIn,
   IsInt,
@@ -119,6 +120,47 @@ export class PhysicalFulfillmentDto {
   weightGrams!: number;
 }
 
+export class ServiceInputDefinitionDto {
+  @IsString()
+  @Matches(/^[a-z][a-z0-9_]{0,39}$/)
+  key!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  label!: string;
+
+  @IsIn(["text", "textarea", "password"])
+  type!: "text" | "textarea" | "password";
+
+  @IsBoolean()
+  required!: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  placeholder?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  helpText?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(2_000)
+  minimumLength?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(2_000)
+  maximumLength?: number;
+}
+
 export class ServiceFulfillmentDto {
   @IsString()
   @MinLength(1)
@@ -135,6 +177,14 @@ export class ServiceFulfillmentDto {
   @IsString()
   @MaxLength(5_000)
   instructions?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @ArrayUnique((field: ServiceInputDefinitionDto) => field?.key)
+  @ValidateNested({ each: true })
+  @Type(() => ServiceInputDefinitionDto)
+  inputs?: ServiceInputDefinitionDto[];
 }
 
 class SellerOfferFieldsDto {

@@ -12,7 +12,7 @@
 .refresh:focus-visible, .customRange button:focus-visible, .presets button:focus-visible, .customRange input:focus-visible, .cardHead a:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 3px; }
 .refresh:active, .customRange button:active { transform: scale(.98); }
 .refresh:disabled, .customRange button:disabled { cursor: wait; opacity: .55; }
-.filters { display: grid; gap: var(--space-dashboard-md); padding: var(--space-dashboard-sm); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-lg); background: var(--color-dashboard-surface); box-shadow: var(--shadow-dashboard-card); }
+.filters { display: grid; gap: 0; padding: 0; border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-lg); background: var(--color-dashboard-surface); box-shadow: var(--shadow-dashboard-card); }
 .presets { display: flex; gap: var(--space-dashboard-2xs); overflow-x: auto; scrollbar-width: thin; }
 .presets button { min-height: 2.5rem; padding-inline: var(--space-dashboard-md); border: 0; border-radius: var(--radius-dashboard-round); color: var(--color-dashboard-muted); background: transparent; font: inherit; font-size: var(--text-dashboard-sm); white-space: nowrap; cursor: pointer; }
 .presets button[aria-pressed="true"] { color: var(--color-dashboard-accent); background: var(--color-dashboard-accent-soft); font-weight: 700; }

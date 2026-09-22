@@ -6,7 +6,7 @@ import { api } from "@/lib/api/client";
 import type { Locale } from "@/lib/i18n";
 import styles from "./StaffWorkspace.module.css";
 
-const PERMISSIONS: PlatformPermission[] = ["vendors_manage", "catalog_view", "orders_manage", "payouts_manage", "blog_manage"];
+const PERMISSIONS: PlatformPermission[] = ["vendors_manage", "catalog_view", "orders_manage", "payouts_manage", "blog_manage", "uploads_manage"];
 type Staff = { id: string; fullName: string; email: string; permissions: PlatformPermission[]; createdAt: string };
 type Invitation = { id: string; fullName: string; email: string; permissions: PlatformPermission[]; status: string; expiresAt: string };
 
@@ -17,9 +17,9 @@ const COPY = {
 } as const;
 
 const PERMISSION_COPY: Record<Locale, Record<PlatformPermission, string>> = {
-  en: { vendors_manage: "Manage vendors", catalog_view: "View catalog", orders_manage: "Manage orders", payouts_manage: "Manage payouts", blog_manage: "Manage blog" },
-  fa: { vendors_manage: "مدیریت فروشندگان", catalog_view: "مشاهده کاتالوگ", orders_manage: "مدیریت سفارش‌ها", payouts_manage: "مدیریت تسویه‌ها", blog_manage: "مدیریت وبلاگ" },
-  ar: { vendors_manage: "إدارة البائعين", catalog_view: "عرض الكتالوج", orders_manage: "إدارة الطلبات", payouts_manage: "إدارة المدفوعات", blog_manage: "إدارة المدونة" }
+  en: { vendors_manage: "Manage vendors", catalog_view: "View catalog", orders_manage: "Manage orders", payouts_manage: "Manage payouts", blog_manage: "Manage blog", uploads_manage: "Manage uploads" },
+  fa: { vendors_manage: "مدیریت فروشندگان", catalog_view: "مشاهده کاتالوگ", orders_manage: "مدیریت سفارش‌ها", payouts_manage: "مدیریت تسویه‌ها", blog_manage: "مدیریت وبلاگ", uploads_manage: "مدیریت بارگذاری‌ها" },
+  ar: { vendors_manage: "إدارة البائعين", catalog_view: "عرض الكتالوج", orders_manage: "إدارة الطلبات", payouts_manage: "إدارة المدفوعات", blog_manage: "إدارة المدونة", uploads_manage: "إدارة الملفات المرفوعة" }
 };
 
 export function StaffWorkspace({ locale }: { locale: Locale }) {

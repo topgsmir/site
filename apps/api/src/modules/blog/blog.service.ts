@@ -230,6 +230,12 @@ export class BlogService {
           ...translation
         }))
       });
+      await this.syncRevisionMedia(
+        tx,
+        revision.id,
+        input.coverAssetId ?? null,
+        translationData.map((item) => item.content_json)
+      );
       await tx.blog_revision_tags.deleteMany({ where: { revision_id: revision.id } });
       if (input.tagIds.length) {
         await tx.blog_revision_tags.createMany({
@@ -859,7 +865,7 @@ export class BlogService {
     snapshot: BlogSnapshot
   ) {
     await tx.blog_revision_translations.deleteMany({ where: { revision_id: revisionId } });
-    await tx.blog_revision_translations.createMany({
+      await tx.blog_revision_translations.createMany({
       data: snapshot.translations.map((translation) => ({
         revision_id: revisionId,
         locale: translation.locale,
@@ -888,6 +894,12 @@ export class BlogService {
         }))
       });
     }
+    await this.syncRevisionMedia(
+      tx,
+      revisionId,
+      snapshot.coverAssetId,
+      snapshot.translations.map((translation) => translation.content as Prisma.JsonValue)
+    );
   }
 
   private mapBlogChange(
@@ -937,6 +949,7 @@ export class BlogService {
       },
       include: managedInclude.working_revision.include
     });
+    await this.syncRevisionMedia(tx, created.id, source.cover_asset_id, source.translations.map((item) => item.content_json));
     await tx.blog_posts.update({
       where: { id: post.id },
       data: { working_revision_id: created.id, status: post.published_revision_id ? "published" : "draft" }
@@ -1033,6 +1046,7 @@ export class BlogService {
     const assets = await this.prisma.blog_media_assets.findMany({
       where: {
         id: { in: unique },
+        trashed_at: null,
         ...(actor.type === "seller"
           ? { owner_user_id: actor.user.id }
           : { OR: [{ owner_user_id: actor.user.id }, { post_id: postId }] })
@@ -1056,6 +1070,24 @@ export class BlogService {
       }
     }
     return [...ids];
+  }
+
+  private async syncRevisionMedia(
+    tx: Prisma.TransactionClient,
+    revisionId: string,
+    coverAssetId: string | null,
+    contents: Array<Prisma.JsonValue | Prisma.InputJsonValue | null>
+  ) {
+    const inline = new Set<string>();
+    for (const content of contents) {
+      if (content) validateRichText(content).mediaIds.forEach((id) => inline.add(id));
+    }
+    await tx.blog_revision_media.deleteMany({ where: { revision_id: revisionId } });
+    const rows = [
+      ...(coverAssetId ? [{ revision_id: revisionId, asset_id: coverAssetId, usage: "cover" as const }] : []),
+      ...[...inline].map((assetId) => ({ revision_id: revisionId, asset_id: assetId, usage: "inline" as const }))
+    ];
+    if (rows.length) await tx.blog_revision_media.createMany({ data: rows, skipDuplicates: true });
   }
 
   private publicInclude(locale: blog_locale, detail = false) {

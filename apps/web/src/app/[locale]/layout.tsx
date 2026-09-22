@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { GoghdiWidget } from "@/components/goghdi/GoghdiWidget";
 import { TrafficSourceCapture } from "@/components/TrafficSourceCapture";
 import { PlatformNotice } from "@/components/PlatformNotice";
+import { MaintenanceGate } from "@/components/MaintenanceGate";
 
 type LocaleLayoutProps = Readonly<{
   children: React.ReactNode;
@@ -36,7 +37,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#f8f9fc",
+  themeColor: "#f6f7f8",
   colorScheme: "light dark"
 };
 
@@ -51,7 +52,7 @@ const themeScript = `
       document.documentElement.style.colorScheme = theme;
       document.querySelector('meta[name="theme-color"]')?.setAttribute(
         "content",
-        theme === "dark" ? "#191c26" : "#f8f9fc"
+        theme === "dark" ? "#011627" : "#f6f7f8"
       );
     } catch {
       document.documentElement.dataset.theme = "light";
@@ -77,6 +78,7 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
         <Script id="topgsm-theme" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
+        <MaintenanceGate locale={locale} />
         <TrafficSourceCapture />
         <PlatformNotice />
         {children}

@@ -1,5 +1,12 @@
 [
   {
+    "date": "2026-09-22",
+    "macrostructure": "Workbench",
+    "theme": "TopGSM Technical",
+    "enrichment": "real media previews",
+    "brief": "Localized admin upload inventory, reference tracing, recoverable trash, and audit operations"
+  },
+  {
     "date": "2026-09-13",
     "macrostructure": "Index-First",
     "theme": "TopGSM Cobalt",

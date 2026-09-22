@@ -7,6 +7,7 @@ import {
   IsEnum,
   IsNumber,
   IsOptional,
+  Matches,
   IsString,
   Max,
   MaxLength,
@@ -79,6 +80,11 @@ export class CreateVendorDto {
   @IsOptional()
   @IsBoolean()
   blogReviewRequired?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^[0-9a-fA-F]{24}$/)
+  goghdiAgentId?: string;
 }
 
 export class UpdateVendorDto {
@@ -137,4 +143,9 @@ export class UpdateVendorDto {
   @IsOptional()
   @IsBoolean()
   blogReviewRequired?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^[0-9a-fA-F]{24}$/)
+  goghdiAgentId?: string | null;
 }

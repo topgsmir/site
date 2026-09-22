@@ -205,6 +205,14 @@ export class AuthService {
     });
   }
 
+  async verifyCurrentPassword(userId: string, password: string) {
+    const user = await this.prisma.users.findUnique({ where: { id: userId }, select: { password_hash: true, role: true } });
+    const matches = await this.verifyPassword(password, user?.password_hash ?? DUMMY_HASH);
+    if (!user || user.role !== "platform_admin" || !user.password_hash || !matches) {
+      throw new UnauthorizedException("Password confirmation failed");
+    }
+  }
+
   get sessionTtlSeconds() {
     return SESSION_TTL_SECONDS;
   }
@@ -287,7 +295,8 @@ export class AuthService {
             "catalog_view",
             "orders_manage",
             "payouts_manage",
-            "blog_manage"
+            "blog_manage",
+            "uploads_manage"
           ]
         : (user.platform_permissions?.map((item) => item.permission) ?? []);
     return publicUser;

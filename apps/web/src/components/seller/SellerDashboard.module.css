@@ -16,6 +16,18 @@
   scrollbar-color: var(--color-dashboard-scrollbar-thumb) var(--color-dashboard-scrollbar-track);
 }
 
+.brandIdentity {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-dashboard-3xs);
+}
+
+.brandIdentity > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .rail::-webkit-scrollbar {
   width: var(--size-dashboard-scrollbar);
   height: var(--size-dashboard-scrollbar);
@@ -458,6 +470,35 @@
   margin-block-start: var(--space-dashboard-lg);
 }
 
+@media (max-width: 59.999rem) {
+  .rail {
+    position: sticky;
+    z-index: var(--z-dashboard-sticky);
+    inset-block-start: 0;
+    gap: var(--space-dashboard-sm);
+    padding: var(--space-dashboard-sm) var(--space-dashboard-md);
+    box-shadow: var(--shadow-dashboard-card);
+  }
+
+  .rail[data-mobile-open="true"] {
+    max-height: 100dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .brandBlock {
+    align-items: center;
+  }
+
+  .brandIdentity > span {
+    display: none;
+  }
+
+  .accountBlock[data-mobile-open="false"] {
+    display: none;
+  }
+}
+
 .blockHeading {
   display: flex;
   align-items: center;
@@ -470,10 +511,51 @@
   font-size: var(--text-dashboard-lg);
 }
 
+.filterPanel {
+  margin-block: var(--space-dashboard-xl) var(--space-dashboard-md);
+}
+
+.filterActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-dashboard-sm);
+}
+
+.filterActions button {
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  gap: var(--space-dashboard-2xs);
+  padding-inline: var(--space-dashboard-sm);
+  border: 0;
+  border-radius: var(--radius-dashboard-xs);
+  color: var(--color-dashboard-accent);
+  background: transparent;
+  font: inherit;
+  font-size: var(--text-dashboard-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--dur-dashboard-short) var(--ease-dashboard-out), transform var(--dur-dashboard-micro) var(--ease-dashboard-out);
+}
+
+.filterActions button svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.filterActions button:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
+.filterActions button:active { transform: translateY(1px); }
+
 .filters {
   display: grid;
-  gap: var(--space-dashboard-sm);
-  margin-block: var(--space-dashboard-xl) var(--space-dashboard-md);
+  gap: var(--space-dashboard-md) var(--space-dashboard-sm);
+  padding-block-start: var(--space-dashboard-md);
+}
+
+.filterControl {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-dashboard-xs);
+  color: var(--color-dashboard-ink-soft);
+  font-size: var(--text-dashboard-xs);
+  font-weight: 600;
 }
 
 .searchField,
@@ -488,6 +570,13 @@
   outline-offset: 1px;
   color: var(--color-dashboard-muted);
   background: var(--color-dashboard-surface);
+  transition: border-color var(--dur-dashboard-short) var(--ease-dashboard-out), background-color var(--dur-dashboard-short) var(--ease-dashboard-out), box-shadow var(--dur-dashboard-short) var(--ease-dashboard-out);
+}
+
+.searchField:focus-within,
+.filterField:focus-within {
+  border-color: var(--color-dashboard-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-dashboard-accent) 12%, transparent);
 }
 
 .searchField {
@@ -630,7 +719,7 @@
   inset: 0;
   width: 100%;
   border: 0;
-  background: rgb(8 13 22 / 58%);
+  background: color-mix(in srgb, var(--color-dashboard-scrim) 58%, transparent);
   backdrop-filter: blur(4px);
 }
 
@@ -643,7 +732,7 @@
   padding: clamp(1.25rem, 4vw, 2.5rem);
   color: var(--color-dashboard-ink);
   background: var(--color-dashboard-surface);
-  box-shadow: -20px 0 60px rgb(8 13 22 / 20%);
+  box-shadow: -20px 0 60px color-mix(in srgb, var(--color-dashboard-scrim) 20%, transparent);
 }
 
 .productEditor > header {
@@ -1136,8 +1225,10 @@
   }
 
   .filters {
-    grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.28fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .searchControl { grid-column: 1 / -1; }
 
   .twoColumns {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1213,6 +1304,9 @@
   .productTable thead {
     display: table-header-group;
   }
+
+  .filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .searchControl { grid-column: span 2; }
 
   .productTable {
     min-width: 64rem;

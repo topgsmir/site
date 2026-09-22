@@ -1,6 +1,6 @@
 import { IsUUID } from "class-validator";
 
-export class GoghdiProductTicketDto {
+export class GoghdiOrderTicketDto {
   @IsUUID("4")
-  productId!: string;
+  orderId!: string;
 }

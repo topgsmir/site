@@ -75,17 +75,19 @@ All payment logic is behind:
 
 ## Goghdi support chat
 
-The storefront can load Goghdi Browser SDK 1.1.1 as a lazy ES module and open
-an authenticated product-specific support ticket from product pages. Set the
-SDK, tenant, API, and widget `NEXT_PUBLIC_GOGHDI_*` values shown in
-`.env.example` (the socket URL is optional), then configure
-`GOGHDI_TENANT_SECRET` only on the API service. The optional
-`GOGHDI_SUPPORT_DEPARTMENT` must match a department configured in Goghdi.
+The customer order history loads Goghdi Browser SDK 2.0 lazily and can open one
+private conversation for each eligible physical, service, or bridge order.
+Platform admins configure the public SDK connection and encrypted tenant secret
+under **Admin → Settings → Goghdi chat**, then assign each seller the 24-character
+Goghdi agent ID in the seller editor. The `NEXT_PUBLIC_GOGHDI_*` and
+`GOGHDI_TENANT_SECRET` values in `.env.example` remain deployment fallbacks.
 
 The API never returns the tenant secret or signs caller-controlled ticket
-objects. `POST /api/goghdi/product-ticket` requires a valid TopGSM session,
-accepts only a product UUID, verifies that the product is active, constructs
-the allowed Goghdi payload, and returns that payload with its HMAC signature.
+objects. `POST /api/goghdi/order-ticket` requires an authenticated buyer, scopes
+the order lookup to that buyer, derives the selected seller and products from the
+database, and signs the SDK 2.0 `{ timestamp, nonce, signature }` proof with only
+that seller's agent ID. The stable `order:<uuid>` ticket key opens the existing
+conversation on later clicks instead of creating duplicates.
 
 ## Tests
 

@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import type { AdminComment, CommentPage, CommentSettings, CommentStatus, CommentPostingPolicy, CommentPublicationPolicy } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
+import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
 import styles from "./AdminCommentsWorkspace.module.css";
 
 const copy = {
@@ -68,8 +69,10 @@ export function AdminCommentsWorkspace({ locale }: { locale: Locale }) {
       {lock && posting !== "purchasers" && publication === "immediate" ? <p className={styles.notice} role="status">{c.risk}</p> : null}
       <div className={styles.settingsActions}><button className={styles.primary} type="submit" disabled={saving}>{c.save}</button></div>
     </form> : <p className={styles.loading}>{c.loading}</p>}
-    <div className={styles.tabs}><button type="button" aria-pressed={filter === ""} onClick={() => setFilter("")}>{c.all}</button><button type="button" aria-pressed={filter === "spam_review"} onClick={() => setFilter("spam_review")}>{c.spamQueue}</button></div>
-    <form className={styles.toolbar} onSubmit={(event) => { event.preventDefault(); setAppliedSearch(search.trim()); }}><input aria-label={c.search} placeholder={c.search} value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} /><button type="submit">{c.searchButton}</button><select aria-label={c.allStatuses} value={filter} onChange={(event) => setFilter(event.target.value as CommentStatus | "")}><option value="">{c.allStatuses}</option>{(["pending", "approved", "rejected", "spam_review", "spam"] as const).map((value) => <option key={value} value={value}>{c[value]}</option>)}</select></form>
+    <CollapsibleFilters locale={locale} title={c.search} activeCount={[filter, appliedSearch].filter(Boolean).length}>
+      <div className={styles.tabs}><button type="button" aria-pressed={filter === ""} onClick={() => setFilter("")}>{c.all}</button><button type="button" aria-pressed={filter === "spam_review"} onClick={() => setFilter("spam_review")}>{c.spamQueue}</button></div>
+      <form className={styles.toolbar} onSubmit={(event) => { event.preventDefault(); setAppliedSearch(search.trim()); }}><input type="search" aria-label={c.search} placeholder={c.search} value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} /><button type="submit">{c.searchButton}</button><select aria-label={c.allStatuses} value={filter} onChange={(event) => setFilter(event.target.value as CommentStatus | "")}><option value="">{c.allStatuses}</option>{(["pending", "approved", "rejected", "spam_review", "spam"] as const).map((value) => <option key={value} value={value}>{c[value]}</option>)}</select></form>
+    </CollapsibleFilters>
     {loading && !items.length ? <p className={styles.loading} role="status">{c.loading}</p> : null}{!loading && !items.length && !error ? <p className={styles.empty}>{c.empty}</p> : null}
     <div className={styles.list}>{items.map((item) => <article className={styles.card} key={item.id}>
       <div className={styles.meta}><strong>{item.productTitle}</strong><span>{item.authorName}</span><time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleDateString(locale)}</time><span className={styles.status} data-status={item.status}>{c[item.status]}</span></div><p className={styles.body}>{item.body}</p>

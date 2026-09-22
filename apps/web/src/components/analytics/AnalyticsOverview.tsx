@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api/client";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import type { Locale } from "@/lib/i18n";
+import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
 import styles from "./AnalyticsOverview.module.css";
 
 type Audience = "admin" | "seller";
@@ -138,7 +139,7 @@ export function AnalyticsOverview({ locale, audience, compact = false }: { local
       {compact ? <Link className={styles.refresh} href={statisticsHref as Route}>{copy.viewStatistics}</Link> : <button className={styles.refresh} type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading}>{copy.refresh}</button>}
     </header>
 
-    {!compact ? <div className={styles.filters} aria-label={copy.custom}>
+    {!compact ? <CollapsibleFilters className={styles.filters} surface={false} locale={locale} title={copy.custom} description={`${range.from} — ${range.to}`} activeCount={preset === "30d" ? 0 : 1}>
       <div className={styles.presets} role="group" aria-label={copy.custom}>
         {(["today", "7d", "30d", "90d", "ytd", "12m"] as const).map((item) => <button key={item} type="button" aria-pressed={preset === item} onClick={() => choosePreset(item)}>{item === "today" ? copy.today : item === "7d" ? copy.d7 : item === "30d" ? copy.d30 : item === "90d" ? copy.d90 : item === "ytd" ? copy.ytd : copy.m12}</button>)}
         <button type="button" aria-pressed={preset === "custom"} onClick={() => setPreset("custom")}>{copy.custom}</button>
@@ -148,7 +149,7 @@ export function AnalyticsOverview({ locale, audience, compact = false }: { local
         <label><span>{copy.to}</span><input type="date" value={draft.to} min={draft.from} max={dateInTehran()} onChange={(event) => setDraft((current) => ({ ...current, to: event.target.value }))}/></label>
         <button type="submit" disabled={!draft.from || !draft.to || draft.from > draft.to}>{copy.apply}</button>
       </form> : null}
-    </div> : null}
+    </CollapsibleFilters> : null}
 
     {loading && !data ? <div className={styles.skeleton} aria-live="polite"><span>{copy.loading}</span>{Array.from({ length: compact ? 3 : 6 }, (_, index) => <i key={index}/>)}</div> : null}
     {error && !data ? <div className={styles.error} role="alert"><p>{error}</p><button type="button" onClick={() => void load()}>{copy.retry}</button></div> : null}

@@ -24,6 +24,7 @@ import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { CommentsModule } from "./modules/comments/comments.module";
 import { CaptchaModule } from "./modules/captcha/captcha.module";
 import { PlatformNoticeModule } from "./modules/platform-notice/platform-notice.module";
+import { BackupModule } from "./modules/backup/backup.module";
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { PlatformNoticeModule } from "./modules/platform-notice/platform-notice.
     CommentsModule,
     CaptchaModule,
     PlatformNoticeModule,
+    BackupModule,
     PayoutModule,
     RealtimeModule,
     GoghdiModule,

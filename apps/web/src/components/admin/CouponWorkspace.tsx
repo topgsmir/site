@@ -11,6 +11,7 @@ import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import type { Locale } from "@/lib/i18n";
+import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
 import styles from "./CouponWorkspace.module.css";
 
 const copy = {
@@ -349,9 +350,9 @@ export function CouponWorkspace({ locale }: { locale: Locale }) {
         </div>
       </form>
 
-      <div className={styles.listHeader}>
+      <CollapsibleFilters locale={locale} title={c.seller} activeCount={sellerFilter ? 1 : 0}><div className={styles.listHeader}>
         <label><span>{c.seller}</span><select value={sellerFilter} onChange={(event) => setSellerFilter(event.target.value)}><option value="">{c.allSellers}</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.shopName}</option>)}</select></label>
-      </div>
+      </div></CollapsibleFilters>
 
       <div className={styles.list} aria-busy={loading}>
         {listError ? <div className={styles.message} role="alert"><p>{listError}</p><button type="button" onClick={() => void loadCoupons()}>{c.retry}</button></div> : null}

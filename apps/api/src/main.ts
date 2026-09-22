@@ -9,8 +9,10 @@ import {
 import { SecureSocketIoAdapter } from "./modules/realtime/secure-socket-io.adapter";
 import { randomUUID } from "node:crypto";
 import { ApiExceptionFilter } from "./common/http/api-exception.filter";
+import { runPendingRestoreBeforeBootstrap } from "./modules/backup/backup-restore-bootstrap";
 
 async function bootstrap() {
+  await runPendingRestoreBeforeBootstrap();
   const app = await NestFactory.create(AppModule);
   app.enableShutdownHooks();
   const config = app.get(ConfigService);

@@ -8,7 +8,7 @@ const buyer: AppUser = { id: "buyer-1", fullName: "Buyer", email: "buyer@example
 const createdAt = new Date("2026-09-19T10:00:00.000Z");
 const summary = {
   id: "order-1", status: "paid", currency: "TOMAN", total_amount: { toString: () => "120000" }, created_at: createdAt,
-  seller: { shop_name: "Example seller" },
+  seller: { shop_name: "Example seller", goghdi_agent_id: null },
   items: [{ id: "item-1", product_title: "Repair file", product_type: "digital", quantity: 1 }]
 };
 
@@ -18,10 +18,26 @@ describe("buyer order reads", () => {
     const prisma = { orders: { findMany: async (args: { where: unknown; select: unknown }) => { selected = args; return [summary]; } } } as unknown as PrismaService;
     const page = await new OrderService(prisma).list(buyer, { limit: 20 });
     assert.deepEqual((selected as { where: unknown }).where, { buyer_id: buyer.id });
-    assert.deepEqual(Object.keys(page.items[0]!).sort(), ["createdAt", "currency", "id", "items", "seller", "status", "totalAmount"]);
+    const item = page.items[0]!;
+    assert.deepEqual(Object.keys(item).sort(), ["chatAvailable", "createdAt", "currency", "id", "items", "seller", "status", "totalAmount"]);
+    assert.equal("chatAvailable" in item && item.chatAvailable, false);
     assert.equal("commissionRate" in page.items[0]!, false);
     assert.equal("holdbackRate" in page.items[0]!, false);
     assert.equal("bridge" in page.items[0]!.items[0]!, false);
+  });
+
+  it("offers chat in order history for every product type when the seller is configured", async () => {
+    for (const productType of ["digital", "physical", "service", "bridge"]) {
+      for (const agentId of [null, "0123456789abcdef01234567"]) {
+        const row = { ...summary, seller: { ...summary.seller, goghdi_agent_id: agentId },
+          items: [{ ...summary.items[0], product_type: productType }] };
+        const prisma = { orders: { findMany: async () => [row] } } as unknown as PrismaService;
+        const page = await new OrderService(prisma).list(buyer, { limit: 20 });
+        const item = page.items[0]!;
+        assert.equal("chatAvailable" in item && item.chatAvailable, Boolean(agentId));
+        assert.deepEqual(item.seller, { shopName: summary.seller.shop_name });
+      }
+    }
   });
 
   it("applies search, status, product and UTC date filters within the buyer scope", async () => {
@@ -66,6 +82,30 @@ describe("buyer order reads", () => {
     assert.equal("commissionRate" in detail, false);
     assert.equal("holdbackRate" in detail, false);
     assert.equal("trafficSource" in detail, false);
+    assert.equal("chatAvailable" in detail && detail.chatAvailable, false);
     await assert.rejects(() => service.get({ ...buyer, id: "buyer-2" }, record.id), /Order was not found/);
+  });
+
+  it("returns detail chat eligibility without exposing the seller's agent identifier", async () => {
+    for (const productType of ["physical", "service", "bridge", "digital"]) {
+      for (const agentId of [null, "0123456789abcdef01234567"]) {
+        const record = {
+          ...summary, buyer_id: buyer.id, seller_id: "seller-1", checkout_id: null, traffic_source: null,
+          seller: { shop_name: "Seller", goghdi_agent_id: agentId },
+          commission_rate: { toString: () => "0.1" }, holdback_rate: { toString: () => "0.05" }, updated_at: createdAt,
+          buyer: { full_name: buyer.fullName, email: buyer.email, phone_number: null },
+          shipping_address: null, shipment: null, amadast_shipment: null,
+          items: [{ ...summary.items[0], product_type: productType, unit_price: summary.total_amount, total_amount: summary.total_amount,
+            service_note: null, service_input_schema: null, encrypted_service_answers: null, service_answers_key_id: null,
+            digital_entitlement: null, bridge_fulfillment: null }]
+        };
+        let selection: { seller?: { select: { goghdi_agent_id?: boolean } } } | undefined;
+        const prisma = { orders: { findFirst: async ({ select }: { select: typeof selection }) => { selection = select; return record; } } } as unknown as PrismaService;
+        const detail = await new OrderService(prisma).get(buyer, record.id);
+        assert.equal("chatAvailable" in detail && detail.chatAvailable, Boolean(agentId));
+        assert.equal(selection?.seller?.select.goghdi_agent_id, true);
+        assert.deepEqual(detail.seller, { id: "seller-1", shopName: "Seller" });
+      }
+    }
   });
 });

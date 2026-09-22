@@ -26,19 +26,19 @@ export default async function OpenGraphProductImage({
         flexDirection: "column",
         justifyContent: "space-between",
         padding: "64px 72px",
-        color: "#142033",
-        background: "#f4f7fb",
+        color: "#011627",
+        background: "#f6f7f8",
         fontFamily: "sans-serif"
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "2px solid #9aa8bc", paddingBottom: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "2px solid #20a4f3", paddingBottom: 24 }}>
         <strong style={{ fontSize: 34, letterSpacing: "0.08em" }}>TOP GSM</strong>
-        <span style={{ fontSize: 22, color: "#315ea8" }}>{detail}</span>
+        <span style={{ fontSize: 22, color: "#011627" }}>{detail}</span>
       </div>
       <div style={{ display: "flex", maxWidth: 1000, fontSize: titleSize, fontWeight: 800, lineHeight: 1.04, letterSpacing: "-0.04em" }}>
         {title}
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", borderTop: "2px solid #9aa8bc", paddingTop: 24, color: "#40516b", fontSize: 22 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", borderTop: "2px solid #2ec4b6", paddingTop: 24, color: "#011627", fontSize: 22 }}>
         <span>top-gsm.ir</span>
         <span>{product?.slug ?? "product"}</span>
       </div>

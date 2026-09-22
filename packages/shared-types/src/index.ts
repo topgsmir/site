@@ -13,6 +13,27 @@ export interface ProductStartingPrice {
   price: string;
 }
 
+export type ServiceInputType = "text" | "textarea" | "password";
+
+export interface ServiceInputDefinition {
+  key: string;
+  label: string;
+  type: ServiceInputType;
+  required: boolean;
+  placeholder?: string;
+  helpText?: string;
+  minimumLength?: number;
+  maximumLength?: number;
+}
+
+export interface ServiceInputAnswer {
+  key: string;
+  label: string;
+  type: ServiceInputType;
+  value: string | null;
+  sensitive: boolean;
+}
+
 export interface ProductImage {
   id: string;
   variants: Array<{
@@ -44,7 +65,7 @@ export interface PublicSellerOffer {
   seller: { id: string; shopName: string };
   digital?: { maxDownloads: number };
   physical?: { inStock: boolean; weightGrams: number };
-  service?: { serviceType: string; estimatedHours: number };
+  service?: { serviceType: string; estimatedHours: number; inputs: ServiceInputDefinition[] };
 }
 
 export interface PublicProductVariant {
@@ -97,6 +118,7 @@ export interface SellerProductOffer {
     serviceType: string;
     estimatedHours: number;
     instructions: string | null;
+    inputs: ServiceInputDefinition[];
   };
   createdAt: string;
   updatedAt: string;
@@ -457,6 +479,22 @@ export interface AdminSmsSettings {
   updatedAt: string | null;
 }
 
+export interface GoghdiPublicConfig {
+  enabled: boolean;
+  sdkUrl: string | null;
+  tenantId: string | null;
+  apiUrl: string | null;
+  socketUrl: string | null;
+  widgetUrl: string | null;
+}
+
+export interface AdminGoghdiSettings extends GoghdiPublicConfig {
+  tenantSecretConfigured: boolean;
+  tenantSecretHint: string | null;
+  credentialSource: "database" | "environment" | "none";
+  updatedAt: string | null;
+}
+
 export interface AuthLoginMethods {
   emailPasswordEnabled: boolean;
   phoneOtpEnabled: boolean;
@@ -640,6 +678,7 @@ export interface CheckoutQuoteGroup {
     totalAmount: string;
     availableStock: number | null;
     serviceNote: string | null;
+    serviceInputs: ServiceInputDefinition[];
   }>;
   totalAmount: string;
   paymentMethods: CheckoutPaymentMethod[];
@@ -719,7 +758,206 @@ export type PlatformPermission =
   | "catalog_view"
   | "orders_manage"
   | "payouts_manage"
-  | "blog_manage";
+  | "blog_manage"
+  | "uploads_manage";
+
+export type AdminUploadSource = "blog" | "product";
+export type AdminUploadState = "active" | "trashed" | "purging";
+export type AdminUploadLinkState = "linked" | "unlinked";
+
+export interface AdminUploadSummary {
+  assetCount: number;
+  generatedStorageBytes: number;
+  unlinkedCount: number;
+  trashCount: number;
+  upcomingPurgeCount: number;
+}
+
+export interface AdminUploadListItem {
+  source: AdminUploadSource;
+  id: string;
+  kind: string;
+  state: AdminUploadState;
+  linkState: AdminUploadLinkState;
+  originalFilename: string | null;
+  originalMimeType: string | null;
+  width: number;
+  height: number;
+  sourceBytes: number;
+  generatedBytes: number;
+  checksum: string;
+  createdAt: string;
+  trashedAt: string | null;
+  purgeAfter: string | null;
+  previewUrl: string | null;
+  owner: { id: string; name: string; email: string | null };
+  linkedContent: { id: string; title: string; type: "post" | "product" } | null;
+}
+
+export interface AdminUploadPage {
+  items: AdminUploadListItem[];
+  nextCursor: string | null;
+}
+
+export interface AdminUploadEvent {
+  id: string;
+  action: "trashed" | "auto_trashed" | "restored" | "purged" | "purge_failed";
+  reason: string | null;
+  actor: { id: string; name: string } | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface AdminUploadDetail extends AdminUploadListItem {
+  variants: Array<{ name: string; width: number; height: number; bytes: number; url: string }>;
+  seller: { id: string; shopName: string } | null;
+  references: Array<{ id: string; title: string; usage: string }>;
+  restoration: { eligible: boolean; reason: "active" | "product_missing" | "replacement_exists" | "purge_started" | null };
+  events: AdminUploadEvent[];
+}
+
+export interface AdminUploadBulkResult {
+  results: Array<{
+    source: AdminUploadSource;
+    id: string;
+    ok: boolean;
+    status: number;
+    code: string;
+    message: string;
+    purgeAfter?: string;
+  }>;
+}
+
+export type BackupFrequency = "disabled" | "daily" | "weekly";
+export type BackupComponent = "database" | "uploads";
+export type BackupProtocol = "sftp" | "ftps" | "ftp";
+export type BackupRunStatus = "queued" | "running" | "success" | "partial" | "failed";
+export type BackupDeliveryStatus = "pending" | "uploading" | "success" | "failed";
+export type BackupRestoreStatus = "staged" | "ready" | "pending_restart" | "restoring" | "success" | "failed" | "recovery_required";
+
+export interface AdminBackupSettings {
+  automationEnabled: boolean;
+  frequency: BackupFrequency;
+  weekdays: number[];
+  localTime: string;
+  timezone: string;
+  includeDatabase: boolean;
+  includeUploads: boolean;
+  localRetentionCount: number;
+  nextRunAt: string | null;
+  lastRunStatus: BackupRunStatus | "never";
+  lastSuccessAt: string | null;
+  lastFailureAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface AdminBackupDestination {
+  id: string;
+  name: string;
+  protocol: BackupProtocol;
+  host: string;
+  port: number;
+  username: string;
+  remotePath: string;
+  retentionCount: number;
+  enabled: boolean;
+  verifiedAt: string | null;
+  lastTestStatus: "never" | "success" | "failed";
+  lastErrorCode: string | null;
+  credentialConfigured: boolean;
+  privateKeyConfigured: boolean;
+  hostKeyFingerprint: string | null;
+  allowInsecure: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminBackupDelivery {
+  id: string;
+  destinationId: string;
+  destinationName: string;
+  protocol: BackupProtocol;
+  status: BackupDeliveryStatus;
+  remotePath: string | null;
+  attempts: number;
+  errorCode: string | null;
+  completedAt: string | null;
+}
+
+export interface BackupManifestSummary {
+  formatVersion: 1;
+  archiveId: string;
+  createdAt: string;
+  appVersion: string;
+  migrationId: string | null;
+  postgresMajor: number;
+  components: BackupComponent[];
+  databaseBytes: number;
+  uploadsBytes: number;
+  uploadCount: number;
+  platformOwnerCount: number;
+}
+
+export interface AdminBackupRun {
+  id: string;
+  trigger: "manual" | "scheduled" | "pre_restore";
+  status: BackupRunStatus;
+  components: BackupComponent[];
+  archiveName: string | null;
+  archiveBytes: number | null;
+  archiveSha256: string | null;
+  errorCode: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  actor: { id: string; name: string } | null;
+  deliveries: AdminBackupDelivery[];
+}
+
+export interface AdminBackupRunPage {
+  items: AdminBackupRun[];
+  nextCursor: string | null;
+}
+
+export interface AdminBackupOverview {
+  settings: AdminBackupSettings;
+  destinations: AdminBackupDestination[];
+  recentRuns: AdminBackupRun[];
+  localArchiveBytes: number;
+  activeRunId: string | null;
+}
+
+export interface AdminRemoteBackupArchive {
+  destinationId: string;
+  destinationName: string;
+  protocol: BackupProtocol;
+  name: string;
+  bytes: number | null;
+  modifiedAt: string | null;
+}
+
+export interface BackupRestorePreflight {
+  challengeId: string;
+  confirmationPhrase: string;
+  expiresAt: string;
+  manifest: BackupManifestSummary;
+  safetyBackupRequired: true;
+}
+
+export interface BackupRestoreProgress {
+  id: string;
+  status: BackupRestoreStatus;
+  phase: "validating" | "safety_backup" | "database" | "migrations" | "uploads" | "sessions" | "complete" | "rollback";
+  message: string;
+  updatedAt: string;
+}
+
+export interface PublicSystemStatus {
+  maintenance: boolean;
+  reason: "restore" | null;
+  restoreId: string | null;
+  updatedAt: string | null;
+}
 
 export type VendorPermission =
   | "products_manage"
@@ -881,6 +1119,7 @@ export interface Vendor {
   commission: number;
   holdbackRate: number;
   blogReviewRequired: boolean;
+  goghdiAgentId: string | null;
   permissions: VendorPermission[];
   productCount: number;
   orderCount: number;

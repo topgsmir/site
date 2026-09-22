@@ -60,6 +60,8 @@
 .profiles h2 { font-family: var(--font-dashboard-display); font-size: var(--text-dashboard-xl); }
 .profiles p { max-width: 68ch; color: var(--color-dashboard-muted); line-height: 1.65; }
 .profiles > header input { width: min(24rem, 100%); min-height: 44px; padding-inline: var(--space-dashboard-md); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-round); background: var(--color-dashboard-surface-raised); }
+.profileSearch { width: min(32rem, 100%); min-height: 44px; padding-inline: var(--space-dashboard-md); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-control); color: var(--color-dashboard-ink); background: var(--color-dashboard-surface-raised); font: inherit; }
+.profileSearch:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
 .profileGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: var(--space-dashboard-md); }
 .profileCard { display: grid; gap: var(--space-dashboard-md); padding: var(--space-dashboard-lg); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-card); background: var(--color-dashboard-surface-raised); }
 .profileCard > div { display: grid; gap: var(--space-dashboard-2xs); }
@@ -72,8 +74,8 @@
 .loadMore { justify-self: center; }
 .empty { padding: var(--space-dashboard-xl); border: var(--rule-dashboard-thin) dashed var(--color-dashboard-rule-strong); text-align: center; }
 .profileDialog { position: fixed; z-index: 80; inset: 0; display: grid; place-items: center; padding: var(--space-dashboard-lg); }
-.scrim { position: absolute; inset: 0; border: 0; background: rgb(12 17 20 / .55); }
-.profileDialog form { position: relative; display: grid; gap: var(--space-dashboard-lg); width: min(42rem, 100%); max-height: calc(100vh - 2rem); padding: var(--space-dashboard-xl); overflow: auto; border-radius: var(--radius-dashboard-card); background: var(--color-dashboard-paper); box-shadow: 0 1.5rem 4rem rgb(0 0 0 / .24); }
+.scrim { position: absolute; inset: 0; border: 0; background: color-mix(in srgb, var(--color-dashboard-scrim) 55%, transparent); }
+.profileDialog form { position: relative; display: grid; gap: var(--space-dashboard-lg); width: min(42rem, 100%); max-height: calc(100vh - 2rem); padding: var(--space-dashboard-xl); overflow: auto; border-radius: var(--radius-dashboard-card); background: var(--color-dashboard-paper); box-shadow: 0 1.5rem 4rem color-mix(in srgb, var(--color-dashboard-scrim) 24%, transparent); }
 .profileDialog form > header, .profileDialog form > footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-dashboard-md); }
 .profileDialog form > header div { display: grid; gap: var(--space-dashboard-2xs); }
 .profileDialog form > header button { border: 0; color: var(--color-dashboard-muted); background: transparent; cursor: pointer; }

@@ -58,6 +58,17 @@
 .note { display: grid; gap: 8px; padding-top: 17px; border-top: 1px solid var(--line); color: var(--ink-soft); font-size: .72rem; font-weight: 550; }
 .note textarea { width: 100%; min-height: 82px; padding: 12px 14px; resize: vertical; border: 1px solid var(--line); border-radius: 13px; outline: 2px solid transparent; outline-offset: 1px; color: var(--ink); background: var(--paper); font-size: .76rem; line-height: 1.65; }
 .note textarea::placeholder { color: var(--muted); }
+.serviceDetails { display: grid; gap: 16px; padding-top: 17px; border-top: 1px solid var(--line); }
+.serviceDetails > header { display: grid; gap: 4px; }
+.serviceDetails > header strong { color: var(--ink); font-size: .78rem; font-weight: 650; }
+.serviceDetails > header small { color: var(--muted); font-size: .68rem; line-height: 1.65; }
+.serviceDetails > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: dense; gap: 12px; }
+.serviceDetails > div > label { display: grid; min-width: 0; gap: 7px; color: var(--ink-soft); font-size: .72rem; font-weight: 550; }
+.serviceDetails > div :is(input, textarea) { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 11px; outline: 2px solid transparent; outline-offset: 1px; color: var(--ink); background: var(--paper); font: inherit; }
+.serviceDetails > div textarea { min-height: 82px; resize: vertical; }
+.serviceDetails > div label:has(textarea) { grid-column: 1 / -1; }
+.serviceDetails > div label > small { color: var(--muted); font-size: .66rem; font-weight: 400; line-height: 1.6; }
+.serviceDetails > .note { padding-top: 0; border-top: 0; }
 .undoNotice { position: fixed; z-index: var(--z-dashboard-sticky); inset-inline-start: 50%; inset-block-end: max(20px, env(safe-area-inset-bottom)); display: flex; width: min(440px, calc(100% - 32px)); min-height: 52px; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 10px 8px 16px; border: 1px solid var(--line); border-radius: 14px; color: var(--ink-soft); background: var(--paper-bright); box-shadow: var(--shadow-dashboard-float); font-size: .75rem; transform: translateX(-50%); }
 :global([dir="rtl"]) .undoNotice { transform: translateX(50%); }
 .undoNotice button { min-width: 76px; min-height: 36px; padding-inline: 13px; border: 0; border-radius: 10px; color: var(--signal-dark); background: var(--signal-soft); font-weight: 600; cursor: pointer; }
@@ -116,7 +127,7 @@
 .loading { display: grid; min-height: 50svh; place-items: center; align-content: center; gap: 16px; color: var(--muted); font-size: .78rem; }
 .loading span { width: 46px; height: 46px; border-radius: 15px; background: var(--signal-soft); animation: pulse 1.2s var(--ease-dashboard-in-out) infinite alternate; }
 .page :is(button, a, input, select, textarea):focus-visible { outline: 3px solid var(--signal); outline-offset: 3px; }
-.summary :is(input, select, textarea):focus-visible, .note textarea:focus-visible { outline: 2px solid var(--signal); border-color: var(--signal); box-shadow: 0 0 0 3px var(--signal-soft); }
+.summary :is(input, select, textarea):focus-visible, .note textarea:focus-visible, .serviceDetails > div :is(input, textarea):focus-visible { outline: 2px solid var(--signal); border-color: var(--signal); box-shadow: 0 0 0 3px var(--signal-soft); }
 .primary:active, .empty a:active, .undoNotice button:active, .resend:active, .quoteError button:active { transform: translateY(1px); }
 @keyframes pulse { to { opacity: .48; transform: scale(.94); } }
 @media (hover: hover) and (pointer: fine) {
@@ -170,6 +181,8 @@
   .artwork img { min-height: 120px; }
   .artwork svg { width: 46px; height: 46px; }
   .itemBody { gap: 14px; padding: 18px; }
+  .serviceDetails > div { grid-template-columns: 1fr; }
+  .serviceDetails > div label:has(textarea) { grid-column: auto; }
   .summary { gap: 16px; padding: 22px; }
   .summaryTitle { gap: 14px; padding-bottom: 16px; }
   .summaryTitle > strong { font-size: clamp(1.5rem, 2.5vw, 1.9rem); }

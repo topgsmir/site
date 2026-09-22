@@ -202,6 +202,7 @@ enum platform_permission {
   orders_manage
   payouts_manage
   blog_manage
+  uploads_manage
 }
 
 enum blog_locale {
@@ -266,6 +267,24 @@ enum blog_media_kind {
   inline
 }
 
+enum blog_media_usage {
+  cover
+  inline
+}
+
+enum media_asset_source {
+  blog
+  product
+}
+
+enum media_admin_action {
+  trashed
+  auto_trashed
+  restored
+  purged
+  purge_failed
+}
+
 enum staff_invitation_status {
   pending
   accepted
@@ -300,6 +319,9 @@ model users {
   blog_moderation_events       blog_moderation_events[]
   blog_media                   blog_media_assets[]
   product_media                product_media_assets[]
+  trashed_blog_media           blog_media_assets[]            @relation("blog_media_trasher")
+  trashed_product_media        product_media_assets[]         @relation("product_media_trasher")
+  media_admin_events           media_admin_events[]           @relation("media_admin_actor")
   created_seller_agents        seller_agents[]                @relation("seller_agent_creator")
   created_seller_invites       seller_invitations[]           @relation("seller_invitation_creator")
   granted_bridge_services      bridge_service_grants[]        @relation("bridge_granter")
@@ -316,6 +338,7 @@ model users {
   payment_refunds              payment_refunds[]
   payment_config_events        payment_method_config_events[] @relation("payment_config_actor")
   sms_setting_events           sms_setting_events[]           @relation("sms_setting_actor")
+  goghdi_setting_events        goghdi_setting_events[]         @relation("goghdi_setting_actor")
   shipping_setting_events      shipping_setting_events[]      @relation("shipping_setting_actor")
   updated_shipping_profiles    seller_shipping_profiles[]      @relation("seller_shipping_profile_updater")
   seller_shipping_events       seller_shipping_profile_events[] @relation("seller_shipping_actor")
@@ -328,6 +351,12 @@ model users {
   comment_moderation_events    product_comment_events[]
   admin_profile_changes        admin_user_profile_changes[] @relation("profile_subject")
   performed_profile_changes    admin_user_profile_changes[] @relation("profile_editor")
+  backup_runs                  backup_runs[]                 @relation("backup_run_actor")
+  backup_setting_events        backup_setting_events[]       @relation("backup_setting_actor")
+  backup_destination_events    backup_destination_events[]   @relation("backup_destination_actor")
+  backup_restore_challenges    backup_restore_challenges[]   @relation("backup_restore_challenge_actor")
+  backup_restore_events        backup_restore_events[]       @relation("backup_restore_actor")
+  backup_restore_jobs          backup_restore_jobs[]         @relation("backup_restore_job_actor")
 
   @@index([role, created_at(sort: Desc), id(sort: Desc)])
   @@index([username(ops: raw("gin_trgm_ops"))], type: Gin, map: "users_username_trgm_idx")
@@ -631,6 +660,7 @@ model sellers {
   phone_number         String?                       @map("phone_number")
   suspended_at         DateTime?                     @map("suspended_at") @db.Timestamptz(3)
   blog_review_required Boolean                       @default(true) @map("blog_review_required")
+  goghdi_agent_id      String?                       @unique @map("goghdi_agent_id") @db.VarChar(24)
   created_at           DateTime                      @default(now()) @map("created_at") @db.Timestamptz(3)
   updated_at           DateTime                      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   user                 users                         @relation(fields: [user_id], references: [id])
@@ -806,12 +836,26 @@ model blog_revisions {
   tags               blog_revision_tags[]
   related_products   blog_revision_products[]
   moderation_events  blog_moderation_events[]
+  media_references   blog_revision_media[]
 
   @@unique([post_id, revision_number])
   @@unique([id, post_id])
   @@index([status, submitted_at, id])
   @@index([category_id, status, published_at])
   @@map("blog_revisions")
+}
+
+model blog_revision_media {
+  revision_id String           @map("revision_id")
+  asset_id    String           @map("asset_id")
+  usage       blog_media_usage @map("usage")
+  created_at  DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  revision    blog_revisions   @relation(fields: [revision_id], references: [id], onDelete: Cascade)
+  asset       blog_media_assets @relation(fields: [asset_id], references: [id], onDelete: Restrict)
+
+  @@id([revision_id, asset_id, usage])
+  @@index([asset_id, revision_id])
+  @@map("blog_revision_media")
 }
 
 model blog_revision_translations {
@@ -940,17 +984,27 @@ model blog_media_assets {
   height          Int                   @map("height")
   byte_size       Int                   @map("byte_size")
   checksum        String                @map("checksum") @db.Char(64)
+  original_filename String?             @map("original_filename") @db.VarChar(255)
+  original_mime_type String?            @map("original_mime_type") @db.VarChar(100)
   published_at    DateTime?             @map("published_at") @db.Timestamptz(3)
+  trashed_at      DateTime?             @map("trashed_at") @db.Timestamptz(3)
+  trashed_by_user_id String?             @map("trashed_by_user_id")
+  purge_after     DateTime?             @map("purge_after") @db.Timestamptz(3)
+  purging_at      DateTime?             @map("purging_at") @db.Timestamptz(3)
   created_at      DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
   owner           users                 @relation(fields: [owner_user_id], references: [id], onDelete: Restrict)
   seller          sellers?              @relation(fields: [seller_id], references: [id], onDelete: Restrict)
   post            blog_posts?           @relation(fields: [post_id], references: [id], onDelete: SetNull)
   variants        blog_media_variants[]
   cover_revisions blog_revisions[]      @relation("blog_revision_cover")
+  revision_references blog_revision_media[]
+  trashed_by      users?                @relation("blog_media_trasher", fields: [trashed_by_user_id], references: [id], onDelete: SetNull)
 
   @@index([owner_user_id, created_at])
   @@index([seller_id, created_at])
   @@index([published_at, created_at])
+  @@index([trashed_at, created_at(sort: Desc), id(sort: Desc)])
+  @@index([purge_after, purging_at])
   @@map("blog_media_assets")
 }
 
@@ -1001,7 +1055,8 @@ model products {
   bridge_binding       bridge_product_bindings?
   review_events        product_review_events[]
   change_events        product_change_events[]
-  media                product_media_assets?
+  media                product_media_assets?     @relation("product_current_media")
+  trashed_media        product_media_assets[]    @relation("product_restore_media")
   comments             product_comments[]
 
   @@index([created_by_seller_id])
@@ -1014,19 +1069,47 @@ model products {
 
 model product_media_assets {
   id                  String                   @id @default(uuid()) @map("id")
-  product_id          String                   @unique @map("product_id")
+  product_id          String?                  @unique @map("product_id")
+  restore_product_id  String?                  @map("restore_product_id")
   uploaded_by_user_id String                   @map("uploaded_by_user_id")
   width               Int                      @map("width")
   height              Int                      @map("height")
   byte_size           Int                      @map("byte_size")
   checksum            String                   @map("checksum") @db.Char(64)
+  original_filename   String?                  @map("original_filename") @db.VarChar(255)
+  original_mime_type  String?                  @map("original_mime_type") @db.VarChar(100)
+  trashed_at          DateTime?                @map("trashed_at") @db.Timestamptz(3)
+  trashed_by_user_id  String?                  @map("trashed_by_user_id")
+  purge_after         DateTime?                @map("purge_after") @db.Timestamptz(3)
+  purging_at          DateTime?                @map("purging_at") @db.Timestamptz(3)
   created_at          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
-  product             products                 @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  product             products?                @relation("product_current_media", fields: [product_id], references: [id], onDelete: SetNull)
+  restore_product     products?                @relation("product_restore_media", fields: [restore_product_id], references: [id], onDelete: SetNull)
   uploaded_by         users                    @relation(fields: [uploaded_by_user_id], references: [id], onDelete: Restrict)
+  trashed_by          users?                   @relation("product_media_trasher", fields: [trashed_by_user_id], references: [id], onDelete: SetNull)
   variants            product_media_variants[]
 
   @@index([uploaded_by_user_id])
+  @@index([restore_product_id])
+  @@index([trashed_at, created_at(sort: Desc), id(sort: Desc)])
+  @@index([purge_after, purging_at])
   @@map("product_media_assets")
+}
+
+model media_admin_events {
+  id            String             @id @default(uuid()) @db.Uuid
+  source        media_asset_source
+  asset_id      String             @map("asset_id") @db.Uuid
+  actor_user_id String?            @map("actor_user_id")
+  action        media_admin_action
+  reason        String?            @db.VarChar(500)
+  metadata      Json               @default("{}")
+  created_at    DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  actor         users?             @relation("media_admin_actor", fields: [actor_user_id], references: [id], onDelete: SetNull)
+
+  @@index([source, asset_id, created_at(sort: Desc), id(sort: Desc)])
+  @@index([actor_user_id, created_at(sort: Desc), id(sort: Desc)])
+  @@map("media_admin_events")
 }
 
 model product_media_variants {
@@ -1208,6 +1291,7 @@ model seller_offer_service {
   estimated_hours Int           @default(1) @map("estimated_hours")
   service_type    String        @map("service_type") @db.VarChar(100)
   instructions    String?       @map("instructions")
+  input_schema    Json          @default("[]") @map("input_schema")
   offer           seller_offers @relation(fields: [offer_id], references: [id], onDelete: Cascade)
 
   @@map("seller_offer_service")
@@ -1290,6 +1374,9 @@ model order_items {
   unit_price            Decimal                 @map("unit_price") @db.Decimal(20, 4)
   total_amount          Decimal                 @map("total_amount") @db.Decimal(20, 4)
   service_note          String?                 @map("service_note") @db.VarChar(2000)
+  service_input_schema  Json                    @default("[]") @map("service_input_schema")
+  encrypted_service_answers String?             @map("encrypted_service_answers")
+  service_answers_key_id String?                @map("service_answers_key_id") @db.VarChar(32)
   digital_delivery_url  String?                 @map("digital_delivery_url") @db.VarChar(2048)
   digital_max_downloads Int?                    @map("digital_max_downloads")
   order                 orders                  @relation(fields: [order_id], references: [id], onDelete: Restrict)
@@ -1811,6 +1898,40 @@ model auth_login_settings {
   @@map("auth_login_settings")
 }
 
+model goghdi_settings {
+  id                      Int      @id @default(1) @db.SmallInt
+  enabled                 Boolean  @default(false)
+  sdk_url                 String?  @db.VarChar(2048)
+  tenant_id               String?  @db.VarChar(100)
+  api_url                 String?  @db.VarChar(2048)
+  socket_url              String?  @db.VarChar(2048)
+  widget_url              String?  @db.VarChar(2048)
+  encrypted_tenant_secret String?  @db.Text
+  encryption_key_id       String?  @db.VarChar(32)
+  tenant_secret_hint      String?  @db.VarChar(8)
+  created_at              DateTime @default(now()) @db.Timestamptz
+  updated_at              DateTime @default(now()) @updatedAt @db.Timestamptz
+  events                  goghdi_setting_events[]
+
+  @@map("goghdi_settings")
+}
+
+model goghdi_setting_events {
+  id                  String          @id @default(uuid()) @db.Uuid
+  settings_id         Int             @db.SmallInt
+  actor_user_id       String
+  enabled             Boolean
+  changed_fields      String[]
+  credentials_changed Boolean
+  created_at          DateTime        @default(now()) @db.Timestamptz
+  settings            goghdi_settings @relation(fields: [settings_id], references: [id], onDelete: Restrict)
+  actor               users           @relation("goghdi_setting_actor", fields: [actor_user_id], references: [id], onDelete: Restrict)
+
+  @@index([settings_id, created_at(sort: Desc), id(sort: Desc)])
+  @@index([actor_user_id, created_at(sort: Desc), id(sort: Desc)])
+  @@map("goghdi_setting_events")
+}
+
 model auth_login_setting_events {
   id                     String   @id @default(uuid()) @map("id")
   actor_user_id          String   @map("actor_user_id")
@@ -2021,4 +2142,182 @@ model product_comment_events {
   @@index([comment_id, created_at(sort: Desc)])
   @@index([actor_user_id, created_at(sort: Desc)])
   @@map("product_comment_events")
+}
+
+model backup_settings {
+  id                    Int      @id @default(1) @db.SmallInt
+  automation_enabled    Boolean  @default(false)
+  frequency             String   @default("daily") @db.VarChar(16)
+  weekdays              Int[]    @default([])
+  local_time            String   @default("02:00") @db.VarChar(5)
+  timezone              String   @default("Asia/Tehran") @db.VarChar(64)
+  include_database      Boolean  @default(true)
+  include_uploads       Boolean  @default(true)
+  local_retention_count Int      @default(7) @db.SmallInt
+  next_run_at           DateTime? @db.Timestamptz(3)
+  last_run_status       String   @default("never") @db.VarChar(16)
+  last_success_at       DateTime? @db.Timestamptz(3)
+  last_failure_at       DateTime? @db.Timestamptz(3)
+  run_token             String?  @db.Uuid
+  created_at            DateTime @default(now()) @db.Timestamptz(3)
+  updated_at            DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  events                backup_setting_events[]
+
+  @@map("backup_settings")
+}
+
+model backup_setting_events {
+  id            String          @id @default(uuid()) @db.Uuid
+  settings_id   Int             @default(1) @db.SmallInt
+  actor_user_id String
+  before_data   Json
+  after_data    Json
+  created_at    DateTime        @default(now()) @db.Timestamptz(3)
+  settings      backup_settings @relation(fields: [settings_id], references: [id], onDelete: Restrict)
+  actor         users           @relation("backup_setting_actor", fields: [actor_user_id], references: [id], onDelete: Restrict)
+
+  @@index([settings_id, created_at(sort: Desc), id(sort: Desc)])
+  @@index([actor_user_id, created_at(sort: Desc), id(sort: Desc)])
+  @@map("backup_setting_events")
+}
+
+model backup_destinations {
+  id                       String   @id @default(uuid()) @db.Uuid
+  name                     String   @db.VarChar(100)
+  protocol                 String   @db.VarChar(8)
+  host                     String   @db.VarChar(253)
+  port                     Int
+  username                 String   @db.VarChar(200)
+  remote_path              String   @db.VarChar(1000)
+  retention_count          Int      @default(30) @db.SmallInt
+  enabled                  Boolean  @default(false)
+  host_key_fingerprint     String?  @db.VarChar(100)
+  allow_insecure           Boolean  @default(false)
+  encrypted_password       String?  @db.Text
+  encrypted_private_key    String?  @db.Text
+  encrypted_key_passphrase String?  @db.Text
+  encryption_key_id        String?  @db.VarChar(32)
+  credential_hint          String?  @db.VarChar(8)
+  verified_at              DateTime? @db.Timestamptz(3)
+  last_test_status         String   @default("never") @db.VarChar(16)
+  last_error_code          String?  @db.VarChar(64)
+  created_at               DateTime @default(now()) @db.Timestamptz(3)
+  updated_at               DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  deliveries               backup_deliveries[]
+  events                   backup_destination_events[]
+
+  @@index([enabled, protocol, updated_at(sort: Desc), id(sort: Desc)])
+  @@map("backup_destinations")
+}
+
+model backup_destination_events {
+  id             String              @id @default(uuid()) @db.Uuid
+  destination_id String?             @db.Uuid
+  actor_user_id  String
+  action         String              @db.VarChar(32)
+  changed_fields String[]
+  metadata       Json                @default("{}")
+  created_at     DateTime            @default(now()) @db.Timestamptz(3)
+  destination    backup_destinations? @relation(fields: [destination_id], references: [id], onDelete: SetNull)
+  actor          users               @relation("backup_destination_actor", fields: [actor_user_id], references: [id], onDelete: Restrict)
+
+  @@index([destination_id, created_at(sort: Desc), id(sort: Desc)])
+  @@index([actor_user_id, created_at(sort: Desc), id(sort: Desc)])
+  @@map("backup_destination_events")
+}
+
+model backup_runs {
+  id             String   @id @default(uuid()) @db.Uuid
+  trigger        String   @db.VarChar(16)
+  status         String   @default("queued") @db.VarChar(16)
+  components     String[]
+  actor_user_id  String?
+  archive_name   String?  @db.VarChar(255)
+  archive_path   String?  @db.Text
+  archive_bytes  BigInt?
+  archive_sha256 String?  @db.Char(64)
+  manifest       Json?
+  error_code     String?  @db.VarChar(64)
+  claim_token    String?  @db.Uuid
+  created_at     DateTime @default(now()) @db.Timestamptz(3)
+  started_at     DateTime? @db.Timestamptz(3)
+  completed_at   DateTime? @db.Timestamptz(3)
+  actor          users?   @relation("backup_run_actor", fields: [actor_user_id], references: [id], onDelete: SetNull)
+  deliveries     backup_deliveries[]
+
+  @@index([status, created_at, id])
+  @@index([created_at(sort: Desc), id(sort: Desc)])
+  @@index([actor_user_id, created_at(sort: Desc), id(sort: Desc)])
+  @@map("backup_runs")
+}
+
+model backup_deliveries {
+  id                   String               @id @default(uuid()) @db.Uuid
+  run_id               String               @db.Uuid
+  destination_id       String?              @db.Uuid
+  destination_name     String               @db.VarChar(100)
+  protocol             String               @db.VarChar(8)
+  status               String               @default("pending") @db.VarChar(16)
+  remote_path          String?              @db.VarChar(1200)
+  attempts             Int                  @default(0)
+  error_code           String?              @db.VarChar(64)
+  next_attempt_at      DateTime?             @db.Timestamptz(3)
+  started_at           DateTime?             @db.Timestamptz(3)
+  completed_at         DateTime?             @db.Timestamptz(3)
+  run                  backup_runs          @relation(fields: [run_id], references: [id], onDelete: Cascade)
+  destination          backup_destinations? @relation(fields: [destination_id], references: [id], onDelete: SetNull)
+
+  @@unique([run_id, destination_id])
+  @@index([status, next_attempt_at, id])
+  @@index([destination_id, completed_at(sort: Desc), id(sort: Desc)])
+  @@map("backup_deliveries")
+}
+
+model backup_restore_challenges {
+  id                  String   @id @default(uuid()) @db.Uuid
+  actor_user_id       String
+  source_kind         String   @db.VarChar(16)
+  source_reference    String   @db.VarChar(1200)
+  staged_archive_path String   @db.Text
+  manifest            Json
+  phrase_hash         String   @db.Char(64)
+  expires_at          DateTime @db.Timestamptz(3)
+  consumed_at         DateTime? @db.Timestamptz(3)
+  created_at          DateTime @default(now()) @db.Timestamptz(3)
+  actor               users    @relation("backup_restore_challenge_actor", fields: [actor_user_id], references: [id], onDelete: Restrict)
+
+  @@index([actor_user_id, expires_at, consumed_at])
+  @@map("backup_restore_challenges")
+}
+
+model backup_restore_events {
+  id            String   @id @default(uuid()) @db.Uuid
+  actor_user_id String?
+  archive_id    String?  @db.Uuid
+  status        String   @db.VarChar(24)
+  phase         String   @db.VarChar(24)
+  error_code    String?  @db.VarChar(64)
+  metadata      Json     @default("{}")
+  created_at    DateTime @default(now()) @db.Timestamptz(3)
+  actor         users?   @relation("backup_restore_actor", fields: [actor_user_id], references: [id], onDelete: SetNull)
+
+  @@index([created_at(sort: Desc), id(sort: Desc)])
+  @@index([actor_user_id, created_at(sort: Desc), id(sort: Desc)])
+  @@map("backup_restore_events")
+}
+
+model backup_restore_jobs {
+  id            String   @id @db.Uuid
+  actor_user_id String?
+  archive_id    String   @db.Uuid
+  status        String   @db.VarChar(24)
+  phase         String   @db.VarChar(24)
+  error_code    String?  @db.VarChar(64)
+  requested_at  DateTime @db.Timestamptz(3)
+  updated_at    DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  actor         users?   @relation("backup_restore_job_actor", fields: [actor_user_id], references: [id], onDelete: SetNull)
+
+  @@index([status, updated_at(sort: Desc), id(sort: Desc)])
+  @@index([actor_user_id, requested_at(sort: Desc), id(sort: Desc)])
+  @@map("backup_restore_jobs")
 }

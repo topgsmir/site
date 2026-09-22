@@ -2,15 +2,13 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
-  NotFoundException,
-  OnModuleDestroy,
-  OnModuleInit
+  NotFoundException
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { AppUser } from "@topgsm/shared-types";
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
-import { isAbsolute, join, resolve, sep } from "node:path";
+import { basename, isAbsolute, join, resolve, sep } from "node:path";
 import sharp from "sharp";
 import { Prisma } from "../../prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -35,9 +33,8 @@ type VariantSpec = {
 };
 
 @Injectable()
-export class MediaService implements OnModuleInit, OnModuleDestroy {
+export class MediaService {
   private readonly root: string;
-  private cleanupTimer?: NodeJS.Timeout;
 
   constructor(
     config: ConfigService,
@@ -47,21 +44,12 @@ export class MediaService implements OnModuleInit, OnModuleDestroy {
     this.root = isAbsolute(configured) ? resolve(configured) : resolve(process.cwd(), configured);
   }
 
-  onModuleInit() {
-    this.cleanupTimer = setInterval(() => void this.cleanupOrphans(), 60 * 60 * 1000);
-    this.cleanupTimer.unref();
-  }
-
-  onModuleDestroy() {
-    if (this.cleanupTimer) clearInterval(this.cleanupTimer);
-  }
-
   async upload(
     actor: BlogActor,
     file: Express.Multer.File | undefined,
     options: { kind: "cover" | "inline"; focalX: number; focalY: number }
   ) {
-    const { buffer, metadata } = await this.validateImageUpload(file);
+    const { buffer, metadata, mimeType, originalFilename } = await this.validateImageUpload(file);
 
     const id = randomUUID();
     const relativeDirectory = join("blog", id.slice(0, 2), id.slice(2, 4), id);
@@ -127,6 +115,8 @@ export class MediaService implements OnModuleInit, OnModuleDestroy {
           height: metadata.height,
           byte_size: buffer.length,
           checksum,
+          original_filename: originalFilename,
+          original_mime_type: mimeType,
           variants: { create: variants }
         },
         include: { variants: true }
@@ -164,7 +154,7 @@ export class MediaService implements OnModuleInit, OnModuleDestroy {
     });
     if (!product) throw new NotFoundException("Product was not found");
 
-    const { buffer, metadata } = await this.validateImageUpload(file);
+    const { buffer, metadata, mimeType, originalFilename } = await this.validateImageUpload(file);
     const id = randomUUID();
     const relativeDirectory = join("products", id.slice(0, 2), id.slice(2, 4), id);
     const directory = this.safePath(relativeDirectory);
@@ -213,7 +203,7 @@ export class MediaService implements OnModuleInit, OnModuleDestroy {
       }
 
       const checksum = createHash("sha256").update(buffer).digest("hex");
-      const previous = await this.prisma.$transaction(async (tx) => {
+      await this.prisma.$transaction(async (tx) => {
         await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "products" WHERE "id" = ${productId} FOR UPDATE`);
         const ownedProduct = await tx.products.findFirst({
           where: { id: productId, ...(sellerId ? { created_by_seller_id: sellerId } : {}) },
@@ -222,9 +212,20 @@ export class MediaService implements OnModuleInit, OnModuleDestroy {
         if (!ownedProduct) throw new NotFoundException("Product was not found");
         const old = await tx.product_media_assets.findUnique({
           where: { product_id: productId },
-          select: { id: true, variants: { select: { path: true } } }
+          select: { id: true }
         });
-        if (old) await tx.product_media_assets.delete({ where: { id: old.id } });
+        if (old) {
+          const trashedAt = new Date();
+          await tx.product_media_assets.update({ where: { id: old.id }, data: {
+            product_id: null, restore_product_id: productId, trashed_at: trashedAt,
+            trashed_by_user_id: actorUserId,
+            purge_after: new Date(trashedAt.getTime() + 30 * 86400_000)
+          } });
+          await tx.media_admin_events.create({ data: {
+            id: randomUUID(), source: "product", asset_id: old.id,
+            actor_user_id: actorUserId, action: "trashed", reason: "Replaced by a newer product image"
+          } });
+        }
         await tx.product_media_assets.create({
           data: {
             id,
@@ -234,14 +235,12 @@ export class MediaService implements OnModuleInit, OnModuleDestroy {
             height: metadata.height!,
             byte_size: buffer.length,
             checksum,
+            original_filename: originalFilename,
+            original_mime_type: mimeType,
             variants: { create: variants }
           }
         });
-        return old;
       });
-      if (previous) {
-        await Promise.allSettled(previous.variants.map((variant) => rm(this.safePath(variant.path), { force: true })));
-      }
       return this.productImage(id, variants);
     } catch (error) {
       await Promise.all([...written, ...temporary].map((path) => rm(path, { force: true })));
@@ -249,8 +248,8 @@ export class MediaService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async deleteProductImage(productId: string, sellerId: string | null) {
-    const previous = await this.prisma.$transaction(async (tx) => {
+  async deleteProductImage(productId: string, sellerId: string | null, actorUserId: string) {
+    await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "products" WHERE "id" = ${productId} FOR UPDATE`);
       const product = await tx.products.findFirst({
         where: { id: productId, ...(sellerId ? { created_by_seller_id: sellerId } : {}) },
@@ -259,14 +258,21 @@ export class MediaService implements OnModuleInit, OnModuleDestroy {
       if (!product) throw new NotFoundException("Product was not found");
       const asset = await tx.product_media_assets.findUnique({
         where: { product_id: productId },
-        select: { id: true, variants: { select: { path: true } } }
+        select: { id: true }
       });
       if (!asset) throw new NotFoundException("Product image was not found");
-      await tx.product_media_assets.delete({ where: { id: asset.id } });
-      return asset;
+      const trashedAt = new Date();
+      await tx.product_media_assets.update({ where: { id: asset.id }, data: {
+        product_id: null, restore_product_id: productId, trashed_at: trashedAt,
+        trashed_by_user_id: actorUserId,
+        purge_after: new Date(trashedAt.getTime() + 30 * 86400_000)
+      } });
+      await tx.media_admin_events.create({ data: {
+        id: randomUUID(), source: "product", asset_id: asset.id,
+        actor_user_id: actorUserId, action: "trashed", reason: "Product image removed"
+      } });
     });
-    await Promise.allSettled(previous.variants.map((variant) => rm(this.safePath(variant.path), { force: true })));
-    return { deleted: true };
+    return { deleted: true, recoverable: true };
   }
 
   async get(assetId: string, variantName: string, user?: AppUser) {
@@ -276,12 +282,17 @@ export class MediaService implements OnModuleInit, OnModuleDestroy {
         id: true,
         owner_user_id: true,
         published_at: true,
+        trashed_at: true,
         checksum: true,
         variants: { where: { variant: variantName }, select: { path: true } }
       }
     });
     const variant = asset?.variants[0];
     if (!asset || !variant) return this.getProductImage(assetId, variantName, user);
+    const uploadsManager = user?.role === "platform-admin" || (
+      user?.role === "platform-staff" && user.platformPermissions?.includes("uploads_manage")
+    );
+    if (asset.trashed_at && !uploadsManager) throw new NotFoundException("Media asset was not found");
     if (
       !asset.published_at &&
       asset.owner_user_id !== user?.id &&
@@ -308,20 +319,25 @@ export class MediaService implements OnModuleInit, OnModuleDestroy {
       select: {
         uploaded_by_user_id: true,
         checksum: true,
+        trashed_at: true,
         product: { select: { status: true, created_by_seller_id: true } },
         variants: { where: { variant: variantName }, select: { path: true } }
       }
     });
     const variant = asset?.variants[0];
     if (!asset || !variant) throw new NotFoundException("Media asset was not found");
-    const published = asset.product.status === "active";
+    const uploadsManager = user?.role === "platform-admin" || (
+      user?.role === "platform-staff" && user.platformPermissions?.includes("uploads_manage")
+    );
+    if (asset.trashed_at && !uploadsManager) throw new NotFoundException("Media asset was not found");
+    const published = Boolean(!asset.trashed_at && asset.product?.status === "active");
     let sellerCanRead = false;
     if (!published && user && (user.role === "seller-admin" || user.role === "seller-staff")) {
       sellerCanRead = Boolean(await this.prisma.seller_memberships.findFirst({
         where: {
           user_id: user.id,
           active: true,
-          seller_id: asset.product.created_by_seller_id,
+          seller_id: asset.product?.created_by_seller_id ?? "",
           seller: {
             invited: false,
             approved: true,
@@ -349,21 +365,8 @@ export class MediaService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async cleanupOrphans() {
-    const assets = await this.prisma.blog_media_assets.findMany({
-      where: {
-        published_at: null,
-        post_id: null,
-        created_at: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) }
-      },
-      select: { id: true, variants: { select: { path: true } } },
-      take: 500
-    });
-    for (const asset of assets) {
-      await this.prisma.blog_media_assets.delete({ where: { id: asset.id } });
-      await Promise.all(asset.variants.map((variant) => rm(this.safePath(variant.path), { force: true })));
-    }
-    return assets.length;
+  async removeStoredFiles(relativePaths: string[]) {
+    await Promise.all(relativePaths.map((path) => rm(this.safePath(path), { force: true })));
   }
 
   private safePath(relativePath: string) {
@@ -406,7 +409,7 @@ export class MediaService implements OnModuleInit, OnModuleDestroy {
     ) {
       throw new BadRequestException("Only static WebP or SVG images within the dimension limit are accepted");
     }
-    return { buffer: file.buffer, metadata };
+    return { buffer: file.buffer, metadata, mimeType, originalFilename: normalizeOriginalFilename(file.originalname) };
   }
 
   private productImage(id: string, variants: Array<{ variant: string; width: number; height: number }>) {
@@ -420,4 +423,12 @@ export class MediaService implements OnModuleInit, OnModuleDestroy {
       }))
     };
   }
+}
+
+export function normalizeOriginalFilename(value: string | undefined) {
+  if (!value) return null;
+  const normalized = basename(value.replaceAll("\\", "/")).normalize("NFKC")
+    .replace(/[\p{Cc}\p{Cf}]/gu, "")
+    .trim();
+  return normalized ? Array.from(normalized).slice(0, 255).join("") : null;
 }

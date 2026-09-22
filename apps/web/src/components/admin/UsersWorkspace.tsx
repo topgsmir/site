@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { AdminUserSummary, AdminUsersPage } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
+import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
 import { UserDetailWorkspace } from "./UserDetailWorkspace";
 import styles from "./UsersWorkspace.module.css";
 
@@ -47,12 +48,14 @@ export function UsersWorkspace({ locale }: { locale: Locale }) {
     window.requestAnimationFrame(() => { if (id) document.getElementById(`admin-user-${id}`)?.focus(); });
   }
   const activeFilters = [filters.role !== "all", filters.hasOrders !== "all", filters.hasPhone !== "all", !!filters.joinedFrom, !!filters.joinedTo].filter(Boolean).length;
+  const totalActiveFilters = activeFilters + Number(Boolean(filters.search.trim())) + Number(filters.sort !== "newest");
   const pageCount = Math.max(1, Math.ceil((result?.total ?? 0) / pageSize));
 
   return <section className={styles.workspace} aria-labelledby="admin-users-title">
     <header className={styles.header}><h1 id="admin-users-title">{c.title}</h1><p>{c.intro}</p></header>
     {selected ? <UserDetailWorkspace locale={locale} user={selected} onBack={closeDetail} onSaved={(updated) => { setSelected(updated); setRevision((current) => current + 1); }} /> : <>
-      <form className={styles.filters} onSubmit={apply}>
+      <CollapsibleFilters className={styles.filters} surface={false} locale={locale} title={c.searchLabel} description={c.search} activeCount={totalActiveFilters}>
+      <form onSubmit={apply}>
         <div className={styles.filterTop}><label className={styles.search}><span>{c.searchLabel}</span><input type="search" placeholder={c.search} maxLength={100} value={draft.search} onChange={(event) => setDraft({ ...draft, search: event.target.value })} /></label>
           <label className={styles.sort}><span>{c.sort}</span><select value={draft.sort} onChange={(event) => setDraft({ ...draft, sort: event.target.value as Filters["sort"] })}><option value="newest">{c.newest}</option><option value="oldest">{c.oldest}</option><option value="name">{c.name}</option><option value="orders">{c.mostOrders}</option></select></label>
           <button className={styles.primary} type="submit">{c.apply}</button>
@@ -67,6 +70,7 @@ export function UsersWorkspace({ locale }: { locale: Locale }) {
           </div><div className={styles.filterFooter}><button className={styles.primary} type="submit">{c.apply}</button><button className={styles.secondaryButton} type="button" onClick={reset}>{c.reset}</button></div>
         </details>
       </form>
+      </CollapsibleFilters>
       <div className={styles.listToolbar}><strong>{result ? `${result.total.toLocaleString(locale)} ${c.results}` : c.results}</strong><span>{c.page} {page.toLocaleString(locale)} {c.of} {pageCount.toLocaleString(locale)}</span></div>
       {loading ? <p className={styles.state} role="status">{c.loading}</p> : null}
       {error ? <div className={styles.errorState} role="alert"><p>{c.loadError}</p><button className={styles.secondaryButton} type="button" onClick={() => setRevision((current) => current + 1)}>{c.retry}</button></div> : null}

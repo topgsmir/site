@@ -7,7 +7,7 @@ import { join } from "node:path";
 import sharp from "sharp";
 import type { PrismaService } from "../../prisma/prisma.service";
 import type { BlogActor } from "../blog/blog-manage.guard";
-import { MediaService } from "./media.service";
+import { MediaService, normalizeOriginalFilename } from "./media.service";
 
 const actor: BlogActor = {
   type: "seller",
@@ -22,6 +22,13 @@ const actor: BlogActor = {
 };
 
 describe("media boundary", () => {
+  it("normalizes original filenames to a safe bounded basename", () => {
+    assert.equal(normalizeOriginalFilename("..\\folder\\\u0000 photo.webp"), "photo.webp");
+    assert.equal(normalizeOriginalFilename("safe\u202Egnp.exe.webp"), "safegnp.exe.webp");
+    assert.equal(Array.from(normalizeOriginalFilename(`${"a".repeat(300)}.webp`) ?? "").length, 255);
+    assert.equal(normalizeOriginalFilename("\u0000\u001f"), null);
+  });
+
   it("rejects files that claim to be WebP but cannot be decoded", async () => {
     const service = new MediaService(
       new ConfigService({ MEDIA_ROOT: "var/test-media" }),

@@ -129,6 +129,18 @@ export class AuthRateLimitService {
     await this.consumeSensitiveMutation("media", userId, clientIp);
   }
 
+  async consumeMediaAdmin(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("media_admin", userId, clientIp);
+  }
+
+  async consumeBackupAdmin(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("backup_admin", userId, clientIp);
+  }
+
+  async consumeBackupRestore(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("backup_restore", userId, clientIp);
+  }
+
   async consumePaymentInitiation(userId: string, clientIp: string) {
     await this.consumeSensitiveMutation("payment", userId, clientIp);
   }
@@ -161,6 +173,10 @@ export class AuthRateLimitService {
 
   async consumeSmsConfiguration(userId: string, clientIp: string) {
     await this.consumeSensitiveMutation("sms_configuration", userId, clientIp);
+  }
+
+  async consumeGoghdiConfiguration(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("goghdi_configuration", userId, clientIp);
   }
 
   async consumeAuthConfiguration(userId: string, clientIp: string) {
@@ -264,10 +280,12 @@ export class AuthRateLimitService {
       | "shipping_configuration"
       | "payout"
       | "media"
+      | "media_admin"
       | "payment"
       | "payment_refund"
       | "payment_configuration"
       | "sms_configuration"
+      | "goghdi_configuration"
       | "auth_configuration"
       | "bridge"
       | "signed_ticket"
@@ -277,7 +295,9 @@ export class AuthRateLimitService {
       | "product_bulk_undo"
       | "comment_submit"
       | "comment_reply"
-      | "comment_admin",
+      | "comment_admin"
+      | "backup_admin"
+      | "backup_restore",
     userId: string,
     clientIp: string
   ) {

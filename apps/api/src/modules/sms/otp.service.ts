@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
+import { ConflictException, Injectable, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Prisma } from "../../prisma/client";
 import { createHmac, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
@@ -52,7 +52,7 @@ export class OtpService {
           throw new ConflictException("Email does not match this buyer account");
         }
       } else {
-        if (!input.fullName?.trim()) throw new BadRequestException("Name is required for a new buyer");
+        if (!input.fullName?.trim()) return { kind: "registration-required" as const };
         if (email) {
           const byEmail = await transaction.users.findUnique({ where: { email } });
           if (byEmail) throw new ConflictException("Email belongs to another account; use account recovery");
@@ -63,11 +63,12 @@ export class OtpService {
         data: { status: "consumed", consumed_at: new Date() }
       });
       if (consumed.count !== 1) throw new ConflictException("OTP challenge was already used");
-      if (byPhone) return byPhone.id;
+      if (byPhone) return { kind: "user" as const, userId: byPhone.id };
       const user = await transaction.users.create({ data: { full_name: input.fullName!.trim(), email: email ?? null, phone_number: phone, role: "buyer" } });
-      return user.id;
+      return { kind: "user" as const, userId: user.id };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-    return this.auth.createSessionForUser(userId);
+    if (userId.kind === "registration-required") return { registrationRequired: true as const };
+    return this.auth.createSessionForUser(userId.userId);
   }
 
   private hash(id: string, phone: string, code: string) {

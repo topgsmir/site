@@ -6,7 +6,7 @@ export const WORKSPACE_COPY = {
     settings: "Account settings", settingsIntro: "A few details that make this workspace yours.", ordersIntro: "From checkout to delivery. Pick up where you left off.",
     search: "Search loaded orders", searchHint: "Product, shop, or order number", all: "All orders", active: "In progress", complete: "Completed", closed: "Cancelled / refunded",
     noMatch: "No matching orders", noMatchHint: "Try another search or show all orders.", clear: "Clear filters", loadedHint: "Search and filters apply to the orders loaded below.",
-    order: "Order", products: "Products", amount: "Amount", status: "Status", quantity: "Quantity", expand: "Show items", footer: "Built for your next repair.",
+    order: "Order", products: "Products", amount: "Amount", status: "Status", quantity: "Quantity", expand: "Show items", chat: "Chat with seller", openingChat: "Opening chat…", chatError: "We couldn't open this order's chat. Please try again.", footer: "Built for your next repair.",
     member: "TopGSM member", overview: "Your workspace", browse: "Explore the store", savedDetails: "Your account details", pointsHint: "A place among the repair community.",
   },
   fa: {
@@ -16,7 +16,7 @@ export const WORKSPACE_COPY = {
     settings: "تنظیمات حساب", settingsIntro: "اطلاعاتی که حساب شما را کامل می‌کند.", ordersIntro: "از پرداخت تا تحویل، سفارش‌هایتان را اینجا پیگیری کنید.",
     search: "جست‌وجو در سفارش‌های دریافت‌شده", searchHint: "محصول، فروشگاه یا شماره سفارش", all: "همه سفارش‌ها", active: "در جریان", complete: "تکمیل‌شده", closed: "لغو یا بازپرداخت",
     noMatch: "سفارشی پیدا نشد", noMatchHint: "عبارت دیگری جست‌وجو کنید یا همه سفارش‌ها را ببینید.", clear: "پاک کردن فیلترها", loadedHint: "جست‌وجو و فیلترها روی سفارش‌های دریافت‌شده اعمال می‌شوند.",
-    order: "سفارش", products: "محصولات", amount: "مبلغ", status: "وضعیت", quantity: "تعداد", expand: "دیدن اقلام", footer: "همراه شما در تعمیر بعدی.",
+    order: "سفارش", products: "محصولات", amount: "مبلغ", status: "وضعیت", quantity: "تعداد", expand: "دیدن اقلام", chat: "گفت‌وگو با فروشنده", openingChat: "در حال باز کردن گفت‌وگو…", chatError: "گفت‌وگوی این سفارش باز نشد. دوباره تلاش کنید.", footer: "همراه شما در تعمیر بعدی.",
     member: "عضو تاپ جی‌اس‌ام", overview: "میز کار شما", browse: "رفتن به فروشگاه", savedDetails: "اطلاعات حساب شما", pointsHint: "جایگاه شما در جمع تعمیرکاران.",
   },
   ar: {
@@ -26,7 +26,7 @@ export const WORKSPACE_COPY = {
     settings: "إعدادات الحساب", settingsIntro: "بيانات بسيطة تجعل هذه المساحة خاصة بك.", ordersIntro: "من الدفع إلى التسليم. تابع طلباتك هنا.",
     search: "البحث في الطلبات المحمّلة", searchHint: "المنتج أو المتجر أو رقم الطلب", all: "كل الطلبات", active: "قيد التنفيذ", complete: "مكتملة", closed: "ملغاة / مستردة",
     noMatch: "لا توجد طلبات مطابقة", noMatchHint: "جرّب بحثًا آخر أو اعرض كل الطلبات.", clear: "مسح الفلاتر", loadedHint: "يُطبّق البحث والفلاتر على الطلبات المحمّلة أدناه.",
-    order: "الطلب", products: "المنتجات", amount: "المبلغ", status: "الحالة", quantity: "الكمية", expand: "عرض العناصر", footer: "معك في الإصلاح التالي.",
+    order: "الطلب", products: "المنتجات", amount: "المبلغ", status: "الحالة", quantity: "الكمية", expand: "عرض العناصر", chat: "محادثة البائع", openingChat: "جارٍ فتح المحادثة…", chatError: "تعذر فتح محادثة هذا الطلب. حاول مرة أخرى.", footer: "معك في الإصلاح التالي.",
     member: "عضو TopGSM", overview: "مساحة عملك", browse: "استكشف المتجر", savedDetails: "بيانات حسابك", pointsHint: "مكانك بين مجتمع الفنيين.",
   },
 } as const;

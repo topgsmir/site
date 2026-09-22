@@ -14,12 +14,12 @@ export const SECURITY_DEFAULTS = {
   comment_submit_guest: policy(20, 5, 3600), comment_submit: policy(30, 8),
   comment_reply: policy(90, 30), comment_admin: policy(90, 30),
   order: policy(100, 30), shipping: policy(30, 10), shipping_configuration: policy(30, 10),
-  payout: policy(60, 20), media: policy(90, 30), payment: policy(40, 10),
+  payout: policy(60, 20), media: policy(90, 30), media_admin: policy(30, 10), payment: policy(40, 10),
   payment_callback: policy(60, 10), payment_refund: policy(30, 10), payment_configuration: policy(30, 10),
-  sms_configuration: policy(30, 10), auth_configuration: policy(30, 10), staff_setup: policy(30, 10, 3600),
+  sms_configuration: policy(30, 10), goghdi_configuration: policy(30, 10), auth_configuration: policy(30, 10), staff_setup: policy(30, 10, 3600),
   bridge: policy(60, 20), signed_ticket: policy(90, 30), ai_profile: policy(30, 10),
   ai_profile_test: policy(90, 30), ai_run: policy(60, 20), product_bulk_undo: policy(15, 5),
-  analytics: policy(180, 60)
+  analytics: policy(180, 60), backup_admin: policy(20, 8), backup_restore: policy(5, 2, 3600)
 } satisfies Record<string, Settings>;
 
 export type SecurityAction = keyof typeof SECURITY_DEFAULTS;

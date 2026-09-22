@@ -27,7 +27,7 @@
 .languageBar > span { color: var(--color-dashboard-muted); font-size: .78rem; }
 .languageTabs { display: flex; gap: 2px; padding: 4px; background: var(--color-dashboard-paper); border-radius: 12px; }
 .languageTabs button { min-height: 36px; padding: 7px 16px; border: 0; border-radius: 9px; color: var(--color-dashboard-muted); background: transparent; cursor: pointer; font-size: .8rem; }
-.languageTabs button[aria-pressed="true"] { color: var(--color-dashboard-accent); background: var(--color-dashboard-surface); box-shadow: 0 1px 5px rgb(30 40 70 / 8%); }
+.languageTabs button[aria-pressed="true"] { color: var(--color-dashboard-accent); background: var(--color-dashboard-surface); box-shadow: var(--shadow-dashboard-card); }
 .writingFields { padding: 34px 40px 22px; }
 .titleField, .excerptField { display: grid; gap: 8px; }
 .titleField > span, .excerptField > span { color: var(--color-dashboard-muted); font-size: .76rem; }

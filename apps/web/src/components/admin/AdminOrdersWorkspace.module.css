@@ -4,7 +4,7 @@
 .eyebrow { margin-block-end: var(--space-dashboard-xs); color: var(--accent); font-size: var(--text-dashboard-xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .header h1 { font-family: var(--font-dashboard-display); font-size: clamp(var(--text-dashboard-xl), 3vw, var(--text-dashboard-2xl)); font-weight: 650; letter-spacing: -.035em; line-height: 1.25; }
 .header p:last-child { margin-block-start: var(--space-dashboard-sm); color: var(--muted); line-height: 1.6; }
-.controls { display: grid; gap: var(--space-dashboard-md); padding: var(--space-dashboard-lg); border: 1px solid var(--rule); border-radius: var(--radius-dashboard-control); background: var(--surface); }
+.controls { display: grid; gap: 0; padding: 0; border: 1px solid var(--rule); border-radius: var(--radius-dashboard-control); background: var(--surface); }
 .searchField, .filterGrid label { display: grid; min-width: 0; gap: var(--space-dashboard-xs); color: var(--muted); font-size: var(--text-dashboard-xs); font-weight: 650; }
 .controls input, .controls select { width: 100%; min-width: 0; height: 44px; padding-inline: var(--space-dashboard-md); border: 1px solid var(--rule); border-radius: var(--radius-dashboard-control); color: var(--ink); background: var(--raised); font-size: var(--text-dashboard-sm); }
 .searchField input { height: 50px; }
@@ -33,7 +33,7 @@
 .orderRow td:nth-child(3) { max-width: 18ch; overflow-wrap: anywhere; }
 .orderRow td:nth-child(5) { max-width: 22ch; }
 .orderRow td:nth-child(6) { white-space: nowrap; }
-.badge { display: inline-block; padding: 5px 10px; border-radius: 999px; color: var(--ink); background: var(--color-dashboard-accent-soft); font-size: var(--text-dashboard-xs); font-weight: 650; white-space: nowrap; }
+.badge { display: inline-block; padding: 5px 10px; border-radius: 999px; color: var(--color-dashboard-neutral); background: var(--color-dashboard-neutral-soft); font-size: var(--text-dashboard-xs); font-weight: 650; white-space: nowrap; }
 .badge[data-status="delivered"], .badge[data-status="paid"] { color: var(--color-dashboard-success); background: var(--color-dashboard-success-soft); }
 .badge[data-status="cancelled"] { color: var(--color-dashboard-error); background: var(--color-dashboard-error-soft); }
 .detailRow td { background: var(--raised); }

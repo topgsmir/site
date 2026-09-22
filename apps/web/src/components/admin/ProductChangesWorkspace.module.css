@@ -3,7 +3,7 @@
 .workspace > header h2 { font-size: clamp(1.7rem, 2.5vw, 2.7rem); line-height: 1.05; letter-spacing: -.04em; }
 .workspace > header p { max-width: 58ch; margin-top: 10px; color: var(--muted); font-size: .82rem; line-height: 1.7; }
 .compactTitle { margin: 8px 0 2px; font-size: .92rem; }
-.bulkPanel { margin-bottom: 30px; padding: clamp(18px, 3vw, 28px); border: 1px solid var(--line); border-radius: 24px; background: var(--card-surface); box-shadow: 0 12px 34px color-mix(in srgb, var(--shadow-color) 42%, transparent); }
+.bulkPanel { margin-bottom: 30px; padding: 0; border: 1px solid var(--line); border-radius: 24px; background: var(--card-surface); box-shadow: 0 12px 34px color-mix(in srgb, var(--shadow-color) 42%, transparent); }
 .bulkHeading { display: flex; justify-content: space-between; gap: 24px; align-items: start; }
 .bulkHeading h3 { margin: 0; font-size: 1.05rem; }
 .bulkHeading p { max-width: 64ch; margin: 7px 0 0; color: var(--muted); font-size: .76rem; line-height: 1.7; }
@@ -15,7 +15,7 @@
 .bulkActions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 18px; }
 .bulkActions > button { min-height: 40px; padding: 8px 14px; border: 1px solid var(--line-strong); border-radius: 999px; background: transparent; color: var(--ink); font: inherit; font-size: .72rem; cursor: pointer; }
 .bulkActions > button:disabled { opacity: .5; cursor: wait; }
-.bulkActions .dangerButton { border-color: color-mix(in srgb, #b42318 42%, var(--line)); color: #b42318; }
+.bulkActions .dangerButton { border-color: color-mix(in srgb, var(--color-dashboard-error) 42%, var(--line)); color: var(--color-dashboard-error); }
 .bulkPreview { display: grid; gap: 3px; margin-inline-end: auto; }
 .bulkPreview strong { font-size: .75rem; }
 .bulkPreview small { max-width: 50ch; color: var(--muted); font-size: .66rem; line-height: 1.5; }
@@ -36,7 +36,7 @@
 .card button:hover, .pagination button:hover:not(:disabled), .error button:hover { border-color: var(--signal); color: var(--signal-dark); }
 .card button:disabled, .pagination button:disabled { opacity: .55; cursor: not-allowed; }
 .empty, .error, .message { margin-top: 16px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; color: var(--muted); font-size: .76rem; }
-.error { border-color: color-mix(in srgb, #b42318 30%, var(--line)); color: #b42318; }
+.error { border-color: color-mix(in srgb, var(--color-dashboard-error) 30%, var(--line)); color: var(--color-dashboard-error); }
 .message { color: var(--signal-dark); }
 .error button { margin-inline-start: 10px; color: inherit; }
 .pagination, .pagination div { display: flex; align-items: center; justify-content: space-between; gap: 10px; }

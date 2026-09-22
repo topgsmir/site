@@ -180,9 +180,10 @@ export class ProductController {
   @Delete("admin/:productId/image")
   @UseGuards(PlatformAdminGuard)
   deleteImageForAdmin(
-    @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string
+    @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
+    @Req() request: AuthenticatedRequest
   ) {
-    return this.media.deleteProductImage(productId, null);
+    return this.media.deleteProductImage(productId, null, request.authenticatedUser!.id);
   }
 
   @Post(":productId/image")
@@ -209,7 +210,7 @@ export class ProductController {
     @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
     @Req() request: AuthenticatedRequest
   ) {
-    return this.media.deleteProductImage(productId, request.sellerContext!.sellerId);
+    return this.media.deleteProductImage(productId, request.sellerContext!.sellerId, request.authenticatedUser!.id);
   }
 
   @Patch("admin/listings/:listingId")

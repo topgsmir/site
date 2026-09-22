@@ -37,7 +37,7 @@ const orderSelect = {
   holdback_rate: true,
   created_at: true,
   updated_at: true,
-  seller: { select: { shop_name: true } },
+  seller: { select: { shop_name: true, goghdi_agent_id: true } },
   buyer: { select: { full_name: true, email: true, phone_number: true } },
   shipping_address: { select: { recipient_name: true, phone_number: true, province: true, city: true, postal_code: true, address_line: true } },
   shipment: { select: { carrier: true, tracking_code: true, shipped_at: true } },
@@ -52,6 +52,9 @@ const orderSelect = {
       unit_price: true,
       total_amount: true,
       service_note: true,
+      service_input_schema: true,
+      encrypted_service_answers: true,
+      service_answers_key_id: true,
       digital_entitlement: { select: { delivery_url: true, max_downloads: true, download_count: true } },
       bridge_fulfillment: {
         select: { id: true, mode: true, status: true, last_error_code: true, completed_at: true, encrypted_input: true, encryption_key_id: true, encrypted_result: true, result_encryption_key_id: true }
@@ -66,7 +69,7 @@ const buyerOrderSummarySelect = {
   currency: true,
   total_amount: true,
   created_at: true,
-  seller: { select: { shop_name: true } },
+  seller: { select: { shop_name: true, goghdi_agent_id: true } },
   items: { select: { id: true, product_title: true, product_type: true, quantity: true } }
 } satisfies Prisma.ordersSelect;
 
@@ -91,6 +94,21 @@ export class OrderService {
     @Optional() private readonly amadastSettings?: AmadastSettingsService,
     @Optional() private readonly sellerShippingProfiles?: SellerShippingProfileService
   ) {}
+
+  async newOrderCount(actor: AppUser) {
+    if (actor.role === "buyer") {
+      throw new ForbiddenException("Seller or platform order access is required");
+    }
+
+    return {
+      count: await this.prisma.orders.count({
+        where: {
+          ...await this.scope(actor),
+          status: "paid"
+        }
+      })
+    };
+  }
 
   async list(actor: AppUser, input: ListOrdersQueryDto) {
     if (input.view === "directory" && !this.hasPlatformPermission(actor, "orders_manage")) {
@@ -172,6 +190,7 @@ export class OrderService {
           totalAmount: order.total_amount.toString(),
           createdAt: order.created_at.toISOString(),
           seller: { shopName: order.seller.shop_name },
+          chatAvailable: Boolean(order.seller.goghdi_agent_id),
           items: order.items.map((item) => ({
             id: item.id,
             productTitle: item.product_title,
@@ -192,8 +211,9 @@ export class OrderService {
     const hasMore = rows.length > input.limit;
     const page = hasMore ? rows.slice(0, input.limit) : rows;
     await this.auditBridgeAccess(actor.id, page, "list");
+    const revealServiceAnswers = actor.role === "seller-admin" || actor.role === "seller-staff";
     return {
-      items: page.map((order) => this.map(order)),
+      items: page.map((order) => this.map(order, revealServiceAnswers)),
       nextCursor: hasMore ? page.at(-1)?.id ?? null : null,
       shippingProviders: {
         amadast: {
@@ -716,7 +736,7 @@ export class OrderService {
     return createHash("sha256").update(JSON.stringify(value)).digest("hex");
   }
 
-  private map(order: OrderRecord) {
+  private map(order: OrderRecord, revealSensitiveServiceAnswers = false) {
     return {
       id: order.id,
       buyerId: order.buyer_id,
@@ -741,6 +761,7 @@ export class OrderService {
         unitPrice: item.unit_price.toString(),
         totalAmount: item.total_amount.toString(),
         serviceNote: item.service_note,
+        serviceInputs: this.mapServiceInputs(item, revealSensitiveServiceAnswers),
         ...(item.digital_entitlement ? { digitalDelivery: { downloadUrl: `/orders/${order.id}/items/${item.id}/download`, destinationHost: new URL(item.digital_entitlement.delivery_url).hostname, maxDownloads: item.digital_entitlement.max_downloads, downloadCount: item.digital_entitlement.download_count } } : {}),
         ...(item.bridge_fulfillment
           ? {
@@ -764,12 +785,16 @@ export class OrderService {
   }
 
   private mapForActor(order: OrderRecord, actor: AppUser) {
-    const mapped = this.map(order);
+    const mapped = this.map(
+      order,
+      actor.role === "seller-admin" || actor.role === "seller-staff"
+    );
     if (actor.role !== "buyer") return mapped;
     return {
       id: mapped.id,
       checkoutId: mapped.checkoutId,
       seller: mapped.seller,
+      chatAvailable: Boolean(order.seller.goghdi_agent_id),
       status: mapped.status,
       currency: mapped.currency,
       totalAmount: mapped.totalAmount,
@@ -789,6 +814,49 @@ export class OrderService {
     if (!this.crypto) return null;
     try { return JSON.parse(this.crypto.decrypt(ciphertext, keyId, purpose)) as unknown; }
     catch { return null; }
+  }
+
+  private mapServiceInputs(
+    item: Pick<OrderRecord["items"][number], "id" | "service_input_schema" | "encrypted_service_answers" | "service_answers_key_id">,
+    revealSensitive: boolean
+  ) {
+    const answers = new Map<string, string>();
+    if (this.crypto && item.encrypted_service_answers && item.service_answers_key_id) {
+      try {
+        const decrypted = JSON.parse(this.crypto.decrypt(
+          item.encrypted_service_answers,
+          item.service_answers_key_id,
+          `service-order-item:${item.id}:answers`,
+          "SERVICE_INPUT"
+        )) as unknown;
+        if (Array.isArray(decrypted)) {
+          for (const answer of decrypted) {
+            if (
+              answer && typeof answer === "object" && !Array.isArray(answer) &&
+              typeof answer.key === "string" && typeof answer.value === "string"
+            ) answers.set(answer.key, answer.value);
+          }
+        }
+      } catch {
+        // A missing or retired key must not leak ciphertext or break the entire order response.
+      }
+    }
+    if (!Array.isArray(item.service_input_schema)) return [];
+    return item.service_input_schema.flatMap((field) => {
+      if (!field || typeof field !== "object" || Array.isArray(field)) return [];
+      if (
+        typeof field.key !== "string" || typeof field.label !== "string" ||
+        !["text", "textarea", "password"].includes(String(field.type))
+      ) return [];
+      const sensitive = field.type === "password";
+      return [{
+        key: field.key,
+        label: field.label,
+        type: field.type as "text" | "textarea" | "password",
+        value: sensitive && !revealSensitive ? null : answers.get(field.key) ?? null,
+        sensitive
+      }];
+    });
   }
 
   private async auditBridgeAccess(userId: string, orders: OrderRecord[], accessKind: "list" | "detail") {

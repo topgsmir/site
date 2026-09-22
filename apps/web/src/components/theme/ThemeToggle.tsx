@@ -23,7 +23,7 @@ function applyTheme(theme: Theme) {
   document.documentElement.style.colorScheme = theme;
   document
     .querySelector('meta[name="theme-color"]')
-    ?.setAttribute("content", theme === "dark" ? "#191c26" : "#f8f9fc");
+    ?.setAttribute("content", theme === "dark" ? "#011627" : "#f6f7f8");
 }
 
 function getServerTheme(): Theme {

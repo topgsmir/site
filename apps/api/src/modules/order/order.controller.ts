@@ -40,8 +40,15 @@ export class OrderController {
   ) {}
 
   @Get()
+  @Header("Cache-Control", "private, no-store")
   list(@Req() request: AuthenticatedRequest, @Query() query: ListOrdersQueryDto) {
     return this.orders.list(request.authenticatedUser!, query);
+  }
+
+  @Get("new-count")
+  @Header("Cache-Control", "private, no-store")
+  newOrderCount(@Req() request: AuthenticatedRequest) {
+    return this.orders.newOrderCount(request.authenticatedUser!);
   }
 
   @Get("leaderboard")
@@ -51,6 +58,7 @@ export class OrderController {
   }
 
   @Get(":id")
+  @Header("Cache-Control", "private, no-store")
   get(@Req() request: AuthenticatedRequest, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string) {
     return this.orders.get(request.authenticatedUser!, id);
   }

@@ -19,6 +19,7 @@ import type {
   ManageProductsQueryDto,
   SellerProductsQueryDto,
   PreviewBulkUndoProductChangesDto,
+  ServiceInputDefinitionDto,
   UpdateAdminProductDto,
   UpdateProductDto,
   UpdateSellerOfferDto
@@ -124,7 +125,8 @@ const sellerListingSelect = {
         select: {
           service_type: true,
           estimated_hours: true,
-          instructions: true
+          instructions: true,
+          input_schema: true
         }
       }
     }
@@ -446,7 +448,7 @@ export class ProductService {
                 digital: { select: { max_downloads: true } },
                 physical: { select: { stock: true, weight_grams: true } },
                 service: {
-                  select: { service_type: true, estimated_hours: true }
+                  select: { service_type: true, estimated_hours: true, input_schema: true }
                 }
               }
             }
@@ -510,7 +512,8 @@ export class ProductService {
             ? {
                 service: {
                   serviceType: offer.service.service_type,
-                  estimatedHours: offer.service.estimated_hours
+                  estimatedHours: offer.service.estimated_hours,
+                  inputs: this.serviceInputDefinitions(offer.service.input_schema)
                 }
               }
             : {})
@@ -887,7 +890,10 @@ export class ProductService {
             data: {
               service_type: this.clean(input.service.serviceType),
               estimated_hours: input.service.estimatedHours,
-              instructions: this.cleanOptional(input.service.instructions)
+              instructions: this.cleanOptional(input.service.instructions),
+              ...(input.service.inputs === undefined
+                ? {}
+                : { input_schema: this.serviceInputSchema(input.service.inputs) })
             }
           });
         }
@@ -1335,7 +1341,10 @@ export class ProductService {
             data: {
               service_type: this.clean(input.service.serviceType),
               estimated_hours: input.service.estimatedHours,
-              instructions: this.cleanOptional(input.service.instructions)
+              instructions: this.cleanOptional(input.service.instructions),
+              ...(input.service.inputs === undefined
+                ? {}
+                : { input_schema: this.serviceInputSchema(input.service.inputs) })
             }
           });
         }
@@ -1537,7 +1546,8 @@ export class ProductService {
           offer_id: offer.id,
           service_type: this.clean(input.service.serviceType),
           estimated_hours: input.service.estimatedHours,
-          instructions: this.cleanOptional(input.service.instructions)
+          instructions: this.cleanOptional(input.service.instructions),
+          input_schema: this.serviceInputSchema(input.service.inputs)
         }
       });
     } else if (productType === "bridge") {
@@ -1672,7 +1682,8 @@ export class ProductService {
               service: {
                 serviceType: offer.service.service_type,
                 estimatedHours: offer.service.estimated_hours,
-                instructions: offer.service.instructions
+                instructions: offer.service.instructions,
+                inputs: this.serviceInputDefinitions(offer.service.input_schema)
               }
             }
           : {}),
@@ -1813,7 +1824,8 @@ export class ProductService {
                 service: {
                   serviceType: offer.service.service_type,
                   estimatedHours: offer.service.estimated_hours,
-                  instructions: offer.service.instructions
+                  instructions: offer.service.instructions,
+                  inputs: this.serviceInputDefinitions(offer.service.input_schema)
                 }
               }
             : {}),
@@ -2069,6 +2081,47 @@ export class ProductService {
         ...(override?.placeholder ? { placeholder: String(override.placeholder) } : {}),
         ...(override?.helpText ? { helpText: String(override.helpText) } : {})
       };
+    });
+  }
+
+  private serviceInputSchema(inputs: ServiceInputDefinitionDto[] | undefined) {
+    return (inputs ?? []).map((field) => {
+      const minimumLength = field.minimumLength ?? 0;
+      const maximumLength = field.maximumLength ?? 2_000;
+      if (minimumLength > maximumLength) {
+        throw new BadRequestException(`Minimum length cannot exceed maximum length for ${field.key}`);
+      }
+      return {
+        key: field.key,
+        label: this.clean(field.label),
+        type: field.type,
+        required: field.required,
+        minimumLength,
+        maximumLength,
+        ...(this.cleanOptional(field.placeholder) ? { placeholder: this.cleanOptional(field.placeholder) } : {}),
+        ...(this.cleanOptional(field.helpText) ? { helpText: this.cleanOptional(field.helpText) } : {})
+      };
+    });
+  }
+
+  private serviceInputDefinitions(value: Prisma.JsonValue) {
+    return this.jsonArray(value).flatMap((field) => {
+      if (
+        typeof field.key !== "string" ||
+        typeof field.label !== "string" ||
+        !["text", "textarea", "password"].includes(String(field.type)) ||
+        typeof field.required !== "boolean"
+      ) return [];
+      return [{
+        key: field.key,
+        label: field.label,
+        type: field.type as "text" | "textarea" | "password",
+        required: field.required,
+        ...(typeof field.placeholder === "string" ? { placeholder: field.placeholder } : {}),
+        ...(typeof field.helpText === "string" ? { helpText: field.helpText } : {}),
+        ...(typeof field.minimumLength === "number" ? { minimumLength: field.minimumLength } : {}),
+        ...(typeof field.maximumLength === "number" ? { maximumLength: field.maximumLength } : {})
+      }];
     });
   }
 

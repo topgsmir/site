@@ -6,6 +6,7 @@ import type { Route } from "next";
 import { api } from "@/lib/api/client";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import type { Locale } from "@/lib/i18n";
+import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
 import styles from "./AdminOrdersWorkspace.module.css";
 
 type Order = {
@@ -77,7 +78,7 @@ export function AdminOrdersWorkspace({ locale }: { locale: Locale }) {
 
   return <section className={styles.workspace} aria-labelledby="admin-orders-title">
     <header className={styles.header}><div><p className={styles.eyebrow}>TopGSM / {c.title}</p><h1 id="admin-orders-title">{c.title}</h1><p>{c.intro}</p></div><button type="button" className={styles.secondary} onClick={() => void load(cursors[page] ?? null, filters)} disabled={loading}>{c.refresh}</button></header>
-    <div className={styles.controls}>
+    <CollapsibleFilters className={styles.controls} surface={false} locale={locale} title={c.search} description={c.searchHint} activeCount={activeCount}>
       <label className={styles.searchField}><span>{c.search}</span><input type="search" value={draft.search} onChange={(event) => setFilter("search", event.target.value)} placeholder={c.searchHint} maxLength={100} /></label>
       <div className={styles.filterGrid}>
         <label><span>{c.status}</span><select value={draft.status} onChange={(event) => setFilter("status", event.target.value)}><option value="">{c.all}</option>{statusKeys.map((key) => <option value={key} key={key}>{c[key]}</option>)}</select></label>
@@ -87,7 +88,7 @@ export function AdminOrdersWorkspace({ locale }: { locale: Locale }) {
         <label><span>{c.sort}</span><select value={draft.sort} onChange={(event) => setFilter("sort", event.target.value)}><option value="newest">{c.newest}</option><option value="oldest">{c.oldest}</option></select></label>
       </div>
       <div className={styles.filterFooter}><span>{activeCount ? `${activeCount.toLocaleString(locale)} ${c.filters}` : c.all} · {c.showing} {orders.length.toLocaleString(locale)} {c.of}</span><button type="button" className={styles.clear} disabled={!activeCount && draft.sort === "newest"} onClick={() => setDraft(initialFilters)}>{c.clear}</button></div>
-    </div>
+    </CollapsibleFilters>
     {invalidRange ? <p className={styles.notice} role="alert">{c.from} ≤ {c.to}</p> : null}
     {shortSearch ? <p className={styles.notice} role="status">{c.shortSearch}</p> : null}
     {error ? <p className={styles.notice} role="alert">{error} <button type="button" onClick={() => void load(cursors[page] ?? null, filters)}>{c.refresh}</button></p> : null}

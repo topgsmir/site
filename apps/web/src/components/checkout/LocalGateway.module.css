@@ -1,11 +1,11 @@
-.page { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #f6f5f1; color: #18201d; }
-.panel { width: min(100%, 440px); padding: 32px; background: #fff; border: 1px solid #deded8; border-radius: 18px; display: grid; gap: 16px; }
+.page { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--color-dashboard-paper); color: var(--color-dashboard-ink); }
+.panel { width: min(100%, 440px); padding: 32px; background: var(--color-dashboard-surface); border: 1px solid var(--color-dashboard-rule); border-radius: 18px; display: grid; gap: 16px; }
 .panel h1, .panel p { margin: 0; }
-.badge { width: fit-content; padding: 4px 9px; border-radius: 5px; background: #fff0c9; color: #694b00; font-size: 12px; font-weight: 800; letter-spacing: .08em; }
+.badge { width: fit-content; padding: 4px 9px; border-radius: 5px; background: var(--color-dashboard-warning-soft); color: var(--color-dashboard-warning); font-size: 12px; font-weight: 800; letter-spacing: .08em; }
 .amount { font-size: 28px; }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; }
-.actions button { border: 1px solid #18201d; border-radius: 8px; padding: 12px 16px; cursor: pointer; font: inherit; }
-.actions button:first-child { background: #18201d; color: white; }
+.actions button { border: 1px solid var(--color-dashboard-ink); border-radius: 8px; padding: 12px 16px; color: var(--color-dashboard-ink); background: var(--color-dashboard-surface); cursor: pointer; font: inherit; }
+.actions button:first-child { background: var(--color-dashboard-accent); color: var(--color-dashboard-accent-ink); }
 .actions button:disabled { opacity: .55; cursor: wait; }
 .panel a { color: inherit; }
-.error { color: #b42318; }
+.error { color: var(--color-dashboard-error); }

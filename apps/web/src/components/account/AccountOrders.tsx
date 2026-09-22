@@ -5,6 +5,7 @@ import type { Route } from "next";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
+import { loadGoghdiConfig, openGoghdiOrderTicket } from "@/lib/goghdi/goghdi";
 import type { Locale } from "@/lib/i18n";
 import { ACCOUNT_COPY } from "./AccountCopy";
 import { WORKSPACE_COPY } from "./AccountWorkspaceCopy";
@@ -14,6 +15,7 @@ import styles from "./AccountOrders.module.css";
 type OrderSummary = {
   id: string; status: string; currency: string; totalAmount: string; createdAt: string;
   seller: { shopName: string };
+  chatAvailable: boolean;
   items: Array<{ id: string; productTitle: string; productType: string; quantity: number }>;
 };
 type OrderPage = { items: OrderSummary[]; nextCursor: string | null };
@@ -30,6 +32,9 @@ export function AccountOrders({ locale, view }: { locale: Locale; view: "overvie
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [chatEnabled, setChatEnabled] = useState(false);
+  const [openingChat, setOpeningChat] = useState<string | null>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
   const request = useRef<AbortController | null>(null);
   const failedCursor = useRef<string | undefined>(undefined);
 
@@ -57,6 +62,28 @@ export function AccountOrders({ locale, view }: { locale: Locale; view: "overvie
     return () => { cancelAnimationFrame(frame); request.current?.abort(); };
   }, [load]);
 
+  useEffect(() => {
+    if (view !== "orders") return;
+    let active = true;
+    void loadGoghdiConfig()
+      .then((config) => { if (active) setChatEnabled(config.enabled); })
+      .catch(() => { if (active) setChatEnabled(false); });
+    return () => { active = false; };
+  }, [view]);
+
+  async function openChat(orderId: string) {
+    if (openingChat) return;
+    setOpeningChat(orderId);
+    setChatError(null);
+    try {
+      await openGoghdiOrderTicket(orderId);
+    } catch {
+      setChatError(orderId);
+    } finally {
+      setOpeningChat(null);
+    }
+  }
+
   const normalizedQuery = query.trim().toLocaleLowerCase(locale);
   const visibleOrders = orders.filter((order) => {
     const matchesQuery = `${order.id} ${order.seller.shopName} ${order.items.map((item) => item.productTitle).join(" ")}`.toLocaleLowerCase(locale).includes(normalizedQuery);
@@ -83,8 +110,12 @@ export function AccountOrders({ locale, view }: { locale: Locale; view: "overvie
           <div className={styles.orderProduct}><span className={styles.productIcon}><AccountIcon name={order.items.every((item) => item.productType === "digital") ? "file" : "orders"} /></span><div><h3><Link href={`/${locale}/orders/${order.id}` as Route}>{order.items[0]?.productTitle ?? w.order}{order.items.length > 1 ? <span className={styles.extraItems}> +{(order.items.length - 1).toLocaleString(locale)}</span> : null}</Link></h3><p><bdi>{order.seller.shopName}</bdi><span aria-hidden="true"> · </span><time dateTime={order.createdAt}>{new Date(order.createdAt).toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" })}</time></p></div></div>
           <span className={styles.status} data-status={order.status}><span />{c.status[order.status as keyof typeof c.status] ?? order.status}</span>
           <strong className={styles.amount}>{formatCurrencyAmount(order.totalAmount, order.currency, locale)}<small>{currencyLabel(order.currency)}</small></strong>
-          <Link className={styles.orderLink} href={`/${locale}/orders/${order.id}` as Route} aria-label={`${c.details}: ${order.items[0]?.productTitle ?? order.id}`}><AccountIcon name="arrow" /></Link>
+          <div className={styles.orderActions}>
+            {view === "orders" && chatEnabled ? <button className={styles.chatButton} type="button" disabled={openingChat !== null} onClick={() => void openChat(order.id)}>{openingChat === order.id ? w.openingChat : w.chat}</button> : null}
+            <Link className={styles.orderLink} href={`/${locale}/orders/${order.id}` as Route} aria-label={`${c.details}: ${order.items[0]?.productTitle ?? order.id}`}><AccountIcon name="arrow" /></Link>
+          </div>
         </div>
+        {chatError === order.id ? <p className={styles.chatError} role="alert">{w.chatError}</p> : null}
         <details className={styles.orderDetails}><summary><span>{w.expand}<AccountIcon name="chevron" /></span><bdi>#{order.id.slice(-8)}</bdi></summary><ul>{order.items.map((item) => <li key={item.id}><span>{item.productTitle}</span><span>{w.quantity}: {item.quantity.toLocaleString(locale)}</span></li>)}</ul><Link href={`/${locale}/orders/${order.id}` as Route}>{c.details}<AccountIcon name="arrow" /></Link></details>
       </article>)}
     </div> : null}

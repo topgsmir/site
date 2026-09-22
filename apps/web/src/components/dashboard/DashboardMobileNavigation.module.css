@@ -1,0 +1,98 @@
+/* Hallmark · component: phone navigation · modern-minimal · TopGSM
+ * Compact context header / thumb-reachable dock / modal section directory.
+ * Pre-emit critique: P5 H5 E4 S5 R5 V4 */
+.desktop { display: contents; }
+.header, .dock { display: none; }
+.sheet { display: none; }
+
+@media (max-width: 59.999rem) {
+  .desktop { display: none; }
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-width: 0;
+    padding: 1rem;
+    border-bottom: 1px solid var(--color-dashboard-rule);
+    color: var(--color-dashboard-ink);
+    background: var(--color-dashboard-surface);
+    font-family: var(--font-dashboard-body);
+  }
+  .header > div { display: grid; gap: .25rem; min-width: 0; }
+  .header span, .sheetHeading span { color: var(--color-dashboard-muted); font-size: .6875rem; }
+  .header strong { font-size: 1rem; overflow-wrap: anywhere; }
+  .brand { flex-shrink: 0; color: var(--color-dashboard-ink); font-size: 1.25rem; font-weight: 700; letter-spacing: -.06em; padding-block: .75rem; }
+  .header ~ main { padding-bottom: calc(6.5rem + env(safe-area-inset-bottom)); }
+  :global(body):has(.header) :global(.theme-toggle) { bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
+  .dock {
+    position: fixed;
+    z-index: var(--z-dashboard-sticky);
+    inset-inline: 0;
+    bottom: 0;
+    display: flex;
+    padding: .375rem .5rem calc(.375rem + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--color-dashboard-rule-strong);
+    background: var(--color-dashboard-surface);
+    color: var(--color-dashboard-ink);
+    font-family: var(--font-dashboard-body);
+  }
+  .tab {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    min-height: 3.5rem;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .25rem;
+    border: 0;
+    border-radius: .75rem;
+    background: transparent;
+    color: var(--color-dashboard-ink-soft);
+    font: 500 .6875rem var(--font-dashboard-body);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .tab[aria-current="page"], .tab[data-active="true"] { background: var(--color-navigation-selected); color: var(--color-navigation-selected-ink); font-weight: 700; }
+  .tab svg { width: 1.375rem; height: 1.375rem; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .icon { position: relative; display: flex; }
+  .icon b { position: absolute; inset-inline-start: 75%; top: -.25rem; min-width: 1rem; padding: .125rem; border-radius: 1rem; color: var(--color-dashboard-accent-ink); background: var(--color-dashboard-accent-strong); font-size: .5625rem; line-height: 1; text-align: center; }
+  .tab:focus-visible, .brand:focus-visible, .sheetHeading button:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: -2px; }
+  .tab[aria-current="page"]:focus-visible, .tab[data-active="true"]:focus-visible { outline-color: var(--color-navigation-selected-ink); outline-offset: -4px; }
+  .tab[aria-current="page"] .icon b { color: var(--color-navigation-ink); background: var(--color-navigation-paper); }
+  .tab:active, .sheetHeading button:active { transform: scale(.96); }
+  .sheet[open] {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    inset: auto 0 0;
+    width: 100%;
+    max-width: 40rem;
+    max-height: 88dvh;
+    margin: 0 auto;
+    padding: 0;
+    border: 1px solid var(--color-dashboard-rule);
+    border-bottom: 0;
+    border-radius: 1.5rem 1.5rem 0 0;
+    color: var(--color-dashboard-ink);
+    background: var(--color-dashboard-surface);
+    font-family: var(--font-dashboard-body);
+    animation: enter var(--dur-dashboard-short) var(--ease-dashboard-out);
+  }
+  .sheet::backdrop { background: color-mix(in srgb, var(--color-brand-navy) 55%, transparent); }
+  .sheetHeading { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; padding: 1.25rem; border-bottom: 1px solid var(--color-dashboard-rule); }
+  .sheetHeading h2 { margin: .25rem 0 0; font-size: 1.25rem; font-style: normal; }
+  .sheetHeading button { width: 2.75rem; height: 2.75rem; border: 0; border-radius: 50%; background: var(--color-dashboard-surface-raised); color: var(--color-dashboard-ink); font-size: 1.5rem; cursor: pointer; }
+  .sheetBody { overflow-y: auto; overscroll-behavior: contain; padding-bottom: env(safe-area-inset-bottom); }
+  .sheet .sheetBody > aside { position: static; display: flex; flex-direction: column; align-items: stretch; max-height: none; min-height: 0; overflow: visible; padding: 1rem; border: 0; border-radius: 0; box-shadow: none; gap: 1rem; }
+  .sheetBody > aside > :first-child { display: none; }
+  .sheetBody nav { display: flex; flex-direction: column; gap: .375rem; }
+  .sheetBody nav a, .sheetBody nav button { min-height: 3.25rem; }
+  .sheetBody nav a > span, .sheetBody nav button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sheetBody nav > div > div { grid-template-columns: minmax(0, 1fr); padding-inline-start: 1rem; }
+  .sheetBody :global(.admin-rail-account) > span, .sheetBody :global(.admin-rail-account .admin-identity) { display: block; }
+  @media (hover: hover) { .tab:not([aria-current="page"]):not([data-active="true"]):hover { background: var(--color-dashboard-surface-raised); } }
+}
+@keyframes enter { from { opacity: 0; transform: translateY(1.5rem); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .sheet[open] { animation: none; } }

@@ -514,7 +514,7 @@
 }
 
 .support .supportError {
-  color: var(--color-product-danger, #9f2424);
+  color: var(--color-product-danger);
   font-weight: 700;
 }
 

@@ -1,15 +1,19 @@
 import assert from "node:assert/strict";
+import { randomBytes } from "node:crypto";
 import { describe, it } from "node:test";
+import { ConfigService } from "@nestjs/config";
 import { Prisma } from "../../prisma/client";
+import { CredentialCryptoService } from "../../common/security/credential-crypto.service";
 import { CheckoutService } from "./checkout.service";
 
-function offer(input: { id: string; sellerId: string; type: "digital" | "physical" | "service"; price: string; stock?: number; url?: string; physicalGranted?: boolean }) {
+function offer(input: { id: string; sellerId: string; type: "digital" | "physical" | "service"; price: string; stock?: number; url?: string; physicalGranted?: boolean; serviceInputs?: unknown[] }) {
   return {
     id: input.id,
     price: new Prisma.Decimal(input.price),
     currency: "TOMAN",
     digital: input.type === "digital" ? { file_reference: input.url ?? "https://uploads.example/file", max_downloads: 2 } : null,
     physical: input.type === "physical" ? { stock: input.stock ?? 10 } : null,
+    service: input.type === "service" ? { input_schema: input.serviceInputs ?? [] } : null,
     listing: {
       seller: { id: input.sellerId, shop_name: `Seller ${input.sellerId}`, commission: new Prisma.Decimal("0.1"), holdback_rate: new Prisma.Decimal("0.05"), permissions: input.type === "physical" && input.physicalGranted !== false ? [{ permission: "physical_products_manage" }] : [] },
       product: {
@@ -77,6 +81,29 @@ describe("CheckoutService quotes", () => {
     );
   });
 
+  it("returns seller-defined service inputs and validates supplied answers", async () => {
+    const serviceOffer = offer({
+      id: "00000000-0000-4000-8000-000000000110",
+      sellerId: "seller-a",
+      type: "service",
+      price: "5000",
+      serviceInputs: [{ key: "field_login", label: "Account password", type: "password", required: true, minimumLength: 6, maximumLength: 100 }]
+    });
+    const checkout = service([serviceOffer]);
+    const quote = await checkout.quote({ items: [{ offerId: serviceOffer.id, quantity: 1 }] });
+    assert.deepEqual(quote.groups[0]!.items[0]!.serviceInputs, [{
+      key: "field_login", label: "Account password", type: "password", required: true, minimumLength: 6, maximumLength: 100
+    }]);
+    await assert.rejects(
+      () => checkout.quote({ items: [{ offerId: serviceOffer.id, quantity: 1, serviceAnswers: [{ key: "field_login", value: "short" }] }] }),
+      /invalid length/i
+    );
+    await assert.rejects(
+      () => checkout.quote({ items: [{ offerId: serviceOffer.id, quantity: 1, serviceAnswers: [{ key: "unknown", value: "anything" }] }] }),
+      /unknown service field/i
+    );
+  });
+
   it("rejects physical checkout after the seller grant is revoked", async () => {
     await assert.rejects(
       () => service([offer({ id: "00000000-0000-4000-8000-000000000109", sellerId: "seller-a", type: "physical", price: "1000", stock: 2, physicalGranted: false })]).quote({ items: [{ offerId: "00000000-0000-4000-8000-000000000109", quantity: 1 }] }),
@@ -112,5 +139,31 @@ describe("CheckoutService quotes", () => {
     assert.equal(result.currency, "TOMAN");
     assert.equal(result.groups[0]!.items[0]!.unitPrice, "2909375");
     assert.equal(result.totalAmount, "5818750");
+  });
+});
+
+describe("CheckoutService service answer encryption", () => {
+  it("encrypts service answers with the dedicated key namespace and item-bound AAD", () => {
+    const key = randomBytes(32).toString("base64");
+    const crypto = new CredentialCryptoService(new ConfigService({
+      SERVICE_INPUT_CURRENT_KEY_ID: "service1",
+      SERVICE_INPUT_CREDENTIAL_KEYS: `service1:${key}`
+    }));
+    const checkout = new CheckoutService({} as never, {} as never, {} as never, {} as never, crypto);
+    const encrypt = checkout as unknown as {
+      encryptServiceAnswers(itemId: string, answers: Array<{ key: string; value: string }>): { ciphertext: string; keyId: string } | null;
+    };
+    const envelope = encrypt.encryptServiceAnswers("item-1", [{ key: "field_password", value: "customer-secret" }]);
+    assert.ok(envelope);
+    assert.equal(envelope.keyId, "service1");
+    assert.equal(envelope.ciphertext.includes("customer-secret"), false);
+    assert.equal(
+      crypto.decrypt(envelope.ciphertext, envelope.keyId, "service-order-item:item-1:answers", "SERVICE_INPUT"),
+      JSON.stringify([{ key: "field_password", value: "customer-secret" }])
+    );
+    assert.throws(
+      () => crypto.decrypt(envelope.ciphertext, envelope.keyId, "service-order-item:item-2:answers", "SERVICE_INPUT"),
+      /could not be decrypted/i
+    );
   });
 });

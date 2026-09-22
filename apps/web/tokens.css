@@ -1,33 +1,70 @@
+/* Shared color source of truth. Edit primitives and role assignments here;
+ * admin, seller, and shared storefront styles consume the derived tokens.
+ * Keep light/dark foreground pairs accessible when changing the palette.
+ */
 :root {
   --font-outfit: "Outfit Variable";
   --font-vazirmatn: "Vazirmatn Variable";
 
-  --color-dashboard-paper: #f8f9fc;
-  --color-dashboard-surface: #ffffff;
-  --color-dashboard-surface-raised: #eff1f7;
-  --color-dashboard-ink: #252936;
-  --color-dashboard-ink-soft: #444b5d;
-  --color-dashboard-muted: #687083;
-  --color-dashboard-rule: #e5e8f0;
-  --color-dashboard-rule-strong: #8992a6;
-  --color-dashboard-accent: #5263c5;
-  --color-dashboard-accent-ink: #ffffff;
-  --color-dashboard-accent-soft: #eceefa;
-  --color-dashboard-focus: #4354b6;
+  --color-brand-navy: #011627;
+  --color-brand-pink: #ff3366;
+  --color-brand-teal: #2ec4b6;
+  --color-brand-off-white: #f6f7f8;
+  --color-brand-blue: #20a4f3;
+  --color-neutral-white: #ffffff;
+  --color-status-amber: #f5a623;
+
+  /* Semantic assignments: change a role once to update both themes. */
+  --color-role-primary: var(--color-brand-blue);
+  --color-role-error: var(--color-brand-pink);
+  --color-role-success: var(--color-brand-teal);
+  --color-role-info: var(--color-brand-blue);
+  --color-role-warning: var(--color-status-amber);
+
+  /* Navigation stays dark in both themes. Tune the entire panel chrome here. */
+  --color-navigation-paper: var(--color-brand-navy);
+  --color-navigation-raised: color-mix(in srgb, var(--color-brand-navy) 90%, var(--color-brand-off-white));
+  --color-navigation-ink: var(--color-brand-off-white);
+  --color-navigation-muted: color-mix(in srgb, var(--color-brand-off-white) 72%, var(--color-brand-navy));
+  --color-navigation-rule: color-mix(in srgb, var(--color-brand-off-white) 18%, var(--color-brand-navy));
+  --color-navigation-rule-strong: color-mix(in srgb, var(--color-brand-off-white) 40%, var(--color-brand-navy));
+  --color-navigation-accent: var(--color-role-primary);
+  --color-navigation-accent-soft: color-mix(in srgb, var(--color-role-primary) 14%, var(--color-brand-navy));
+  --color-navigation-selected: var(--color-role-primary);
+  --color-navigation-selected-ink: var(--color-brand-navy);
+  --color-navigation-error: color-mix(in srgb, var(--color-role-error) 82%, var(--color-brand-off-white));
+  --color-navigation-error-soft: color-mix(in srgb, var(--color-role-error) 12%, var(--color-brand-navy));
+
+  --color-dashboard-paper: var(--color-brand-off-white);
+  --color-dashboard-surface: var(--color-neutral-white);
+  --color-dashboard-surface-raised: color-mix(in srgb, var(--color-brand-off-white) 94%, var(--color-brand-navy));
+  --color-dashboard-ink: var(--color-brand-navy);
+  --color-dashboard-ink-soft: color-mix(in srgb, var(--color-brand-navy) 78%, var(--color-brand-off-white));
+  --color-dashboard-muted: color-mix(in srgb, var(--color-brand-navy) 64%, var(--color-brand-off-white));
+  --color-dashboard-rule: color-mix(in srgb, var(--color-brand-navy) 10%, var(--color-brand-off-white));
+  --color-dashboard-rule-strong: color-mix(in srgb, var(--color-brand-navy) 24%, var(--color-brand-off-white));
+  --color-dashboard-accent: color-mix(in srgb, var(--color-role-primary) 64%, var(--color-brand-navy));
+  --color-dashboard-accent-ink: var(--color-brand-off-white);
+  --color-dashboard-accent-soft: color-mix(in srgb, var(--color-role-primary) 6%, var(--color-brand-off-white));
+  --color-dashboard-focus: var(--color-dashboard-accent);
   --color-dashboard-scrollbar-track: var(--color-dashboard-surface-raised);
   --color-dashboard-scrollbar-thumb: var(--color-dashboard-rule-strong);
   --color-dashboard-scrollbar-thumb-hover: var(--color-dashboard-accent);
-  --color-dashboard-error: oklch(48% 0.17 28);
-  --color-dashboard-error-soft: oklch(94% 0.035 28);
-  --color-dashboard-success: oklch(43% 0.13 157);
-  --color-dashboard-success-soft: oklch(94% 0.035 157);
-  --color-dashboard-warning: oklch(45% 0.11 75);
-  --color-dashboard-warning-soft: oklch(94% 0.04 75);
-  --color-bridge-accent: oklch(55% 0.17 35);
-  --color-bridge-accent-strong: oklch(47% 0.17 35);
-  --color-bridge-accent-soft: oklch(94% 0.035 35);
-  --color-bridge-accent-ink: oklch(98% 0.006 35);
-  --color-dashboard-scrim: #202637;
+  --color-dashboard-error: color-mix(in srgb, var(--color-role-error) 68%, var(--color-brand-navy));
+  --color-dashboard-error-soft: color-mix(in srgb, var(--color-role-error) 7%, var(--color-brand-off-white));
+  --color-dashboard-success: color-mix(in srgb, var(--color-role-success) 56%, var(--color-brand-navy));
+  --color-dashboard-success-soft: color-mix(in srgb, var(--color-role-success) 9%, var(--color-brand-off-white));
+  --color-dashboard-warning: color-mix(in srgb, var(--color-role-warning) 48%, var(--color-brand-navy));
+  --color-dashboard-warning-soft: color-mix(in srgb, var(--color-role-warning) 9%, var(--color-brand-off-white));
+  --color-dashboard-info: color-mix(in srgb, var(--color-role-info) 64%, var(--color-brand-navy));
+  --color-dashboard-info-soft: color-mix(in srgb, var(--color-role-info) 7%, var(--color-brand-off-white));
+  --color-dashboard-neutral: var(--color-dashboard-ink-soft);
+  --color-dashboard-neutral-soft: var(--color-dashboard-surface-raised);
+  --color-bridge-accent: var(--color-dashboard-info);
+  --color-bridge-accent-strong: color-mix(in srgb, var(--color-role-info) 58%, var(--color-brand-navy));
+  --color-bridge-accent-soft: var(--color-dashboard-info-soft);
+  --color-bridge-accent-ink: var(--color-brand-off-white);
+  --color-dashboard-scrim: var(--color-brand-navy);
 
   --font-dashboard-display: var(--font-outfit), var(--font-vazirmatn), sans-serif;
   --font-dashboard-body: var(--font-outfit), var(--font-vazirmatn), sans-serif;
@@ -69,9 +106,9 @@
 
   --radius-dashboard-control: var(--radius-dashboard-xs);
   --radius-dashboard-panel: var(--radius-dashboard-md);
-  --shadow-dashboard-card: 0 3px 16px rgb(35 45 75 / 4%);
-  --shadow-dashboard-float: 0 16px 48px rgb(35 45 75 / 8%);
-  --color-dashboard-accent-strong: #4354b6;
+  --shadow-dashboard-card: 0 3px 16px color-mix(in srgb, var(--color-brand-navy) 4%, transparent);
+  --shadow-dashboard-float: 0 16px 48px color-mix(in srgb, var(--color-brand-navy) 8%, transparent);
+  --color-dashboard-accent-strong: color-mix(in srgb, var(--color-role-primary) 58%, var(--color-brand-navy));
   --z-dashboard-base: 1;
   --z-dashboard-sticky: 200;
   --z-dashboard-modal: 400;
@@ -93,6 +130,7 @@
   --color-product-accent-soft: var(--color-dashboard-accent-soft);
   --color-product-focus: var(--color-dashboard-focus);
   --color-product-focus-outer: var(--color-product-paper);
+  --color-product-danger: var(--color-dashboard-error);
   --color-product-error: var(--color-dashboard-error);
   --color-product-error-soft: var(--color-dashboard-error-soft);
   --color-product-success: var(--color-dashboard-success);
@@ -135,6 +173,42 @@
   --radius-product-round: 999px;
 }
 
+/* Rebind aliases on the surface itself: inherited aliases otherwise retain
+ * the page's computed light colors. Only navigation descendants are affected. */
+[data-navigation-surface] {
+  --color-dashboard-paper: var(--color-navigation-raised);
+  --color-dashboard-surface: var(--color-navigation-paper);
+  --color-dashboard-surface-raised: var(--color-navigation-raised);
+  --color-dashboard-ink: var(--color-navigation-ink);
+  --color-dashboard-ink-soft: var(--color-navigation-ink);
+  --color-dashboard-muted: var(--color-navigation-muted);
+  --color-dashboard-rule: var(--color-navigation-rule);
+  --color-dashboard-rule-strong: var(--color-navigation-rule-strong);
+  --color-dashboard-accent: var(--color-navigation-accent);
+  --color-dashboard-accent-strong: var(--color-navigation-accent);
+  --color-dashboard-accent-soft: var(--color-navigation-accent-soft);
+  --color-dashboard-accent-ink: var(--color-navigation-selected-ink);
+  --color-dashboard-focus: var(--color-navigation-accent);
+  --color-dashboard-error: var(--color-navigation-error);
+  --color-dashboard-error-soft: var(--color-navigation-error-soft);
+  --color-dashboard-scrollbar-track: var(--color-navigation-paper);
+  --color-dashboard-scrollbar-thumb: var(--color-navigation-rule-strong);
+  --color-dashboard-scrollbar-thumb-hover: var(--color-navigation-accent);
+  --ink: var(--color-navigation-ink);
+  --ink-soft: var(--color-navigation-ink);
+  --muted: var(--color-navigation-muted);
+  --paper: var(--color-navigation-raised);
+  --paper-bright: var(--color-navigation-paper);
+  --line: var(--color-navigation-rule);
+  --signal: var(--color-navigation-accent);
+  --signal-dark: var(--color-navigation-accent);
+  --signal-soft: var(--color-navigation-accent-soft);
+  --on-signal: var(--color-navigation-selected-ink);
+  --field-surface: var(--color-navigation-raised);
+  color: var(--color-navigation-ink);
+  color-scheme: dark;
+}
+
 @media (min-width: 1024px) {
   :root {
     --space-dashboard-sm: 0.625rem;
@@ -169,30 +243,32 @@
 }
 
 html[data-theme="dark"] {
-  --shadow-dashboard-card: 0 3px 16px rgb(5 9 20 / 10%);
-  --shadow-dashboard-float: 0 16px 48px rgb(5 9 20 / 20%);
-  --color-dashboard-paper: #191c26;
-  --color-dashboard-surface: #232733;
-  --color-dashboard-surface-raised: #2b303f;
-  --color-dashboard-ink: #edf0f8;
-  --color-dashboard-ink-soft: #ccd2e0;
-  --color-dashboard-muted: #a3adc2;
-  --color-dashboard-rule: #353c4e;
-  --color-dashboard-rule-strong: #707d96;
-  --color-dashboard-accent: #a8b5ff;
-  --color-dashboard-accent-strong: #bfcbff;
-  --color-dashboard-accent-ink: #202943;
-  --color-dashboard-accent-soft: #313956;
-  --color-dashboard-focus: #c1cbff;
-  --color-dashboard-error: oklch(72% 0.13 28);
-  --color-dashboard-error-soft: oklch(24% 0.045 28);
-  --color-dashboard-success: oklch(72% 0.11 157);
-  --color-dashboard-success-soft: oklch(23% 0.04 157);
-  --color-dashboard-warning: oklch(78% 0.1 75);
-  --color-dashboard-warning-soft: oklch(24% 0.04 75);
-  --color-bridge-accent: oklch(72% 0.13 35);
-  --color-bridge-accent-strong: oklch(79% 0.11 35);
-  --color-bridge-accent-soft: oklch(24% 0.045 35);
-  --color-bridge-accent-ink: oklch(14% 0.014 35);
-  --color-dashboard-scrim: #0d1019;
+  --shadow-dashboard-card: 0 3px 16px color-mix(in srgb, var(--color-brand-navy) 10%, transparent);
+  --shadow-dashboard-float: 0 16px 48px color-mix(in srgb, var(--color-brand-navy) 20%, transparent);
+  --color-dashboard-paper: var(--color-brand-navy);
+  --color-dashboard-surface: color-mix(in srgb, var(--color-brand-navy) 92%, var(--color-brand-off-white));
+  --color-dashboard-surface-raised: color-mix(in srgb, var(--color-brand-navy) 86%, var(--color-brand-off-white));
+  --color-dashboard-ink: var(--color-brand-off-white);
+  --color-dashboard-ink-soft: color-mix(in srgb, var(--color-brand-off-white) 82%, var(--color-brand-navy));
+  --color-dashboard-muted: color-mix(in srgb, var(--color-brand-off-white) 66%, var(--color-brand-navy));
+  --color-dashboard-rule: color-mix(in srgb, var(--color-brand-off-white) 16%, var(--color-brand-navy));
+  --color-dashboard-rule-strong: color-mix(in srgb, var(--color-brand-off-white) 38%, var(--color-brand-navy));
+  --color-dashboard-accent: var(--color-role-primary);
+  --color-dashboard-accent-strong: color-mix(in srgb, var(--color-role-primary) 84%, var(--color-brand-off-white));
+  --color-dashboard-accent-ink: var(--color-brand-navy);
+  --color-dashboard-accent-soft: color-mix(in srgb, var(--color-brand-navy) 88%, var(--color-role-primary));
+  --color-dashboard-focus: var(--color-role-primary);
+  --color-dashboard-error: color-mix(in srgb, var(--color-role-error) 82%, var(--color-brand-off-white));
+  --color-dashboard-error-soft: color-mix(in srgb, var(--color-brand-navy) 88%, var(--color-role-error));
+  --color-dashboard-success: var(--color-role-success);
+  --color-dashboard-success-soft: color-mix(in srgb, var(--color-brand-navy) 86%, var(--color-role-success));
+  --color-dashboard-warning: var(--color-role-warning);
+  --color-dashboard-warning-soft: color-mix(in srgb, var(--color-brand-navy) 88%, var(--color-role-warning));
+  --color-dashboard-info: var(--color-role-info);
+  --color-dashboard-info-soft: color-mix(in srgb, var(--color-brand-navy) 88%, var(--color-role-info));
+  --color-bridge-accent: var(--color-dashboard-info);
+  --color-bridge-accent-strong: color-mix(in srgb, var(--color-role-info) 82%, var(--color-brand-off-white));
+  --color-bridge-accent-soft: var(--color-dashboard-info-soft);
+  --color-bridge-accent-ink: var(--color-brand-navy);
+  --color-dashboard-scrim: var(--color-brand-navy);
 }

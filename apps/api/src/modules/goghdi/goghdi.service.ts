@@ -3,53 +3,61 @@ import {
   NotFoundException,
   ServiceUnavailableException
 } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { createHmac } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import { PrismaService } from "../../prisma/prisma.service";
+import { GoghdiSettingsService } from "./goghdi-settings.service";
 
-export type GoghdiProductTicketOptions = {
+export type GoghdiOrderTicketOptions = {
   productId: string;
   chatTitle: string;
-  department?: string;
+  category: "order";
+  chatInfo: string;
+  agentIds: string[];
 };
 
 @Injectable()
 export class GoghdiService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly config: ConfigService
+    private readonly settings: GoghdiSettingsService
   ) {}
 
-  async signProductTicket(productId: string) {
-    const secret = this.config.get<string>("GOGHDI_TENANT_SECRET")?.trim();
-    if (!secret) {
-      throw new ServiceUnavailableException("Chat support is not configured");
-    }
-
-    const product = await this.prisma.products.findFirst({
-      where: { id: productId, status: "active" },
-      select: { id: true, title: true }
+  async signOrderTicket(orderId: string, buyerUserId: string) {
+    const order = await this.prisma.orders.findFirst({
+      where: { id: orderId, buyer_id: buyerUserId },
+      select: {
+        id: true,
+        seller: { select: { id: true, shop_name: true, goghdi_agent_id: true } },
+        items: { select: { product_type: true, product_title: true } }
+      }
     });
-    if (!product) throw new NotFoundException("Product was not found");
-
-    const department = this.config.get<string>("GOGHDI_SUPPORT_DEPARTMENT")?.trim();
-    if (department && (department.length < 2 || department.length > 100)) {
-      throw new ServiceUnavailableException("Chat support department is misconfigured");
+    if (!order) throw new NotFoundException("Order was not found");
+    if (!order.seller.goghdi_agent_id) {
+      throw new ServiceUnavailableException("The seller is not configured for chat");
     }
-    const options: GoghdiProductTicketOptions = {
-      productId: product.id,
-      chatTitle: this.ticketTitle(product.title),
-      ...(department ? { department } : {})
+    const { secret } = await this.settings.ticketCredentials();
+    const options: GoghdiOrderTicketOptions = {
+      productId: `order:${order.id}`,
+      chatTitle: this.ticketTitle(order.id, order.seller.shop_name),
+      category: "order",
+      chatInfo: JSON.stringify({
+        orderId: order.id,
+        sellerId: order.seller.id,
+        products: order.items.map((item) => item.product_title).slice(0, 20)
+      }),
+      agentIds: [order.seller.goghdi_agent_id]
     };
+    const timestamp = Date.now();
+    const nonce = randomBytes(24).toString("base64url");
     const signature = createHmac("sha256", secret)
-      .update(JSON.stringify(options))
+      .update(`${timestamp}.${nonce}.${JSON.stringify(options)}`)
       .digest("hex");
 
-    return { options, signature };
+    return { options, proof: { signature, timestamp, nonce } };
   }
 
-  private ticketTitle(productTitle: string) {
-    const title = `Product support: ${productTitle.trim()}`;
+  private ticketTitle(orderId: string, shopName: string) {
+    const title = `Order ${orderId.slice(-8)} · ${shopName.trim()}`;
     return title.length <= 100 ? title : `${title.slice(0, 99).trimEnd()}…`;
   }
 }

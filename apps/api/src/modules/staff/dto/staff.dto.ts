@@ -18,7 +18,8 @@ export const platformPermissions = [
   "catalog_view",
   "orders_manage",
   "payouts_manage",
-  "blog_manage"
+  "blog_manage",
+  "uploads_manage"
 ] as const;
 
 export class CreateStaffInvitationDto {

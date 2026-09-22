@@ -9,7 +9,20 @@ export type PublicProductOffer = {
   seller: { id: string; shopName: string };
   digital?: { maxDownloads: number };
   physical?: { inStock: boolean; weightGrams: number };
-  service?: { serviceType: string; estimatedHours: number };
+  service?: {
+    serviceType: string;
+    estimatedHours: number;
+    inputs: Array<{
+      key: string;
+      label: string;
+      type: "text" | "textarea" | "password";
+      required: boolean;
+      placeholder?: string;
+      helpText?: string;
+      minimumLength?: number;
+      maximumLength?: number;
+    }>;
+  };
 };
 
 export type PublicProductVariant = {
@@ -115,11 +128,24 @@ function hasValidFulfillment(value: Record<string, unknown>): boolean {
     value.service !== undefined &&
     (!isRecord(value.service) ||
       !isString(value.service.serviceType) ||
-      !isFiniteNumber(value.service.estimatedHours))
+      !isFiniteNumber(value.service.estimatedHours) ||
+      !Array.isArray(value.service.inputs) ||
+      !value.service.inputs.every(isServiceInput))
   ) {
     return false;
   }
   return true;
+}
+
+function isServiceInput(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  return isString(value.key) && isString(value.label) &&
+    ["text", "textarea", "password"].includes(String(value.type)) &&
+    typeof value.required === "boolean" &&
+    (value.placeholder === undefined || isString(value.placeholder)) &&
+    (value.helpText === undefined || isString(value.helpText)) &&
+    (value.minimumLength === undefined || isFiniteNumber(value.minimumLength)) &&
+    (value.maximumLength === undefined || isFiniteNumber(value.maximumLength));
 }
 
 function isBridgeField(value: unknown): boolean {

@@ -110,7 +110,7 @@ describe("OtpService SMS settings", () => {
       { assertPhoneOtpEnabled: async () => undefined } as unknown as AuthLoginSettingsService
     );
     const input = { phoneNumber: "09121234567", challengeId, code };
-    await assert.rejects(() => service.verify(input), /Name is required/);
+    assert.deepEqual(await service.verify(input), { registrationRequired: true });
     assert.equal(consumed, 0);
     assert.deepEqual(await service.verify({ ...input, fullName: "Buyer" }), { userId: "new-buyer" });
     assert.equal(createdBuyer?.email, null);

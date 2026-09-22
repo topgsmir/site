@@ -21,7 +21,7 @@ const COPY = {
     item: "item", items: "items", quantity: "Quantity", remove: "Remove", each: "each", total: "Order total", summary: "Order summary", payment: "Payment method",
     address: "Shipping address", recipient: "Recipient name", phone: "Iranian mobile", province: "Province", city: "City", postal: "10-digit postal code", street: "Full address",
     signin: "Verify your mobile", signinHint: "We’ll send a one-time code before creating your order.", code: "Six-digit code", fullName: "Name", sendCode: "Send verification code", verify: "Verify and continue", pay: "Create checkout and pay",
-    busy: "Please wait…", failed: "Checkout could not continue. Try again.", cartSaveFailed: "Your cart could not be saved in this browser. Check storage permissions and try again.", serviceNote: "Note for the seller", serviceNoteHint: "Add the device model, issue, or any details the specialist needs.",
+    busy: "Please wait…", failed: "Checkout could not continue. Try again.", cartSaveFailed: "Your cart could not be saved in this browser. Check storage permissions and try again.", serviceDetails: "Details needed for this service", secretHint: "Secret answers are encrypted and are not saved in this browser.", serviceNote: "Anything else?", serviceNoteHint: "Add any other context that may help the specialist.",
     external: "Digital delivery links are supplied by sellers and may open an external website.", seller: "Sold by", stepCart: "Cart", stepDetails: "Details", stepPayment: "Payment", loading: "Confirming current prices…", secure: "Your payment details are handled by the selected payment provider.",
     digital: "Digital file", physical: "Repair tool", service: "Specialist service", productUnavailable: "Product name unavailable",
     progress: "Checkout progress", completed: "Completed", current: "Current step", upcoming: "Upcoming", updating: "Updating total…",
@@ -35,7 +35,7 @@ const COPY = {
     item: "محصول", items: "محصول", quantity: "تعداد", remove: "حذف", each: "قیمت واحد", total: "مبلغ سفارش", summary: "خلاصه سفارش", payment: "روش پرداخت",
     address: "نشانی تحویل", recipient: "نام گیرنده", phone: "شماره موبایل ایران", province: "استان", city: "شهر", postal: "کد پستی ۱۰ رقمی", street: "نشانی کامل",
     signin: "تأیید شماره موبایل", signinHint: "پیش از ثبت سفارش، یک کد یک‌بارمصرف برایتان می‌فرستیم.", code: "کد شش‌رقمی", fullName: "نام", sendCode: "ارسال کد تأیید", verify: "تأیید و ادامه", pay: "ثبت سفارش و پرداخت",
-    busy: "کمی صبر کنید…", failed: "ادامه خرید ممکن نبود. دوباره تلاش کنید.", cartSaveFailed: "سبد خرید در این مرورگر ذخیره نشد. دسترسی ذخیره‌سازی را بررسی و دوباره تلاش کنید.", serviceNote: "توضیح برای فروشنده", serviceNoteHint: "مدل دستگاه، ایراد یا اطلاعات موردنیاز متخصص را بنویسید.",
+    busy: "کمی صبر کنید…", failed: "ادامه خرید ممکن نبود. دوباره تلاش کنید.", cartSaveFailed: "سبد خرید در این مرورگر ذخیره نشد. دسترسی ذخیره‌سازی را بررسی و دوباره تلاش کنید.", serviceDetails: "اطلاعات لازم برای این خدمت", secretHint: "پاسخ‌های محرمانه رمزگذاری می‌شوند و در این مرورگر ذخیره نمی‌شوند.", serviceNote: "توضیح دیگری دارید؟", serviceNoteHint: "هر نکته دیگری که به متخصص کمک می‌کند بنویسید.",
     external: "لینک تحویل فایل را فروشنده ارائه می‌کند و ممکن است در وب‌سایت دیگری باز شود.", seller: "فروشنده", stepCart: "سبد", stepDetails: "اطلاعات", stepPayment: "پرداخت", loading: "در حال بررسی قیمت‌های فعلی…", secure: "اطلاعات پرداخت شما در درگاه پرداخت منتخب پردازش می‌شود.",
     digital: "فایل دیجیتال", physical: "ابزار تعمیر", service: "خدمت تخصصی", productUnavailable: "نام محصول در دسترس نیست",
     progress: "مراحل خرید", completed: "انجام شد", current: "مرحله فعلی", upcoming: "مرحله بعد", updating: "در حال به‌روزرسانی مبلغ…",
@@ -49,7 +49,7 @@ const COPY = {
     item: "منتج", items: "منتجات", quantity: "الكمية", remove: "إزالة", each: "سعر الوحدة", total: "إجمالي الطلب", summary: "ملخص الطلب", payment: "طريقة الدفع",
     address: "عنوان الشحن", recipient: "اسم المستلم", phone: "رقم جوال إيراني", province: "المحافظة", city: "المدينة", postal: "الرمز البريدي من 10 أرقام", street: "العنوان الكامل",
     signin: "تحقق من رقم الجوال", signinHint: "سنرسل رمزاً لمرة واحدة قبل إنشاء الطلب.", code: "الرمز المكوّن من ستة أرقام", fullName: "الاسم", sendCode: "إرسال رمز التحقق", verify: "تحقق وتابع", pay: "إنشاء الطلب والدفع",
-    busy: "يرجى الانتظار…", failed: "تعذر متابعة الشراء. حاول مجددًا.", cartSaveFailed: "تعذر حفظ سلة التسوق في هذا المتصفح. تحقق من صلاحية التخزين وحاول مجددًا.", serviceNote: "ملاحظة للبائع", serviceNoteHint: "أضف طراز الجهاز أو المشكلة أو التفاصيل التي يحتاجها المختص.",
+    busy: "يرجى الانتظار…", failed: "تعذر متابعة الشراء. حاول مجددًا.", cartSaveFailed: "تعذر حفظ سلة التسوق في هذا المتصفح. تحقق من صلاحية التخزين وحاول مجددًا.", serviceDetails: "البيانات المطلوبة لهذه الخدمة", secretHint: "تُشفّر الإجابات السرية ولا تُحفظ في هذا المتصفح.", serviceNote: "هل لديك تفاصيل أخرى؟", serviceNoteHint: "أضف أي معلومات أخرى قد تساعد المختص.",
     external: "يوفر البائع روابط التسليم الرقمي وقد تفتح موقعًا خارجيًا.", seller: "البائع", stepCart: "السلة", stepDetails: "البيانات", stepPayment: "الدفع", loading: "جارٍ تأكيد الأسعار الحالية…", secure: "تتم معالجة بيانات الدفع لدى مزود الدفع الذي تختاره.",
     digital: "ملف رقمي", physical: "أداة صيانة", service: "خدمة متخصصة", productUnavailable: "اسم المنتج غير متاح",
     progress: "مراحل الشراء", completed: "مكتمل", current: "المرحلة الحالية", upcoming: "التالي", updating: "جارٍ تحديث الإجمالي…",
@@ -89,6 +89,7 @@ export function CartCheckout({ locale, signedInBuyer }: { locale: Locale; signed
   const [error, setError] = useState("");
   const [clock, setClock] = useState(() => Date.now());
   const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>({});
+  const [serviceAnswers, setServiceAnswers] = useState<Record<string, Record<string, string>>>({});
   const [removedLines, setRemovedLines] = useState<RemovedLine[]>([]);
   const checkoutKey = useRef(crypto.randomUUID());
   const quoteRequest = useRef(0);
@@ -114,6 +115,15 @@ export function CartCheckout({ locale, signedInBuyer }: { locale: Locale; signed
         setItems(migratedCart);
         writeCart(migratedCart);
       }
+      setServiceAnswers((current) => {
+        const next: Record<string, Record<string, string>> = {};
+        for (const item of response.data.groups.flatMap((group) => group.items)) {
+          if (!item.serviceInputs.length) continue;
+          const allowed = new Set(item.serviceInputs.map((field) => field.key));
+          next[item.offerId] = Object.fromEntries(Object.entries(current[item.offerId] ?? {}).filter(([key]) => allowed.has(key)));
+        }
+        return next;
+      });
       setSelections((current) => Object.fromEntries(response.data.groups.map((group) => [group.key, current[group.key] && group.paymentMethods.some((method) => method.code === current[group.key]) ? current[group.key] : response.data.commonPaymentMethods[0]?.code ?? group.paymentMethods[0]!.code])));
     } catch (requestError) {
       if (request !== quoteRequest.current) return;
@@ -236,6 +246,11 @@ export function CartCheckout({ locale, signedInBuyer }: { locale: Locale; signed
     catch { setError(c.cartSaveFailed); }
   }
 
+  function updateServiceAnswer(offerId: string, key: string, value: string) {
+    setServiceAnswers((current) => ({ ...current, [offerId]: { ...(current[offerId] ?? {}), [key]: value } }));
+    checkoutKey.current = crypto.randomUUID();
+  }
+
   async function requestOtp() {
     const captchaToken = await captchaTokenFor("otp");
     const response = await api.post<{ challengeId: string; expiresAt: string }>("/auth/otp/request", { phoneNumber: phone, ...(captchaToken ? { captchaToken } : {}) });
@@ -262,7 +277,14 @@ export function CartCheckout({ locale, signedInBuyer }: { locale: Locale; signed
     const data = new FormData(form);
     const body = {
       trafficSource: getTrafficSource(),
-      items: items.map(({ offerId, quantity, serviceNote }) => ({ offerId, quantity, ...(serviceNote ? { serviceNote } : {}) })),
+      items: items.map(({ offerId, quantity, serviceNote }) => ({
+        offerId,
+        quantity,
+        ...(serviceNote ? { serviceNote } : {}),
+        ...((pricedOffers.get(offerId)?.serviceInputs.length ?? 0) > 0 ? {
+          serviceAnswers: pricedOffers.get(offerId)!.serviceInputs.map((field) => ({ key: field.key, value: serviceAnswers[offerId]?.[field.key] ?? "" }))
+        } : {})
+      })),
       paymentSelections: quote.groups.map((group) => ({ orderGroupKey: group.key, providerCode: selections[group.key] })),
       ...(quote.requiresShippingAddress ? { shippingAddress: { recipientName: data.get("recipientName"), phoneNumber: data.get("shippingPhone"), province: data.get("province"), city: data.get("city"), postalCode: data.get("postalCode"), addressLine: data.get("addressLine") } } : {})
     };
@@ -334,7 +356,7 @@ export function CartCheckout({ locale, signedInBuyer }: { locale: Locale; signed
             <div className={styles.itemBody}>
               <div className={styles.itemTop}><div><p>{group ? `${c.seller} ${group.seller.shopName}` : c[productType]}</p><h3>{item?.title ?? cartItem.productName ?? (quoteIssue ? c.productUnavailable : c.loading)}</h3></div><button className={styles.remove} type="button" onClick={() => removeOffers([cartItem.offerId])}>{c.remove}</button></div>
               <div className={styles.itemBottom}><div className={styles.price}><strong>{item ? `${formatCurrencyAmount(item.totalAmount, quote?.currency ?? "TOMAN", locale)} ${currencyLabel(quote?.currency ?? "TOMAN")}` : "—"}</strong>{item ? <small>{c.each}: {formatCurrencyAmount(item.unitPrice, quote?.currency ?? "TOMAN", locale)} {currencyLabel(quote?.currency ?? "TOMAN")}</small> : null}</div><div className={styles.quantity}><span>{c.quantity}</span><div><button type="button" aria-label={`${c.quantity} −`} disabled={cartItem.quantity <= 1 && !quantityDrafts[cartItem.offerId]} onClick={() => adjustQuantity(cartItem.offerId, -1)}>−</button><input aria-label={c.quantity} type="number" inputMode="numeric" min={1} max={100} value={quantityDrafts[cartItem.offerId] ?? String(cartItem.quantity)} onChange={(event) => { if (/^\d{0,3}$/.test(event.target.value)) setQuantityDrafts((current) => ({ ...current, [cartItem.offerId]: event.target.value })); }} onBlur={() => commitQuantity(cartItem.offerId)} onKeyDown={(event) => handleQuantityKeyDown(event, cartItem.offerId)} /><button type="button" aria-label={`${c.quantity} +`} disabled={cartItem.quantity >= 100 && !quantityDrafts[cartItem.offerId]} onClick={() => adjustQuantity(cartItem.offerId, 1)}>+</button></div></div></div>
-              {item?.productType === "service" ? <label className={styles.note}><span>{c.serviceNote}</span><textarea maxLength={2000} value={cartItem.serviceNote ?? ""} placeholder={c.serviceNoteHint} onChange={(event) => updateNote(cartItem.offerId, event.target.value)} /></label> : null}
+              {item?.productType === "service" ? <section className={styles.serviceDetails} aria-label={c.serviceDetails}>{item.serviceInputs.length ? <><header><strong>{c.serviceDetails}</strong><small>{c.secretHint}</small></header><div>{item.serviceInputs.map((field) => <label key={field.key}><span>{field.label}{field.required ? " *" : ""}</span>{field.type === "textarea" ? <textarea required={field.required} minLength={field.minimumLength} maxLength={field.maximumLength} placeholder={field.placeholder} value={serviceAnswers[cartItem.offerId]?.[field.key] ?? ""} onChange={(event) => updateServiceAnswer(cartItem.offerId, field.key, event.target.value)} /> : <input type={field.type === "password" ? "password" : "text"} autoComplete={field.type === "password" ? "off" : undefined} required={field.required} minLength={field.minimumLength} maxLength={field.maximumLength} placeholder={field.placeholder} value={serviceAnswers[cartItem.offerId]?.[field.key] ?? ""} onChange={(event) => updateServiceAnswer(cartItem.offerId, field.key, event.target.value)} />}{field.helpText ? <small>{field.helpText}</small> : null}</label>)}</div></> : null}<label className={styles.note}><span>{c.serviceNote}</span><textarea maxLength={2000} value={cartItem.serviceNote ?? ""} placeholder={c.serviceNoteHint} onChange={(event) => updateNote(cartItem.offerId, event.target.value)} /></label></section> : null}
             </div>
           </article>;
         })}</div>

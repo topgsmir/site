@@ -128,6 +128,7 @@ export class SellerService {
             commission: input.commission,
             holdback_rate: input.holdbackRate,
             blog_review_required: input.blogReviewRequired ?? true,
+            goghdi_agent_id: input.goghdiAgentId?.trim().toLowerCase() || null,
             ...status
           }
         });
@@ -153,6 +154,9 @@ export class SellerService {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === "P2002"
       ) {
+        if (String(error.meta?.target ?? "").includes("goghdi_agent_id")) {
+          throw new ConflictException("This Goghdi agent is already assigned to another seller");
+        }
         throw new ConflictException("A user with this email already exists");
       }
       throw error;
@@ -209,6 +213,9 @@ export class SellerService {
             ...(input.blogReviewRequired !== undefined
               ? { blog_review_required: input.blogReviewRequired }
               : {}),
+            ...(input.goghdiAgentId !== undefined
+              ? { goghdi_agent_id: input.goghdiAgentId?.trim().toLowerCase() || null }
+              : {}),
             ...(input.status ? this.statusData(input.status) : {})
           }
         });
@@ -263,6 +270,9 @@ export class SellerService {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === "P2002"
       ) {
+        if (String(error.meta?.target ?? "").includes("goghdi_agent_id")) {
+          throw new ConflictException("This Goghdi agent is already assigned to another seller");
+        }
         throw new ConflictException("A user with this email already exists");
       }
       throw error;
@@ -302,6 +312,7 @@ export class SellerService {
     commission: Prisma.Decimal;
     holdback_rate: Prisma.Decimal;
     blog_review_required: boolean;
+    goghdi_agent_id: string | null;
     created_at: Date;
     updated_at: Date;
     user: { full_name: string; email: string | null };
@@ -324,6 +335,7 @@ export class SellerService {
       commission: Number(seller.commission),
       holdbackRate: Number(seller.holdback_rate),
       blogReviewRequired: seller.blog_review_required,
+      goghdiAgentId: seller.goghdi_agent_id,
       permissions: seller.permissions.map((item) => item.permission),
       productCount: seller._count.listings,
       orderCount: seller._count.orders,

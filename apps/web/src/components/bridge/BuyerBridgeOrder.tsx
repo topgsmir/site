@@ -2,252 +2,120 @@
 
 import Link from "next/link";
 import type { Route } from "next";
-import { useCallback, useEffect, useState } from "react";
-import { API_BASE, api } from "@/lib/api/client";
-import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
+import { isAxiosError } from "axios";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { api } from "@/lib/api/client";
 import { getSocket } from "@/lib/sockets/socket";
+import { CustomerOrderChat } from "./CustomerOrderChat";
 import type { Locale } from "@/lib/i18n";
-import styles from "./BridgeWorkspace.module.css";
-
-type Order = {
-  id: string;
-  checkoutId?: string | null;
-  status: string;
-  totalAmount: string;
-  currency: string;
-  seller: { shopName: string };
-  shippingAddress?: { recipientName: string; phoneNumber: string; province: string; city: string; postalCode: string; addressLine: string } | null;
-  shipment?: { carrier: string | null; trackingCode: string | null; shippedAt: string } | null;
-  items: Array<{
-    id: string;
-    productTitle: string;
-    productType: string;
-    quantity: number;
-    serviceNote?: string | null;
-    digitalDelivery?: { downloadUrl: string; destinationHost: string; maxDownloads: number; downloadCount: number };
-    bridge?: {
-      id: string;
-      mode: string;
-      status: string;
-      errorCode: string | null;
-      input?: { fields?: Record<string, string>; quantity?: number } | null;
-      result?: unknown;
-    };
-  }>;
-};
-
-const COPY = {
-  en: {
-    brand: "Your order",
-    back: "TopGSM",
-    payment: "Payment",
-    fulfillment: "Fulfilment",
-    seller: "Seller",
-    inputs: "Submitted information",
-    result: "Delivery result",
-    wait: "This page updates while the service is being fulfilled.",
-    refund: "Request a refund",
-    reason: "Tell us why",
-    send: "Send request",
-    sent: "Refund request sent.",
-    account: "My account", continuePayment: "Continue payment", confirm: "Confirm delivery", cancel: "Cancel order", working: "Working…", actionError: "The order could not be updated.",
-    error: "The order could not be loaded.",
-  },
-  fa: {
-    brand: "سفارش شما",
-    back: "تاپ جی‌اس‌ام",
-    payment: "پرداخت",
-    fulfillment: "انجام سفارش",
-    seller: "فروشنده",
-    inputs: "اطلاعات ثبت‌شده",
-    result: "نتیجه تحویل",
-    wait: "این صفحه هنگام انجام سرویس به‌روزرسانی می‌شود.",
-    refund: "درخواست بازپرداخت",
-    reason: "دلیل درخواست",
-    send: "ارسال درخواست",
-    sent: "درخواست بازپرداخت ارسال شد.",
-    account: "حساب من", continuePayment: "ادامه پرداخت", confirm: "تأیید تحویل", cancel: "لغو سفارش", working: "در حال انجام…", actionError: "سفارش به‌روز نشد. دوباره تلاش کنید.",
-    error: "بارگذاری سفارش ممکن نبود.",
-  },
-  ar: {
-    brand: "طلبك",
-    back: "TopGSM",
-    payment: "الدفع",
-    fulfillment: "التنفيذ",
-    seller: "البائع",
-    inputs: "المعلومات المرسلة",
-    result: "نتيجة التسليم",
-    wait: "تتحدث هذه الصفحة أثناء تنفيذ الخدمة.",
-    refund: "طلب استرداد",
-    reason: "سبب الطلب",
-    send: "إرسال الطلب",
-    sent: "تم إرسال طلب الاسترداد.",
-    account: "حسابي", continuePayment: "متابعة الدفع", confirm: "تأكيد التسليم", cancel: "إلغاء الطلب", working: "جارٍ التنفيذ…", actionError: "تعذر تحديث الطلب.",
-    error: "تعذر تحميل الطلب.",
-  },
-} as const;
-
-const STATUS: Record<Locale, Record<string, string>> = {
-  en: { pending: "Payment pending", paid: "Paid", processing: "Processing", shipped: "Shipped", awaiting_confirmation: "Awaiting confirmation", delivered: "Delivered", cancelled: "Cancelled", waiting_payment: "Waiting for payment", queued: "Queued", submitting: "Submitting", submitted: "Submitted", polling: "Checking result", manual_required: "Needs review", succeeded: "Completed", failed: "Failed", refund_requested: "Refund requested" },
-  fa: { pending: "در انتظار پرداخت", paid: "پرداخت‌شده", processing: "در حال پردازش", shipped: "ارسال‌شده", awaiting_confirmation: "در انتظار تأیید", delivered: "تحویل‌شده", cancelled: "لغوشده", waiting_payment: "در انتظار پرداخت", queued: "در صف انجام", submitting: "در حال ثبت", submitted: "ثبت‌شده", polling: "در حال بررسی نتیجه", manual_required: "نیازمند بررسی", succeeded: "انجام‌شده", failed: "ناموفق", refund_requested: "درخواست بازپرداخت ثبت‌شده" },
-  ar: { pending: "بانتظار الدفع", paid: "مدفوع", processing: "قيد المعالجة", shipped: "تم الشحن", awaiting_confirmation: "بانتظار التأكيد", delivered: "تم التسليم", cancelled: "ملغى", waiting_payment: "بانتظار الدفع", queued: "في قائمة الانتظار", submitting: "جارٍ الإرسال", submitted: "تم الإرسال", polling: "جارٍ فحص النتيجة", manual_required: "بحاجة إلى مراجعة", succeeded: "مكتمل", failed: "فشل", refund_requested: "تم طلب الاسترداد" }
-};
+import { AccountIcon } from "@/components/account/AccountIcon";
+import { canConfirmOrder, type BuyerOrder } from "./OrderDetails.types";
+import { ORDER_COPY, statusLabel } from "./OrderDetailsCopy";
+import { Confirmation, CopyValue, Money, OrderDate, OrderProgress, PurchasedItem, ShippingDetails, StatusBadge } from "./OrderDetailsParts";
+import s from "./OrderDetails.module.css";
 
 export function BuyerOrderDetails({ locale, orderId }: { locale: Locale; orderId: string }) {
-  const c = COPY[locale];
-  const [order, setOrder] = useState<Order | null>(null);
-  const [error, setError] = useState("");
-  const [reason, setReason] = useState("");
-  const [message, setMessage] = useState("");
+  // Route changes must discard old order data and all pending action state.
+  return <OrderDetails key={`${locale}:${orderId}`} locale={locale} orderId={orderId} />;
+}
+
+function OrderDetails({ locale, orderId }: { locale: Locale; orderId: string }) {
+  const c = ORDER_COPY[locale];
+  const [order, setOrder] = useState<BuyerOrder | null>(null);
+  const [error, setError] = useState<"load" | "unavailable" | "refresh" | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [action, setAction] = useState<"cancelled" | "delivered" | null>(null);
   const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [message, setMessage] = useState("");
+  const request = useRef<AbortController | null>(null);
+  const current = useRef<BuyerOrder | null>(null);
+  const mounted = useRef(true);
+  const mutationLock = useRef(false);
+  const mutationKey = useRef<string | null>(null);
 
   const load = useCallback(async () => {
+    request.current?.abort();
+    const controller = new AbortController(); request.current = controller;
+    setRefreshing(true);
     try {
-      setError("");
-      setOrder((await api.get<Order>(`/orders/${orderId}`)).data);
-    } catch {
-      setError(c.error);
+      const response = await api.get<BuyerOrder>(`/orders/${orderId}`, { signal: controller.signal });
+      if (controller.signal.aborted || !mounted.current) return;
+      current.current = response.data; setOrder(response.data); setError(null);
+    } catch (cause) {
+      if (controller.signal.aborted || !mounted.current) return;
+      const denied = isAxiosError(cause) && [401, 403, 404].includes(cause.response?.status ?? 0);
+      if (denied) { current.current = null; setOrder(null); }
+      setError(denied ? "unavailable" : current.current ? "refresh" : "load");
+    } finally {
+      if (!controller.signal.aborted && mounted.current) { request.current = null; setRefreshing(false); }
     }
-  }, [c.error, orderId]);
+  }, [orderId]);
 
   useEffect(() => {
-    const loadFrame = window.requestAnimationFrame(() => void load());
+    mounted.current = true;
+    const frame = requestAnimationFrame(() => void load());
     const socket = getSocket();
-    const onUpdate = (payload: { orderId?: string }) => {
-      if (payload.orderId === orderId) void load();
-    };
-    socket.on("order.status.updated", onUpdate);
-    const timer = window.setInterval(() => void load(), 15_000);
+    const update = (payload: { orderId?: string }) => { if (payload.orderId === orderId) void load(); };
+    const visibleRefresh = () => { if (document.visibilityState === "visible" && !request.current) void load(); };
+    socket.on("order.status.updated", update); socket.on("connect", visibleRefresh);
+    const timer = window.setInterval(visibleRefresh, 15_000);
+    window.addEventListener("focus", visibleRefresh);
+    document.addEventListener("visibilitychange", visibleRefresh);
     return () => {
-      window.cancelAnimationFrame(loadFrame);
-      socket.off("order.status.updated", onUpdate);
-      window.clearInterval(timer);
+      mounted.current = false; cancelAnimationFrame(frame); request.current?.abort();
+      socket.off("order.status.updated", update); socket.off("connect", visibleRefresh);
+      clearInterval(timer); window.removeEventListener("focus", visibleRefresh); document.removeEventListener("visibilitychange", visibleRefresh);
     };
   }, [load, orderId]);
 
-  const bridge = order?.items.find((item) => item.bridge)?.bridge;
-
-  async function refund() {
-    if (!bridge) return;
-    setBusy(true); setError("");
+  async function transition() {
+    if (!action || mutationLock.current) return;
+    mutationLock.current = true; setBusy(true); setActionError("");
+    mutationKey.current ??= crypto.randomUUID();
     try {
-      await api.post(`/bridge/orders/${bridge.id}/refund-request`, { reason });
-      setMessage(c.sent);
-    } catch {
-      setError(c.actionError);
-    } finally { setBusy(false); }
-  }
-
-  async function transition(status: "delivered" | "cancelled") {
-    setBusy(true); setError("");
-    try {
-      await api.patch(`/orders/${orderId}/status`, { status }, { headers: { "Idempotency-Key": crypto.randomUUID() } });
+      await api.patch(`/orders/${orderId}/status`, { status: action }, { headers: { "Idempotency-Key": mutationKey.current } });
+      if (!mounted.current) return;
+      setAction(null); setMessage(c.updated); mutationKey.current = null;
       await load();
-    } catch { setError(c.actionError); }
-    finally { setBusy(false); }
+    } catch {
+      if (mounted.current) setActionError(c.actionError);
+    } finally { mutationLock.current = false; if (mounted.current) setBusy(false); }
   }
+  function chooseAction(value: "cancelled" | "delivered") { mutationKey.current = null; setActionError(""); setMessage(""); setAction(value); }
 
-  return (
-    <div className={styles.shell}>
-      <header className={styles.header}>
-        <div>
-          <p className={styles.brand}>{c.brand}</p>
-          <h1>{order?.items[0]?.productTitle ?? `#${orderId}`}</h1>
-        </div>
-        <Link className={styles.link} href={`/${locale}/account/orders` as Route}>
-          {c.account}
-        </Link>
-      </header>
-      <main className={styles.main}>
-        {error ? (
-          <p className={styles.error} role="alert">
-            {error}
-          </p>
-        ) : null}
-        {order ? (
-          <>
-            <section className={styles.grid}>
-              <article className={styles.card}>
-                <h2>{c.payment}</h2>
-                <span className={styles.status} data-tone={order.status === "pending" ? "warn" : "good"}>
-                  {STATUS[locale][order.status] ?? order.status}
-                </span>
-                <strong>
-                  {formatCurrencyAmount(order.totalAmount, order.currency, locale)} {currencyLabel(order.currency)}
-                </strong>
-              </article>
-              <article className={styles.card}>
-                <h2>{c.fulfillment}</h2>
-                <span
-                  className={styles.status}
-                  data-tone={bridge?.status === "succeeded" ? "good" : bridge?.status === "failed" ? "bad" : "warn"}
-                >
-                  {STATUS[locale][bridge?.status ?? order.status] ?? bridge?.status ?? order.status}
-                </span>
-                <p>{c.wait}</p>
-              </article>
-              <article className={styles.card}>
-                <h2>{c.seller}</h2>
-                <p>{order.seller.shopName}</p>
-              </article>
-            </section>
-            <div className={styles.actions}>
-              {order.status === "pending" && order.checkoutId ? <Link className={styles.link} href={`/${locale}/checkout/${order.checkoutId}` as Route}>{c.continuePayment}</Link> : null}
-              {order.status === "pending" ? <button className={styles.buttonQuiet} type="button" disabled={busy} onClick={() => void transition("cancelled")}>{busy ? c.working : c.cancel}</button> : null}
-              {order.items.every((item) => item.productType !== "digital") && (order.status === "shipped" || order.status === "awaiting_confirmation") ? <button className={styles.button} type="button" disabled={busy} onClick={() => void transition("delivered")}>{busy ? c.working : c.confirm}</button> : null}
-            </div>
-            {order.shippingAddress ? <section className={styles.section}><div className={styles.sectionHead}><h2>{locale === "fa" ? "نشانی تحویل" : locale === "ar" ? "عنوان التسليم" : "Delivery address"}</h2></div><p>{order.shippingAddress.recipientName} · {order.shippingAddress.phoneNumber}</p><p>{order.shippingAddress.province}، {order.shippingAddress.city}، {order.shippingAddress.addressLine} · {order.shippingAddress.postalCode}</p>{order.shipment ? <p>{order.shipment.carrier} · {order.shipment.trackingCode}</p> : null}</section> : null}
-            {order.items.some((item) => item.digitalDelivery) ? <section className={styles.section}><div className={styles.sectionHead}><h2>{locale === "fa" ? "فایل‌های خریداری‌شده" : locale === "ar" ? "الملفات المشتراة" : "Purchased files"}</h2></div>{order.items.map((item) => item.digitalDelivery ? <p key={item.id}><a href={`${API_BASE}${item.digitalDelivery.downloadUrl}`} target="_blank" rel="noopener noreferrer">{item.productTitle} · {item.digitalDelivery.destinationHost}</a></p> : null)}</section> : null}
-            {bridge ? <section className={styles.section}>
-              <div className={styles.sectionHead}>
-                <h2>{c.inputs}</h2>
-              </div>
-              <ul className={styles.fields}>
-                {Object.entries(bridge?.input?.fields ?? {}).map(([key, value]) => (
-                  <li key={key}>
-                    {key}: {value}
-                  </li>
-                ))}
-              </ul>
-            </section> : null}
-            {bridge?.result ? (
-              <section className={styles.section}>
-                <div className={styles.sectionHead}>
-                  <h2>{c.result}</h2>
-                </div>
-                <pre className={styles.card}>
-                  {typeof bridge.result === "string" ? bridge.result : JSON.stringify(bridge.result, null, 2)}
-                </pre>
-              </section>
-            ) : null}
-            {bridge && ["failed", "manual_required"].includes(bridge.status) ? (
-              <section className={styles.form}>
-                <h2>{c.refund}</h2>
-                <label className={styles.field}>
-                  <span>{c.reason}</span>
-                  <textarea
-                    value={reason}
-                    onChange={(event) => setReason(event.target.value)}
-                    minLength={3}
-                    maxLength={500}
-                  />
-                  <small>&nbsp;</small>
-                </label>
-                <button className={styles.button} disabled={busy || reason.trim().length < 3} onClick={() => void refund()}>
-                  {busy ? c.working : c.send}
-                </button>
-              </section>
-            ) : null}
-            {message ? (
-              <p className={styles.success} role="status">
-                {message}
-              </p>
-            ) : null}
-          </>
-        ) : (
-          <div className={styles.empty}><p>{error || "…"}</p>{error ? <button className={styles.buttonQuiet} type="button" onClick={() => void load()}>{locale === "fa" ? "تلاش دوباره" : locale === "ar" ? "حاول مجددًا" : "Try again"}</button> : null}</div>
-        )}
-      </main>
-    </div>
-  );
+  const errorText = error === "unavailable" ? c.unavailable : error === "refresh" ? c.refreshError : c.error;
+  const payment = order?.status === "pending" ? c.pending : order?.status === "cancelled" ? c.cancelledPayment : order?.status === "refunded" ? statusLabel(c, "refunded") : order && ["paid", "processing", "shipped", "awaiting_confirmation", "delivered"].includes(order.status) ? c.paid : c.unknown;
+
+  return <div className={s.shell} dir={locale === "en" ? "ltr" : "rtl"}>
+    <nav className={s.navigation} aria-label={c.back}><Link href={`/${locale}/account/orders` as Route}><AccountIcon name="arrow" width={18} height={18} />{c.back}</Link><span>TOP<span className={s.brandAccent}>GSM</span></span></nav>
+    <header className={s.header}><div><p className={s.eyebrow}>{c.eyebrow}</p><h1>{order?.items[0]?.productTitle ?? c.order}{order && order.items.length > 1 ? <span className={s.extra}> +{(order.items.length - 1).toLocaleString(locale)}</span> : null}</h1>{order ? <div className={s.metadata}><span>{c.number}: <CopyValue value={order.id} label={c.number} c={c} /></span><span>{c.created}: <OrderDate value={order.createdAt} locale={locale} /></span></div> : null}</div>{order ? <button type="button" className={s.secondary} disabled={refreshing} onClick={() => void load()}>{refreshing ? c.refreshing : c.refresh}</button> : null}</header>
+    <main>
+      {error ? <div className={s.errorBanner} role="alert"><p>{errorText}</p><button type="button" className={s.secondary} onClick={() => void load()} disabled={refreshing}>{c.retry}</button></div> : null}
+      {!order && !error ? <div className={s.skeleton} role="status" aria-label={c.loading}><div /><div /><div /></div> : null}
+      {order ? <>
+        <section className={s.seller} aria-labelledby="order-seller-heading">
+          <div className={s.sellerIdentity}><span className={s.eyebrow}>{c.seller}</span><h2 id="order-seller-heading"><bdi>{order.seller.shopName}</bdi></h2></div>
+          <CustomerOrderChat orderId={order.id} available={order.chatAvailable} c={c} />
+        </section>
+        <OrderProgress order={order} locale={locale} c={c} />
+        <div className={s.layout}><div className={s.content}>
+          <div className={s.sectionHeading}><h2>{c.items} <span className={s.count}>{order.items.length.toLocaleString(locale)}</span></h2></div>
+          {order.items.map((item) => <PurchasedItem key={item.id} item={item} order={order} locale={locale} c={c} refresh={load} />)}
+          {!order.items.length ? <p className={s.panel}>{c.empty}</p> : null}
+          {order.items.some((item) => item.productType === "physical") || order.shippingAddress || order.shipment ? <ShippingDetails order={order} locale={locale} c={c} /> : null}
+        </div><aside className={s.sidebar}>
+          <section className={s.summary}><h2>{c.summary}</h2><div className={s.total}><span>{c.total}</span><strong><Money amount={order.totalAmount} currency={order.currency} locale={locale} /></strong></div><dl className={s.fields}><div><dt>{c.payment}</dt><dd>{payment}</dd></div><div><dt>{c.progress}</dt><dd><StatusBadge status={order.status} c={c} /></dd></div></dl>
+            <div className={s.sidebarActions}>
+              {order.status === "pending" && order.checkoutId ? <Link className={s.primary} href={`/${locale}/checkout/${order.checkoutId}` as Route}>{c.continuePayment}<AccountIcon name="arrow" width={18} height={18} /></Link> : null}
+              {canConfirmOrder(order) ? <button type="button" className={s.primary} onClick={() => chooseAction("delivered")} disabled={busy}>{c.confirm}<AccountIcon name="check" width={18} height={18} /></button> : null}
+              {order.status === "pending" && order.items.length > 0 ? <button type="button" className={s.quiet} onClick={() => chooseAction("cancelled")} disabled={busy}>{c.cancel}</button> : null}
+            </div>{message ? <p className={s.success} role="status">{message}</p> : null}
+          </section>
+          <p className={s.updated}>{c.latest}<br /><OrderDate value={order.updatedAt} locale={locale} /></p>
+        </aside></div>
+      </> : null}
+    </main>
+    {action ? <Confirmation action={action} busy={busy} error={actionError} c={c} onClose={() => setAction(null)} onConfirm={() => void transition()} /> : null}
+  </div>;
 }

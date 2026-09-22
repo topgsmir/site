@@ -14,6 +14,7 @@ import type { Route } from "next";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import type { Locale } from "@/lib/i18n";
+import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
 import styles from "./ProductChangesWorkspace.module.css";
 
 const COPY = {
@@ -184,8 +185,7 @@ export function ProductChangesWorkspace({
   return (
     <section className={styles.workspace} data-compact={compact || undefined} aria-labelledby={compact ? undefined : "product-changes-title"}>
       {!compact ? <header><div><h2 id="product-changes-title">{c.title}</h2><p>{c.intro}</p></div></header> : <h3 className={styles.compactTitle}>{c.title}</h3>}
-      {!compact ? <section className={styles.bulkPanel} aria-labelledby="bulk-undo-title">
-        <div className={styles.bulkHeading}><div><h3 id="bulk-undo-title">{bulkCopy.title}</h3><p>{bulkCopy.intro}</p></div><span>01—100</span></div>
+      {!compact ? <CollapsibleFilters className={styles.bulkPanel} surface={false} locale={locale} title={bulkCopy.title} description={bulkCopy.intro} activeCount={[bulkMode !== "last", bulkAfter, bulkOperator !== "and", bulkAction, bulkProductType, bulkSellerId].filter(Boolean).length}>
         <div className={styles.bulkGrid}>
           <label><span>{bulkCopy.last}</span><select value={bulkMode} onChange={(event) => { setBulkMode(event.target.value as "last" | "after_time"); clearBulkPreview(); }}><option value="last">{bulkCopy.last}</option><option value="after_time">{bulkCopy.afterTime}</option></select></label>
           <label><span>{bulkCopy.count}</span><input type="number" min={1} max={100} value={bulkCount} onChange={(event) => { setBulkCount(Math.max(1, Math.min(100, Number(event.target.value) || 1))); clearBulkPreview(); }} /></label>
@@ -200,7 +200,7 @@ export function ProductChangesWorkspace({
           {bulkPreview ? <div className={styles.bulkPreview}><strong>{bulkPreview.changeCount} {bulkCopy.selected} {bulkPreview.affectedProductCount} {bulkCopy.products}</strong>{bulkPreview.hasMore ? <small>{bulkCopy.more}</small> : null}</div> : null}
           {bulkPreview?.changeCount ? <button className={styles.dangerButton} type="button" disabled={Boolean(bulkBusy)} onClick={() => void executeBulkUndo()}>{bulkBusy === "execute" ? bulkCopy.executing : bulkCopy.execute}</button> : null}
         </div>
-      </section> : null}
+      </CollapsibleFilters> : null}
       {historyError ? <p className={styles.error} role="alert">{historyError} <button type="button" onClick={() => void load(cursors[page] ?? null)}>{c.retry}</button></p> : null}
       {error ? <p className={styles.error} role="alert">{error}</p> : null}
       {message ? <p className={styles.message} role="status">{message}</p> : null}

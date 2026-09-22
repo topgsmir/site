@@ -30,6 +30,24 @@ export class CheckoutLineDto {
   @IsString()
   @MaxLength(2000)
   serviceNote?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @ArrayUnique((answer: ServiceAnswerDto) => answer?.key)
+  @ValidateNested({ each: true })
+  @Type(() => ServiceAnswerDto)
+  serviceAnswers?: ServiceAnswerDto[];
+}
+
+export class ServiceAnswerDto {
+  @IsString()
+  @Matches(/^[a-z][a-z0-9_]{0,39}$/)
+  key!: string;
+
+  @IsString()
+  @MaxLength(2_000)
+  value!: string;
 }
 
 export class QuoteCheckoutDto {

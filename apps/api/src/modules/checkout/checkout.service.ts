@@ -5,9 +5,10 @@ import {
   HttpStatus,
   Injectable,
   NotFoundException,
+  Optional,
   ServiceUnavailableException
 } from "@nestjs/common";
-import type { AppUser, ProductType } from "@topgsm/shared-types";
+import type { AppUser, ProductType, ServiceInputDefinition } from "@topgsm/shared-types";
 import { createHash, randomUUID } from "node:crypto";
 import { Prisma } from "../../prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -16,6 +17,7 @@ import { PaymentService } from "../../integrations/payments/payment.service";
 import { PublicHttpException } from "../../common/http/public-http.exception";
 import type { CreateCheckoutDto, QuoteCheckoutDto, ShippingAddressDto } from "./dto/checkout.dto";
 import { UsdRateService } from "../usd-rate/usd-rate.service";
+import { CredentialCryptoService } from "../../common/security/credential-crypto.service";
 
 const RESERVATION_MS = 15 * 60 * 1000;
 
@@ -86,6 +88,7 @@ type InternalQuoteLine = {
   offerId: string; productId: string; title: string; productType: ProductType; quantity: number;
   image: { url: string; width: number; height: number } | null;
   unitPrice: string; totalAmount: string; availableStock: number | null; serviceNote: string | null;
+  serviceInputs: ServiceInputDefinition[]; serviceAnswers: Array<{ key: string; value: string }>;
   digitalDeliveryUrl: string | null; digitalMaxDownloads: number | null;
 };
 
@@ -95,7 +98,8 @@ export class CheckoutService {
     private readonly prisma: PrismaService,
     private readonly payments: PaymentService,
     private readonly paymentApplication: PaymentApplicationService,
-    private readonly usdRates: UsdRateService
+    private readonly usdRates: UsdRateService,
+    @Optional() private readonly crypto?: CredentialCryptoService
   ) {}
 
   async quote(input: QuoteCheckoutDto) {
@@ -105,7 +109,7 @@ export class CheckoutService {
       ...quote,
       groups: quote.groups.map(({ commissionRate: _commission, holdbackRate: _holdback, total: _total, ...group }) => ({
         ...group,
-        items: group.items.map(({ digitalDeliveryUrl: _url, digitalMaxDownloads: _limit, ...item }) => item)
+        items: group.items.map(({ digitalDeliveryUrl: _url, digitalMaxDownloads: _limit, serviceAnswers: _answers, ...item }) => item)
       }))
     };
   }
@@ -133,7 +137,7 @@ export class CheckoutService {
 
     try {
       const checkout = await this.serializable(async (tx) => {
-        const quote = await this.buildQuote(tx, input, providerNames);
+        const quote = await this.buildQuote(tx, input, providerNames, true);
         const physical = quote.groups.some((group) => group.productType === "physical");
         if (physical && !input.shippingAddress) throw new BadRequestException("A shipping address is required");
         const selections = new Map(input.paymentSelections.map((selection) => [selection.orderGroupKey, selection.providerCode]));
@@ -199,11 +203,20 @@ export class CheckoutService {
             },
             select: { id: true, total_amount: true }
           });
-          await tx.order_items.createMany({ data: group.items.map((line) => ({
-            order_id: order.id, offer_id: line.offerId, product_type: line.productType, product_title: line.title,
-            quantity: line.quantity, unit_price: new Prisma.Decimal(line.unitPrice), total_amount: new Prisma.Decimal(line.totalAmount),
-            service_note: line.serviceNote || null, digital_delivery_url: line.digitalDeliveryUrl, digital_max_downloads: line.digitalMaxDownloads
-          })) });
+          await tx.order_items.createMany({ data: group.items.map((line) => {
+            const itemId = randomUUID();
+            const encryptedAnswers = this.encryptServiceAnswers(itemId, line.serviceAnswers);
+            return {
+              id: itemId,
+              order_id: order.id, offer_id: line.offerId, product_type: line.productType, product_title: line.title,
+              quantity: line.quantity, unit_price: new Prisma.Decimal(line.unitPrice), total_amount: new Prisma.Decimal(line.totalAmount),
+              service_note: line.serviceNote || null,
+              service_input_schema: line.serviceInputs as unknown as Prisma.InputJsonValue,
+              encrypted_service_answers: encryptedAnswers?.ciphertext ?? null,
+              service_answers_key_id: encryptedAnswers?.keyId ?? null,
+              digital_delivery_url: line.digitalDeliveryUrl, digital_max_downloads: line.digitalMaxDownloads
+            };
+          }) });
           await tx.order_events.create({
             data: { order_id: order.id, actor_user_id: actor.id, from_status: null, to_status: "pending", idempotency_key: orderKey, request_hash: this.hash({ checkoutId: createdCheckout.id, group: group.key }) }
           });
@@ -263,7 +276,12 @@ export class CheckoutService {
     return this.paymentApplication.initiateCheckoutGroup(actor, checkoutId, groupId, idempotencyKey);
   }
 
-  private async buildQuote(db: DbClient, input: QuoteCheckoutDto, providers: Array<{ code: string; name: string }>) {
+  private async buildQuote(
+    db: DbClient,
+    input: QuoteCheckoutDto,
+    providers: Array<{ code: string; name: string }>,
+    requireServiceAnswers = false
+  ) {
     const offerIds = input.items.map((line) => line.offerId);
     const offers = await db.seller_offers.findMany({
       where: {
@@ -274,6 +292,7 @@ export class CheckoutService {
         id: true, price: true, currency: true,
         digital: { select: { file_reference: true, max_downloads: true } },
         physical: { select: { stock: true } },
+        service: { select: { input_schema: true } },
         listing: {
           select: {
             seller: { select: { id: true, shop_name: true, commission: true, holdback_rate: true, permissions: { where: { permission: "physical_products_manage" }, select: { permission: true } } } },
@@ -345,6 +364,11 @@ export class CheckoutService {
         });
       }
       if (type !== "service" && requested.serviceNote?.trim()) throw new BadRequestException("Only service products accept a customer note");
+      if (type !== "service" && requested.serviceAnswers?.length) throw new BadRequestException("Only service products accept customer answers");
+      const serviceInputs = type === "service" ? this.serviceInputDefinitions(offer.service?.input_schema) : [];
+      const serviceAnswers = type === "service"
+        ? this.validateServiceAnswers(serviceInputs, requested.serviceAnswers ?? [], requireServiceAnswers)
+        : [];
       const key = `${offer.listing.seller.id}:${type}`;
       const group = groups.get(key) ?? {
         key, seller: { id: offer.listing.seller.id, shopName: offer.listing.seller.shop_name }, productType: type,
@@ -359,6 +383,7 @@ export class CheckoutService {
         image: this.mapCheckoutImage(offer.listing.product.media),
         productType: type, quantity: requested.quantity, unitPrice: unitPrice.toString(), totalAmount: total.toString(),
         availableStock: offer.physical?.stock ?? null, serviceNote: requested.serviceNote?.trim() || null,
+        serviceInputs, serviceAnswers,
         digitalDeliveryUrl: offer.digital?.file_reference ?? null,
         digitalMaxDownloads: offer.digital?.max_downloads ?? null
       });
@@ -406,6 +431,62 @@ export class CheckoutService {
 
   private isHttpsUrl(value: string) {
     try { return new URL(value).protocol === "https:"; } catch { return false; }
+  }
+
+  private validateServiceAnswers(
+    schema: ServiceInputDefinition[],
+    answers: Array<{ key: string; value: string }>,
+    requireAnswers: boolean
+  ) {
+    const supplied = new Map(answers.map((answer) => [answer.key.trim(), answer.value]));
+    const definitions = new Map(schema.map((field) => [field.key, field]));
+    for (const key of supplied.keys()) {
+      if (!definitions.has(key)) throw new BadRequestException(`Unknown service field: ${key}`);
+    }
+    const validated: Array<{ key: string; value: string }> = [];
+    for (const field of schema) {
+      const value = supplied.get(field.key) ?? "";
+      if (requireAnswers && field.required && value.length === 0) {
+        throw new BadRequestException(`${field.label} is required`);
+      }
+      if (!value) continue;
+      const minimumLength = field.minimumLength ?? 0;
+      const maximumLength = field.maximumLength ?? 2_000;
+      if (value.length < minimumLength || value.length > maximumLength) {
+        throw new BadRequestException(`${field.label} has an invalid length`);
+      }
+      validated.push({ key: field.key, value });
+    }
+    return validated;
+  }
+
+  private encryptServiceAnswers(itemId: string, answers: Array<{ key: string; value: string }>) {
+    if (!answers.length) return null;
+    if (!this.crypto) throw new ServiceUnavailableException("Service answer encryption is unavailable");
+    return this.crypto.encrypt(JSON.stringify(answers), `service-order-item:${itemId}:answers`, "SERVICE_INPUT");
+  }
+
+  private serviceInputDefinitions(value: Prisma.JsonValue | null | undefined): ServiceInputDefinition[] {
+    if (!Array.isArray(value)) return [];
+    return value.flatMap((field) => {
+      if (!field || typeof field !== "object" || Array.isArray(field)) return [];
+      if (
+        typeof field.key !== "string" ||
+        typeof field.label !== "string" ||
+        !["text", "textarea", "password"].includes(String(field.type)) ||
+        typeof field.required !== "boolean"
+      ) return [];
+      return [{
+        key: field.key,
+        label: field.label,
+        type: field.type as ServiceInputDefinition["type"],
+        required: field.required,
+        ...(typeof field.placeholder === "string" ? { placeholder: field.placeholder } : {}),
+        ...(typeof field.helpText === "string" ? { helpText: field.helpText } : {}),
+        ...(typeof field.minimumLength === "number" ? { minimumLength: field.minimumLength } : {}),
+        ...(typeof field.maximumLength === "number" ? { maximumLength: field.maximumLength } : {})
+      }];
+    });
   }
 
   private hash(value: unknown) { return createHash("sha256").update(JSON.stringify(value)).digest("hex"); }

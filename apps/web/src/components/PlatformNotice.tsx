@@ -15,5 +15,5 @@ export function PlatformNotice() {
   }, []);
 
   if (!message) return null;
-  return <aside role="status" style={{ padding: "0.75rem 1.25rem", textAlign: "center", background: "#fff1c7", color: "#332600", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{message}</aside>;
+  return <aside role="status" style={{ padding: "0.75rem 1.25rem", borderBlockEnd: "1px solid var(--color-dashboard-rule)", textAlign: "center", background: "var(--color-dashboard-surface)", color: "var(--color-dashboard-ink-soft)", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{message}</aside>;
 }

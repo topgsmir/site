@@ -10,6 +10,7 @@ import type {
   ProductType
 } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
+import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
 import { api } from "@/lib/api/client";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import styles from "./PaymentServiceWorkspace.module.css";
@@ -789,7 +790,7 @@ export function PaymentServiceWorkspace({
                       ))}
                     </div> : <p>{c.allSellers}</p>}
                   </div>
-                  <div className={styles.searchControl}>
+                  <CollapsibleFilters surface={false} locale={locale} title={c.searchSellers} activeCount={sellerQuery.trim() ? 1 : 0}><div className={styles.searchControl}>
                     <label htmlFor={`seller-search-${method.code}`}>{c.searchSellers}</label>
                     <div className={styles.searchField}>
                       <SearchIcon />
@@ -829,7 +830,7 @@ export function PaymentServiceWorkspace({
                     ))}
                     {searchingSellersFor === method.code ? <p role="status">{c.searchingSellers}</p> : null}
                     {!sellerResults.length && searchingSellersFor !== method.code ? <p>{c.noSellerMatch}</p> : null}
-                  </div> : null}
+                  </div> : null}</CollapsibleFilters>
                 </fieldset>
               </div>
 
@@ -858,7 +859,8 @@ export function PaymentServiceWorkspace({
       </section> : null}
 
       {view === "transactions" ? <section className={styles.transactionsSection} aria-label={c.transactions}>
-        <form className={styles.transactionFilters} onSubmit={(event) => {
+        <CollapsibleFilters className={styles.transactionFilters} surface={false} locale={locale} title={c.filters} description={c.referenceSearchHint} activeCount={Object.values(appliedFilters).filter(Boolean).length}>
+        <form onSubmit={(event) => {
           event.preventDefault();
           applyTransactionFilters();
         }}>
@@ -932,6 +934,7 @@ export function PaymentServiceWorkspace({
             </div>
           ) : null}
         </form>
+        </CollapsibleFilters>
 
         {Object.entries(appliedFilters).some(([, value]) => Boolean(value)) ? (
           <div className={styles.appliedFilters} aria-label={c.filters}>
