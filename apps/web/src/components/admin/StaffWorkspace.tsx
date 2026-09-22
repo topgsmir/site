@@ -18,7 +18,7 @@ const COPY = {
 
 const PERMISSION_COPY: Record<Locale, Record<PlatformPermission, string>> = {
   en: { vendors_manage: "Manage vendors", catalog_view: "View catalog", orders_manage: "Manage orders", payouts_manage: "Manage payouts", blog_manage: "Manage blog", uploads_manage: "Manage uploads" },
-  fa: { vendors_manage: "مدیریت فروشندگان", catalog_view: "مشاهده کاتالوگ", orders_manage: "مدیریت سفارش‌ها", payouts_manage: "مدیریت تسویه‌ها", blog_manage: "مدیریت وبلاگ", uploads_manage: "مدیریت بارگذاری‌ها" },
+  fa: { vendors_manage: "مدیریت فروشندگان", catalog_view: "مشاهده کاتالوگ", orders_manage: "مدیریت سفارش‌ها", payouts_manage: "مدیریت تسویه‌ها", blog_manage: "مدیریت وبلاگ", uploads_manage: "مدیریت آپلود ها" },
   ar: { vendors_manage: "إدارة البائعين", catalog_view: "عرض الكتالوج", orders_manage: "إدارة الطلبات", payouts_manage: "إدارة المدفوعات", blog_manage: "إدارة المدونة", uploads_manage: "إدارة الملفات المرفوعة" }
 };
 

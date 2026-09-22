@@ -1,3 +1,5 @@
+import { legacySitemapRows } from "../seo/legacy-sitemap";
+import { publicBlogWhere } from "./blog-visibility";
 import {
   BadRequestException,
   ConflictException,
@@ -12,6 +14,7 @@ import {
   BLOG_LOCALES,
   type CreateBlogPostDto,
   type ListBlogPostsQueryDto,
+  type ManagedBlogQueryDto,
   type ProductOptionsQueryDto,
   type TaxonomyDto,
   type UpdateBlogPostDto
@@ -75,9 +78,22 @@ type BlogSnapshot = {
 export class BlogService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listManaged(actor: BlogActor, input: ListBlogPostsQueryDto) {
+  async listManaged(actor: BlogActor, input: ManagedBlogQueryDto) {
+    const search = input.search?.normalize("NFKC").trim();
     const rows = await this.prisma.blog_posts.findMany({
-      where: this.actorScope(actor),
+      where: {
+        ...this.actorScope(actor),
+        ...(input.status ? { archived_at: input.status === "archived" ? { not: null } : null } : {}),
+        working_revision: {
+          ...(input.status && input.status !== "archived" ? { status: input.status } : {}),
+          ...(input.categoryId ? { category_id: input.categoryId } : {}),
+          ...(search ? { translations: { some: { OR: [
+            { title: { contains: search, mode: "insensitive" } },
+            { slug: { contains: search, mode: "insensitive" } },
+            { excerpt: { contains: search, mode: "insensitive" } }
+          ] } } } : {})
+        }
+      },
       ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
       take: input.limit + 1,
       orderBy: [{ updated_at: "desc" }, { id: "desc" }],
@@ -462,9 +478,7 @@ export class BlogService {
   }) {
     const rows = await this.prisma.blog_posts.findMany({
       where: {
-        archived_at: null,
-        published_revision_id: { not: null },
-        OR: [{ seller_id: null }, { seller: { approved: true, invited: false, suspended_at: null } }],
+        ...publicBlogWhere(locale),
         ...(filters?.sellerId ? { seller_id: filters.sellerId } : {}),
         published_revision: {
           translations: { some: { locale } },
@@ -483,6 +497,7 @@ export class BlogService {
     });
     const hasMore = rows.length > input.limit;
     const visible = rows.slice(0, input.limit);
+    if (input.cursor && !visible.length) throw new NotFoundException("Page was not found");
     return {
       items: visible.map((post) => this.mapPublicSummary(post, locale)),
       nextCursor: hasMore ? visible.at(-1)?.id ?? null : null
@@ -520,7 +535,7 @@ export class BlogService {
       coverAltText: translation.cover_alt_text,
       relatedProducts: post.published_revision.related_products.map(({ product }) => ({
         id: product.id,
-        title: product.title,
+        title: product.translations.find((item) => item.locale === locale)?.published_title ?? product.title,
         slug: product.slug,
         startingPrices: this.startingPrices(product)
       })),
@@ -583,45 +598,31 @@ export class BlogService {
   }
 
   async sitemapProjection() {
-    const visiblePost = {
-      archived_at: null,
-      published_revision_id: { not: null },
-      OR: [{ seller_id: null }, { seller: { approved: true, invited: false, suspended_at: null } }]
-    } satisfies Prisma.blog_postsWhereInput;
-    const [posts, categories, tags, sellers] = await Promise.all([
-      this.prisma.blog_routes.findMany({
-        where: { is_current: true, post: visiblePost },
-        orderBy: { created_at: "asc" },
-        select: { locale: true, slug: true, post: { select: { updated_at: true } } }
-      }),
-      this.prisma.blog_category_translations.findMany({
-        where: { category: { revisions: { some: { published_for: { is: visiblePost } } } } },
-        orderBy: [{ locale: "asc" }, { slug: "asc" }],
-        select: { locale: true, slug: true, category: { select: { updated_at: true } } }
-      }),
-      this.prisma.blog_tag_translations.findMany({
-        where: { tag: { revisions: { some: { revision: { published_for: { is: visiblePost } } } } } },
-        orderBy: [{ locale: "asc" }, { slug: "asc" }],
-        select: { locale: true, slug: true, tag: { select: { updated_at: true } } }
-      }),
-      this.prisma.sellers.findMany({
-        where: {
-          approved: true,
-          invited: false,
-          suspended_at: null,
-          blog_posts: { some: { archived_at: null, published_revision_id: { not: null } } }
-        },
-        select: {
-          id: true,
-          blog_posts: {
-            where: { archived_at: null, published_revision_id: { not: null } },
-            orderBy: { updated_at: "desc" },
-            take: 1,
-            select: { updated_at: true }
-          }
-        }
-      })
-    ]);
+    const visiblePost = publicBlogWhere();
+    const posts = await legacySitemapRows((cursor) => this.prisma.blog_routes.findMany({
+      where: { is_current: true, post: visiblePost, ...(cursor ? { id: { gt: cursor } } : {}) },
+      orderBy: { id: "asc" }, take: 1000,
+      select: { id: true, locale: true, slug: true, post: { select: { updated_at: true } } }
+    }), (row) => row.id);
+    const categories = [];
+    const tags = [];
+    for (const locale of ["fa", "en", "ar"] as const) {
+      categories.push(...await legacySitemapRows((cursor) => this.prisma.blog_category_translations.findMany({
+        where: { locale, ...(cursor ? { category_id: { gt: cursor } } : {}), category: { revisions: { some: { published_for: { is: publicBlogWhere(locale) } } } } },
+        orderBy: { category_id: "asc" }, take: 1000,
+        select: { category_id: true, locale: true, slug: true, category: { select: { updated_at: true } } }
+      }), (row) => row.category_id));
+      tags.push(...await legacySitemapRows((cursor) => this.prisma.blog_tag_translations.findMany({
+        where: { locale, ...(cursor ? { tag_id: { gt: cursor } } : {}), tag: { revisions: { some: { revision: { published_for: { is: publicBlogWhere(locale) } } } } } },
+        orderBy: { tag_id: "asc" }, take: 1000,
+        select: { tag_id: true, locale: true, slug: true, tag: { select: { updated_at: true } } }
+      }), (row) => row.tag_id));
+    }
+    const sellers = await legacySitemapRows((cursor) => this.prisma.sellers.findMany({
+      where: { approved: true, invited: false, suspended_at: null, ...(cursor ? { id: { gt: cursor } } : {}), blog_posts: { some: visiblePost } },
+      orderBy: { id: "asc" }, take: 1000,
+      select: { id: true, blog_posts: { where: visiblePost, orderBy: { updated_at: "desc" }, take: 1, select: { updated_at: true } } }
+    }), (row) => row.id);
     return { posts, categories, tags, sellers };
   }
 
@@ -1105,6 +1106,7 @@ export class BlogService {
             include: {
               product: {
                 include: {
+                  translations: { where: { locale, published_at: { not: null } }, select: { locale: true, published_title: true } },
                   variants: { include: { offers: { where: { status: "active" }, select: { price: true, currency: true } } } }
                 }
               }

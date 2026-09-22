@@ -5,6 +5,9 @@ import type { PrismaService } from "../../prisma/prisma.service";
 import type { BlogActor } from "./blog-manage.guard";
 import { BlogService } from "./blog.service";
 import { validateRichText } from "./rich-text.validator";
+import { plainToInstance } from "class-transformer";
+import { validate } from "class-validator";
+import { ManagedBlogQueryDto } from "./dto/blog-post.dto";
 
 const sellerActor: BlogActor = {
   type: "seller",
@@ -20,6 +23,36 @@ const sellerActor: BlogActor = {
 };
 
 describe("multilingual blog security", () => {
+  it("validates managed search bounds and filter allowlists", async () => {
+    for (const query of [{ search: "x".repeat(101) }, { status: "deleted" }, { categoryId: "invalid" }, { limit: 51 }]) {
+      assert.ok((await validate(plainToInstance(ManagedBlogQueryDto, query))).length > 0);
+    }
+    assert.equal((await validate(plainToInstance(ManagedBlogQueryDto, { search: "راهنما", status: "published", limit: "20" }))).length, 0);
+  });
+
+  it("combines multilingual search and category/status filters with seller isolation and cursor pagination", async () => {
+    let query: Record<string, unknown> = {};
+    const prisma = { blog_posts: { findMany: async (input: Record<string, unknown>) => { query = input; return []; } } } as unknown as PrismaService;
+    const service = new BlogService(prisma);
+    const categoryId = "00000000-0000-4000-8000-000000000003";
+    const cursor = "00000000-0000-4000-8000-000000000004";
+    assert.deepEqual(await service.listManaged(sellerActor, { search: "  Guide  ", status: "published", categoryId, cursor, limit: 20 }), { items: [], nextCursor: null });
+    assert.deepEqual(query.where, {
+      seller_id: sellerActor.sellerId,
+      archived_at: null,
+      working_revision: { status: "published", category_id: categoryId, translations: { some: { OR: [
+        { title: { contains: "Guide", mode: "insensitive" } },
+        { slug: { contains: "Guide", mode: "insensitive" } },
+        { excerpt: { contains: "Guide", mode: "insensitive" } }
+      ] } } }
+    });
+    assert.equal(query.take, 21);
+    assert.equal(query.skip, 1);
+    assert.deepEqual(query.cursor, { id: cursor });
+    await service.listManaged(sellerActor, { status: "archived", limit: 20 });
+    assert.deepEqual(query.where, { seller_id: sellerActor.sellerId, archived_at: { not: null }, working_revision: {} });
+  });
+
   it("rejects raw HTML nodes and unsafe link protocols", () => {
     assert.throws(
       () => validateRichText({ type: "doc", content: [{ type: "html", text: "<script />" }] }),
@@ -40,12 +73,25 @@ describe("multilingual blog security", () => {
   it("accepts allowlisted content and extracts same-origin media ids", () => {
     const result = validateRichText({
       type: "doc",
-      content: [{
-        type: "paragraph",
-        content: [{ type: "image", attrs: { src: "/media/00000000-0000-4000-8000-000000000003/md.webp" } }]
-      }]
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "image", attrs: { src: "/media/00000000-0000-4000-8000-000000000003/md.webp" } }]
+        },
+        { type: "horizontalRule" }
+      ]
     });
     assert.deepEqual(result.mediaIds, ["00000000-0000-4000-8000-000000000003"]);
+    assert.deepEqual(result.content, {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "image", attrs: { src: "/media/00000000-0000-4000-8000-000000000003/md.webp" } }]
+        },
+        { type: "horizontalRule" }
+      ]
+    });
   });
 
   it("scopes seller product search to active listings", async () => {

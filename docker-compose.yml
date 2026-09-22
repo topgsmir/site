@@ -24,6 +24,7 @@ services:
       dockerfile: infrastructure/docker/api.Dockerfile
       target: development
     container_name: topgsm-api
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
@@ -33,8 +34,11 @@ services:
       API_PORT: 4000
       DATABASE_URL: postgresql://topgsm:topgsm@postgres:5432/topgsm
       MEDIA_ROOT: /var/lib/topgsm/media
+      BACKUP_ROOT: /var/lib/topgsm/backups
+      BACKUP_RESTART_ENABLED: "true"
     volumes:
       - topgsm-media-data:/var/lib/topgsm/media
+      - topgsm-backup-data:/var/lib/topgsm/backups
     ports:
       - "127.0.0.1:4000:4000"
     command: ["pnpm", "-C", "apps/api", "dev"]
@@ -66,3 +70,4 @@ services:
 volumes:
   topgsm-postgres-data:
   topgsm-media-data:
+  topgsm-backup-data:

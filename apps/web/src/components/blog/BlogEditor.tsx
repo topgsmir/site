@@ -25,6 +25,8 @@ import { api } from "@/lib/api/client";
 import { DesignIcon } from "@/components/DesignIcon";
 import { BLOG_EDITOR_COPY } from "./BlogEditorCopy";
 import styles from "./BlogEditor.module.css";
+import { ContentAiPanel } from "@/components/ai/ContentAiPanel";
+import { applyBlogAiTranslation, articleText, taxonomyMatch } from "@/components/ai/blog-ai-draft";
 
 const LABELS: Record<BlogLocale, string> = { fa: "فارسی", en: "English", ar: "العربية" };
 const AUTHORING_LOCALE: BlogLocale = "fa";
@@ -32,8 +34,45 @@ const EMPTY: RichTextDocument = { type: "doc", content: [] };
 const COPY = {
   ...BLOG_EDITOR_COPY[AUTHORING_LOCALE],
   format: "WebP یا SVG · حداکثر ۸ مگابایت",
-  uploadError: "بارگذاری انجام نشد. از تصویر ثابت WebP یا SVG با حجم کمتر از ۸ مگابایت و ابعاد کمتر از ۲۴ مگاپیکسل استفاده کنید."
+  uploadError: "بارگذاری انجام نشد. از تصویر ثابت WebP یا SVG با حجم کمتر از ۸ مگابایت و ابعاد کمتر از ۲۴ مگاپیکسل استفاده کنید.",
+  visual: "دیداری",
+  html: "HTML",
+  htmlHint: "از HTML مقاله مانند پاراگراف، تیترهای H2 و H3، فهرست، نقل‌قول، پیوند، کد و تصاویر بارگذاری‌شده استفاده کنید. اسکریپت، embed، style، رویدادها و نشانی‌های ناامن ذخیره نمی‌شوند.",
+  strike: "خط‌خورده",
+  inlineCode: "کد درون‌خطی",
+  subheading: "زیرتیتر",
+  orderedList: "فهرست شماره‌دار",
+  quote: "نقل‌قول",
+  codeBlock: "بلوک کد",
+  rule: "جداکننده",
+  link: "پیوند",
+  linkPrompt: "پیوند http، https، mailto یا tel را وارد کنید"
 };
+
+const SAFE_LINK = /^(https?:|mailto:|tel:)/i;
+const SAFE_INLINE_IMAGE = /^\/media\/[0-9a-f-]{36}\/[a-z0-9-]+\.webp$/i;
+
+function sanitizeHtmlNode(node: RichTextNode): RichTextNode | null {
+  if (node.type === "image") {
+    const src = typeof node.attrs?.src === "string" ? node.attrs.src : "";
+    if (!SAFE_INLINE_IMAGE.test(src)) return null;
+    return { type: "image", attrs: { src } };
+  }
+  const marks = node.marks?.flatMap((mark) => {
+    if (mark.type !== "link") return [mark];
+    const href = typeof mark.attrs?.href === "string" ? mark.attrs.href : "";
+    return SAFE_LINK.test(href) ? [{ type: "link", attrs: { href } }] : [];
+  });
+  const content = node.content?.flatMap((child) => {
+    const sanitized = sanitizeHtmlNode(child);
+    return sanitized ? [sanitized] : [];
+  });
+  return {
+    ...node,
+    ...(marks ? { marks } : {}),
+    ...(content ? { content } : {})
+  };
+}
 
 function hasArticleContent(node: RichTextNode): boolean {
   return node.type === "image" || Boolean(node.type === "text" && node.text?.trim()) || Boolean(node.content?.some(hasArticleContent));
@@ -60,6 +99,8 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
   const [loadedContent, setLoadedContent] = useState(0);
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editorMode, setEditorMode] = useState<"visual" | "html">("visual");
+  const [htmlSource, setHtmlSource] = useState("");
   const [changes, setChanges] = useState<BlogChangeEvent[]>([]);
   const [historyError, setHistoryError] = useState("");
   const [confirmRestoreKey, setConfirmRestoreKey] = useState<string | null>(null);
@@ -85,8 +126,15 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
   const formatting = useEditorState({ editor, selector: ({ editor: currentEditor }) => ({
     bold: currentEditor?.isActive("bold") ?? false,
     italic: currentEditor?.isActive("italic") ?? false,
+    strike: currentEditor?.isActive("strike") ?? false,
+    code: currentEditor?.isActive("code") ?? false,
     heading: currentEditor?.isActive("heading", { level: 2 }) ?? false,
-    list: currentEditor?.isActive("bulletList") ?? false
+    subheading: currentEditor?.isActive("heading", { level: 3 }) ?? false,
+    list: currentEditor?.isActive("bulletList") ?? false,
+    orderedList: currentEditor?.isActive("orderedList") ?? false,
+    quote: currentEditor?.isActive("blockquote") ?? false,
+    codeBlock: currentEditor?.isActive("codeBlock") ?? false,
+    link: currentEditor?.isActive("link") ?? false
   }) });
 
   const load = useCallback(async () => {
@@ -150,13 +198,63 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
     setTranslations((current) => current.map((translation) => translation.locale === active ? { ...translation, [field]: value } : translation));
   }
 
+  function replaceActiveContent(content: RichTextDocument) {
+    const nextTranslations = translationsRef.current.map((translation) => translation.locale === activeRef.current
+      ? { ...translation, content }
+      : translation);
+    translationsRef.current = nextTranslations;
+    setTranslations(nextTranslations);
+    return nextTranslations;
+  }
+
+  function applyHtmlSource() {
+    if (!editor) return translationsRef.current;
+    editor.commands.setContent(htmlSource, { emitUpdate: false });
+    const parsed = editor.getJSON() as RichTextDocument;
+    const sanitized = sanitizeHtmlNode(parsed) as RichTextDocument;
+    editor.commands.setContent(sanitized, { emitUpdate: false });
+    return replaceActiveContent(sanitized);
+  }
+
+  function setMode(mode: "visual" | "html") {
+    if (!editor || mode === editorMode) return;
+    if (mode === "html") setHtmlSource(editor.getHTML());
+    else applyHtmlSource();
+    setEditorMode(mode);
+  }
+
+  function changeLanguage(locale: BlogLocale) {
+    if (editorMode === "html") applyHtmlSource();
+    setEditorMode("visual");
+    setActive(locale);
+  }
+
+  function editLink() {
+    if (!editor) return;
+    const existing = editor.getAttributes("link").href as string | undefined;
+    const href = window.prompt(COPY.linkPrompt, existing ?? "https://");
+    if (href === null) return;
+    if (!href.trim()) {
+      editor.chain().focus().extendMarkRange("link").unsetLink().run();
+      return;
+    }
+    if (!SAFE_LINK.test(href.trim())) {
+      setError(true);
+      setMessage("این نوع نشانی برای پیوند مجاز نیست.");
+      return;
+    }
+    setError(false);
+    editor.chain().focus().extendMarkRange("link").setLink({ href: href.trim() }).run();
+  }
+
   async function save() {
     if (!post || saving) return post;
     setSaving(true); setError(false); setMessage(copy.saving);
     try {
+      const translationsToSave = editorMode === "html" ? applyHtmlSource() : translations;
       const response = await api.patch<ManagedBlogPost>(`/blog/manage/posts/${postId}`, {
         optimisticVersion: post.optimisticVersion,
-        translations,
+        translations: translationsToSave,
         ...(cover ? { coverAssetId: cover.id } : {}),
         ...(categoryId ? { categoryId } : {}),
         tagIds,
@@ -250,24 +348,63 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
       <div className={styles.pageHeading}><div><h1>{copy.title}</h1><p>{copy.intro}</p></div><p className={styles.status} role={error ? "alert" : "status"} data-error={error}><span aria-hidden="true" />{message}</p></div>
       <div className={styles.workspace}>
         <main className={styles.main}>
+          <ContentAiPanel key={postId} locale={AUTHORING_LOCALE} kind="blog" disabled={saving || !editor || editorMode === "html"}
+            disabledHint={editorMode === "html" ? "برای استفاده از دستیار، ابتدا به حالت دیداری برگردید تا تغییرات HTML وارد ویرایشگر شوند." : undefined}
+            fields={["title", "slug", "excerpt", "content", "seoTitle", "seoDescription", "coverAltText", "category", "tags"]}
+            snapshot={JSON.stringify({ translations, categoryId, tagIds, editorMode, htmlSource })}
+            categories={categories.flatMap((term) => term.translations.map((translation) => translation.name))}
+            tags={tags.flatMap((term) => term.translations.map((translation) => translation.name))}
+            getSource={() => [current.title, current.excerpt, articleText(current.content)].filter(Boolean).join("\n\n")}
+            onApply={(drafts, fields) => {
+              const nextTranslations = translations.map((translation) => drafts[translation.locale] ? applyBlogAiTranslation(translation, drafts[translation.locale]!, fields) : translation);
+              const suggestions = drafts.fa ?? drafts.en ?? drafts.ar;
+              const nextCategory = fields.includes("category") && suggestions ? taxonomyMatch(categories, suggestions.category) ?? categoryId : categoryId;
+              const nextTags = fields.includes("tags") && suggestions ? [...new Set([...tagIds, ...suggestions.tags.flatMap((name) => { const id = taxonomyMatch(tags, name); return id ? [id] : []; })])].slice(0, 20) : tagIds;
+              translationsRef.current = nextTranslations; setTranslations(nextTranslations); setCategoryId(nextCategory); setTagIds(nextTags);
+              editor?.commands.setContent(nextTranslations.find((translation) => translation.locale === active)?.content ?? EMPTY, { emitUpdate: false });
+              setMessage(copy.unsaved);
+              return JSON.stringify({ translations: nextTranslations, categoryId: nextCategory, tagIds: nextTags, editorMode, htmlSource });
+            }}
+            onRestore={(snapshot) => {
+              const previous = JSON.parse(snapshot) as { translations: BlogTranslationDraft[]; categoryId: string; tagIds: string[] };
+              translationsRef.current = previous.translations; setTranslations(previous.translations); setCategoryId(previous.categoryId); setTagIds(previous.tagIds);
+              editor?.commands.setContent(previous.translations.find((translation) => translation.locale === active)?.content ?? EMPTY, { emitUpdate: false }); setMessage(copy.unsaved);
+            }} />
           {post.moderationNote ? <p className={styles.moderation}><strong>{copy.note}:</strong> {post.moderationNote}</p> : null}
           <section className={styles.writingCard} aria-label={copy.body}>
             <div className={styles.languageBar}><span>{copy.language}</span><div className={styles.languageTabs} role="group" aria-label={copy.language}>
-              {(["fa", "en", "ar"] as const).map((code) => <button key={code} type="button" aria-pressed={active === code} lang={code} onClick={() => setActive(code)}>{LABELS[code]}</button>)}
+              {(["fa", "en", "ar"] as const).map((code) => <button key={code} type="button" aria-pressed={active === code} lang={code} onClick={() => changeLanguage(code)}>{LABELS[code]}</button>)}
             </div></div>
             <div className={styles.writingFields} dir={active === "en" ? "ltr" : "rtl"} lang={active}>
               <label className={styles.titleField}><span>{copy.headline}</span><textarea rows={1} value={current.title} maxLength={200} placeholder={copy.titleHint} onChange={(event) => updateTranslation("title", event.target.value)} /></label>
               <label className={styles.excerptField}><span>{copy.excerpt}</span><textarea value={current.excerpt} maxLength={500} placeholder={copy.excerptHint} onChange={(event) => updateTranslation("excerpt", event.target.value)} /><small>{current.excerpt.length}/500</small></label>
             </div>
-            <div className={styles.toolbar} role="group" aria-label={copy.body}>
-              <button type="button" aria-pressed={formatting?.bold} aria-label={copy.bold} title={copy.bold} onClick={() => editor?.chain().focus().toggleBold().run()}><strong>B</strong></button>
-              <button type="button" aria-pressed={formatting?.italic} aria-label={copy.italic} title={copy.italic} onClick={() => editor?.chain().focus().toggleItalic().run()}><em>I</em></button>
-              <span className={styles.toolDivider} />
-              <button type="button" aria-pressed={formatting?.heading} aria-label={copy.heading} title={copy.heading} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}>H2</button>
-              <button type="button" aria-pressed={formatting?.list} onClick={() => editor?.chain().focus().toggleBulletList().run()}>{copy.list}</button>
-              <label className={styles.inlineUpload}><DesignIcon name="layers" />{copy.image}<input aria-label={copy.image} type="file" accept="image/webp,image/svg+xml" onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file, "inline"); event.currentTarget.value = ""; }} /></label>
+            <div className={styles.editorModes} role="group" aria-label={copy.body}>
+              <button type="button" aria-pressed={editorMode === "visual"} onClick={() => setMode("visual")}>{COPY.visual}</button>
+              <button type="button" aria-pressed={editorMode === "html"} onClick={() => setMode("html")}>{COPY.html}</button>
             </div>
-            <div className={styles.editor} dir={active === "en" ? "ltr" : "rtl"} lang={active}><EditorContent editor={editor} /></div>
+            {editorMode === "visual" ? <>
+              <div className={styles.toolbar} role="group" aria-label={copy.body}>
+                <button type="button" aria-pressed={formatting?.bold} aria-label={copy.bold} title={copy.bold} onClick={() => editor?.chain().focus().toggleBold().run()}><strong>B</strong></button>
+                <button type="button" aria-pressed={formatting?.italic} aria-label={copy.italic} title={copy.italic} onClick={() => editor?.chain().focus().toggleItalic().run()}><em>I</em></button>
+                <button type="button" aria-pressed={formatting?.strike} aria-label={COPY.strike} title={COPY.strike} onClick={() => editor?.chain().focus().toggleStrike().run()}><s>S</s></button>
+                <button type="button" aria-pressed={formatting?.code} aria-label={COPY.inlineCode} title={COPY.inlineCode} onClick={() => editor?.chain().focus().toggleCode().run()}>&lt;/&gt;</button>
+                <span className={styles.toolDivider} />
+                <button type="button" aria-pressed={formatting?.heading} aria-label={copy.heading} title={copy.heading} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}>H2</button>
+                <button type="button" aria-pressed={formatting?.subheading} aria-label={COPY.subheading} title={COPY.subheading} onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}>H3</button>
+                <button type="button" aria-pressed={formatting?.list} title={copy.list} onClick={() => editor?.chain().focus().toggleBulletList().run()}>• {copy.list}</button>
+                <button type="button" aria-pressed={formatting?.orderedList} title={COPY.orderedList} onClick={() => editor?.chain().focus().toggleOrderedList().run()}>1. {COPY.orderedList}</button>
+                <button type="button" aria-pressed={formatting?.quote} title={COPY.quote} onClick={() => editor?.chain().focus().toggleBlockquote().run()}>“ ”</button>
+                <button type="button" aria-pressed={formatting?.codeBlock} title={COPY.codeBlock} onClick={() => editor?.chain().focus().toggleCodeBlock().run()}>{"{ }"}</button>
+                <button type="button" aria-label={COPY.rule} title={COPY.rule} onClick={() => editor?.chain().focus().setHorizontalRule().run()}>—</button>
+                <button type="button" aria-pressed={formatting?.link} title={COPY.link} onClick={editLink}>↗ {COPY.link}</button>
+                <label className={styles.inlineUpload}><DesignIcon name="layers" />{copy.image}<input aria-label={copy.image} type="file" accept="image/webp,image/svg+xml" onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file, "inline"); event.currentTarget.value = ""; }} /></label>
+              </div>
+              <div className={styles.editor} dir={active === "en" ? "ltr" : "rtl"} lang={active}><EditorContent editor={editor} /></div>
+            </> : <div className={styles.htmlEditor}>
+              <textarea dir="ltr" lang="en" spellCheck={false} aria-label={`${copy.body} HTML`} value={htmlSource} onChange={(event) => { setHtmlSource(event.target.value); setMessage(copy.unsaved); }} />
+              <p>{COPY.htmlHint}</p>
+            </div>}
           </section>
           <section className={styles.searchPanel} aria-labelledby="search-appearance">
             <header className={styles.sectionHeading}><span className={styles.sectionIcon}><DesignIcon name="search" /></span><div><h2 id="search-appearance">{copy.search}</h2><p>{copy.searchHint}</p></div></header>

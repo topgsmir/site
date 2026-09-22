@@ -1,3 +1,4 @@
+import { SeoModule } from "./modules/seo/seo.module";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AuthModule } from "./modules/auth/auth.module";
@@ -17,6 +18,7 @@ import { SmsModule } from "./modules/sms/sms.module";
 import { GoghdiModule } from "./modules/goghdi/goghdi.module";
 import { AdminUsersModule } from "./modules/admin-users/admin-users.module";
 import { AiModule } from "./integrations/ai/ai.module";
+import { ContentAiModule } from "./modules/content-ai/content-ai.module";
 import { DataAssistantModule } from "./modules/data-assistant/data-assistant.module";
 import { CheckoutModule } from "./modules/checkout/checkout.module";
 import { UsdRateModule } from "./modules/usd-rate/usd-rate.module";
@@ -36,11 +38,13 @@ import { BackupModule } from "./modules/backup/backup.module";
     AuthModule,
     AdminUsersModule,
     AiModule,
+    ContentAiModule,
     DataAssistantModule,
     StaffModule,
     MediaModule,
     SellerModule,
     ProductModule,
+    SeoModule,
     BlogModule,
     CouponModule,
     BridgeModule,

@@ -1,11 +1,12 @@
 /* Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4 · genre: modern-minimal · macrostructure: Workbench · design-system: TopGSM dashboard */
-.workspace { display: grid; min-width: 0; gap: var(--space-dashboard-xl); padding-block: var(--space-dashboard-xl) var(--space-dashboard-3xl); color: var(--color-dashboard-ink); }
-.header { min-width: 0; padding-bottom: var(--space-dashboard-lg); border-bottom: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
-.header h1 { max-width: 28ch; min-width: 0; overflow-wrap: anywhere; font-family: var(--font-dashboard-display); font-size: clamp(var(--text-dashboard-xl), 3vw, var(--text-dashboard-2xl)); font-style: normal; font-weight: 600; line-height: 1.4; letter-spacing: -.03em; }
-.header p { max-width: 64ch; margin-top: var(--space-dashboard-sm); color: var(--color-dashboard-muted); line-height: 1.8; }
+.workspace { display: grid; min-width: 0; gap: var(--space-dashboard-md); padding-block: var(--space-dashboard-md) var(--space-dashboard-xl); color: var(--color-dashboard-ink); }
+.header { min-width: 0; padding-bottom: var(--space-dashboard-sm); border-bottom: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
+.header h1 { max-width: 28ch; min-width: 0; overflow-wrap: anywhere; font-family: var(--font-dashboard-display); font-size: var(--text-dashboard-xl); font-style: normal; font-weight: 600; line-height: 1.4; letter-spacing: -.03em; }
+.header p { max-width: 64ch; margin-top: var(--space-dashboard-2xs); color: var(--color-dashboard-muted); font-size: var(--text-dashboard-sm); line-height: 1.6; }
 .content { display: grid; min-width: 0; gap: var(--space-dashboard-lg); }
-.taxonomy { display: grid; gap: 18px; padding: var(--space-dashboard-lg); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-panel); background: var(--color-dashboard-surface); box-shadow: var(--shadow-dashboard-card); }
-.taxonomy header p { margin-top: 6px; color: var(--color-dashboard-muted); line-height: 1.55; }
+.taxonomy { display: grid; gap: var(--space-dashboard-xs); padding: var(--space-dashboard-sm); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-panel); background: var(--color-dashboard-surface); box-shadow: var(--shadow-dashboard-card); }
+.taxonomy header h2 { font-size: var(--text-dashboard-md); }
+.taxonomy header p { font-size: var(--text-dashboard-sm); margin-top: var(--space-dashboard-2xs); color: var(--color-dashboard-muted); line-height: 1.55; }
 .kindTabs { display: flex; gap: 5px; }
 .kindTabs button, .taxonomy button { min-height: 44px; padding-inline: 14px; border: 1px solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-control); color: var(--color-dashboard-ink); background: var(--color-dashboard-surface-raised); font-weight: 600; white-space: nowrap; cursor: pointer; transition: transform var(--dur-dashboard-micro) var(--ease-dashboard-out), opacity var(--dur-dashboard-micro) var(--ease-dashboard-out), background-color var(--dur-dashboard-short) var(--ease-dashboard-out); }
 .kindTabs button[aria-pressed="true"] { color: var(--color-dashboard-accent-ink); background: var(--color-dashboard-accent); }
@@ -19,10 +20,21 @@
 .form input:user-invalid { border-color: var(--color-dashboard-error); background: var(--color-dashboard-error-soft); }
 .form input:disabled { cursor: not-allowed; opacity: .55; background: var(--color-dashboard-surface); }
 .terms { display: grid; gap: 7px; }
-.term { display: flex; justify-content: space-between; gap: 12px; align-items: center; min-height: 50px; padding: 8px 10px; border-bottom: 1px solid var(--color-dashboard-rule); }
+.term { display: flex; justify-content: space-between; gap: 12px; align-items: center; min-height: 36px; padding: var(--space-dashboard-2xs) var(--space-dashboard-xs); font-size: var(--text-dashboard-sm); border-bottom: 1px solid var(--color-dashboard-rule); }
 .term span { color: var(--color-dashboard-muted); font-size: .76rem; }
 .workspace :is(a, button, input):focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
 @media (hover: hover) and (pointer: fine) { .kindTabs button:hover, .taxonomy button:hover { background: var(--color-dashboard-surface); transform: translateY(-1px); } .kindTabs button[aria-pressed="true"]:hover { background: var(--color-dashboard-accent-strong); } }
 @media (min-width: 70rem) { .content { grid-template-columns: minmax(0, 1fr) 360px; align-items: start; } .taxonomy { position: sticky; top: 20px; } .form fieldset { grid-template-columns: 1fr; } }
 @media (max-width: 39.999rem) { .workspace { padding-block-start: var(--space-dashboard-lg); } .taxonomy { padding: var(--space-dashboard-md); } .kindTabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (prefers-reduced-motion: reduce) { .kindTabs button, .taxonomy button { transition-duration: var(--dur-dashboard-reduced); transform: none !important; } }
+.createTerm { border-block: 1px solid var(--color-dashboard-rule); padding-block: var(--space-dashboard-2xs); }
+.createTerm summary { min-height: 44px; display: list-item; align-content: center; cursor: pointer; font-weight: 600; font-size: var(--text-dashboard-sm); }
+.createTerm[open] summary { margin-bottom: var(--space-dashboard-sm); }
+.createTerm summary:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
+.form fieldset, .form input { min-width: 0; width: 100%; }
+.term strong { min-width: 0; overflow-wrap: anywhere; }
+.term span { flex-shrink: 0; }
+.taxonomy { box-shadow: none; }
+@media (min-width: 70rem) { .content { grid-template-columns: minmax(0, 1fr); } .taxonomy { position: static; } .form { grid-template-columns: repeat(3, minmax(0, 1fr)); } .form > button { grid-column: 1 / -1; justify-self: start; } .terms { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+@media (pointer: fine) { .kindTabs button, .taxonomy button, .form input, .createTerm summary { min-height: 36px; } }

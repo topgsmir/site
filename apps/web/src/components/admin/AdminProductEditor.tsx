@@ -1,4 +1,6 @@
 "use client";
+import { ProductAiPanel } from "@/components/ai/ProductAiPanel";
+import { splitDownloadUrls, validDownloadUrls } from "../../lib/download-urls";
 
 import type {
   AdminProductDetails,
@@ -14,21 +16,22 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { ProductPublicUrl } from "@/components/product/ProductPublicUrl";
 import { api } from "@/lib/api/client";
 import type { Locale } from "@/lib/i18n";
+import { ProductTranslations } from "./ProductTranslations";
 import { ProductChangesWorkspace } from "./ProductChangesWorkspace";
 import styles from "./AdminProductEditor.module.css";
 
 const COPY = {
   en: {
     back: "Product catalog", title: "Edit product", intro: "Manage the complete catalog record and every seller offer from one workspace.", loadMore: "Load more sellers",
-    catalog: "Catalog details", catalogHint: "These fields are shared by every seller listing.", productTitle: "Product title", slug: "Public slug", category: "Category", description: "Description", status: "Publication state", save: "Save catalog", saving: "Saving…", saved: "Catalog saved.", loadError: "The product could not be loaded.", saveError: "The product could not be saved.", retry: "Try again", publicPage: "Open public page", structure: "Product structure", kind: "Kind", type: "Type", owner: "Created by", variants: "Variants", immutable: "Type and kind are structural. Create a replacement product if the fulfillment model must change.", sellers: "Seller listings", sellersHint: "Edit listing visibility, pricing, SKU, and fulfillment values.", noListings: "No seller listings are attached to this product.", listingStatus: "Listing state", offer: "Offer", price: "Price", currency: "Currency", sku: "Seller SKU", offerStatus: "Offer state", saveOffer: "Save offer", offerSaved: "Offer saved.", listingSaved: "Listing state saved.", fileReference: "File reference", downloads: "Maximum downloads", stock: "Stock", weight: "Weight (grams)", serviceType: "Service type", hours: "Estimated hours", instructions: "Instructions", draft: "Draft", active: "Published", pending_review: "Pending review", archived: "Archived", simple: "Simple", variable: "Variable"
+    catalog: "Catalog details", catalogHint: "These fields are shared by every seller listing.", productTitle: "Product title", slug: "Public slug", category: "Category", description: "Description", status: "Publication state", save: "Save catalog", saving: "Saving…", saved: "Catalog saved.", loadError: "The product could not be loaded.", saveError: "The product could not be saved.", retry: "Try again", publicPage: "Open public page", structure: "Product structure", kind: "Kind", type: "Type", owner: "Created by", variants: "Variants", immutable: "Type and kind are structural. Create a replacement product if the fulfillment model must change.", sellers: "Seller listings", sellersHint: "Edit listing visibility, pricing, SKU, and fulfillment values.", noListings: "No seller listings are attached to this product.", listingStatus: "Listing state", offer: "Offer", price: "Price", currency: "Currency", sku: "Seller SKU", offerStatus: "Offer state", saveOffer: "Save offer", offerSaved: "Offer saved.", listingSaved: "Listing state saved.", fileReference: "Download URLs (one per line, up to 50)", downloads: "Maximum downloads per file", stock: "Stock", weight: "Weight (grams)", serviceType: "Service type", hours: "Estimated hours", instructions: "Instructions", draft: "Draft", active: "Published", pending_review: "Pending review", archived: "Archived", simple: "Simple", variable: "Variable"
   },
   fa: {
     back: "کاتالوگ محصولات", title: "ویرایش محصول", intro: "اطلاعات کامل کاتالوگ و پیشنهادهای همه فروشنده‌ها را در یک صفحه مدیریت کنید.", loadMore: "فروشنده‌های بیشتر",
-    catalog: "اطلاعات کاتالوگ", catalogHint: "این اطلاعات میان همه فروشنده‌های محصول مشترک است.", productTitle: "عنوان محصول", slug: "نامک عمومی", category: "دسته‌بندی", description: "توضیحات", status: "وضعیت انتشار", save: "ذخیره کاتالوگ", saving: "در حال ذخیره…", saved: "اطلاعات کاتالوگ ذخیره شد.", loadError: "بارگذاری محصول ممکن نبود.", saveError: "ذخیره محصول ممکن نبود.", retry: "تلاش دوباره", publicPage: "مشاهده صفحه عمومی", structure: "ساختار محصول", kind: "ساختار", type: "نوع", owner: "سازنده", variants: "گونه‌ها", immutable: "نوع و ساختار محصول بنیادی هستند. برای تغییر مدل تحویل، محصول جایگزین بسازید.", sellers: "فهرست فروشنده‌ها", sellersHint: "نمایش فهرست، قیمت، شناسه کالا و اطلاعات تحویل را ویرایش کنید.", noListings: "فروشنده‌ای به این محصول متصل نیست.", listingStatus: "وضعیت فهرست", offer: "پیشنهاد", price: "قیمت", currency: "ارز", sku: "شناسه فروشنده", offerStatus: "وضعیت پیشنهاد", saveOffer: "ذخیره پیشنهاد", offerSaved: "پیشنهاد ذخیره شد.", listingSaved: "وضعیت فهرست ذخیره شد.", fileReference: "مرجع فایل", downloads: "حداکثر دانلود", stock: "موجودی", weight: "وزن (گرم)", serviceType: "نوع خدمت", hours: "ساعت تقریبی", instructions: "دستورالعمل", draft: "پیش‌نویس", active: "منتشرشده", pending_review: "در انتظار بررسی", archived: "بایگانی‌شده", simple: "ساده", variable: "متغیر"
+    catalog: "اطلاعات کاتالوگ", catalogHint: "این اطلاعات میان همه فروشنده‌های محصول مشترک است.", productTitle: "عنوان محصول", slug: "نامک عمومی", category: "دسته‌بندی", description: "توضیحات", status: "وضعیت انتشار", save: "ذخیره کاتالوگ", saving: "در حال ذخیره…", saved: "اطلاعات کاتالوگ ذخیره شد.", loadError: "بارگذاری محصول ممکن نبود.", saveError: "ذخیره محصول ممکن نبود.", retry: "تلاش دوباره", publicPage: "مشاهده صفحه عمومی", structure: "ساختار محصول", kind: "ساختار", type: "نوع", owner: "سازنده", variants: "گونه‌ها", immutable: "نوع و ساختار محصول بنیادی هستند. برای تغییر مدل تحویل، محصول جایگزین بسازید.", sellers: "فهرست فروشنده‌ها", sellersHint: "نمایش فهرست، قیمت، شناسه کالا و اطلاعات تحویل را ویرایش کنید.", noListings: "فروشنده‌ای به این محصول متصل نیست.", listingStatus: "وضعیت فهرست", offer: "پیشنهاد", price: "قیمت", currency: "ارز", sku: "شناسه فروشنده", offerStatus: "وضعیت پیشنهاد", saveOffer: "ذخیره پیشنهاد", offerSaved: "پیشنهاد ذخیره شد.", listingSaved: "وضعیت فهرست ذخیره شد.", fileReference: "لینک‌های دانلود (هر خط یک لینک، حداکثر ۵۰)", downloads: "حداکثر دانلود هر فایل", stock: "موجودی", weight: "وزن (گرم)", serviceType: "نوع خدمت", hours: "ساعت تقریبی", instructions: "دستورالعمل", draft: "پیش‌نویس", active: "منتشرشده", pending_review: "در انتظار بررسی", archived: "بایگانی‌شده", simple: "ساده", variable: "متغیر"
   },
   ar: {
     back: "كتالوج المنتجات", title: "تعديل المنتج", intro: "أدر سجل الكتالوج الكامل وعروض جميع البائعين من مساحة واحدة.", loadMore: "تحميل بائعين إضافيين",
-    catalog: "بيانات الكتالوج", catalogHint: "هذه البيانات مشتركة بين جميع قوائم البائعين.", productTitle: "اسم المنتج", slug: "المعرّف العام", category: "الفئة", description: "الوصف", status: "حالة النشر", save: "حفظ الكتالوج", saving: "جارٍ الحفظ…", saved: "تم حفظ الكتالوج.", loadError: "تعذر تحميل المنتج.", saveError: "تعذر حفظ المنتج.", retry: "إعادة المحاولة", publicPage: "فتح الصفحة العامة", structure: "بنية المنتج", kind: "البنية", type: "النوع", owner: "أنشأه", variants: "المتغيرات", immutable: "النوع والبنية خصائص أساسية. أنشئ منتجاً بديلاً إذا لزم تغيير نموذج التنفيذ.", sellers: "قوائم البائعين", sellersHint: "عدّل ظهور القائمة والسعر ورمز البائع وبيانات التنفيذ.", noListings: "لا توجد قوائم بائعين مرتبطة بهذا المنتج.", listingStatus: "حالة القائمة", offer: "العرض", price: "السعر", currency: "العملة", sku: "رمز البائع", offerStatus: "حالة العرض", saveOffer: "حفظ العرض", offerSaved: "تم حفظ العرض.", listingSaved: "تم حفظ حالة القائمة.", fileReference: "مرجع الملف", downloads: "الحد الأقصى للتنزيل", stock: "المخزون", weight: "الوزن (غرام)", serviceType: "نوع الخدمة", hours: "الساعات المقدرة", instructions: "التعليمات", draft: "مسودة", active: "منشور", pending_review: "قيد المراجعة", archived: "مؤرشف", simple: "بسيط", variable: "متغير"
+    catalog: "بيانات الكتالوج", catalogHint: "هذه البيانات مشتركة بين جميع قوائم البائعين.", productTitle: "اسم المنتج", slug: "المعرّف العام", category: "الفئة", description: "الوصف", status: "حالة النشر", save: "حفظ الكتالوج", saving: "جارٍ الحفظ…", saved: "تم حفظ الكتالوج.", loadError: "تعذر تحميل المنتج.", saveError: "تعذر حفظ المنتج.", retry: "إعادة المحاولة", publicPage: "فتح الصفحة العامة", structure: "بنية المنتج", kind: "البنية", type: "النوع", owner: "أنشأه", variants: "المتغيرات", immutable: "النوع والبنية خصائص أساسية. أنشئ منتجاً بديلاً إذا لزم تغيير نموذج التنفيذ.", sellers: "قوائم البائعين", sellersHint: "عدّل ظهور القائمة والسعر ورمز البائع وبيانات التنفيذ.", noListings: "لا توجد قوائم بائعين مرتبطة بهذا المنتج.", listingStatus: "حالة القائمة", offer: "العرض", price: "السعر", currency: "العملة", sku: "رمز البائع", offerStatus: "حالة العرض", saveOffer: "حفظ العرض", offerSaved: "تم حفظ العرض.", listingSaved: "تم حفظ حالة القائمة.", fileReference: "روابط التنزيل (رابط لكل سطر، حتى ٥٠)", downloads: "الحد الأقصى لتنزيل كل ملف", stock: "المخزون", weight: "الوزن (غرام)", serviceType: "نوع الخدمة", hours: "الساعات المقدرة", instructions: "التعليمات", draft: "مسودة", active: "منشور", pending_review: "قيد المراجعة", archived: "مؤرشف", simple: "بسيط", variable: "متغير"
   }
 } as const;
 
@@ -64,7 +67,7 @@ function coreDraft(product: AdminProductDetails): CoreDraft {
 function offerDraft(offer: SellerProductOffer): OfferDraft {
   return {
     price: offer.price, currency: offer.currency, sellerSku: offer.sellerSku ?? "", status: offer.status,
-    fileReference: offer.digital?.fileReference ?? "", maxDownloads: String(offer.digital?.maxDownloads ?? 0),
+    fileReference: (offer.digital?.fileReferences ?? (offer.digital ? [offer.digital.fileReference] : [])).join("\n"), maxDownloads: String(offer.digital?.maxDownloads ?? 0),
     stock: String(offer.physical?.stock ?? 0), weightGrams: String(offer.physical?.weightGrams ?? 0),
     serviceType: offer.service?.serviceType ?? "", estimatedHours: String(offer.service?.estimatedHours ?? 1), instructions: offer.service?.instructions ?? ""
   };
@@ -159,11 +162,12 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
     event.preventDefault();
     const current = offers[offer.id];
     if (!current || busy) return;
+    if (offer.digital && !validDownloadUrls(current.fileReference)) { setError(c.fileReference); return; }
     setBusy(`offer:${offer.id}`); setError(""); setMessage("");
     const payload = {
       price: current.price, currency: current.currency.trim().toUpperCase(),
       sellerSku: current.sellerSku.trim() || null, status: current.status,
-      ...(offer.digital ? { digital: { fileReference: current.fileReference.trim(), maxDownloads: Number(current.maxDownloads) } } : {}),
+      ...(offer.digital ? { digital: { fileReferences: splitDownloadUrls(current.fileReference), maxDownloads: Number(current.maxDownloads) } } : {}),
       ...(offer.physical ? { physical: { stock: Number(current.stock), weightGrams: Number(current.weightGrams) } } : {}),
       ...(offer.service ? { service: { serviceType: current.serviceType.trim(), estimatedHours: Number(current.estimatedHours), instructions: current.instructions.trim() } } : {})
     };
@@ -194,6 +198,7 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
 
       <div className={styles.layout}>
         <div className={styles.primary}>
+          <ProductAiPanel key={productId} locale={locale} disabled={Boolean(busy)} value={{ title: draft.title, description: draft.description, category: draft.category, slug: draft.slug }} onChange={(value) => setDraft((current) => current ? { ...current, ...value } : current)} />
           <form className={styles.panel} onSubmit={saveCore} aria-busy={busy === "core"}>
             <header><h2>{c.catalog}</h2><p>{c.catalogHint}</p></header>
             <div className={styles.formGrid}>
@@ -206,6 +211,7 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
             <footer><button className={styles.primaryButton} type="submit" disabled={Boolean(busy)}>{busy === "core" ? c.saving : c.save}</button></footer>
           </form>
 
+          <ProductTranslations locale={locale} productId={productId} />
           <section className={styles.sellers} aria-labelledby="seller-listings-title">
             <header><h2 id="seller-listings-title">{c.sellers}</h2><p>{c.sellersHint}</p></header>
             {!product.listings.length ? <p className={styles.empty}>{c.noListings}</p> : null}
@@ -227,7 +233,7 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
                         <label><span>{c.currency}</span><select required value={value.currency} onChange={(event) => update("currency", event.target.value)}><option value="USD">USD</option><option value="TOMAN">تومان</option></select></label>
                         <label><span>{c.sku}</span><input dir="ltr" maxLength={100} value={value.sellerSku} onChange={(event) => update("sellerSku", event.target.value)} /></label>
                         <label><span>{c.offerStatus}</span><select value={value.status} onChange={(event) => update("status", event.target.value)}><option value="draft">{c.draft}</option><option value="active">{c.active}</option><option value="archived">{c.archived}</option></select></label>
-                        {offer.digital ? <><label><span>{c.fileReference}</span><input required type="url" dir="ltr" maxLength={2048} value={value.fileReference} onChange={(event) => update("fileReference", event.target.value)} /></label><label><span>{c.downloads}</span><input required type="number" min={0} max={2147483647} value={value.maxDownloads} onChange={(event) => update("maxDownloads", event.target.value)} /></label></> : null}
+                        {offer.digital ? <><label><span>{c.fileReference}</span><textarea required dir="ltr" rows={4} maxLength={102449} value={value.fileReference} onChange={(event) => update("fileReference", event.target.value)} /></label><label><span>{c.downloads}</span><input required type="number" min={0} max={2147483647} value={value.maxDownloads} onChange={(event) => update("maxDownloads", event.target.value)} /></label></> : null}
                         {offer.physical ? <><label><span>{c.stock}</span><input required type="number" min={0} max={2147483647} value={value.stock} onChange={(event) => update("stock", event.target.value)} /></label><label><span>{c.weight}</span><input required type="number" min={0} max={2147483647} value={value.weightGrams} onChange={(event) => update("weightGrams", event.target.value)} /></label></> : null}
                         {offer.service ? <><label><span>{c.serviceType}</span><input required maxLength={100} value={value.serviceType} onChange={(event) => update("serviceType", event.target.value)} /></label><label><span>{c.hours}</span><input required type="number" min={1} max={10000} value={value.estimatedHours} onChange={(event) => update("estimatedHours", event.target.value)} /></label><label className={styles.wide}><span>{c.instructions}</span><textarea maxLength={5000} value={value.instructions} onChange={(event) => update("instructions", event.target.value)} /></label></> : null}
                       </div>

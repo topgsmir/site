@@ -1,18 +1,35 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { isLocale } from "@/lib/i18n";
-import { getProducts } from "@/lib/public-data";
+import { isLocale, locales } from "@/lib/i18n";
+import { getProductsPage } from "@/lib/public-data";
 import { PublicHeader } from "@/components/PublicHeader";
 import { ProductCatalog } from "@/components/product/ProductCatalog";
+import { SITE_URL, catalogCopy, catalogQuery, listingHref, type SearchQuery } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Product catalog", description: "Files, tools, and specialist services for your next repair." };
-
-export default async function ProductsPage({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<{ search?: string; type?: string }> }) {
+type Props = { params: Promise<{ locale: string }>; searchParams: Promise<SearchQuery> };
+async function load({ params, searchParams }: Props) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  const query = await searchParams;
-  const search = typeof query.search === "string" ? query.search.trim().slice(0, 100) : "";
-  const type = ["digital", "physical", "service", "bridge"].includes(query.type ?? "") ? query.type! : "all";
-  const result = await getProducts(search, type).then((products) => ({ products, unavailable: false })).catch(() => ({ products: [], unavailable: true }));
-  return <><a className="skip-link" href="#catalog-content">{locale === "fa" ? "رفتن به محصولات" : locale === "ar" ? "انتقل إلى المنتجات" : "Skip to products"}</a><PublicHeader locale={locale} current="shop" /><ProductCatalog key={`${search}:${type}`} locale={locale} products={result.products} unavailable={result.unavailable} initialQuery={search} initialType={type} /></>;
+  let query: ReturnType<typeof catalogQuery>;
+  try { query = catalogQuery(await searchParams); } catch { notFound(); }
+  const page = await getProductsPage(locale, query.search, query.type, query.cursor);
+  return { locale, query, page };
+}
+
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const { locale, query } = await load(props);
+  const copy = catalogCopy[locale];
+  const title = query.search ? copy.search + ": " + query.search : copy[query.type as "all" | "digital" | "physical" | "service" | "bridge"];
+  const canonical = SITE_URL + listingHref("/" + locale + "/products", query);
+  return {
+    title, description: title + ". " + copy.description,
+    alternates: { canonical, ...(!query.cursor && !query.search ? { languages: Object.fromEntries([...locales.map((code) => [code, SITE_URL + listingHref("/" + code + "/products", { type: query.type })]), ["x-default", SITE_URL + listingHref("/fa/products", { type: query.type })]]) } : {}) },
+    robots: { index: !query.search, follow: true },
+    openGraph: { title, description: copy.description, url: canonical, type: "website" }
+  };
+}
+
+export default async function ProductsPage(props: Props) {
+  const { locale, query, page } = await load(props);
+  return <><a className="skip-link" href="#catalog-content">{locale === "fa" ? "رفتن به محصولات" : locale === "ar" ? "انتقل إلى المنتجات" : "Skip to products"}</a><PublicHeader locale={locale} current="shop" /><ProductCatalog locale={locale} products={page.items} initialQuery={query.search} initialType={query.type} cursor={query.cursor} nextCursor={page.nextCursor} /></>;
 }

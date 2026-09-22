@@ -42,6 +42,8 @@ const fields: Record<string, { fa: string; ar: string }> = {
   productTitle: { fa: "نام محصول", ar: "اسم المنتج" },
   serviceNote: { fa: "یادداشت خدمت", ar: "ملاحظة الخدمة" },
   digitalDelivery: { fa: "تحویل فایل", ar: "تسليم الملف" },
+  digitalDeliveries: { fa: "دانلود فایل‌ها", ar: "تنزيل الملفات" },
+  digitalFiles: { fa: "فایل‌های خریداری‌شده", ar: "الملفات المشتراة" },
   downloadUrl: { fa: "مسیر دریافت فایل", ar: "مسار تنزيل الملف" },
   destinationHost: { fa: "میزبان فایل", ar: "مضيف الملف" },
   maxDownloads: { fa: "حداکثر دریافت", ar: "الحد الأقصى للتنزيل" },

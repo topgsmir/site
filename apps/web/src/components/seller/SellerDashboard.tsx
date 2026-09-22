@@ -1,4 +1,6 @@
 "use client";
+import { ProductAiPanel } from "@/components/ai/ProductAiPanel";
+import { splitDownloadUrls, validDownloadUrls } from "../../lib/download-urls";
 
 import axios from "axios";
 import type { Route } from "next";
@@ -283,9 +285,9 @@ const COPY: Record<Locale, DashboardCopy> = {
     variantName: "Variant label",
     optionValue: "Option value",
     sellerSku: "Seller SKU",
-    fileReference: "HTTPS delivery URL",
-    fileReferenceHint: "Paste the HTTPS URL from UploadCenter. Buyers receive it after verified payment.",
-    maxDownloads: "Maximum downloads",
+    fileReference: "File download URLs",
+    fileReferenceHint: "Enter one UploadCenter HTTPS URL per line, up to 50 files. Buyers receive all files after verified payment.",
+    maxDownloads: "Maximum downloads per file",
     stock: "Stock",
     weightGrams: "Weight in grams",
     serviceType: "Service type",
@@ -388,9 +390,9 @@ const COPY: Record<Locale, DashboardCopy> = {
     variantName: "عنوان تنوع",
     optionValue: "مقدار ویژگی",
     sellerSku: "شناسه کالای فروشنده",
-    fileReference: "لینک HTTPS تحویل فایل",
-    fileReferenceHint: "لینک HTTPS آپلودسنتر را وارد کنید؛ پس از پرداخت تأییدشده به خریدار نمایش داده می‌شود.",
-    maxDownloads: "حداکثر دانلود",
+    fileReference: "لینک‌های دانلود فایل",
+    fileReferenceHint: "لینک HTTPS هر فایل را در یک خط وارد کنید؛ حداکثر ۵۰ فایل. خریدار پس از تأیید پرداخت به همه فایل‌ها دسترسی دارد.",
+    maxDownloads: "حداکثر دانلود هر فایل",
     stock: "موجودی",
     weightGrams: "وزن به گرم",
     serviceType: "نوع خدمت",
@@ -493,9 +495,9 @@ const COPY: Record<Locale, DashboardCopy> = {
     variantName: "تسمية المتغير",
     optionValue: "قيمة الخيار",
     sellerSku: "رمز البائع",
-    fileReference: "رابط تسليم HTTPS",
-    fileReferenceHint: "ألصق رابط HTTPS من مركز الرفع؛ يظهر للمشتري بعد تأكيد الدفع.",
-    maxDownloads: "الحد الأقصى للتنزيلات",
+    fileReference: "روابط تنزيل الملفات",
+    fileReferenceHint: "أدخل رابط HTTPS لكل ملف في سطر مستقل، حتى ٥٠ ملفاً. تظهر الملفات للمشتري بعد تأكيد الدفع.",
+    maxDownloads: "الحد الأقصى لتنزيل كل ملف",
     stock: "المخزون",
     weightGrams: "الوزن بالغرام",
     serviceType: "نوع الخدمة",
@@ -530,7 +532,6 @@ const COPY: Record<Locale, DashboardCopy> = {
 
 const MONEY_PATTERN = /^(?:0|[1-9]\d{0,15})(?:\.\d{1,4})?$/;
 const CURRENCY_PATTERN = /^(?:TOMAN|USD)$/;
-const HTTPS_URL_PATTERN = /^https:\/\/\S{1,2040}$/i;
 
 const PRODUCT_IMAGE_COPY = {
   en: { title: "Product image", hint: "WebP or SVG · up to 8 MiB", choose: "Choose image", replace: "Replace image", remove: "Remove image", error: "The product image could not be updated." },
@@ -612,7 +613,7 @@ function validateDraft(draft: ProductDraft) {
     if (draft.currency === "TOMAN" && !/^\d+$/.test(offer.price.trim())) return false;
     if (draft.kind === "variable" && !offer.optionValue.trim()) return false;
     if (draft.type === "digital") {
-      return HTTPS_URL_PATTERN.test(offer.fileReference.trim()) && Number.isInteger(Number(offer.maxDownloads)) && Number(offer.maxDownloads) >= 0;
+      return validDownloadUrls(offer.fileReference) && Number.isInteger(Number(offer.maxDownloads)) && Number(offer.maxDownloads) >= 0;
     }
     if (draft.type === "physical") {
       return Number.isInteger(Number(offer.stock)) && Number(offer.stock) >= 0 && Number.isInteger(Number(offer.weightGrams)) && Number(offer.weightGrams) >= 0;
@@ -643,7 +644,7 @@ function buildOffer(draft: ProductDraft, offer: OfferDraft) {
     return {
       ...shared,
       digital: {
-        fileReference: offer.fileReference.trim(),
+        fileReferences: splitDownloadUrls(offer.fileReference),
         maxDownloads: Number(offer.maxDownloads)
       }
     };
@@ -758,7 +759,7 @@ function OfferFields({
       {draft.type === "digital" ? (
         <label className={styles.field}>
           <span>{copy.fileReference}</span>
-          <input required type="url" maxLength={2048} value={offer.fileReference} onChange={(event) => update(offer.id, "fileReference", event.target.value)} aria-describedby={`${offer.id}-file-hint`} />
+          <textarea required dir="ltr" rows={4} maxLength={102449} value={offer.fileReference} onChange={(event) => update(offer.id, "fileReference", event.target.value)} aria-describedby={`${offer.id}-file-hint`} />
           <small id={`${offer.id}-file-hint`}>{copy.fileReferenceHint}</small>
         </label>
       ) : null}
@@ -823,7 +824,11 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
   const listRequestId = useRef(0);
   const hasAnalytics = Boolean(user.permissions?.includes("analytics_view"));
   const canManageOrders = Boolean(user.permissions?.includes("orders_manage"));
-  const { count: newOrderCount, refresh: refreshNewOrderCount } = useNewOrderCount(canManageOrders);
+  const { count: newOrderCount, refresh: refreshNewOrderCount, markSeen: markOrdersSeen } = useNewOrderCount(canManageOrders);
+
+  useEffect(() => {
+    if (section === "orders") void markOrdersSeen();
+  }, [markOrdersSeen, section]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { setDebouncedSearch(search.trim()); setDebouncedCategory(categoryFilter.trim()); }, 300);
@@ -1223,6 +1228,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
           <section ref={productEditorRef} className={styles.productEditor} role="dialog" aria-modal="true" aria-labelledby="product-editor-title">
             <header><div><h2 id="product-editor-title">{copy.editProduct}</h2><p>{copy.editProductDescription}</p></div><button className={styles.textButton} type="button" onClick={() => setEditingProduct(null)}>{copy.cancel}</button></header>
             <form onSubmit={updateProduct} aria-busy={editState === "loading"}>
+              <ProductAiPanel key={editingProduct.product.id} locale={locale} disabled={editState === "loading"} value={{ title: editDraft.title, description: editDraft.description, category: editDraft.category }} onChange={(value) => setEditDraft((current) => ({ ...current, ...value }))} />
               <section className={styles.productImageEditor}>
                 <div>
                   {editingProduct.product.image ? (() => {
@@ -1434,6 +1440,7 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
         <header className={creation.heading}><div><h1>{copy.newProduct}</h1><p>{formCopy.intro}</p></div><span className={creation.draftBadge}>{copy[draft.status]}</span></header>
         <form className={creation.layout} onSubmit={createProduct} onInvalidCapture={() => setFormError(copy.formIncomplete)} aria-busy={submitState === "loading"}>
           <div className={creation.formBody}>
+            <ProductAiPanel locale={locale} disabled={submitState === "loading"} value={{ title: draft.title, description: draft.description, category: draft.category }} onChange={(value) => setDraft((current) => ({ ...current, ...value }))} />
             <section className={creation.card} aria-labelledby="product-basics">
               <header className={creation.sectionHeading}><span><DesignIcon name="file" /></span><div><h2 id="product-basics">{formCopy.details}</h2><p>{formCopy.detailsHint}</p></div></header>
               <label className={`${styles.field} ${creation.titleField}`}><span>{copy.title}</span><input required minLength={2} maxLength={200} placeholder={formCopy.titlePlaceholder} value={draft.title} onChange={(event) => updateDraft("title", event.target.value)} /></label>

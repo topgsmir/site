@@ -267,11 +267,11 @@ export class PaymentApplicationService {
       });
       const digitalItems = await transaction.order_items.findMany({
         where: { order_id: attempt.order.id, digital_delivery_url: { not: null }, digital_max_downloads: { not: null } },
-        select: { id: true, digital_delivery_url: true, digital_max_downloads: true }
+        select: { id: true, digital_delivery_url: true, digital_delivery_urls: true, digital_max_downloads: true }
       });
       if (digitalItems.length) {
         await transaction.digital_entitlements.createMany({
-          data: digitalItems.map((item) => ({ order_item_id: item.id, buyer_id: attempt.order.buyer_id, delivery_url: item.digital_delivery_url!, max_downloads: item.digital_max_downloads! })),
+          data: digitalItems.flatMap((item) => (item.digital_delivery_urls.length ? item.digital_delivery_urls : [item.digital_delivery_url!]).map((url, fileIndex) => ({ order_item_id: item.id, buyer_id: attempt.order.buyer_id, delivery_url: url, file_index: fileIndex, max_downloads: item.digital_max_downloads! }))),
           skipDuplicates: true
         });
       }
@@ -368,7 +368,7 @@ export class PaymentApplicationService {
                 order: {
                   select: {
                     id: true, buyer_id: true, seller_id: true, status: true, total_amount: true,
-                    items: { select: { id: true, digital_delivery_url: true, digital_max_downloads: true } }
+                    items: { select: { id: true, digital_delivery_url: true, digital_delivery_urls: true, digital_max_downloads: true } }
                   }
                 }
               }
@@ -395,7 +395,7 @@ export class PaymentApplicationService {
     await this.prisma.$transaction(async (tx) => {
       const current = await tx.checkout_payment_groups.findUniqueOrThrow({
         where: { id: group.id },
-        select: { status: true, checkout_id: true, orders: { select: { order: { select: { id: true, buyer_id: true, seller_id: true, status: true, items: { select: { id: true, digital_delivery_url: true, digital_max_downloads: true } } } } } } }
+        select: { status: true, checkout_id: true, orders: { select: { order: { select: { id: true, buyer_id: true, seller_id: true, status: true, items: { select: { id: true, digital_delivery_url: true, digital_delivery_urls: true, digital_max_downloads: true } } } } } } }
       });
       if (current.status === "paid") return;
       if (current.status !== "pending" || current.orders.some(({ order }) => order.status !== "pending")) throw new ConflictException("Checkout orders are not awaiting payment");
@@ -409,7 +409,7 @@ export class PaymentApplicationService {
         const entitlements = order.items.filter((item) => item.digital_delivery_url && item.digital_max_downloads !== null);
         if (entitlements.length) {
           await tx.digital_entitlements.createMany({
-            data: entitlements.map((item) => ({ order_item_id: item.id, buyer_id: order.buyer_id, delivery_url: item.digital_delivery_url!, max_downloads: item.digital_max_downloads! })),
+            data: entitlements.flatMap((item) => (item.digital_delivery_urls.length ? item.digital_delivery_urls : [item.digital_delivery_url!]).map((url, fileIndex) => ({ order_item_id: item.id, buyer_id: order.buyer_id, delivery_url: url, file_index: fileIndex, max_downloads: item.digital_max_downloads! }))),
             skipDuplicates: true
           });
         }

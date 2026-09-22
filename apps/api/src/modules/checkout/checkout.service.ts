@@ -1,3 +1,4 @@
+import { mapDigitalDeliveries, digitalFileReferences } from "../order/digital-delivery";
 import {
   BadRequestException,
   ConflictException,
@@ -58,7 +59,7 @@ const checkoutSelect = {
           unit_price: true,
           total_amount: true,
           service_note: true,
-          digital_entitlement: { select: { id: true, max_downloads: true, download_count: true, delivery_url: true } }
+          digital_entitlement: { orderBy: { file_index: "asc" }, select: { file_index: true, id: true, max_downloads: true, download_count: true, delivery_url: true } }
         }
       }
     }
@@ -89,7 +90,7 @@ type InternalQuoteLine = {
   image: { url: string; width: number; height: number } | null;
   unitPrice: string; totalAmount: string; availableStock: number | null; serviceNote: string | null;
   serviceInputs: ServiceInputDefinition[]; serviceAnswers: Array<{ key: string; value: string }>;
-  digitalDeliveryUrl: string | null; digitalMaxDownloads: number | null;
+  digitalDeliveryUrl: string | null; digitalDeliveryUrls: string[]; digitalMaxDownloads: number | null;
 };
 
 @Injectable()
@@ -109,7 +110,7 @@ export class CheckoutService {
       ...quote,
       groups: quote.groups.map(({ commissionRate: _commission, holdbackRate: _holdback, total: _total, ...group }) => ({
         ...group,
-        items: group.items.map(({ digitalDeliveryUrl: _url, digitalMaxDownloads: _limit, serviceAnswers: _answers, ...item }) => item)
+        items: group.items.map(({ digitalDeliveryUrl: _url, digitalDeliveryUrls: _urls, digitalMaxDownloads: _limit, serviceAnswers: _answers, ...item }) => item)
       }))
     };
   }
@@ -214,7 +215,7 @@ export class CheckoutService {
               service_input_schema: line.serviceInputs as unknown as Prisma.InputJsonValue,
               encrypted_service_answers: encryptedAnswers?.ciphertext ?? null,
               service_answers_key_id: encryptedAnswers?.keyId ?? null,
-              digital_delivery_url: line.digitalDeliveryUrl, digital_max_downloads: line.digitalMaxDownloads
+              digital_delivery_url: line.digitalDeliveryUrl, digital_delivery_urls: line.digitalDeliveryUrls, digital_max_downloads: line.digitalMaxDownloads
             };
           }) });
           await tx.order_events.create({
@@ -290,7 +291,7 @@ export class CheckoutService {
       },
       select: {
         id: true, price: true, currency: true,
-        digital: { select: { file_reference: true, max_downloads: true } },
+        digital: { select: { file_reference: true, file_references: true, max_downloads: true } },
         physical: { select: { stock: true } },
         service: { select: { input_schema: true } },
         listing: {
@@ -357,7 +358,7 @@ export class CheckoutService {
           offerIds: [offer.id]
         });
       }
-      if (type === "digital" && (!offer.digital || !this.isHttpsUrl(offer.digital.file_reference))) {
+      if (type === "digital" && (!offer.digital || !digitalFileReferences(offer.digital).every((url) => this.isHttpsUrl(url)))) {
         throw new PublicHttpException(HttpStatus.CONFLICT, `${offer.listing.product.title} has no valid HTTPS delivery URL`, {
           code: "CART_ITEMS_UNAVAILABLE",
           offerIds: [offer.id]
@@ -385,6 +386,7 @@ export class CheckoutService {
         availableStock: offer.physical?.stock ?? null, serviceNote: requested.serviceNote?.trim() || null,
         serviceInputs, serviceAnswers,
         digitalDeliveryUrl: offer.digital?.file_reference ?? null,
+        digitalDeliveryUrls: offer.digital ? digitalFileReferences(offer.digital) : [],
         digitalMaxDownloads: offer.digital?.max_downloads ?? null
       });
       group.total = group.total.add(total);
@@ -514,10 +516,8 @@ export class CheckoutService {
         items: order.items.map((item) => ({
           id: item.id, offerId: item.offer_id, productType: item.product_type, productTitle: item.product_title,
           quantity: item.quantity, unitPrice: item.unit_price.toString(), totalAmount: item.total_amount.toString(), serviceNote: item.service_note,
-          digitalDelivery: item.digital_entitlement ? {
-            downloadUrl: `/orders/${order.id}/items/${item.id}/download`, destinationHost: new URL(item.digital_entitlement.delivery_url).hostname,
-            maxDownloads: item.digital_entitlement.max_downloads, downloadCount: item.digital_entitlement.download_count
-          } : null
+          digitalDelivery: mapDigitalDeliveries(order.id, item.id, item.digital_entitlement)[0] ?? null,
+          digitalDeliveries: mapDigitalDeliveries(order.id, item.id, item.digital_entitlement)
         }))
       })),
       paymentGroups: checkout.payment_groups.map((group) => ({

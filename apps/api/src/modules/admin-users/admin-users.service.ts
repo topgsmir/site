@@ -162,11 +162,11 @@ export class AdminUsersService {
       case "comments": {
         const where = { OR: [{ author_user_id: id }, { flagged_by_user_id: id }] };
         const [count, rows] = await Promise.all([
-          this.prisma.product_comments.count({ where }),
-          this.prisma.product_comments.findMany({ where, skip, take, orderBy: [{ created_at: "desc" }, { id: "desc" }], select: { id: true, created_at: true, status: true, body: true, author_user_id: true, flagged_by_user_id: true, product: { select: { title: true } } } })
+          this.prisma.comments.count({ where }),
+          this.prisma.comments.findMany({ where, skip, take, orderBy: [{ created_at: "desc" }, { id: "desc" }], select: { id: true, created_at: true, status: true, body: true, author_user_id: true, flagged_by_user_id: true, product: { select: { title: true } }, blog_post: { select: { published_revision: { select: { translations: { take: 1, select: { title: true } } } } } } } })
         ]);
         total = count;
-        items = rows.map((row) => item(row.id, row.created_at, row.author_user_id === id ? "Comment" : "Flagged comment", { product: row.product.title, status: row.status, body: row.body, flaggedByUser: row.flagged_by_user_id === id }));
+        items = rows.map((row) => item(row.id, row.created_at, row.author_user_id === id ? "Comment" : "Flagged comment", { target: row.product?.title ?? row.blog_post?.published_revision?.translations[0]?.title ?? "Unavailable content", targetType: row.product ? "product" : "blog", status: row.status, body: row.body, flaggedByUser: row.flagged_by_user_id === id }));
         break;
       }
       case "communications": {
@@ -232,7 +232,7 @@ export class AdminUsersService {
           ["seller_shipping_profile_events", "actor_user_id", "changed_at", "Seller shipping", "seller_id", "enabled"],
           ["usd_exchange_rate_events", "actor_user_id", "created_at", "USD rate", "settings_id", "event_type"],
           ["payment_method_config_events", "actor_user_id", "created_at", "Payment method", "provider_code", "enabled"],
-          ["product_comment_events", "actor_user_id", "created_at", "Comment moderation", "comment_id", "action"],
+          ["comment_events", "actor_user_id", "created_at", "Comment moderation", "comment_id", "action"],
           ["bridge_data_access_audits", "user_id", "accessed_at", "Bridge access", "fulfillment_id", "access_kind"]
         ] as const;
         const selects = sources.map(([table, actor, timestamp, title, reference, action]) => Prisma.sql`

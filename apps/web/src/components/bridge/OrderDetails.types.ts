@@ -22,6 +22,7 @@ export type OrderItem = {
   totalAmount: string;
   serviceNote?: string | null;
   serviceInputs?: Array<{ key: string; label: string; type: "text" | "textarea" | "password"; value: string | null; sensitive: boolean }>;
+  digitalDeliveries?: Array<{ downloadUrl: string; destinationHost: string; maxDownloads: number; downloadCount: number }>;
   digitalDelivery?: { downloadUrl: string; destinationHost: string; maxDownloads: number; downloadCount: number };
   bridge?: {
     id: string;

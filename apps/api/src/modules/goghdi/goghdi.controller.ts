@@ -24,7 +24,7 @@ export class GoghdiController {
     @Ip() clientIp: string
   ) {
     await this.rateLimits.consumeSignedTicket(request.authenticatedUser!.id, clientIp);
-    return this.goghdi.signOrderTicket(body.orderId, request.authenticatedUser!.id);
+    return this.goghdi.signOrderTicket(body.orderId, request.authenticatedUser!.id, body.orderItemId);
   }
 }
 

@@ -82,13 +82,13 @@ export { SDK_ELEMENT_ID };
 
 export class GoghdiAuthenticationRequiredError extends Error {}
 
-export async function openGoghdiOrderTicket(orderId: string) {
+export async function openGoghdiOrderTicket(orderId: string, orderItemId?: string) {
   const config = await loadGoghdiConfig();
   if (!config.enabled) throw new Error("Goghdi is not configured");
 
   let data: unknown;
   try {
-    const response = await api.post<unknown>("/goghdi/order-ticket", { orderId });
+    const response = await api.post<unknown>("/goghdi/order-ticket", { orderId, ...(orderItemId ? { orderItemId } : {}) });
     data = response.data;
   } catch (error) {
     if (isAxiosError(error) && error.response?.status === 401) {

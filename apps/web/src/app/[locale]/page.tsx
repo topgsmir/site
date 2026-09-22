@@ -80,7 +80,7 @@ export default async function HomePage({ params }: HomePageProps) {
   if (!isLocale(locale)) notFound();
 
   const [products, agents, user] = await Promise.all([
-    fetchCollection<HomepageProduct>("/products"),
+    fetchCollection<HomepageProduct>("/products?locale=" + locale),
     fetchCollection<HomepageAgent>("/seller/agents"),
     getCurrentUser()
   ]);

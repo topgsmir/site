@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import type { Route } from "next";
+import { notFound, permanentRedirect } from "next/navigation";
 import { BridgeCheckout } from "@/components/bridge/BridgeCheckout";
 import { getCurrentUser } from "@/lib/auth/server";
 import { getDictionary, isLocale, type Locale } from "@/lib/i18n";
@@ -22,8 +23,8 @@ const openGraphLocales: Record<Locale, string> = {
   ar: "ar_SA"
 };
 
-function canonicalProductUrl(slug: string) {
-  return `${SITE_URL}/fa/products/${encodeURIComponent(slug)}`;
+function canonicalProductUrl(slug: string, locale: Locale = "fa") {
+  return `${SITE_URL}/${locale}/products/${encodeURIComponent(slug)}`;
 }
 
 function compactDescription(product: PublicProduct, locale: Locale) {
@@ -40,7 +41,7 @@ export async function generateMetadata({ params }: ProductRouteProps): Promise<M
   const { locale: localeParam, slug } = await params;
   if (!isLocale(localeParam)) return {};
 
-  const product = await getPublicProduct(slug);
+  const product = await loadProduct(slug, localeParam);
   if (!product) {
     return {
       title: getDictionary(localeParam).product.notFoundTitle,
@@ -49,8 +50,8 @@ export async function generateMetadata({ params }: ProductRouteProps): Promise<M
   }
 
   const description = compactDescription(product, localeParam);
-  const canonical = canonicalProductUrl(product.slug);
-  const indexable = localeParam === "fa";
+  const canonical = canonicalProductUrl(product.slug, product.contentLocale);
+  const indexable = product.availableLocales.includes(localeParam);
 
   return {
     title: product.title,
@@ -61,7 +62,7 @@ export async function generateMetadata({ params }: ProductRouteProps): Promise<M
       product.type === "bridge" ? "Bridge" : getDictionary(localeParam).product[product.type],
       "Top GSM"
     ].filter((value): value is string => Boolean(value)),
-    alternates: { canonical },
+    alternates: { canonical, ...(indexable ? { languages: Object.fromEntries([...product.availableLocales.map((code) => [code, canonicalProductUrl(product.slug, code)]), ["x-default", canonicalProductUrl(product.slug)]]) } : {}) },
     openGraph: {
       type: "website",
       url: canonical,
@@ -90,7 +91,7 @@ export async function generateMetadata({ params }: ProductRouteProps): Promise<M
 }
 
 function productJsonLd(product: PublicProduct, locale: Locale) {
-  const url = canonicalProductUrl(product.slug);
+  const url = canonicalProductUrl(product.slug, product.contentLocale);
   const description = compactDescription(product, locale);
   const offers = product.variants.flatMap((variant) =>
     variant.offers.map((offer) => ({
@@ -143,7 +144,7 @@ function productJsonLd(product: PublicProduct, locale: Locale) {
         url,
         name: product.title,
         description,
-        inLanguage: locale,
+        inLanguage: product.contentLocale,
         breadcrumb: { "@id": `${url}#breadcrumb` },
         mainEntity: { "@id": `${url}#product` },
         datePublished: product.createdAt,
@@ -157,7 +158,7 @@ export default async function ProductRoute({ params }: ProductRouteProps) {
   const { locale: localeParam, slug } = await params;
   if (!isLocale(localeParam)) notFound();
 
-  const product = await getPublicProduct(slug);
+  const product = await loadProduct(slug, localeParam);
   if (!product) notFound();
 
   const jsonLd = productJsonLd(product, localeParam);
@@ -186,4 +187,13 @@ export default async function ProductRoute({ params }: ProductRouteProps) {
       <ProductPage product={product} locale={localeParam} copy={getDictionary(localeParam).product} />
     </>
   );
+}
+
+async function loadProduct(slug: string, locale: Locale) {
+  const product = await getPublicProduct(slug, locale);
+  if (!product) return null;
+  let decoded: string;
+  try { decoded = decodeURIComponent(slug); } catch { notFound(); }
+  if (decoded !== product.slug) permanentRedirect(("/" + locale + "/products/" + encodeURIComponent(product.slug)) as Route);
+  return product;
 }

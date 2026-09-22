@@ -21,7 +21,7 @@ const detailsSelect = {
   items: { select: {
     id: true, inventory_reservation: { select: {
       id: true, offer_id: true, quantity: true, status: true, expires_at: true, created_at: true, updated_at: true
-    } }, digital_entitlement: { select: {
+    } }, digital_entitlement: { orderBy: { file_index: "asc" }, select: {
       id: true, buyer_id: true, max_downloads: true, download_count: true, last_accessed_at: true, created_at: true
     } }, bridge_fulfillment: { select: {
       id: true, grant_id: true, status: true, mode: true, provider_reference: true,
@@ -125,13 +125,18 @@ export class AdminOrderDetailsService {
           createdAt: item.inventory_reservation.created_at.toISOString(),
           updatedAt: item.inventory_reservation.updated_at.toISOString()
         } : null,
-        digital: item.digital_entitlement ? {
-          id: item.digital_entitlement.id, buyerId: item.digital_entitlement.buyer_id,
-          maxDownloads: item.digital_entitlement.max_downloads,
-          downloadCount: item.digital_entitlement.download_count,
-          lastAccessedAt: item.digital_entitlement.last_accessed_at?.toISOString() ?? null,
-          createdAt: item.digital_entitlement.created_at.toISOString()
+        digital: item.digital_entitlement[0] ? {
+          id: item.digital_entitlement[0].id, buyerId: item.digital_entitlement[0].buyer_id,
+          maxDownloads: item.digital_entitlement[0].max_downloads,
+          downloadCount: item.digital_entitlement[0].download_count,
+          lastAccessedAt: item.digital_entitlement[0].last_accessed_at?.toISOString() ?? null,
+          createdAt: item.digital_entitlement[0].created_at.toISOString()
         } : null,
+        digitalFiles: item.digital_entitlement.map((file) => ({
+          id: file.id, buyerId: file.buyer_id, maxDownloads: file.max_downloads,
+          downloadCount: file.download_count, lastAccessedAt: file.last_accessed_at?.toISOString() ?? null,
+          createdAt: file.created_at.toISOString()
+        })),
         bridge: item.bridge_fulfillment ? {
           id: item.bridge_fulfillment.id, grantId: item.bridge_fulfillment.grant_id,
           service: item.bridge_fulfillment.grant.service.name,

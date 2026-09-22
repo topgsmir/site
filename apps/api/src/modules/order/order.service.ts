@@ -1,3 +1,4 @@
+import { mapDigitalDeliveries, digitalFileReferences } from "../order/digital-delivery";
 import {
   BadRequestException,
   ConflictException,
@@ -55,7 +56,7 @@ const orderSelect = {
       service_input_schema: true,
       encrypted_service_answers: true,
       service_answers_key_id: true,
-      digital_entitlement: { select: { delivery_url: true, max_downloads: true, download_count: true } },
+      digital_entitlement: { orderBy: { file_index: "asc" }, select: { file_index: true, delivery_url: true, max_downloads: true, download_count: true } },
       bridge_fulfillment: {
         select: { id: true, mode: true, status: true, last_error_code: true, completed_at: true, encrypted_input: true, encryption_key_id: true, encrypted_result: true, result_encryption_key_id: true }
       }
@@ -100,14 +101,48 @@ export class OrderService {
       throw new ForbiddenException("Seller or platform order access is required");
     }
 
+    const [scope, viewer] = await Promise.all([
+      this.scope(actor),
+      this.prisma.users.findUnique({
+        where: { id: actor.id },
+        select: { orders_seen_at: true }
+      })
+    ]);
+
     return {
       count: await this.prisma.orders.count({
         where: {
-          ...await this.scope(actor),
-          status: "paid"
+          ...scope,
+          status: "paid",
+          ...(viewer?.orders_seen_at
+            ? { created_at: { gt: viewer.orders_seen_at } }
+            : {})
         }
       })
     };
+  }
+
+  async markOrdersSeen(actor: AppUser) {
+    if (actor.role === "buyer") {
+      throw new ForbiddenException("Seller or platform order access is required");
+    }
+
+    const scope = await this.scope(actor);
+    const latestVisibleOrder = await this.prisma.orders.findFirst({
+      where: scope,
+      orderBy: [{ created_at: "desc" }, { id: "desc" }],
+      select: { created_at: true }
+    });
+    const seenAt = latestVisibleOrder?.created_at ?? new Date(0);
+    await this.prisma.users.updateMany({
+      where: {
+        id: actor.id,
+        OR: [{ orders_seen_at: null }, { orders_seen_at: { lt: seenAt } }]
+      },
+      data: { orders_seen_at: seenAt }
+    });
+
+    return { count: 0 };
   }
 
   async list(actor: AppUser, input: ListOrdersQueryDto) {
@@ -276,7 +311,7 @@ export class OrderService {
             id: true,
             price: true,
             currency: true,
-            digital: { select: { file_reference: true, max_downloads: true } },
+            digital: { select: { file_reference: true, file_references: true, max_downloads: true } },
             physical: { select: { stock: true } },
             listing: {
               select: {
@@ -331,7 +366,7 @@ export class OrderService {
         if (offerCurrency === "USD" && !this.usdRates) {
           throw new ServiceUnavailableException("The USD exchange rate service is unavailable");
         }
-        if (offer.listing.product.type === "digital" && (!offer.digital || !this.isHttpsUrl(offer.digital.file_reference))) {
+        if (offer.listing.product.type === "digital" && (!offer.digital || !digitalFileReferences(offer.digital).every((url) => this.isHttpsUrl(url)))) {
           throw new ConflictException("This digital offer has no valid HTTPS delivery URL");
         }
 
@@ -382,7 +417,7 @@ export class OrderService {
                 unit_price: unitPrice,
                 total_amount: gross,
                 ...(offer.listing.product.type === "digital" && offer.digital && this.isHttpsUrl(offer.digital.file_reference)
-                  ? { digital_delivery_url: offer.digital.file_reference, digital_max_downloads: offer.digital.max_downloads }
+                  ? { digital_delivery_url: offer.digital.file_reference, digital_delivery_urls: digitalFileReferences(offer.digital), digital_max_downloads: offer.digital.max_downloads }
                   : {}),
                 ...(bridgePlan
                   ? {
@@ -603,11 +638,11 @@ export class OrderService {
     });
   }
 
-  async claimDigitalDownload(actor: AppUser, orderId: string, itemId: string, clientIp: string) {
+  async claimDigitalDownload(actor: AppUser, orderId: string, itemId: string, clientIp: string, fileIndex = 0) {
     if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can download purchases");
     return this.prisma.$transaction(async (tx) => {
       const entitlement = await tx.digital_entitlements.findFirst({
-        where: { order_item_id: itemId, buyer_id: actor.id, order_item: { order_id: orderId, order: { buyer_id: actor.id, status: { in: ["paid", "processing", "awaiting_confirmation", "delivered"] } } } },
+        where: { order_item_id: itemId, file_index: fileIndex, buyer_id: actor.id, order_item: { order_id: orderId, order: { buyer_id: actor.id, status: { in: ["paid", "processing", "awaiting_confirmation", "delivered"] } } } },
         select: { id: true, delivery_url: true, max_downloads: true, download_count: true }
       });
       if (!entitlement) throw new NotFoundException("Digital delivery was not found");
@@ -762,7 +797,8 @@ export class OrderService {
         totalAmount: item.total_amount.toString(),
         serviceNote: item.service_note,
         serviceInputs: this.mapServiceInputs(item, revealSensitiveServiceAnswers),
-        ...(item.digital_entitlement ? { digitalDelivery: { downloadUrl: `/orders/${order.id}/items/${item.id}/download`, destinationHost: new URL(item.digital_entitlement.delivery_url).hostname, maxDownloads: item.digital_entitlement.max_downloads, downloadCount: item.digital_entitlement.download_count } } : {}),
+        digitalDelivery: mapDigitalDeliveries(order.id, item.id, item.digital_entitlement)[0] ?? null,
+        digitalDeliveries: mapDigitalDeliveries(order.id, item.id, item.digital_entitlement),
         ...(item.bridge_fulfillment
           ? {
               bridge: {

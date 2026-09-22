@@ -21,6 +21,7 @@ import { BlogService } from "./blog.service";
 import {
   CreateBlogPostDto,
   ListBlogPostsQueryDto,
+  ManagedBlogQueryDto,
   ProductOptionsQueryDto,
   RejectBlogPostDto,
   RestoreBlogChangeDto,
@@ -34,7 +35,7 @@ export class BlogManageController {
   constructor(private readonly blog: BlogService) {}
 
   @Get("posts")
-  list(@Query() query: ListBlogPostsQueryDto, @Req() request: AuthenticatedRequest) {
+  list(@Query() query: ManagedBlogQueryDto, @Req() request: AuthenticatedRequest) {
     return this.blog.listManaged(request.blogActor!, query);
   }
 

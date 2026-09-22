@@ -36,6 +36,9 @@
 .excerptField { margin-top: 14px; }
 .excerptField textarea { field-sizing: content; width: 100%; min-height: 84px; resize: vertical; border: 0; padding: 4px 0; color: var(--color-dashboard-ink-soft); background: transparent; font-size: .95rem; line-height: 1.9; }
 .excerptField small { text-align: end; color: var(--color-dashboard-muted); font-size: .7rem; font-variant-numeric: tabular-nums; }
+.editorModes { display: flex; gap: 3px; padding: 8px 28px 0; border-top: 1px solid var(--color-dashboard-rule); background: var(--color-dashboard-paper); }
+.editorModes button { min-height: 34px; padding: 6px 14px; border: 1px solid transparent; border-radius: 8px 8px 0 0; color: var(--color-dashboard-muted); background: transparent; cursor: pointer; font-size: .76rem; }
+.editorModes button[aria-pressed="true"] { color: var(--color-dashboard-accent); border-color: var(--color-dashboard-rule); border-bottom-color: var(--color-dashboard-surface); background: var(--color-dashboard-surface); }
 .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 3px; padding: 8px 28px; border-block: 1px solid var(--color-dashboard-rule); background: var(--color-dashboard-paper); }
 .toolbar button, .toolbar label { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 40px; min-height: 40px; padding: 8px 10px; border: 0; border-radius: 8px; color: var(--color-dashboard-ink-soft); background: transparent; cursor: pointer; font-size: .8rem; }
 .toolbar button[aria-pressed="true"] { color: var(--color-dashboard-accent); background: var(--color-dashboard-accent-soft); }
@@ -49,8 +52,18 @@
 .editor :global(.tiptap ul) { list-style: disc; padding-inline-start: 24px; }
 .editor :global(.tiptap ol) { list-style: decimal; padding-inline-start: 24px; }
 .editor :global(.tiptap h2) { font-size: 1.5rem; line-height: 1.6; }
+.editor :global(.tiptap h3) { font-size: 1.2rem; line-height: 1.7; }
+.editor :global(.tiptap blockquote) { padding-inline-start: 18px; border-inline-start: 3px solid var(--color-dashboard-accent); color: var(--color-dashboard-muted); }
+.editor :global(.tiptap pre) { overflow-x: auto; padding: 18px; border-radius: 12px; direction: ltr; text-align: left; background: var(--color-dashboard-paper); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; line-height: 1.7; }
+.editor :global(.tiptap code) { padding: .12em .35em; border-radius: 5px; background: var(--color-dashboard-paper); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.editor :global(.tiptap pre code) { padding: 0; background: transparent; }
+.editor :global(.tiptap a) { color: var(--color-dashboard-accent); text-decoration: underline; text-underline-offset: 3px; }
+.editor :global(.tiptap hr) { margin-block: 2em; border: 0; border-top: 1px solid var(--color-dashboard-rule-strong); }
 .editor :global(.tiptap img) { max-width: 100%; height: auto; border-radius: 12px; }
 .editor :global(.tiptap p.is-editor-empty:first-child::before) { content: attr(data-placeholder); float: inline-start; color: var(--color-dashboard-muted); pointer-events: none; height: 0; }
+.htmlEditor { display: grid; gap: 10px; min-height: 430px; padding: 18px 28px 28px; background: var(--color-dashboard-surface); }
+.htmlEditor textarea { width: 100%; min-height: 350px; resize: vertical; padding: 18px; border: 1px solid var(--color-dashboard-rule); border-radius: 12px; color: var(--color-dashboard-ink-soft); background: var(--color-dashboard-paper); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .84rem; line-height: 1.75; tab-size: 2; }
+.htmlEditor p { margin: 0; color: var(--color-dashboard-muted); font-size: .72rem; line-height: 1.8; }
 .searchPanel { padding: 28px 32px; }
 .sectionHeading { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
 .sectionIcon { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; border-radius: 13px; background: var(--color-dashboard-paper); color: var(--color-dashboard-muted); }

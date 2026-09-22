@@ -45,6 +45,7 @@ export interface ProductImage {
 }
 
 export interface PublicProductSummary {
+  availableLocales?: Array<"fa" | "en" | "ar">;
   id: string;
   title: string;
   slug: string;
@@ -76,6 +77,8 @@ export interface PublicProductVariant {
 }
 
 export interface PublicProduct {
+  availableLocales?: Array<"fa" | "en" | "ar">;
+  contentLocale?: "fa" | "en" | "ar";
   id: string;
   title: string;
   slug: string;
@@ -108,6 +111,7 @@ export interface SellerProductOffer {
   status: SellerListingStatus;
   digital?: {
     fileReference: string;
+    fileReferences: string[];
     maxDownloads: number;
   };
   physical?: {
@@ -713,6 +717,7 @@ export interface CheckoutDetail {
       unitPrice: string;
       totalAmount: string;
       serviceNote: string | null;
+      digitalDeliveries: Array<{ downloadUrl: string; destinationHost: string; maxDownloads: number; downloadCount: number }>;
       digitalDelivery: null | { downloadUrl: string; destinationHost: string; maxDownloads: number; downloadCount: number };
     }>;
   }>;
@@ -923,8 +928,18 @@ export interface AdminBackupOverview {
   settings: AdminBackupSettings;
   destinations: AdminBackupDestination[];
   recentRuns: AdminBackupRun[];
+  recentRestores: AdminBackupRestoreEvent[];
   localArchiveBytes: number;
   activeRunId: string | null;
+}
+
+export interface AdminBackupRestoreEvent {
+  id: string;
+  archiveId: string | null;
+  status: BackupRestoreStatus;
+  phase: BackupRestoreProgress["phase"];
+  errorCode: string | null;
+  createdAt: string;
 }
 
 export interface AdminRemoteBackupArchive {
@@ -960,6 +975,8 @@ export interface PublicSystemStatus {
 }
 
 export type VendorPermission =
+  | "blog_ai"
+  | "products_ai"
   | "products_manage"
   | "physical_products_manage"
   | "products_publish"
@@ -1130,6 +1147,22 @@ export interface Vendor {
 export type CommentPostingPolicy = "purchasers" | "buyers" | "guests";
 export type CommentPublicationPolicy = "approval" | "immediate";
 export type CommentStatus = "pending" | "approved" | "rejected" | "spam_review" | "spam";
+export type CommentTargetType = "product" | "blog";
+
+export interface CommentTarget {
+  type: CommentTargetType;
+  id: string;
+  title: string;
+  slug: string;
+}
+
+export interface CommentReply {
+  authorName: string;
+  authorType: "seller" | "editorial";
+  sellerName?: string;
+  body: string;
+  repliedAt: string;
+}
 
 export interface CommentSettings {
   sellerLockEnabled: boolean;
@@ -1143,16 +1176,19 @@ export interface ProductComment {
   body: string;
   authorName: string;
   createdAt: string;
-  replies: Array<{ sellerName: string; body: string; repliedAt: string }>;
+  replies: CommentReply[];
 }
+
+export type BlogComment = ProductComment;
 
 export interface SellerComment {
   id: string;
   body: string;
   authorName: string;
   createdAt: string;
-  productTitle: string;
-  productSlug: string;
+  target: CommentTarget;
+  productTitle: string | null;
+  productSlug: string | null;
   reply: string | null;
   repliedAt: string | null;
 }
@@ -1163,10 +1199,56 @@ export interface AdminComment {
   status: CommentStatus;
   authorName: string;
   createdAt: string;
-  productTitle: string;
-  productSlug: string;
+  target: CommentTarget;
+  productTitle: string | null;
+  productSlug: string | null;
   flagged: boolean;
-  replies: Array<{ sellerName: string; body: string | null }>;
+  canReply: boolean;
+  canFlag: boolean;
+  replies: Array<{ authorName: string; authorType: "seller" | "editorial"; sellerName?: string; body: string | null }>;
 }
 
 export interface CommentPage<T> { items: T[]; nextCursor: string | null }
+
+export interface PublicProductsPage {
+  items: PublicProductSummary[];
+  nextCursor: string | null;
+}
+
+export interface ProductTranslation {
+  locale: "en" | "ar";
+  draft: { title: string; description: string; category: string | null };
+  published: { title: string; description: string; category: string | null; publishedAt: string } | null;
+  updatedAt: string;
+}
+
+export interface ContentAiDraft {
+  title: string;
+  slug: string;
+  excerpt: string;
+  seoTitle: string;
+  seoDescription: string;
+  coverAltText: string;
+  category: string;
+  tags: string[];
+  warnings: string[];
+  content: RichTextDocument;
+  description: string;
+  html: string;
+}
+
+export interface ContentAiRequest {
+  locale: BlogLocale;
+  source: string;
+  keyword?: string;
+  audience?: string;
+  coverDescription?: string;
+  categories?: string[];
+  tags?: string[];
+}
+
+export interface ContentAiResult {
+  locale: BlogLocale;
+  status: "ready";
+  draft: ContentAiDraft;
+}

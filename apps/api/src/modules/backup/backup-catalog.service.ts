@@ -9,6 +9,7 @@ import { readPendingRestore } from "./backup-maintenance";
 import { BackupPathsService } from "./backup-paths.service";
 
 const STALE_STAGING_MS = 24 * 60 * 60 * 1000;
+const RESTORE_MONITOR_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const ARCHIVE_NAME = /^topgsm-[0-9]{8}T[0-9]{6}Z-([0-9a-f-]{36})[.]topgsm-backup$/i;
 
 type Sidecar = {
@@ -31,6 +32,7 @@ export class BackupCatalogService implements OnModuleInit {
   async onModuleInit() {
     await this.paths.ensure();
     await this.cleanStaleStaging();
+    await this.cleanStaleRestoreMonitors();
     await this.reconcileLocalArchives();
   }
 
@@ -64,6 +66,10 @@ export class BackupCatalogService implements OnModuleInit {
             archive_sha256: sidecar.archiveSha256, manifest: sidecar.manifest as unknown as Prisma.InputJsonValue
           }
         });
+        await this.prisma.backup_runs.updateMany({
+          where: { id: sidecar.manifest.archiveId, status: { in: ["queued", "running"] } },
+          data: { status: "success", error_code: null, claim_token: null, completed_at: createdAt }
+        });
       } catch (error) {
         this.logger.warn(`Could not reconcile local backup ${archiveName}: ${this.errorCode(error)}`);
       }
@@ -79,6 +85,19 @@ export class BackupCatalogService implements OnModuleInit {
       if (pending?.archivePath === path) continue;
       const metadata = await stat(path).catch(() => null);
       if (metadata && metadata.mtimeMs < cutoff) await rm(path, { recursive: entry.isDirectory(), force: true });
+    }
+  }
+
+  private async cleanStaleRestoreMonitors() {
+    const pending = await readPendingRestore();
+    const entries = await readdir(this.paths.state, { withFileTypes: true });
+    const cutoff = Date.now() - RESTORE_MONITOR_RETENTION_MS;
+    for (const entry of entries) {
+      const match = /^restore-([0-9a-f-]{36})[.](json|token)$/i.exec(entry.name);
+      if (!entry.isFile() || !match?.[1] || match[1] === pending?.id) continue;
+      const path = resolve(this.paths.state, entry.name);
+      const metadata = await stat(path).catch(() => null);
+      if (metadata && metadata.mtimeMs < cutoff) await rm(path, { force: true });
     }
   }
 

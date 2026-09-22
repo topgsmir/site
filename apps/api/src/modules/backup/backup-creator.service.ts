@@ -38,10 +38,11 @@ export class BackupCreatorService {
   async create(archiveId: string, components: BackupComponent[], trigger: "manual" | "scheduled" | "pre_restore" = "manual"): Promise<CreatedBackup> {
     await this.paths.ensure();
     const work = this.paths.stagingPath(archiveId, "work");
-    await mkdir(work, { recursive: false });
-    const databasePath = resolve(work, "database.dump");
     const plainPath = this.paths.stagingPath(archiveId, "tar.gz.partial");
     const encryptedPartial = this.paths.stagingPath(archiveId, "encrypted.partial");
+    await Promise.all([rm(work, { force: true, recursive: true }), rm(plainPath, { force: true }), rm(encryptedPartial, { force: true })]);
+    await mkdir(work, { recursive: false });
+    const databasePath = resolve(work, "database.dump");
     const client = new Client({ connectionString: this.databaseUrl, connectionTimeoutMillis: 10_000 });
     try {
       await client.connect();

@@ -12,7 +12,7 @@ export default async function OpenGraphProductImage({
   params: Promise<{ locale: string; slug: string }>;
 }) {
   const { locale, slug } = await params;
-  const product = isLocale(locale) ? await getPublicProduct(slug) : null;
+  const product = isLocale(locale) ? await getPublicProduct(slug, locale) : null;
   const title = product?.title ?? "Top GSM";
   const detail = [product?.category, product?.type].filter(Boolean).join(" · ");
   const titleSize = title.length > 70 ? 54 : title.length > 38 ? 68 : 84;

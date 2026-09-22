@@ -54,6 +54,8 @@ import { BackupRestoreWorkspace } from "@/components/admin/BackupRestoreWorkspac
 
 
 const permissionOrder: VendorPermission[] = [
+  "blog_ai",
+  "products_ai",
   "products_manage",
   "physical_products_manage",
   "products_publish",
@@ -153,6 +155,10 @@ const copy = {
     productsPublish: "Publish without review",
     productsPublishHint: "Allow new and edited products to become public immediately.",
     blogManage: "Manage blog posts",
+    blogAi: "Blog AI",
+    blogAiHint: "Use AI to draft and polish articles. Requires blog management access.",
+    productsAi: "Product AI",
+    productsAiHint: "Use AI to write product content. Requires product management access.",
     blogManageHint: "Create and publish seller-authored blog posts.",
     couponsManage: "Manage coupons",
     couponsManageHint: "Create and schedule discount codes for the shop.",
@@ -217,7 +223,7 @@ const copy = {
     paymentMethods: "روش‌های پرداخت",
     catalog: "کاتالوگ محصولات",
     editorial: "بلاگ",
-    uploads: "بارگذاری‌ها",
+    uploads: "آپلود ها",
     ai: "هوش مصنوعی",
     aiModels: "مدل‌ها",
     aiAssistant: "دستیار هوشمند",
@@ -291,6 +297,10 @@ const copy = {
     productsPublish: "انتشار بدون بررسی",
     productsPublishHint: "محصول جدید یا ویرایش‌شده را بلافاصله عمومی کنید.",
     blogManage: "مدیریت نوشته‌های وبلاگ",
+    blogAi: "هوش مصنوعی وبلاگ",
+    blogAiHint: "نوشتن و ویرایش مقاله با هوش مصنوعی؛ نیازمند دسترسی مدیریت وبلاگ.",
+    productsAi: "هوش مصنوعی محصول",
+    productsAiHint: "نوشتن متن محصول با هوش مصنوعی؛ نیازمند دسترسی مدیریت محصولات.",
     blogManageHint: "ساخت و انتشار نوشته‌های وبلاگ فروشنده.",
     couponsManage: "مدیریت کدهای تخفیف",
     couponsManageHint: "ساخت و زمان‌بندی کدهای تخفیف فروشگاه.",
@@ -429,6 +439,10 @@ const copy = {
     productsPublish: "النشر دون مراجعة",
     productsPublishHint: "السماح بنشر المنتجات الجديدة والمعدلة فوراً.",
     blogManage: "إدارة مقالات المدونة",
+    blogAi: "ذكاء اصطناعي للمدونة",
+    blogAiHint: "كتابة المقالات وتحسينها. يتطلب صلاحية إدارة المدونة.",
+    productsAi: "ذكاء اصطناعي للمنتجات",
+    productsAiHint: "كتابة محتوى المنتجات. يتطلب صلاحية إدارة المنتجات.",
     blogManageHint: "إنشاء ونشر مقالات المدونة الخاصة بالبائع.",
     couponsManage: "إدارة القسائم",
     couponsManageHint: "إنشاء رموز خصم للمتجر وجدولتها.",
@@ -520,6 +534,8 @@ const permissionCopy: Record<
   physical_products_manage: { title: "physicalProductsManage", hint: "physicalProductsManageHint" },
   products_publish: { title: "productsPublish", hint: "productsPublishHint" },
   blog_manage: { title: "blogManage", hint: "blogManageHint" },
+  blog_ai: { title: "blogAi", hint: "blogAiHint" },
+  products_ai: { title: "productsAi", hint: "productsAiHint" },
   coupons_manage: { title: "couponsManage", hint: "couponsManageHint" },
   orders_manage: { title: "ordersManage", hint: "ordersManageHint" },
   staff_manage: { title: "staffManage", hint: "staffManageHint" },
@@ -609,7 +625,12 @@ export function VendorManagement({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [securityOpen, setSecurityOpen] = useState(false);
   const [usdRateFailed, setUsdRateFailed] = useState(false);
-  const { count: newOrderCount } = useNewOrderCount(ownerNavigation);
+  const { count: newOrderCount, markSeen: markOrdersSeen } = useNewOrderCount(ownerNavigation);
+
+  useEffect(() => {
+    if (section === "orders") void markOrdersSeen();
+  }, [markOrdersSeen, section]);
+
   const canManageBlog = ownerNavigation || platformPermissions.includes("blog_manage");
   const canManageUploads = ownerNavigation || platformPermissions.includes("uploads_manage");
   const isUsersSection = section === "vendors" || section === "staff" || section === "users";

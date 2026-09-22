@@ -1,4 +1,5 @@
 "use client";
+import { ProductAiPanel } from "@/components/ai/ProductAiPanel";
 
 import type { BridgeGrantSummary } from "@topgsm/shared-types";
 import type { Route } from "next";
@@ -26,6 +27,7 @@ export function BridgeProductForm({ locale, initialGrantId }: { locale: Locale; 
   const [variants, setVariants] = useState<Variant[]>([{ id: 1, name: "", value: "", price: "" }]);
   const [currency, setCurrency] = useState<"TOMAN" | "USD">("TOMAN");
   const [busy, setBusy] = useState(false);
+  const [content, setContent] = useState({ title: "", category: "", description: "" });
   const [error, setError] = useState("");
   const selected = useMemo(() => grants.find((item) => item.id === grantId), [grantId, grants]);
 
@@ -71,18 +73,19 @@ export function BridgeProductForm({ locale, initialGrantId }: { locale: Locale; 
     <main className={styles.main}>
       {!grants.length && !selected ? <p className={styles.empty}>{c.empty}</p> : null}
       {selected ? <form className={styles.form} onSubmit={submit} aria-busy={busy}>
+        <ProductAiPanel key={grantId} locale={locale} value={content} onChange={setContent} disabled={busy} />
         <section className={styles.section}><div className={styles.sectionHead}><div><h2>{c.basics}</h2><p>{selected.service.name}</p></div></div>
           <div className={styles.formGrid}>
             <label className={styles.field}><span>{c.service}</span><select value={grantId} onChange={(e) => setGrantId(e.target.value)}>{grants.map((grant) => <option key={grant.id} value={grant.id}>{grant.service.name}</option>)}</select><small>&nbsp;</small></label>
-            <label className={styles.field}><span>{c.name}</span><input name="title" required minLength={2} maxLength={200}/><small>&nbsp;</small></label>
-            <label className={styles.field}><span>{c.category}</span><input name="category" maxLength={100}/><small>&nbsp;</small></label>
+            <label className={styles.field}><span>{c.name}</span><input name="title" required minLength={2} maxLength={200} value={content.title} onChange={(event) => setContent((current) => ({ ...current, title: event.target.value }))}/><small>&nbsp;</small></label>
+            <label className={styles.field}><span>{c.category}</span><input name="category" maxLength={100} value={content.category} onChange={(event) => setContent((current) => ({ ...current, category: event.target.value }))}/><small>&nbsp;</small></label>
             <label className={styles.field}><span>{c.kind}</span><select value={kind} onChange={(e) => changeKind(e.target.value as "simple" | "variable")}><option value="simple">{c.simple}</option><option value="variable">{c.variable}</option></select><small>&nbsp;</small></label>
             <label className={styles.field}><span>{c.mode}</span><select name="mode"><option value="automatic">{c.automatic}</option><option value="manual">{c.manual}</option></select><small>&nbsp;</small></label>
             <label className={styles.field}><span>{c.publish}</span><select name="status"><option value="active">{c.active}</option><option value="draft">{c.draft}</option></select><small>&nbsp;</small></label>
             <label className={styles.field}><span>{c.min}</span><input name="minimumQuantity" type="number" min="1" max="100" defaultValue="1" required/><small>&nbsp;</small></label>
             <label className={styles.field}><span>{c.max}</span><input name="maximumQuantity" type="number" min="1" max="100" defaultValue="1" required/><small>&nbsp;</small></label>
           </div>
-          <label className={styles.field}><span>{c.description}</span><textarea name="description" maxLength={10000}/><small>&nbsp;</small></label>
+          <label className={styles.field}><span>{c.description}</span><textarea name="description" maxLength={10000} value={content.description} onChange={(event) => setContent((current) => ({ ...current, description: event.target.value }))}/><small>&nbsp;</small></label>
         </section>
         <section className={styles.section}><div className={styles.sectionHead}><div><h2>{c.labels}</h2><p>{c.labelHelp}</p></div></div><div className={styles.formGrid}>{selected.service.fields.map((field) => <label className={styles.field} key={field.key}><span>{field.label}</span><input name={`label:${field.key}`} defaultValue={field.label} required maxLength={160}/><small>{field.key} · {field.type}</small></label>)}</div></section>
         <section className={styles.section}><div className={styles.sectionHead}><h2>{kind === "variable" ? c.variant : c.price}</h2>{kind === "variable" ? <button className={styles.buttonQuiet} type="button" onClick={() => setVariants((items) => [...items, { id: Date.now(), name: "", value: "", price: "" }])}>{c.add}</button> : null}</div>

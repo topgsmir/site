@@ -14,7 +14,7 @@
 .trigger {
   display: grid;
   width: 100%;
-  min-height: 4.25rem;
+  min-height: var(--size-dashboard-filter-trigger, 4.25rem);
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   gap: var(--space-dashboard-sm);
   align-items: center;
@@ -35,7 +35,7 @@
 
 .icon {
   display: grid;
-  width: 2.25rem;
+  width: var(--size-dashboard-filter-icon, 2.25rem);
   aspect-ratio: 1;
   place-items: center;
   border-radius: var(--radius-dashboard-sm);

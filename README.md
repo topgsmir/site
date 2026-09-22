@@ -89,6 +89,30 @@ database, and signs the SDK 2.0 `{ timestamp, nonce, signature }` proof with onl
 that seller's agent ID. The stable `order:<uuid>` ticket key opens the existing
 conversation on later clicks instead of creating duplicates.
 
+## Backup and restore
+
+Platform owners manage encrypted database and upload backups under **Admin →
+Settings → Backup & Restore**. Backups are created online from an exported
+PostgreSQL snapshot and can be retained locally or delivered to verified SFTP,
+explicit-FTPS, and explicitly acknowledged plain-FTP destinations. Private and
+local destination addresses are blocked unless their exact address or CIDR is
+listed in `BACKUP_DESTINATION_ALLOWED_CIDRS`.
+
+Mount `BACKUP_ROOT` on persistent storage and configure independent 32-byte
+base64 key rings in `BACKUP_ARCHIVE_CREDENTIAL_KEYS` and
+`BACKUP_DESTINATION_CREDENTIAL_KEYS`. Archive keys are deployment secrets, not
+database settings: back them up separately and retain every old key-ring entry
+while an archive may still be needed. Losing an archive key permanently makes
+the corresponding encrypted backups unrecoverable.
+
+The API image includes PostgreSQL 16 client tools. Production startup applies
+pending migrations before normal service, but detects a pending restore first
+so the pre-Nest maintenance runner can replace and migrate the database without
+opening application pools. The container must use a restart policy (the Compose
+configuration uses `unless-stopped`) for confirmed restores to continue after
+the API exits. Multi-host deployments must share `BACKUP_ROOT`, including its
+`state` directory, between every API instance.
+
 ## Tests
 
 The repository requires Node 24.20.0 and pnpm 12.3.4. Run the fast unit suite

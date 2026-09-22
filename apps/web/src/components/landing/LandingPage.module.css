@@ -6,8 +6,8 @@
 }
 .page :is(a, button):focus-visible { outline: 3px solid var(--signal); outline-offset: 5px; }
 .page :is(section, main) { scroll-margin-top: 110px; }
-.hero, .platforms, .section, .shopSection, .reassurance, .support, .footer { width: min(var(--home-width), calc(100% - 80px)); margin-inline: auto; }
-.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); gap: 56px; align-items: center; padding-block: 72px 76px; }
+.hero, .platforms, .section, .shopSection, .reassurance, .support, .footer { width: min(var(--home-width), calc(100% - 48px)); margin-inline: auto; }
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); gap: 56px; align-items: center; padding-block: 40px; }
 .heroCopy { min-width: 0; }
 .kicker { color: var(--signal-dark); font-size: .82rem; font-weight: 550; margin-bottom: 24px; }
 .hero h1 { max-width: 40rem; font-size: clamp(2.8rem, 4.5vw, 4.5rem); font-weight: 550; letter-spacing: -.055em; line-height: 1.13; text-wrap: balance; }
@@ -115,10 +115,10 @@
   .reassurance { gap: 60px; }
 }
 @media (min-width: 801px) {
-  .hero { gap: 40px; padding-block: 48px 52px; }
+  .hero { gap: 40px; padding-block: 32px; }
   .kicker { margin-bottom: 16px; }
-  .hero h1 { font-size: clamp(2.4rem, 3.6vw, 3.6rem); }
-  .page[dir="rtl"] .hero h1 { font-size: clamp(2.4rem, 3.5vw, 3.5rem); }
+  .hero h1 { font-size: clamp(2rem, 3vw, 3rem); }
+  .page[dir="rtl"] .hero h1 { font-size: clamp(2rem, 3vw, 2.875rem); }
   .heroBody { margin-top: 18px; font-size: .95rem; line-height: 1.8; }
   .heroActions { margin-top: 24px; }
   .primary, .secondary { min-height: 46px; gap: 14px; padding-block: 10px; }
@@ -126,26 +126,26 @@
   .heroImage { aspect-ratio: 1.35; }
   .heroVisual figcaption { min-height: 56px; }
   .platforms { padding-block: 16px 44px; }
-  .section { padding-block: 72px; }
-  .sectionHeading { margin-bottom: 28px; }
-  .sectionHeading h2, .reassurance h2, .support h2 { font-size: clamp(1.75rem, 2.5vw, 2.45rem); }
+  .section { padding-block: 44px; }
+  .sectionHeading { margin-bottom: 20px; }
+  .sectionHeading h2, .reassurance h2, .support h2 { font-size: clamp(1.5rem, 2.1vw, 2rem); }
   .service { padding: 24px; }
   .serviceIcon { width: 46px; height: 46px; margin-bottom: 24px; }
   .service p { margin-bottom: 24px; }
-  .shopSection { padding-block: 56px; }
-  .productArtwork { min-height: 190px; }
+  .shopSection { padding-block: 36px; }
+  .productArtwork { min-height: 160px; }
   .productArtwork > svg { width: 60px; height: 60px; }
   .productInfo { padding-block: 16px 12px; }
   .productInfo > div { margin-top: 18px; }
-  .reassurance { gap: 64px; padding-block: 60px 96px; }
-  .support { padding-block: 56px; }
-  .footer { padding-top: 56px; }
+  .reassurance { gap: 64px; padding-block: 40px 56px; }
+  .support { padding-block: 36px; }
+  .footer { padding-top: 36px; }
 }
 @media (max-width: 800px) {
   .header, .hero, .platforms, .section, .reassurance, .support, .footer { width: calc(100% - 40px); }
-  .hero { grid-template-columns: 1fr; gap: 40px; padding-block: 48px 42px; }
+  .hero { grid-template-columns: 1fr; gap: 40px; padding-block: 28px; }
   .heroCopy { text-align: center; }
-  .hero h1, .page[dir="rtl"] .hero h1 { max-width: 40rem; margin-inline: auto; font-size: clamp(2.2rem, 6vw, 3.5rem); }
+  .hero h1, .page[dir="rtl"] .hero h1 { max-width: 40rem; margin-inline: auto; font-size: clamp(1.8rem, 5vw, 2.5rem); }
   .heroBody { margin-inline: auto; font-size: .95rem; }
   .heroActions { justify-content: center; gap: 14px; }
   .heroNote { justify-content: center; font-size: .68rem; }
@@ -156,8 +156,8 @@
   .platforms { padding-block: 16px 36px; }
   .platforms > div { gap: 18px 28px; }
   .platforms span { font-size: .75rem; }
-  .section { padding-block: 64px; }
-  .sectionHeading { display: grid; gap: 18px; margin-bottom: 28px; }
+  .section { padding-block: 40px; }
+  .sectionHeading { display: grid; gap: 18px; margin-bottom: 20px; }
   .sectionHeading > p { max-width: 100%; }
   .sectionHeading h2, .reassurance h2, .support h2 { font-size: clamp(1.8rem, 5vw, 2.5rem); }
   .services { grid-template-columns: 1fr; gap: 14px; }

@@ -3,7 +3,7 @@ import type { Route } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { BlogArticle } from "@/components/blog/BlogArticle";
 import { isLocale } from "@/lib/i18n";
-import { getBlogPost, isApiNotFound } from "@/lib/public-data";
+import { getBlogPost, getProducts, isApiNotFound } from "@/lib/public-data";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://top-gsm.ir";
 
@@ -67,5 +67,7 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ lo
       ]
     }
   ];
-  return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} /><BlogArticle locale={locale} post={result} /></>;
+  // Promotions are optional: a catalog outage must not hide the article.
+  const storeProducts = result.relatedProducts.length ? [] : await getProducts("", "all", locale).catch(() => []);
+  return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} /><BlogArticle locale={locale} post={result} storeProducts={storeProducts.slice(0, 3)} /></>;
 }

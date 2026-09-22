@@ -42,4 +42,15 @@ export class AdminListCommentsDto extends ListCommentsDto {
 
   @IsOptional() @IsIn(["pending", "approved", "rejected", "spam_review", "spam"])
   status?: "pending" | "approved" | "rejected" | "spam_review" | "spam";
+
+  @IsOptional() @IsIn(["product", "blog"])
+  target?: "product" | "blog";
+
+  @IsOptional() @IsIn(["fa", "en", "ar"])
+  locale: "fa" | "en" | "ar" = "fa";
+}
+
+export class SellerListCommentsDto extends ListCommentsDto {
+  @IsOptional() @IsIn(["fa", "en", "ar"])
+  locale: "fa" | "en" | "ar" = "fa";
 }

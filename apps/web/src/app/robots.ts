@@ -1,12 +1,10 @@
 import type { MetadataRoute } from "next";
-import { generateSitemaps, SITEMAP_SITE_URL } from "./sitemap";
+import { SITE_URL } from "@/lib/seo";
 
-export default async function robots(): Promise<MetadataRoute.Robots> {
-  const partitions = await generateSitemaps();
-
+export default function robots(): MetadataRoute.Robots {
   return {
     rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/*/admin", "/*/seller-dashboard", "/*/account", "/*/orders"] },
-    sitemap: partitions.map(({ id }) => `${SITEMAP_SITE_URL}/sitemap/${id}.xml`),
-    host: SITEMAP_SITE_URL
+    sitemap: SITE_URL + "/sitemap.xml",
+    host: SITE_URL
   };
 }

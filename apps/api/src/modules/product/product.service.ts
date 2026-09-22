@@ -1,3 +1,4 @@
+import { legacySitemapRows } from "../seo/legacy-sitemap";
 import {
   BadRequestException,
   ConflictException,
@@ -25,30 +26,7 @@ import type {
   UpdateSellerOfferDto
 } from "./dto/product.dto";
 
-const activeOfferWhere: Prisma.seller_offersWhereInput = {
-  status: "active",
-  listing: {
-    status: "active",
-    seller: { invited: false, approved: true, suspended_at: null },
-    product: {
-      OR: [
-        { type: { not: "bridge" } },
-        {
-          type: "bridge",
-          bridge_binding: {
-            is: {
-              schema_review_needed: false,
-              OR: [
-                { grant: { status: "active", service: { available: true, connection: { status: "active" } } } },
-                { mode: "manual", grant: { status: "revoked" } }
-              ]
-            }
-          }
-        }
-      ]
-    }
-  }
-};
+import { activeOfferWhere, publicProductWhere, publishedTranslationSelect } from "./product-visibility";
 
 const variantOptionSelect = {
   option_value: {
@@ -118,7 +96,7 @@ const sellerListingSelect = {
         }
       },
       digital: {
-        select: { file_reference: true, max_downloads: true }
+        select: { file_reference: true, file_references: true, max_downloads: true }
       },
       physical: { select: { stock: true, weight_grams: true } },
       service: {
@@ -287,38 +265,45 @@ export class ProductService {
   constructor(private readonly prisma: PrismaService, private readonly config: ConfigService) {}
 
   sitemapProjection() {
-    return this.prisma.products.findMany({
-      where: {
-        status: "active",
-        variants: { some: { offers: { some: activeOfferWhere } } }
-      },
+    return legacySitemapRows((cursor) => this.prisma.products.findMany({
+      where: publicProductWhere(this.bridgeEnabled()),
       orderBy: [{ updated_at: "desc" }, { id: "desc" }],
-      select: { slug: true, updated_at: true }
-    });
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      take: 1000,
+      select: { id: true, slug: true, updated_at: true }
+    }), (row) => row.id);
   }
 
   async listPublic(input: ListProductsQueryDto) {
-    if (input.type === "bridge" && !this.bridgeEnabled()) return [];
+    return (await this.listPublicPage(input)).items;
+  }
+
+  async listPublicPage(input: ListProductsQueryDto) {
+    if (input.type === "bridge" && !this.bridgeEnabled()) {
+      if (input.cursor) throw new NotFoundException("Page was not found");
+      return { items: [], nextCursor: null };
+    }
     const terms = input.search?.trim().split(/\s+/u).filter(Boolean).slice(0, 8) ?? [];
-    const products = await this.prisma.products.findMany({
+    const rows = await this.prisma.products.findMany({
       where: {
-        status: "active",
+        ...publicProductWhere(this.bridgeEnabled()),
         ...(input.type ? { type: input.type } : this.bridgeEnabled() ? {} : { type: { not: "bridge" as const } }),
-        variants: { some: { offers: { some: activeOfferWhere } } },
         ...(terms.length ? { AND: terms.map((term) => ({
           OR: searchVariants(term).flatMap((variant) => [
             { title: { contains: variant, mode: "insensitive" as const } },
             { slug: { contains: variant, mode: "insensitive" as const } },
-            { category: { contains: variant, mode: "insensitive" as const } }
+            { category: { contains: variant, mode: "insensitive" as const } },
+            { translations: { some: { locale: input.locale ?? "fa", published_at: { not: null }, OR: [{ published_title: { contains: variant, mode: "insensitive" as const } }, { published_category: { contains: variant, mode: "insensitive" as const } }] } } }
           ])
         })) } : {})
       },
       ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
-      take: input.limit,
+      take: input.limit + 1,
       orderBy: [{ created_at: "desc" }, { id: "desc" }],
       select: {
         id: true,
         title: true,
+        translations: { where: { published_at: { not: null } }, select: publishedTranslationSelect },
         slug: true,
         category: true,
         kind: true,
@@ -328,7 +313,9 @@ export class ProductService {
       }
     });
 
-    if (!products.length) return [];
+    const products = rows.slice(0, input.limit);
+    if (!products.length && input.cursor) throw new NotFoundException("Page was not found");
+    if (!products.length) return { items: [], nextCursor: null };
 
     const prices = await this.prisma.$queryRaw<
       Array<{ product_id: string; currency: string; price: Prisma.Decimal }>
@@ -358,13 +345,15 @@ export class ProductService {
       pricesByProduct.set(row.product_id, current);
     }
 
-    return products.map((product) => {
+    const items = products.map((product) => {
       const startingPrices = pricesByProduct.get(product.id) ?? [];
+      const translated = product.translations.find((item) => item.locale === input.locale);
       return {
         id: product.id,
-        title: product.title,
+        availableLocales: ["fa", ...product.translations.map((item) => item.locale)],
+        title: translated?.published_title ?? product.title,
         slug: product.slug,
-        category: product.category,
+        category: translated?.published_category ?? product.category,
         kind: product.kind,
         type: product.type,
         image: this.mapProductImage(product.media),
@@ -378,23 +367,23 @@ export class ProductService {
         createdAt: product.created_at.toISOString()
       };
     });
+    return { items, nextCursor: rows.length > input.limit ? products.at(-1)!.id : null };
   }
 
-  async getPublic(idOrSlug: string) {
+  async getPublic(idOrSlug: string, locale: "fa" | "en" | "ar" = "fa") {
     if (!idOrSlug || idOrSlug.length > 200) {
       throw new NotFoundException("Product was not found");
     }
 
     const product = await this.prisma.products.findFirst({
       where: {
-        status: "active",
-        ...(this.bridgeEnabled() ? {} : { type: { not: "bridge" as const } }),
-        OR: [{ id: idOrSlug }, { slug: idOrSlug }],
-        variants: { some: { offers: { some: activeOfferWhere } } }
+        ...publicProductWhere(this.bridgeEnabled()),
+        OR: [{ id: idOrSlug }, { slug: idOrSlug }, { slug_routes: { some: { slug: idOrSlug } } }]
       },
       select: {
         id: true,
         title: true,
+        translations: { where: { published_at: { not: null } }, select: publishedTranslationSelect },
         slug: true,
         description: true,
         category: true,
@@ -459,12 +448,15 @@ export class ProductService {
 
     if (!product) throw new NotFoundException("Product was not found");
 
+    const translated = product.translations.find((item) => item.locale === locale);
     return {
       id: product.id,
-      title: product.title,
+      availableLocales: ["fa", ...product.translations.map((item) => item.locale)],
+      contentLocale: translated ? locale : "fa",
+      title: translated?.published_title ?? product.title,
       slug: product.slug,
-      description: product.description,
-      category: product.category,
+      description: translated?.published_description ?? product.description,
+      category: translated?.published_category ?? product.category,
       kind: product.kind,
       type: product.type,
       image: this.mapProductImage(product.media),
@@ -870,7 +862,8 @@ export class ProductService {
           await transaction.seller_offer_digital.update({
             where: { offer_id: offer.id },
             data: {
-              file_reference: input.digital.fileReference,
+              file_reference: (input.digital.fileReferences ?? [input.digital.fileReference!])[0]!,
+              file_references: input.digital.fileReferences ?? [input.digital.fileReference!],
               max_downloads: input.digital.maxDownloads
             }
           });
@@ -1321,7 +1314,8 @@ export class ProductService {
           await transaction.seller_offer_digital.update({
             where: { offer_id: offer.id },
             data: {
-              file_reference: input.digital.fileReference,
+              file_reference: (input.digital.fileReferences ?? [input.digital.fileReference!])[0]!,
+              file_references: input.digital.fileReferences ?? [input.digital.fileReference!],
               max_downloads: input.digital.maxDownloads
             }
           });
@@ -1528,7 +1522,8 @@ export class ProductService {
       await transaction.seller_offer_digital.create({
         data: {
           offer_id: offer.id,
-          file_reference: input.digital.fileReference,
+          file_reference: (input.digital.fileReferences ?? [input.digital.fileReference!])[0]!,
+          file_references: input.digital.fileReferences ?? [input.digital.fileReference!],
           max_downloads: input.digital.maxDownloads
         }
       });
@@ -1665,6 +1660,7 @@ export class ProductService {
           ? {
               digital: {
                 fileReference: offer.digital.file_reference,
+                fileReferences: offer.digital.file_references.length ? offer.digital.file_references : [offer.digital.file_reference],
                 maxDownloads: offer.digital.max_downloads
               }
             }
@@ -1807,6 +1803,7 @@ export class ProductService {
             ? {
                 digital: {
                   fileReference: offer.digital.file_reference,
+                  fileReferences: offer.digital.file_references.length ? offer.digital.file_references : [offer.digital.file_reference],
                   maxDownloads: offer.digital.max_downloads
                 }
               }

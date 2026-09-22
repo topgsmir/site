@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { API_BASE, api } from "@/lib/api/client";
+import { api } from "@/lib/api/client";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import type { Locale } from "@/lib/i18n";
 import { AccountIcon } from "@/components/account/AccountIcon";
-import { canDownload, type BuyerOrder, type OrderItem } from "./OrderDetails.types";
+import { type BuyerOrder, type OrderItem } from "./OrderDetails.types";
 import { statusLabel, statusTone, type OrderCopy } from "./OrderDetailsCopy";
 import s from "./OrderDetails.module.css";
+import { CustomerOrderChat } from "./CustomerOrderChat";
+import { DownloadFilesModal } from "./DownloadFilesModal";
 
 export function Money({ amount, currency, locale }: { amount: string; currency: string; locale: Locale }) {
   return <span className={s.money}>{formatCurrencyAmount(amount, currency, locale)} <small>{currencyLabel(currency)}</small></span>;
@@ -40,13 +42,13 @@ export function OrderProgress({ order, locale, c }: { order: BuyerOrder; locale:
   const step = order.status === "pending" ? 1 : order.status === "paid" ? 2 : order.status === "processing" ? 2 : ["shipped", "awaiting_confirmation"].includes(order.status) ? stages.length - 2 : order.status === "delivered" ? stages.length - 1 : -1;
   const state = issue ?? order.status;
   const hint = c.hints[state as keyof OrderCopy["hints"]] ?? c.unknown;
+  const showHint = stopped || Boolean(issue) || ["pending", "awaiting_confirmation"].includes(order.status) || step < 0;
   return <section className={s.progress} aria-labelledby="order-progress">
-    <div className={s.sectionHeading}><h2 id="order-progress">{c.progress}</h2><StatusBadge status={state} c={c} /></div>
-    <p className={s.progressHint}>{hint}</p>
+    <div className={s.progressHeading}><h2 id="order-progress">{c.progress}</h2><StatusBadge status={state} c={c} /></div>
     {!stopped && step >= 0 ? <ol className={s.steps}>{stages.map((label, index) => <li key={label} data-complete={index < step || order.status === "delivered"} aria-current={index === step ? "step" : undefined}>
-      <span className={s.stepMark}>{index < step || order.status === "delivered" ? <AccountIcon name="check" width={17} height={17} /> : (index + 1).toLocaleString(locale)}</span><strong>{label}</strong>
+      <span className={s.stepMark} aria-hidden="true">{index < step || order.status === "delivered" ? <AccountIcon name="check" width={9} height={9} /> : null}</span><strong><span className="sr-only">{(index + 1).toLocaleString(locale)}. </span>{label}</strong>
     </li>)}</ol> : null}
-    <div className={s.progressFoot}><span>{c.created}: <OrderDate value={order.createdAt} locale={locale} /></span><span>{c.live}</span></div>
+    <p className={showHint ? s.progressHint : "sr-only"}>{hint}</p>
   </section>;
 }
 
@@ -85,18 +87,29 @@ function RefundRequest({ item, c, refresh }: { item: OrderItem; c: OrderCopy; re
 }
 
 export function PurchasedItem({ item, order, locale, c, refresh }: { item: OrderItem; order: BuyerOrder; locale: Locale; c: OrderCopy; refresh: () => Promise<void> }) {
+  const [downloadsOpen, setDownloadsOpen] = useState(false);
   const delivery = item.digitalDelivery;
   const bridge = item.bridge;
   const inputs = item.serviceInputs ?? [];
   const fields = Object.entries(bridge?.input?.fields ?? {}).filter(([key]) => !inputs.some((field) => field.key === key));
-  const exhausted = delivery && delivery.maxDownloads > 0 && delivery.downloadCount >= delivery.maxDownloads;
+  const files = item.digitalDeliveries ?? (delivery ? [delivery] : []);
   return <article className={s.item} aria-labelledby={`item-${item.id}`}>
-    <header className={s.itemHeader}><span className={s.itemIcon}><AccountIcon name={item.productType === "digital" ? "file" : "orders"} width={26} height={26} /></span><div><span className={s.eyebrow}>{c.types[item.productType as keyof OrderCopy["types"]] ?? c.order}</span><h3 id={`item-${item.id}`}>{item.productTitle}</h3></div>{bridge ? <StatusBadge status={bridge.status} c={c} /> : null}</header>
+    <div className={s.itemTop}>
+      <header className={s.itemHeader}><span className={s.itemIcon}><AccountIcon name={item.productType === "digital" ? "file" : "orders"} width={26} height={26} /></span><div><span className={s.eyebrow}>{c.types[item.productType as keyof OrderCopy["types"]] ?? c.order}</span><h3 id={`item-${item.id}`}>{item.productTitle}</h3></div>{bridge ? <StatusBadge status={bridge.status} c={c} /> : null}</header>
+      {item.productType === "digital" && files.length > 0 ? <div className={s.downloadActions}>
+        <button type="button" className={s.primary} aria-haspopup="dialog" onClick={() => setDownloadsOpen(true)}>{c.download}<AccountIcon name="arrow" width={17} height={17} /></button>
+        {downloadsOpen ? <DownloadFilesModal item={item} order={order} locale={locale} c={c} onClose={() => setDownloadsOpen(false)} /> : null}
+      </div> : null}
+    </div>
     <dl className={s.itemPricing}><div><dt>{c.quantity}</dt><dd>{item.quantity.toLocaleString(locale)}</dd></div><div><dt>{c.unit}</dt><dd><Money amount={item.unitPrice} currency={order.currency} locale={locale} /></dd></div><div><dt>{c.itemTotal}</dt><dd><Money amount={item.totalAmount} currency={order.currency} locale={locale} /></dd></div></dl>
-    {item.productType === "digital" ? <div className={s.download}><div><strong>{delivery ? <bdi>{delivery.destinationHost}</bdi> : c.locked}</strong><p>{delivery ? delivery.maxDownloads > 0 ? `${c.remaining}: ${Math.max(0, delivery.maxDownloads - delivery.downloadCount).toLocaleString(locale)}` : c.unlimited : c.downloadWait}</p></div><div>{canDownload(order, item) ? <a className={s.primary} href={`${API_BASE}/orders/${encodeURIComponent(order.id)}/items/${encodeURIComponent(item.id)}/download`} target="_blank" rel="noopener noreferrer" aria-describedby={`download-hint-${item.id}`}>{c.download}<AccountIcon name="arrow" width={17} height={17} /></a> : <span className={s.muted}>{exhausted ? c.exhausted : c.locked}</span>}<small id={`download-hint-${item.id}`}>{canDownload(order, item) ? c.downloadHint : null}</small></div></div> : null}
+    {item.productType === "digital" && !files.length ? <div className={s.download}><strong>{c.locked}</strong><p>{c.downloadWait}</p></div> : null}
     {inputs.length || fields.length ? <div className={s.itemSection}><h4>{c.inputs}</h4><dl className={s.fields}>{inputs.map((field) => <div key={field.key}><dt>{field.label}</dt><dd><bdi>{field.sensitive || field.type === "password" || field.value === null ? c.protected : field.value}</bdi></dd></div>)}{fields.map(([key, value]) => <div key={key}><dt><bdi>{key}</bdi></dt><dd><bdi>{value}</bdi></dd></div>)}</dl></div> : null}
     {item.serviceNote ? <div className={s.itemSection}><h4>{c.note}</h4><p className={s.result}>{item.serviceNote}</p></div> : null}
     {bridge ? <div className={s.itemSection}><div className={s.sectionHeading}><h4>{c.result}</h4>{bridge.completedAt ? <small>{c.completed}: <OrderDate value={bridge.completedAt} locale={locale} /></small> : null}</div>{bridge.result !== undefined && bridge.result !== null ? <Result value={bridge.result} c={c} /> : <p className={s.muted}>{c.resultWait}</p>}{["failed", "manual_required"].includes(bridge.status) ? <RefundRequest item={item} c={c} refresh={refresh} /> : null}</div> : null}
+    <div className={s.itemSeller}>
+      <p className={s.eyebrow}><bdi>{order.seller.shopName}</bdi></p>
+      <CustomerOrderChat orderId={order.id} orderItemId={item.id} available={order.chatAvailable} c={c} />
+    </div>
   </article>;
 }
 

@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Header,
+  HttpCode,
   Ip,
   Param,
   ParseUUIDPipe,
@@ -14,6 +15,7 @@ import {
   UseGuards
 } from "@nestjs/common";
 import { AuthenticatedGuard } from "../auth/authenticated.guard";
+import { DigitalDownloadQueryDto } from "./dto/digital-download.dto";
 import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
 import { IdempotencyKey } from "../auth/idempotency-key.decorator";
 import type { AuthenticatedRequest } from "../auth/platform-admin.guard";
@@ -49,6 +51,13 @@ export class OrderController {
   @Header("Cache-Control", "private, no-store")
   newOrderCount(@Req() request: AuthenticatedRequest) {
     return this.orders.newOrderCount(request.authenticatedUser!);
+  }
+
+  @Post("seen")
+  @HttpCode(200)
+  @Header("Cache-Control", "private, no-store")
+  markOrdersSeen(@Req() request: AuthenticatedRequest) {
+    return this.orders.markOrdersSeen(request.authenticatedUser!);
   }
 
   @Get("leaderboard")
@@ -144,13 +153,14 @@ export class OrderController {
 
   @Get(":orderId/items/:itemId/download")
   async download(
+    @Query() query: DigitalDownloadQueryDto,
     @Req() request: AuthenticatedRequest,
     @Ip() clientIp: string,
     @Param("orderId", new ParseUUIDPipe({ version: "4" })) orderId: string,
     @Param("itemId", new ParseUUIDPipe({ version: "4" })) itemId: string,
     @Res() response: { redirect(url: string): void }
   ) {
-    const url = await this.orders.claimDigitalDownload(request.authenticatedUser!, orderId, itemId, clientIp);
+    const url = await this.orders.claimDigitalDownload(request.authenticatedUser!, orderId, itemId, clientIp, query.fileIndex);
     response.redirect(url);
   }
 }

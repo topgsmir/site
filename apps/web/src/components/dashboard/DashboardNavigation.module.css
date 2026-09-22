@@ -1,7 +1,7 @@
 .navigation {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-dashboard-xs);
+  gap: var(--space-dashboard-2xs);
 }
 
 .mobileControl {
@@ -12,7 +12,7 @@
   display: grid;
   min-width: 0;
   grid-column: 1 / -1;
-  padding-block: var(--space-dashboard-xs);
+  padding-block: var(--space-dashboard-2xs);
   border-block: var(--rule-dashboard-thin) solid var(--color-dashboard-rule);
 }
 
@@ -21,12 +21,12 @@
   display: flex;
   width: 100%;
   min-width: 0;
-  min-height: 3rem;
+  min-height: 2.75rem;
   align-items: center;
   gap: var(--space-dashboard-xs);
   padding-inline: var(--space-dashboard-sm);
   border: 0;
-  border-radius: var(--radius-dashboard-sm);
+  border-radius: var(--radius-dashboard-xs);
   outline: 2px solid transparent;
   outline-offset: 2px;
   color: var(--color-dashboard-ink-soft);
@@ -68,8 +68,8 @@
 
 .groupTrigger svg,
 .item svg {
-  width: 1.125rem;
-  height: 1.125rem;
+  width: 1rem;
+  height: 1rem;
   flex: 0 0 auto;
   fill: none;
   stroke: currentColor;
@@ -92,7 +92,7 @@
 .subNavigation {
   display: none;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-dashboard-xs);
+  gap: var(--space-dashboard-3xs);
   padding-block-start: var(--space-dashboard-2xs);
 }
 
@@ -125,8 +125,8 @@
 
 .count {
   display: inline-grid;
-  min-width: 1.5rem;
-  min-height: 1.5rem;
+  min-width: 1.25rem;
+  min-height: 1.25rem;
   margin-inline-start: auto;
   padding-inline: var(--space-dashboard-2xs);
   place-items: center;
@@ -260,18 +260,19 @@
 
   .navigation {
     align-content: start;
-    gap: var(--space-dashboard-2xs);
+    gap: var(--space-dashboard-3xs);
   }
 
   .group {
-    padding-block: var(--space-dashboard-2xs);
+    padding-block: var(--space-dashboard-3xs);
   }
 
   .groupTrigger,
   .item {
-    min-height: 2.5rem;
-    gap: var(--space-dashboard-2xs);
-    padding-inline: var(--space-dashboard-xs);
+    min-height: var(--size-dashboard-navigation-item, 2.5rem);
+    gap: var(--space-dashboard-xs);
+    padding-inline: var(--space-dashboard-sm);
+    font-size: var(--text-dashboard-sm);
   }
 
   .groupTrigger svg,
@@ -294,7 +295,7 @@
 @media (pointer: coarse) {
   .groupTrigger,
   .item {
-    min-height: 3rem;
+    min-height: 2.75rem;
   }
 }
 

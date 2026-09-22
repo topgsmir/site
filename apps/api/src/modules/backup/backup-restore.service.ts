@@ -63,6 +63,7 @@ export class BackupRestoreService {
         sourceReference = input.uploadId!;
       } else {
         const destination = await this.destinations.getStored(input.destinationId!);
+        if (!destination.verified_at) throw new ConflictException("Test the destination successfully before restoring from it");
         await this.downloadWithRetry(destination, input.remoteName!, stagedArchive);
         sourceKind = "remote";
         sourceReference = `${input.destinationId}:${input.remoteName}`;
@@ -140,6 +141,15 @@ export class BackupRestoreService {
 
   private async validateCompatibility(manifest: BackupArchiveManifest, archivePath: string) {
     if (manifest.platformOwnerCount < 1) throw new BadRequestException("Backup contains no platform owner");
+    const archiveAppVersion = this.semanticVersion(manifest.appVersion);
+    const currentAppVersion = this.semanticVersion(process.env.BACKUP_APP_VERSION?.trim() || process.env.npm_package_version || "0.1.0");
+    if (archiveAppVersion && currentAppVersion) {
+      for (let index = 0; index < 3; index += 1) {
+        if (archiveAppVersion[index] === currentAppVersion[index]) continue;
+        if (archiveAppVersion[index]! > currentAppVersion[index]!) throw new BadRequestException("Backup was created by a newer unsupported application version");
+        break;
+      }
+    }
     const versionRows = await this.prisma.$queryRaw<Array<{ version: string }>>(Prisma.sql`SHOW server_version_num`);
     const currentMajor = Math.floor(Number(versionRows[0]?.version ?? 0) / 10_000);
     if (!currentMajor || manifest.postgresMajor > currentMajor) throw new BadRequestException("Backup requires a newer PostgreSQL major version");
@@ -163,6 +173,13 @@ export class BackupRestoreService {
 
   private hashPhrase(value: string) {
     return createHash("sha256").update(value.trim().replace(/\s+/g, " ").toUpperCase()).digest("hex");
+  }
+
+  private semanticVersion(value: string) {
+    const match = /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(value);
+    if (!match) return null;
+    const version = match.slice(1).map(Number);
+    return version.every((part) => Number.isSafeInteger(part)) ? version : null;
   }
 
   private async downloadWithRetry(destination: Awaited<ReturnType<BackupDestinationService["getStored"]>>, name: string, path: string) {

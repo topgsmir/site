@@ -34,7 +34,7 @@ const copy = {
     conflictPurge: "Permanent purge has already started.", purgeIn: "Purges", unavailable: "Unavailable", refresh: "Refresh"
   },
   fa: {
-    title: "بارگذاری‌ها", intro: "تصاویر محلی وبلاگ و محصول را بررسی کنید، مالک و ارجاع‌ها را ببینید و حذف‌ها را پیش از پاک‌سازی نهایی بازیابی کنید.",
+    title: "آپلود ها", intro: "تصاویر محلی وبلاگ و محصول را بررسی کنید، مالک و ارجاع‌ها را ببینید و حذف‌ها را پیش از پاک‌سازی نهایی بازیابی کنید.",
     assets: "فایل‌ها", storage: "فضای نسخه‌ها", unlinked: "بدون ارجاع", trash: "زباله‌دان", purgingSoon: "پاک‌سازی تا ۷ روز",
     search: "جست‌وجوی نام فایل، checksum، مالک یا محتوا", source: "منبع", state: "وضعیت", link: "ارجاع", sort: "مرتب‌سازی",
     from: "از تاریخ", to: "تا تاریخ",

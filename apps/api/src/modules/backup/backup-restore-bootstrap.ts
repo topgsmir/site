@@ -26,12 +26,13 @@ export async function runPendingRestoreBeforeBootstrap() {
   const crypto = new CredentialCryptoService(config);
   const archive = new BackupArchiveService(config, crypto);
   const creator = new BackupCreatorService(config, paths, archive);
+  const mediaStage = resolve(dirname(paths.mediaRoot), `.topgsm-restore-${pending.id}`);
+  const mediaOld = resolve(dirname(paths.mediaRoot), `.topgsm-rollback-${pending.id}`);
+  await recoverInterruptedMediaSwap(paths.mediaRoot, mediaOld, mediaStage);
   await paths.ensure();
   const server = await startMaintenanceServer(config);
   const plain = paths.stagingPath(pending.id, "boot-plain");
   const extracted = paths.stagingPath(pending.id, "boot-extracted");
-  const mediaStage = resolve(dirname(paths.mediaRoot), `.topgsm-restore-${pending.id}`);
-  const mediaOld = resolve(dirname(paths.mediaRoot), `.topgsm-rollback-${pending.id}`);
   let databaseChanged = false;
   let mediaChanged = false;
   let safety: Awaited<ReturnType<BackupCreatorService["create"]>> | null = null;
@@ -48,7 +49,7 @@ export async function runPendingRestoreBeforeBootstrap() {
       await pgRestore(resolve(extracted, "database.dump"));
       databaseChanged = true;
       await progress(pending.id, "restoring", "migrations", "Applying compatible database migrations.");
-      await runCommand(process.env.PNPM_BIN?.trim() || "pnpm", ["-C", "apps/api", "prisma:migrate"], process.env, 30 * 60_000);
+      await runCommand(process.env.PNPM_BIN?.trim() || "pnpm", ["run", "prisma:migrate"], process.env, 30 * 60_000);
       const database = new Client({ connectionString: requiredDatabaseUrl(), connectionTimeoutMillis: 10_000 });
       await database.connect();
       try { await database.query("UPDATE auth_sessions SET revoked_at = CURRENT_TIMESTAMP WHERE revoked_at IS NULL"); }
@@ -61,15 +62,19 @@ export async function runPendingRestoreBeforeBootstrap() {
       const extractedUploads = resolve(extracted, "uploads");
       if ((await stat(extractedUploads).catch(() => null))?.isDirectory()) await cp(extractedUploads, mediaStage, { recursive: true, errorOnExist: true });
       await rm(mediaOld, { force: true, recursive: true });
-      if ((await stat(paths.mediaRoot).catch(() => null))?.isDirectory()) await rename(paths.mediaRoot, mediaOld);
+      if ((await stat(paths.mediaRoot).catch(() => null))?.isDirectory()) {
+        await rename(paths.mediaRoot, mediaOld);
+        mediaChanged = true;
+      }
       await rename(mediaStage, paths.mediaRoot);
       mediaChanged = true;
     }
     await progress(pending.id, "success", "complete", "Restore completed. The application is restarting.");
     await recordRestoreJob(pending.id, pending.archiveId, "success", "complete");
-    await clearPendingRestore();
     await Promise.all([rm(mediaOld, { force: true, recursive: true }), rm(pending.archivePath, { force: true })]);
+    await clearPendingRestore();
   } catch (error) {
+    const failureCode = restoreErrorCode(error);
     await progress(pending.id, "restoring", "rollback", "Restore failed. Rolling back to the safety backup.");
     let recovered = true;
     try {
@@ -95,7 +100,7 @@ export async function runPendingRestoreBeforeBootstrap() {
       "rollback",
       recovered ? "Restore failed and the previous state was recovered." : "Restore and automatic recovery failed. Operator recovery is required."
     );
-    await recordRestoreJob(pending.id, pending.archiveId, recovered ? "failed" : "recovery_required", "rollback").catch(() => undefined);
+    await recordRestoreJob(pending.id, pending.archiveId, recovered ? "failed" : "recovery_required", "rollback", failureCode).catch(() => undefined);
     if (recovered) await clearPendingRestore();
     else await new Promise<never>(() => undefined);
   } finally {
@@ -104,20 +109,33 @@ export async function runPendingRestoreBeforeBootstrap() {
   }
 }
 
-async function recordRestoreJob(id: string, archiveId: string, status: "restoring" | "success" | "failed" | "recovery_required", phase: string) {
+async function recoverInterruptedMediaSwap(mediaRoot: string, mediaOld: string, mediaStage: string) {
+  if ((await stat(mediaOld).catch(() => null))?.isDirectory()) {
+    await rm(mediaRoot, { force: true, recursive: true });
+    await rename(mediaOld, mediaRoot);
+  }
+  await rm(mediaStage, { force: true, recursive: true });
+}
+
+async function recordRestoreJob(id: string, archiveId: string, status: "restoring" | "success" | "failed" | "recovery_required", phase: string, errorCode: string | null = null) {
   const database = new Client({ connectionString: requiredDatabaseUrl(), connectionTimeoutMillis: 10_000 });
   await database.connect();
   try {
     await database.query(`
-      INSERT INTO backup_restore_jobs (id, archive_id, status, phase, requested_at, updated_at)
-      VALUES ($1::uuid, $2::uuid, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, phase = EXCLUDED.phase, updated_at = CURRENT_TIMESTAMP
-    `, [id, archiveId, status, phase]);
+      INSERT INTO backup_restore_jobs (id, archive_id, status, phase, error_code, requested_at, updated_at)
+      VALUES ($1::uuid, $2::uuid, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, phase = EXCLUDED.phase, error_code = EXCLUDED.error_code, updated_at = CURRENT_TIMESTAMP
+    `, [id, archiveId, status, phase, errorCode]);
     await database.query(`
       INSERT INTO backup_restore_events (id, archive_id, status, phase, metadata)
       VALUES ($5::uuid, $1::uuid, $2, $3, jsonb_build_object('restoreId', $4::text))
     `, [archiveId, status, phase, id, cryptoRandomId()]);
   } finally { await database.end(); }
+}
+
+function restoreErrorCode(error: unknown) {
+  const value = error instanceof Error ? `${error.name}:${error.message}` : "UNKNOWN";
+  return value.replace(/[^A-Za-z0-9:_-]/g, "_").slice(0, 64).toUpperCase();
 }
 
 async function progress(id: string, status: BackupRestoreProgress["status"], phase: BackupRestoreProgress["phase"], message: string) {
@@ -174,7 +192,18 @@ async function startMaintenanceServer(config: ConfigService) {
   const origins = new Set([config.get<string>("WEB_ORIGIN")?.trim(), config.get<string>("NEXT_PUBLIC_SITE_URL")?.trim()].filter(Boolean));
   const server = createServer(async (request, response) => {
     const origin = request.headers.origin;
-    if (origin && origins.has(origin)) { response.setHeader("Access-Control-Allow-Origin", origin); response.setHeader("Access-Control-Allow-Credentials", "true"); }
+    if (origin && origins.has(origin)) {
+      response.setHeader("Access-Control-Allow-Origin", origin);
+      response.setHeader("Access-Control-Allow-Credentials", "true");
+      response.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+      response.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+      response.setHeader("Vary", "Origin");
+    }
+    if (request.method === "OPTIONS" && origin && origins.has(origin)) {
+      response.statusCode = 204;
+      response.end();
+      return;
+    }
     response.setHeader("Content-Type", "application/json; charset=utf-8");
     if (request.method === "GET" && request.url === "/api/system/status") {
       response.end(JSON.stringify(await readSystemStatus()));

@@ -6,7 +6,6 @@ import { isAxiosError } from "axios";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { getSocket } from "@/lib/sockets/socket";
-import { CustomerOrderChat } from "./CustomerOrderChat";
 import type { Locale } from "@/lib/i18n";
 import { AccountIcon } from "@/components/account/AccountIcon";
 import { canConfirmOrder, type BuyerOrder } from "./OrderDetails.types";
@@ -94,10 +93,6 @@ function OrderDetails({ locale, orderId }: { locale: Locale; orderId: string }) 
       {error ? <div className={s.errorBanner} role="alert"><p>{errorText}</p><button type="button" className={s.secondary} onClick={() => void load()} disabled={refreshing}>{c.retry}</button></div> : null}
       {!order && !error ? <div className={s.skeleton} role="status" aria-label={c.loading}><div /><div /><div /></div> : null}
       {order ? <>
-        <section className={s.seller} aria-labelledby="order-seller-heading">
-          <div className={s.sellerIdentity}><span className={s.eyebrow}>{c.seller}</span><h2 id="order-seller-heading"><bdi>{order.seller.shopName}</bdi></h2></div>
-          <CustomerOrderChat orderId={order.id} available={order.chatAvailable} c={c} />
-        </section>
         <OrderProgress order={order} locale={locale} c={c} />
         <div className={s.layout}><div className={s.content}>
           <div className={s.sectionHeading}><h2>{c.items} <span className={s.count}>{order.items.length.toLocaleString(locale)}</span></h2></div>

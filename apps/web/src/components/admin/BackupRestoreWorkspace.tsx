@@ -38,9 +38,10 @@ const copy = {
     edit: "Edit", remove: "Remove", refreshRemote: "Refresh catalog", verified: "Verified", unverified: "Not verified", credentialsConfigured: "Credential configured",
     plainWarning: "Plain FTP is insecure. Prefer SFTP or explicit FTPS.", noDestinations: "No remote destinations have been configured.",
     history: "Backup history", historyHint: "Local success and each remote delivery are tracked independently.", loadMore: "Load more",
-    status: "Status", source: "Source", created: "Created", size: "Size", delivery: "Delivery", actions: "Actions", download: "Download",
+    status: "Status", source: "Source", created: "Created", size: "Size", delivery: "Delivery", actions: "Actions", download: "Download", retryDelivery: "Retry delivery",
     restore: "Restore", noRuns: "No backups have been created yet.", manualTrigger: "Manual", scheduledTrigger: "Scheduled", safetyTrigger: "Safety",
     restoreTitle: "Restore a backup", restoreHint: "Preflight validates and stages the encrypted package before any maintenance begins.",
+    restoreHistory: "Restore audit history",
     catalog: "Catalog backup", uploadPackage: "Upload package", chooseRun: "Choose a backup", chooseFile: "Choose .topgsm-backup file",
     preflight: "Run preflight", preflighting: "Validating…", manifest: "Validated package", expires: "Confirmation expires",
     safety: "A new encrypted full safety backup will be retained before replacement begins.", confirmation: "Restore confirmation",
@@ -70,9 +71,10 @@ const copy = {
     edit: "ویرایش", remove: "حذف", refreshRemote: "به‌روزرسانی فهرست", verified: "تأیید شده", unverified: "تأیید نشده", credentialsConfigured: "اطلاعات ورود ثبت شده",
     plainWarning: "FTP ساده ناامن است؛ SFTP یا FTPS صریح را ترجیح دهید.", noDestinations: "هنوز مقصد راه دوری ثبت نشده است.",
     history: "تاریخچه پشتیبان", historyHint: "موفقیت محلی و تحویل به هر مقصد جداگانه ثبت می‌شود.", loadMore: "نمایش بیشتر",
-    status: "وضعیت", source: "منبع", created: "زمان ایجاد", size: "حجم", delivery: "تحویل", actions: "عملیات", download: "دانلود",
+    status: "وضعیت", source: "منبع", created: "زمان ایجاد", size: "حجم", delivery: "تحویل", actions: "عملیات", download: "دانلود", retryDelivery: "تلاش دوباره تحویل",
     restore: "بازیابی", noRuns: "هنوز پشتیبانی ساخته نشده است.", manualTrigger: "دستی", scheduledTrigger: "زمان‌بندی", safetyTrigger: "ایمنی",
     restoreTitle: "بازیابی پشتیبان", restoreHint: "پیش‌بررسی، بسته رمزگذاری‌شده را پیش از شروع نگه‌داری اعتبارسنجی و آماده می‌کند.",
+    restoreHistory: "تاریخچه ممیزی بازیابی",
     catalog: "پشتیبان فهرست", uploadPackage: "بارگذاری بسته", chooseRun: "یک پشتیبان انتخاب کنید", chooseFile: "فایل .topgsm-backup را انتخاب کنید",
     preflight: "اجرای پیش‌بررسی", preflighting: "در حال اعتبارسنجی…", manifest: "بسته معتبر", expires: "پایان اعتبار تأیید",
     safety: "پیش از جایگزینی، یک پشتیبان کامل و رمزگذاری‌شدهٔ ایمنی نگه‌داری می‌شود.", confirmation: "تأیید بازیابی",
@@ -102,9 +104,10 @@ const copy = {
     edit: "تعديل", remove: "حذف", refreshRemote: "تحديث السجل", verified: "تم التحقق", unverified: "غير متحقق", credentialsConfigured: "بيانات الدخول مضبوطة",
     plainWarning: "FTP العادي غير آمن. استخدم SFTP أو FTPS الصريح.", noDestinations: "لم تُضف وجهات بعيدة بعد.",
     history: "سجل النسخ", historyHint: "تُسجل النسخة المحلية وتسليم كل وجهة بصورة مستقلة.", loadMore: "تحميل المزيد",
-    status: "الحالة", source: "المصدر", created: "الإنشاء", size: "الحجم", delivery: "التسليم", actions: "الإجراءات", download: "تنزيل",
+    status: "الحالة", source: "المصدر", created: "الإنشاء", size: "الحجم", delivery: "التسليم", actions: "الإجراءات", download: "تنزيل", retryDelivery: "إعادة التسليم",
     restore: "استعادة", noRuns: "لم تُنشأ نسخ احتياطية بعد.", manualTrigger: "يدوي", scheduledTrigger: "مجدول", safetyTrigger: "أمان",
     restoreTitle: "استعادة نسخة", restoreHint: "يفحص التحقق المسبق الحزمة المشفرة ويجهزها قبل بدء الصيانة.",
+    restoreHistory: "سجل تدقيق الاستعادة",
     catalog: "نسخة من السجل", uploadPackage: "رفع حزمة", chooseRun: "اختر نسخة", chooseFile: "اختر ملف .topgsm-backup",
     preflight: "بدء التحقق", preflighting: "جارٍ التحقق…", manifest: "حزمة متحققة", expires: "انتهاء التأكيد",
     safety: "سيُحتفظ بنسخة أمان كاملة ومشفرة قبل بدء الاستبدال.", confirmation: "تأكيد الاستعادة",
@@ -278,6 +281,13 @@ export function BackupRestoreWorkspace({ locale }: { locale: Locale }) {
     finally { setBusy(null); }
   }
 
+  async function retryDeliveries(run: AdminBackupRun) {
+    setBusy(`retry:${run.id}`); setError("");
+    try { await api.post(`/admin/backups/runs/${run.id}/retry-deliveries`); await load(); }
+    catch (requestError) { setError(errorMessage(requestError, c.requestError)); }
+    finally { setBusy(null); }
+  }
+
   async function runPreflight() {
     setBusy("preflight"); setError(""); setMessage(""); setPreflight(null);
     try {
@@ -379,7 +389,7 @@ export function BackupRestoreWorkspace({ locale }: { locale: Locale }) {
 
     <section className={styles.section}>
       <div className={styles.sectionHeading}><div><h2>{c.history}</h2><p>{c.historyHint}</p></div></div>
-      {runs.length ? <div className={styles.tableWrap}><table><thead><tr><th>{c.status}</th><th>{c.source}</th><th>{c.created}</th><th>{c.size}</th><th>{c.delivery}</th><th>{c.actions}</th></tr></thead><tbody>{runs.map((run) => <tr key={run.id}><td><span className={styles.status} data-status={run.status}>{run.status}</span></td><td>{run.trigger === "manual" ? c.manualTrigger : run.trigger === "scheduled" ? c.scheduledTrigger : c.safetyTrigger}<small>{run.components.map((item) => item === "database" ? c.database : c.uploads).join(" + ")}</small></td><td>{formatDate(run.createdAt, locale, c.never)}</td><td>{formatBytes(run.archiveBytes)}</td><td>{run.deliveries.length ? run.deliveries.map((delivery) => <span className={styles.delivery} data-status={delivery.status} key={delivery.id}>{delivery.destinationName}: {delivery.status}</span>) : "—"}</td><td><div className={styles.tableActions}>{run.archiveName ? <button type="button" onClick={() => void downloadRun(run)}>{c.download}</button> : null}{run.archiveName && ["success", "partial"].includes(run.status) ? <button type="button" onClick={() => { setRestoreMode("catalog"); setRestoreRunId(run.id); document.getElementById("restore-workspace")?.scrollIntoView({ behavior: "smooth" }); }}>{c.restore}</button> : null}</div></td></tr>)}</tbody></table></div> : <p className={styles.empty}>{c.noRuns}</p>}
+      {runs.length ? <div className={styles.tableWrap}><table><thead><tr><th>{c.status}</th><th>{c.source}</th><th>{c.created}</th><th>{c.size}</th><th>{c.delivery}</th><th>{c.actions}</th></tr></thead><tbody>{runs.map((run) => <tr key={run.id}><td><span className={styles.status} data-status={run.status}>{run.status}</span></td><td>{run.trigger === "manual" ? c.manualTrigger : run.trigger === "scheduled" ? c.scheduledTrigger : c.safetyTrigger}<small>{run.components.map((item) => item === "database" ? c.database : c.uploads).join(" + ")}</small></td><td>{formatDate(run.createdAt, locale, c.never)}</td><td>{formatBytes(run.archiveBytes)}</td><td>{run.deliveries.length ? run.deliveries.map((delivery) => <span className={styles.delivery} data-status={delivery.status} key={delivery.id}>{delivery.destinationName}: {delivery.status}</span>) : "—"}</td><td><div className={styles.tableActions}>{run.archiveName ? <button type="button" onClick={() => void downloadRun(run)}>{c.download}</button> : null}{run.deliveries.some((delivery) => delivery.status === "failed") ? <button type="button" disabled={busy === `retry:${run.id}`} onClick={() => void retryDeliveries(run)}>{c.retryDelivery}</button> : null}{run.archiveName && ["success", "partial"].includes(run.status) ? <button type="button" onClick={() => { setRestoreMode("catalog"); setRestoreRunId(run.id); document.getElementById("restore-workspace")?.scrollIntoView({ behavior: "smooth" }); }}>{c.restore}</button> : null}</div></td></tr>)}</tbody></table></div> : <p className={styles.empty}>{c.noRuns}</p>}
       {nextCursor ? <button className={styles.loadMore} type="button" onClick={() => void load(nextCursor)}>{c.loadMore}</button> : null}
     </section>
 
@@ -395,6 +405,7 @@ export function BackupRestoreWorkspace({ locale }: { locale: Locale }) {
         <form onSubmit={confirmRestore}><h3>{c.confirmation}</h3><label><span>{c.ownerPassword}</span><input required type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} /></label><label><span>{c.phrase}</span><code>{preflight.confirmationPhrase}</code><input required value={phrase} onChange={(event) => setPhrase(event.target.value)} /></label><button className={styles.danger} disabled={busy === "confirm"}>{busy === "confirm" ? c.confirming : c.confirmRestore}</button></form>
       </div> : null}
       {progress ? <div className={styles.progress} role="status"><span>{progress.phase}</span><strong>{progress.message}</strong></div> : null}
+      {overview.recentRestores.length ? <div className={styles.audit}><h3>{c.restoreHistory}</h3>{overview.recentRestores.map((event) => <div key={event.id}><span className={styles.status} data-status={event.status}>{event.status}</span><code>{event.archiveId ?? "—"}</code><span>{event.phase}</span><time>{formatDate(event.createdAt, locale, c.never)}</time></div>)}</div> : null}
     </section>
   </section>;
 }

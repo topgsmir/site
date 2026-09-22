@@ -160,6 +160,7 @@ export class BackupDestinationService {
 
   async listArchives(id: string): Promise<AdminRemoteBackupArchive[]> {
     const destination = await this.getStored(id);
+    if (!destination.verified_at) throw new ConflictException("Test the destination successfully before refreshing its backup catalog");
     const values = await this.withConnection(destination, async (connection) => {
       if (connection.kind === "sftp") return (await connection.client.list(destination.remote_path)).flatMap((entry) => {
         if (entry.type !== "-" || !/^topgsm-[0-9]{8}T[0-9]{6}Z-[0-9a-f-]{36}[.]topgsm-backup$/i.test(entry.name)) return [];
@@ -170,7 +171,7 @@ export class BackupDestinationService {
         return [this.remoteArchive(destination, entry.name, entry.size, entry.modifiedAt ?? null)];
       });
     });
-    return values.sort((left, right) => right.name.localeCompare(left.name));
+    return values.sort((left, right) => right.name.localeCompare(left.name)).slice(0, 1_000);
   }
 
   private remoteArchive(destination: StoredDestination, name: string, bytes: number, modified: Date | null): AdminRemoteBackupArchive {

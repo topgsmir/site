@@ -34,7 +34,7 @@ describe("admin order details", () => {
       seller: { id: "seller-1", shop_name: "Shop", phone_number: null, invited: false, approved: true, suspended_at: null, created_at: at, updated_at: at,
         user: { id: "owner-1", full_name: "Owner", email: "owner@example.com", phone_number: null } },
       shipping_address: null, shipment: null, amadast_shipment: null,
-      items: [{ id: "item-1", inventory_reservation: null, digital_entitlement: null, bridge_fulfillment: null }],
+      items: [{ id: "item-1", inventory_reservation: null, digital_entitlement: [], bridge_fulfillment: null }],
       events: [{ id: "event-1", from_status: "pending", to_status: "paid", created_at: at,
         actor: { id: "owner-1", full_name: "Owner", email: "owner@example.com" } }],
       payout_records: [],

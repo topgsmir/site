@@ -46,6 +46,7 @@ export class BackupWorkerService implements OnModuleInit, OnModuleDestroy {
       if ((await readSystemStatus()).maintenance) return;
       await this.queueScheduledIfDue();
       await this.processOne();
+      await this.processPendingDelivery();
     } catch (error) {
       this.logger.error(`Backup worker tick failed: ${this.errorCode(error)}`);
     } finally { this.busy = false; }
@@ -139,6 +140,61 @@ export class BackupWorkerService implements OnModuleInit, OnModuleDestroy {
 
   private async failDelivery(id: string, errorCode: string, attempts: number) {
     await this.prisma.backup_deliveries.update({ where: { id }, data: { status: "failed", error_code: errorCode, attempts, completed_at: new Date() } });
+  }
+
+  private async processPendingDelivery() {
+    await this.prisma.backup_deliveries.updateMany({
+      where: { run: { status: { in: ["success", "partial"] } }, status: "uploading", attempts: { gte: 3 }, started_at: { lte: new Date(Date.now() - STALE_RUN_MS) } },
+      data: { status: "failed", error_code: "DELIVERY_WORKER_INTERRUPTED", completed_at: new Date() }
+    });
+    const claimed = await this.prisma.$queryRaw<Array<{ id: string }>>`
+      WITH candidate AS (
+        SELECT delivery.id
+        FROM backup_deliveries AS delivery
+        JOIN backup_runs AS run ON run.id = delivery.run_id
+        WHERE run.archive_path IS NOT NULL
+          AND run.status IN ('success', 'partial')
+          AND delivery.destination_id IS NOT NULL
+          AND delivery.attempts < 3
+          AND (
+            (delivery.status = 'pending' AND (delivery.next_attempt_at IS NULL OR delivery.next_attempt_at <= CURRENT_TIMESTAMP))
+            OR (delivery.status = 'uploading' AND delivery.started_at <= ${new Date(Date.now() - STALE_RUN_MS)})
+          )
+        ORDER BY delivery.next_attempt_at ASC NULLS FIRST, delivery.id ASC
+        FOR UPDATE OF delivery SKIP LOCKED
+        LIMIT 1
+      )
+      UPDATE backup_deliveries AS delivery
+      SET status = 'uploading', attempts = delivery.attempts + 1, started_at = CURRENT_TIMESTAMP, error_code = NULL
+      FROM candidate
+      WHERE delivery.id = candidate.id
+      RETURNING delivery.id
+    `;
+    if (!claimed[0]) return;
+    const delivery = await this.prisma.backup_deliveries.findUniqueOrThrow({
+      where: { id: claimed[0].id }, include: { destination: true, run: true }
+    });
+    try {
+      if (!delivery.destination?.enabled || !delivery.destination.verified_at || !delivery.run.archive_path || !delivery.run.archive_name) {
+        throw new Error("DESTINATION_UNAVAILABLE");
+      }
+      const remotePath = await this.destinationService.upload(delivery.destination, delivery.run.archive_path, delivery.run.archive_name);
+      await this.prisma.backup_deliveries.update({ where: { id: delivery.id }, data: {
+        status: "success", remote_path: remotePath, completed_at: new Date(), next_attempt_at: null
+      } });
+    } catch (error) {
+      const exhausted = delivery.attempts >= 3;
+      await this.prisma.backup_deliveries.update({ where: { id: delivery.id }, data: exhausted ? {
+        status: "failed", error_code: this.errorCode(error), completed_at: new Date(), next_attempt_at: null
+      } : {
+        status: "pending", error_code: this.errorCode(error), next_attempt_at: new Date(Date.now() + delivery.attempts * 5_000)
+      } });
+    }
+    const remaining = await this.prisma.backup_deliveries.groupBy({ by: ["status"], where: { run_id: delivery.run_id }, _count: { _all: true } });
+    const statuses = new Set(remaining.map((item) => item.status));
+    if (!statuses.has("pending") && !statuses.has("uploading")) {
+      await this.prisma.backup_runs.update({ where: { id: delivery.run_id }, data: { status: statuses.has("failed") ? "partial" : "success" } });
+    }
   }
 
   private async applyLocalRetention() {

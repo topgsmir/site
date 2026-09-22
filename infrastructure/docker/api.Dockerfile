@@ -1,5 +1,6 @@
 FROM node:24.20.0-alpine AS base
 WORKDIR /usr/src/app
+RUN apk add --no-cache postgresql16-client
 RUN corepack enable && corepack install --global pnpm@12.3.4
 RUN chown node:node /usr/src/app
 USER node

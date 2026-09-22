@@ -1,6 +1,7 @@
 "use client";
 
 import { isAxiosError } from "axios";
+import { AuthoringModelBindings } from "@/components/ai/AuthoringModelBindings";
 import {
   Fragment,
   useCallback,
@@ -897,6 +898,7 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
             {error}
           </p>
         ) : null}
+        <AuthoringModelBindings locale={locale} profiles={profiles} />
         <div className={styles.modelsLayout}>
           <aside className={styles.profiles}>
             <h2>{c.save}</h2>

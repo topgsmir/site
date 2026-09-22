@@ -71,14 +71,14 @@ export function AccountOrders({ locale, view }: { locale: Locale; view: "overvie
     return () => { active = false; };
   }, [view]);
 
-  async function openChat(orderId: string) {
+  async function openChat(orderId: string, orderItemId: string) {
     if (openingChat) return;
-    setOpeningChat(orderId);
+    setOpeningChat(orderItemId);
     setChatError(null);
     try {
-      await openGoghdiOrderTicket(orderId);
+      await openGoghdiOrderTicket(orderId, orderItemId);
     } catch {
-      setChatError(orderId);
+      setChatError(orderItemId);
     } finally {
       setOpeningChat(null);
     }
@@ -111,12 +111,10 @@ export function AccountOrders({ locale, view }: { locale: Locale; view: "overvie
           <span className={styles.status} data-status={order.status}><span />{c.status[order.status as keyof typeof c.status] ?? order.status}</span>
           <strong className={styles.amount}>{formatCurrencyAmount(order.totalAmount, order.currency, locale)}<small>{currencyLabel(order.currency)}</small></strong>
           <div className={styles.orderActions}>
-            {view === "orders" && chatEnabled ? <button className={styles.chatButton} type="button" disabled={openingChat !== null} onClick={() => void openChat(order.id)}>{openingChat === order.id ? w.openingChat : w.chat}</button> : null}
             <Link className={styles.orderLink} href={`/${locale}/orders/${order.id}` as Route} aria-label={`${c.details}: ${order.items[0]?.productTitle ?? order.id}`}><AccountIcon name="arrow" /></Link>
           </div>
         </div>
-        {chatError === order.id ? <p className={styles.chatError} role="alert">{w.chatError}</p> : null}
-        <details className={styles.orderDetails}><summary><span>{w.expand}<AccountIcon name="chevron" /></span><bdi>#{order.id.slice(-8)}</bdi></summary><ul>{order.items.map((item) => <li key={item.id}><span>{item.productTitle}</span><span>{w.quantity}: {item.quantity.toLocaleString(locale)}</span></li>)}</ul><Link href={`/${locale}/orders/${order.id}` as Route}>{c.details}<AccountIcon name="arrow" /></Link></details>
+        <details className={styles.orderDetails}><summary><span>{w.expand}<AccountIcon name="chevron" /></span><bdi>#{order.id.slice(-8)}</bdi></summary><ul>{order.items.map((item) => <li key={item.id}><span>{item.productTitle}</span><span className={styles.itemActions}><span>{w.quantity}: {item.quantity.toLocaleString(locale)}</span>{view === "orders" && chatEnabled ? <button className={styles.chatButton} type="button" disabled={openingChat !== null} onClick={() => void openChat(order.id, item.id)}>{openingChat === item.id ? w.openingChat : w.chat}</button> : null}{chatError === item.id ? <span className={styles.chatError} role="alert">{w.chatError}</span> : null}</span></li>)}</ul><Link href={`/${locale}/orders/${order.id}` as Route}>{c.details}<AccountIcon name="arrow" /></Link></details>
       </article>)}
     </div> : null}
     {view === "orders" && cursor && !loading ? <div className={styles.loadMore}><button type="button" disabled={loadingMore} onClick={() => void load(cursor)}>{loadingMore ? c.loading : c.more}<AccountIcon name="chevron" /></button></div> : null}

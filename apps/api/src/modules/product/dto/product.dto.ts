@@ -17,6 +17,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
   ValidateNested
 } from "class-validator";
 import { BridgeProductBindingDto } from "../../bridge/dto/bridge.dto";
@@ -36,6 +37,10 @@ const CURRENCY_PATTERN = /^(?:TOMAN|USD)$/;
 const SLUG_PATTERN = /^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u;
 
 export class ListProductsQueryDto {
+  @IsOptional()
+  @IsIn(["fa", "en", "ar"])
+  locale?: "fa" | "en" | "ar";
+
   @IsOptional()
   @IsIn(productTypes)
   type?: (typeof productTypes)[number];
@@ -95,9 +100,20 @@ export class CreateProductVariantDto {
 }
 
 export class DigitalFulfillmentDto {
+  // A URL list is preferred; retain single-URL requests from older clients.
+  @ValidateIf((value: DigitalFulfillmentDto) => value.fileReferences === undefined || value.fileReference !== undefined)
   @IsUrl({ protocols: ["https"], require_protocol: true })
   @MaxLength(2048)
-  fileReference!: string;
+  fileReference?: string;
+
+  @ValidateIf((value: DigitalFulfillmentDto) => value.fileReferences !== undefined)
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(50)
+  @ArrayUnique()
+  @IsUrl({ protocols: ["https"], require_protocol: true }, { each: true })
+  @MaxLength(2048, { each: true })
+  fileReferences?: string[];
 
   @Type(() => Number)
   @IsInt()

@@ -22,28 +22,31 @@ export class GoghdiService {
     private readonly settings: GoghdiSettingsService
   ) {}
 
-  async signOrderTicket(orderId: string, buyerUserId: string) {
+  async signOrderTicket(orderId: string, buyerUserId: string, orderItemId?: string) {
     const order = await this.prisma.orders.findFirst({
-      where: { id: orderId, buyer_id: buyerUserId },
+      where: { id: orderId, buyer_id: buyerUserId, ...(orderItemId ? { items: { some: { id: orderItemId } } } : {}) },
       select: {
         id: true,
         seller: { select: { id: true, shop_name: true, goghdi_agent_id: true } },
-        items: { select: { product_type: true, product_title: true } }
+        items: { where: orderItemId ? { id: orderItemId } : undefined, select: { id: true, product_title: true }, take: 20 }
       }
     });
     if (!order) throw new NotFoundException("Order was not found");
+    const item = orderItemId ? order.items.find((candidate) => candidate.id === orderItemId) : undefined;
+    if (orderItemId && !item) throw new NotFoundException("Order item was not found");
     if (!order.seller.goghdi_agent_id) {
       throw new ServiceUnavailableException("The seller is not configured for chat");
     }
     const { secret } = await this.settings.ticketCredentials();
     const options: GoghdiOrderTicketOptions = {
-      productId: `order:${order.id}`,
-      chatTitle: this.ticketTitle(order.id, order.seller.shop_name),
+      productId: item ? `order-item:${item.id}` : `order:${order.id}`,
+      chatTitle: this.ticketTitle(order.id, item ? `${item.product_title} · ${order.seller.shop_name}` : order.seller.shop_name),
       category: "order",
       chatInfo: JSON.stringify({
         orderId: order.id,
         sellerId: order.seller.id,
-        products: order.items.map((item) => item.product_title).slice(0, 20)
+        ...(item ? { orderItemId: item.id } : {}),
+        products: item ? [item.product_title] : order.items.map((entry) => entry.product_title)
       }),
       agentIds: [order.seller.goghdi_agent_id]
     };

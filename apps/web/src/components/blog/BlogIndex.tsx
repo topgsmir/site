@@ -1,3 +1,4 @@
+import { ListingPagination } from "@/components/ListingPagination";
 import Link from "next/link";
 import Image from "next/image";
 import type { Route } from "next";
@@ -16,13 +17,17 @@ export function BlogIndex({
   posts,
   heading,
   description,
-  languageHrefs
+  languageHrefs,
+  firstHref,
+  nextHref
 }: {
   locale: Locale;
   posts: BlogPostSummary[];
   heading?: string;
   description?: string;
   languageHrefs?: Record<Locale, string>;
+  firstHref?: string;
+  nextHref?: string;
 }) {
   const copy = COPY[locale];
   const [featured, ...latest] = posts;
@@ -77,6 +82,7 @@ export function BlogIndex({
           </section>
         ) : null}
 
+        <ListingPagination locale={locale} firstHref={firstHref} nextHref={nextHref} />
         <section id="seller-authors" className="journal-sellers">
           <p>03 / AUTHORS</p>
           <h2>{locale === "fa" ? "تجربه‌ای که قابل ردیابی است" : locale === "ar" ? "خبرة يمكن تتبعها" : "Knowledge with a source"}</h2>

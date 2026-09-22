@@ -16,6 +16,8 @@ import {
 } from "class-validator";
 
 export const vendorPermissions = [
+  "blog_ai",
+  "products_ai",
   "products_manage",
   "physical_products_manage",
   "products_publish",

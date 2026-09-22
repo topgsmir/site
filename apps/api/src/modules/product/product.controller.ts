@@ -1,3 +1,5 @@
+import { ProductTranslationsService } from "./product-translations.service";
+import { ProductLocaleQueryDto, ProductTranslationParamsDto, ProductTranslationDraftDto } from "./dto/product-seo.dto";
 import {
   Body,
   Controller,
@@ -43,12 +45,42 @@ export class ProductController {
   constructor(
     private readonly productService: ProductService,
     private readonly rateLimits: AuthRateLimitService,
+    private readonly translations: ProductTranslationsService,
     private readonly media: MediaService
   ) {}
 
   @Get()
   list(@Query() query: ListProductsQueryDto) {
     return this.productService.listPublic(query);
+  }
+
+  @Get("page")
+  page(@Query() query: ListProductsQueryDto) {
+    return this.productService.listPublicPage(query);
+  }
+
+  @Get("admin/:productId/translations")
+  @UseGuards(PlatformAdminGuard)
+  listTranslations(@Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string) {
+    return this.translations.list(productId);
+  }
+
+  @Patch("admin/:productId/translations/:locale")
+  @UseGuards(PlatformAdminGuard)
+  saveTranslation(@Param() params: ProductTranslationParamsDto, @Body() body: ProductTranslationDraftDto, @Req() request: AuthenticatedRequest) {
+    return this.translations.change(params.productId, params.locale, request.authenticatedUser!.id, "draft", body);
+  }
+
+  @Post("admin/:productId/translations/:locale/publish")
+  @UseGuards(PlatformAdminGuard)
+  publishTranslation(@Param() params: ProductTranslationParamsDto, @Req() request: AuthenticatedRequest) {
+    return this.translations.change(params.productId, params.locale, request.authenticatedUser!.id, "publish");
+  }
+
+  @Post("admin/:productId/translations/:locale/unpublish")
+  @UseGuards(PlatformAdminGuard)
+  unpublishTranslation(@Param() params: ProductTranslationParamsDto, @Req() request: AuthenticatedRequest) {
+    return this.translations.change(params.productId, params.locale, request.authenticatedUser!.id, "unpublish");
   }
 
   @Get("mine")
@@ -290,7 +322,7 @@ export class ProductController {
   }
 
   @Get(":idOrSlug")
-  get(@Param("idOrSlug") idOrSlug: string) {
-    return this.productService.getPublic(idOrSlug);
+  get(@Param("idOrSlug") idOrSlug: string, @Query() query: ProductLocaleQueryDto) {
+    return this.productService.getPublic(idOrSlug, query.locale);
   }
 }

@@ -60,6 +60,7 @@ describe("CheckoutService quotes", () => {
     assert.equal("holdbackRate" in result.groups[0]!, false);
     assert.equal("total" in result.groups[0]!, false);
     assert.equal("digitalDeliveryUrl" in result.groups[0]!.items[0]!, false);
+    assert.equal("digitalDeliveryUrls" in result.groups[0]!.items[0]!, false);
     assert.deepEqual(result.groups[0]!.items[0]!.image, {
       url: "/media/media-00000000-0000-4000-8000-000000000101/thumb.webp",
       width: 320,

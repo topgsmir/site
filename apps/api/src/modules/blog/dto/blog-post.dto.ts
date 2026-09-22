@@ -33,6 +33,21 @@ export class ListBlogPostsQueryDto {
   limit = 20;
 }
 
+export class ManagedBlogQueryDto extends ListBlogPostsQueryDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  search?: string;
+
+  @IsOptional()
+  @IsIn(["draft", "pending_review", "published", "rejected", "archived"])
+  status?: "draft" | "pending_review" | "published" | "rejected" | "archived";
+
+  @IsOptional()
+  @IsUUID("4")
+  categoryId?: string;
+}
+
 export class PublicBlogQueryDto extends ListBlogPostsQueryDto {
   @IsIn(BLOG_LOCALES)
   locale!: (typeof BLOG_LOCALES)[number];

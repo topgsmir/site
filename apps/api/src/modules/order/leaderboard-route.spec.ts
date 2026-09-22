@@ -65,3 +65,33 @@ test("GET /orders/new-count reaches the count route before /orders/:id", async (
     await app.close();
   }
 });
+
+test("POST /orders/seen records the authenticated viewer", async () => {
+  let actorId: string | undefined;
+  const module = await Test.createTestingModule({
+    controllers: [OrderController],
+    providers: [
+      { provide: OrderService, useValue: { markOrdersSeen: (actor: { id: string }) => { actorId = actor.id; return { count: 0 }; } } },
+      { provide: AdminOrderDetailsService, useValue: {} },
+      { provide: LeaderboardService, useValue: {} },
+      { provide: AuthRateLimitService, useValue: {} },
+      { provide: AmadastShippingService, useValue: {} }
+    ]
+  }).overrideGuard(AuthenticatedGuard).useValue({
+    canActivate: (context: { switchToHttp(): { getRequest(): { authenticatedUser?: { id: string; role: string } } } }) => {
+      context.switchToHttp().getRequest().authenticatedUser = { id: "admin-1", role: "platform-admin" };
+      return true;
+    }
+  }).compile();
+  const app = module.createNestApplication();
+  try {
+    await app.listen(0, "127.0.0.1");
+    const port = (app.getHttpServer().address() as AddressInfo).port;
+    const response = await fetch(`http://127.0.0.1:${port}/orders/seen`, { method: "POST" });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { count: 0 });
+    assert.equal(actorId, "admin-1");
+  } finally {
+    await app.close();
+  }
+});

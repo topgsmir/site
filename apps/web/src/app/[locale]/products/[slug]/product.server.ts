@@ -33,6 +33,8 @@ export type PublicProductVariant = {
 };
 
 export type PublicProduct = {
+  availableLocales: Array<"fa" | "en" | "ar">;
+  contentLocale: "fa" | "en" | "ar";
   id: string;
   title: string;
   slug: string;
@@ -186,6 +188,8 @@ function isProductResponse(value: unknown): value is PublicProduct {
   if (
     !isString(value.id) ||
     !isString(value.title) ||
+    !Array.isArray(value.availableLocales) || !value.availableLocales.includes("fa") || !value.availableLocales.every((code) => ["fa", "en", "ar"].includes(String(code))) ||
+    !["fa", "en", "ar"].includes(String(value.contentLocale)) ||
     !isString(value.slug) ||
     !isNullableString(value.description) ||
     !isNullableString(value.category) ||
@@ -227,7 +231,7 @@ function isProductResponse(value: unknown): value is PublicProduct {
   });
 }
 
-export const getPublicProduct = cache(async (slug: string): Promise<PublicProduct | null> => {
+export const getPublicProduct = cache(async (slug: string, locale: "fa" | "en" | "ar" = "fa"): Promise<PublicProduct | null> => {
   let normalizedSlug: string;
   try {
     normalizedSlug = decodeURIComponent(slug);
@@ -236,8 +240,9 @@ export const getPublicProduct = cache(async (slug: string): Promise<PublicProduc
   }
   if (!normalizedSlug || normalizedSlug.length > 200) return null;
 
-  const response = await fetch(`${SERVER_API_BASE}/products/${encodeURIComponent(normalizedSlug)}`, {
+  const response = await fetch(`${SERVER_API_BASE}/products/${encodeURIComponent(normalizedSlug)}?locale=${locale}`, {
     headers: { accept: "application/json" },
+    signal: AbortSignal.timeout(10_000),
     next: { revalidate: 300, tags: [`product:${normalizedSlug}`] }
   });
 

@@ -11,6 +11,7 @@ const NODE_TYPES = new Set([
   "blockquote",
   "codeBlock",
   "hardBreak",
+  "horizontalRule",
   "text",
   "image"
 ]);
@@ -38,6 +39,9 @@ export function validateRichText(value: unknown) {
     }
     if (type === "doc" && depth !== 0) {
       throw new BadRequestException("Nested rich-text documents are not allowed");
+    }
+    if (type === "text" && typeof node.text !== "string") {
+      throw new BadRequestException("Rich-text text nodes must contain a string");
     }
     if (type === "heading") {
       const level = isRecord(node.attrs) ? node.attrs.level : undefined;

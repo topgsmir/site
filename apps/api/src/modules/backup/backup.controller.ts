@@ -3,11 +3,8 @@ import {
   StreamableFile, UploadedFile, UseGuards, UseInterceptors
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { createReadStream, mkdirSync } from "node:fs";
+import { createReadStream } from "node:fs";
 import { rm } from "node:fs/promises";
-import { isAbsolute, resolve } from "node:path";
-import { randomUUID } from "node:crypto";
-import { diskStorage } from "multer";
 import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
 import { BrowserSessionMutation } from "../auth/browser-session-mutation.decorator";
 import { PlatformAdminGuard, type AuthenticatedRequest } from "../auth/platform-admin.guard";
@@ -20,18 +17,6 @@ import {
   BackupRestorePreflightDto, ConfirmBackupRestoreDto, CreateBackupDestinationDto, CreateBackupRunDto,
   ListBackupRunsDto, RefreshRemoteBackupCatalogDto, UpdateBackupDestinationDto, UpdateBackupSettingsDto
 } from "./dto/backup.dto";
-
-const uploadRoot = (() => {
-  const configured = process.env.BACKUP_ROOT?.trim() || "var/backups";
-  const root = isAbsolute(configured) ? resolve(configured) : resolve(process.cwd(), configured);
-  const destination = resolve(root, "staging");
-  mkdirSync(destination, { recursive: true });
-  return destination;
-})();
-const maxUploadBytes = (() => {
-  const parsed = Number(process.env.BACKUP_MAX_ARCHIVE_BYTES);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 25 * 1024 ** 3;
-})();
 
 @Controller("system")
 export class BackupSystemController {
@@ -109,6 +94,14 @@ export class BackupController {
   }
   @Get("runs/:id") getRun(@Param("id") id: string) { return this.runs.get(id); }
 
+  @Post("runs/:id/retry-deliveries")
+  @HttpCode(HttpStatus.ACCEPTED)
+  @BrowserSessionMutation()
+  async retryDeliveries(@Param("id") id: string, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+    await this.rateLimits.consumeBackupAdmin(request.authenticatedUser!.id, clientIp);
+    return this.runs.retryDeliveries(id);
+  }
+
   @Post("runs")
   @HttpCode(HttpStatus.ACCEPTED)
   @BrowserSessionMutation()
@@ -130,13 +123,7 @@ export class BackupController {
   @Post("restore-uploads")
   @HttpCode(HttpStatus.CREATED)
   @BrowserSessionMutation()
-  @UseInterceptors(FileInterceptor("file", {
-    storage: diskStorage({
-      destination: uploadRoot,
-      filename: (_request, _file, callback) => callback(null, `${randomUUID()}.upload`)
-    }),
-    limits: { files: 1, fileSize: maxUploadBytes }
-  }))
+  @UseInterceptors(FileInterceptor("file"))
   async uploadRestore(@UploadedFile() file: Express.Multer.File | undefined, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
     if (!file) throw new BadRequestException("An encrypted TopGSM backup package is required");
     try {

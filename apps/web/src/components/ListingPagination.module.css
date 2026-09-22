@@ -1,0 +1,3 @@
+.pagination { display: flex; justify-content: center; flex-wrap: wrap; gap: 16px; margin-block: 32px; }
+.pagination a { display: inline-flex; align-items: center; min-height: 44px; padding: 10px 20px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink); background: var(--paper-bright); }
+.pagination a:focus-visible { outline: 3px solid var(--signal); outline-offset: 3px; }

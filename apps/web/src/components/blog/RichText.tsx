@@ -5,22 +5,23 @@ import type { ReactNode } from "react";
 const SAFE_LINK = /^(https?:|mailto:|tel:)/i;
 const SAFE_IMAGE = /^\/media\/[0-9a-f-]{36}\/[a-z0-9-]+\.webp$/i;
 
-export function RichText({ document }: { document: RichTextDocument }) {
-  return <div className="article-prose">{renderNodes(document.content ?? [])}</div>;
+export function RichText({ document, headingAnchors = false }: { document: RichTextDocument; headingAnchors?: boolean }) {
+  return <div className="article-prose">{renderNodes(document.content ?? [], "", headingAnchors)}</div>;
 }
 
-function renderNodes(nodes: RichTextNode[]): ReactNode {
-  return nodes.map((node, index) => renderNode(node, index));
+function renderNodes(nodes: RichTextNode[], path = "", headingAnchors = false): ReactNode {
+  return nodes.map((node, index) => renderNode(node, index, `${path}${index}`, headingAnchors));
 }
 
-function renderNode(node: RichTextNode, key: number): ReactNode {
-  const children = renderNodes(node.content ?? []);
+function renderNode(node: RichTextNode, key: number, path: string, headingAnchors: boolean): ReactNode {
+  const children = renderNodes(node.content ?? [], `${path}-`, headingAnchors);
   let result: ReactNode;
   switch (node.type) {
     case "paragraph": result = <p key={key}>{children}</p>; break;
     case "heading": {
       const level = node.attrs?.level === 3 ? 3 : 2;
-      result = level === 3 ? <h3 key={key}>{children}</h3> : <h2 key={key}>{children}</h2>;
+      const id = headingAnchors ? `section-${path}` : undefined;
+      result = level === 3 ? <h3 key={key} id={id}>{children}</h3> : <h2 key={key} id={id}>{children}</h2>;
       break;
     }
     case "bulletList": result = <ul key={key}>{children}</ul>; break;
@@ -29,6 +30,7 @@ function renderNode(node: RichTextNode, key: number): ReactNode {
     case "blockquote": result = <blockquote key={key}>{children}</blockquote>; break;
     case "codeBlock": result = <pre key={key}><code>{children}</code></pre>; break;
     case "hardBreak": result = <br key={key} />; break;
+    case "horizontalRule": result = <hr key={key} />; break;
     case "image": {
       const src = typeof node.attrs?.src === "string" && SAFE_IMAGE.test(node.attrs.src)
         ? node.attrs.src

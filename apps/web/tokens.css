@@ -74,18 +74,18 @@
   --space-dashboard-xs: 0.5rem;
   --space-dashboard-sm: 0.75rem;
   --space-dashboard-md: 1rem;
-  --space-dashboard-lg: 1.5rem;
-  --space-dashboard-xl: 2.5rem;
-  --space-dashboard-2xl: 4rem;
-  --space-dashboard-3xl: 6rem;
+  --space-dashboard-lg: 1.25rem;
+  --space-dashboard-xl: 1.75rem;
+  --space-dashboard-2xl: 2.5rem;
+  --space-dashboard-3xl: 3.5rem;
 
   --text-dashboard-xs: 0.75rem;
   --text-dashboard-sm: 0.875rem;
-  --text-dashboard-base: 1rem;
-  --text-dashboard-md: 1.25rem;
-  --text-dashboard-lg: 1.5625rem;
-  --text-dashboard-xl: 1.953rem;
-  --text-dashboard-2xl: 2.441rem;
+  --text-dashboard-base: 0.9375rem;
+  --text-dashboard-md: 1.125rem;
+  --text-dashboard-lg: 1.375rem;
+  --text-dashboard-xl: 1.625rem;
+  --text-dashboard-2xl: 1.875rem;
 
   --ease-dashboard-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-dashboard-in: cubic-bezier(0.7, 0, 0.84, 0);
@@ -97,9 +97,9 @@
   --dur-dashboard-reduced: 150ms;
 
   --rule-dashboard-thin: 1px;
-  --radius-dashboard-xs: 0.75rem;
-  --radius-dashboard-sm: 1rem;
-  --radius-dashboard-md: 1.5rem;
+  --radius-dashboard-xs: 0.5rem;
+  --radius-dashboard-sm: 0.75rem;
+  --radius-dashboard-md: 1rem;
   --radius-dashboard-lg: 2rem;
   --radius-dashboard-round: 999px;
   --size-dashboard-scrollbar: 0.625rem;
@@ -142,21 +142,21 @@
   --space-product-xs: 0.5rem;
   --space-product-sm: 0.75rem;
   --space-product-md: 1rem;
-  --space-product-lg: 1.5rem;
-  --space-product-xl: 2.5rem;
-  --space-product-2xl: 4rem;
-  --space-product-3xl: 6rem;
-  --space-product-4xl: 9rem;
+  --space-product-lg: 1.25rem;
+  --space-product-xl: 1.75rem;
+  --space-product-2xl: 2.5rem;
+  --space-product-3xl: 3.5rem;
+  --space-product-4xl: 5rem;
 
   --text-product-xs: 0.75rem;
   --text-product-sm: 0.875rem;
-  --text-product-base: 1rem;
-  --text-product-md: 1.25rem;
-  --text-product-lg: 1.5625rem;
-  --text-product-xl: 1.953rem;
-  --text-product-2xl: 2.441rem;
-  --text-product-3xl: 3.052rem;
-  --text-product-display: clamp(2.25rem, 3.5vw + 1rem, 4rem);
+  --text-product-base: 0.9375rem;
+  --text-product-md: 1.125rem;
+  --text-product-lg: 1.375rem;
+  --text-product-xl: 1.625rem;
+  --text-product-2xl: 1.875rem;
+  --text-product-3xl: 2.5rem;
+  --text-product-display: clamp(1.875rem, 2.5vw + .5rem, 3rem);
 
   --ease-product-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-product-in: cubic-bezier(0.7, 0, 0.84, 0);
@@ -167,9 +167,9 @@
   --dur-product-reduced: 150ms;
 
   --rule-product-thin: 1px;
-  --radius-product-xs: 0.75rem;
-  --radius-product-sm: 1rem;
-  --radius-product-md: 1.5rem;
+  --radius-product-xs: 0.5rem;
+  --radius-product-sm: 0.75rem;
+  --radius-product-md: 1rem;
   --radius-product-round: 999px;
 }
 
@@ -213,32 +213,32 @@
   :root {
     --space-dashboard-sm: 0.625rem;
     --space-dashboard-md: 0.875rem;
-    --space-dashboard-lg: 1.25rem;
-    --space-dashboard-xl: 2rem;
-    --space-dashboard-2xl: 3rem;
-    --space-dashboard-3xl: 4.5rem;
+    --space-dashboard-lg: 1rem;
+    --space-dashboard-xl: 1.5rem;
+    --space-dashboard-2xl: 2rem;
+    --space-dashboard-3xl: 3rem;
     --text-dashboard-base: 0.9375rem;
     --text-dashboard-md: 1.125rem;
-    --text-dashboard-lg: 1.375rem;
-    --text-dashboard-xl: 1.75rem;
-    --text-dashboard-2xl: 2.125rem;
-    --radius-dashboard-md: 1.25rem;
+    --text-dashboard-lg: 1.25rem;
+    --text-dashboard-xl: 1.5rem;
+    --text-dashboard-2xl: 1.75rem;
+    --radius-dashboard-md: 1rem;
     --radius-dashboard-lg: 1.75rem;
     --space-product-sm: 0.625rem;
     --space-product-md: 0.875rem;
-    --space-product-lg: 1.25rem;
-    --space-product-xl: 2rem;
-    --space-product-2xl: 3rem;
-    --space-product-3xl: 4.5rem;
-    --space-product-4xl: 7rem;
+    --space-product-lg: 1rem;
+    --space-product-xl: 1.5rem;
+    --space-product-2xl: 2rem;
+    --space-product-3xl: 3rem;
+    --space-product-4xl: 4rem;
     --text-product-base: 0.9375rem;
     --text-product-md: 1.125rem;
-    --text-product-lg: 1.375rem;
-    --text-product-xl: 1.75rem;
-    --text-product-2xl: 2.125rem;
-    --text-product-3xl: 2.625rem;
-    --text-product-display: clamp(2.25rem, 3vw + 0.75rem, 3.5rem);
-    --radius-product-md: 1.25rem;
+    --text-product-lg: 1.25rem;
+    --text-product-xl: 1.5rem;
+    --text-product-2xl: 1.75rem;
+    --text-product-3xl: 2.25rem;
+    --text-product-display: clamp(1.875rem, 2.5vw + .5rem, 2.75rem);
+    --radius-product-md: 1rem;
   }
 }
 

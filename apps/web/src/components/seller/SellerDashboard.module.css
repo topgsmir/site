@@ -1258,8 +1258,9 @@
 
 @media (min-width: 60rem) {
   .shell {
+    --size-dashboard-navigation-item: 2.5rem;
     display: grid;
-    grid-template-columns: 16.5rem minmax(0, 1fr);
+    grid-template-columns: 15rem minmax(0, 1fr);
   }
 
   .rail {
@@ -1433,22 +1434,22 @@
 .primaryButton, .secondaryButton, .loadMoreButton { border-radius: 999px; padding-inline: 1.25rem; font-weight: 550; }
 .primaryButton:active, .secondaryButton:active { transform: scale(.98); }
 .searchField, .filterField, .field input, .field select, .field textarea { border-color: var(--color-dashboard-rule-strong); }
-.metricStrip dl > div { min-height: 130px; }
+.metricStrip dl > div { min-height: 96px; }
 .metricStrip dl > div:last-child { border: 1px solid var(--color-dashboard-rule); }
-.metricStrip dd { font-size: 2.1rem; font-weight: 500; }
+.metricStrip dd { font-size: 1.75rem; font-weight: 500; }
 .productTable th { background: var(--color-dashboard-paper); font-weight: 500; }
 .productTable td strong { font-weight: 550; }
 .accountBlock { padding: 16px; border: 0; border-radius: 16px; background: var(--color-dashboard-paper); }
 .productEditor { border-start-start-radius: 28px; border-end-start-radius: 28px; box-shadow: var(--shadow-dashboard-float); }
 @media (min-width: 60rem) {
-  .productTable th, .productTable td { padding-block: 1.3rem; }
+  .productTable th, .productTable td { padding-block: .875rem; }
 }
 .brandBlock strong { font-family: var(--font-outfit), sans-serif; font-size: 1.7rem; font-weight: 600; letter-spacing: -.06em; }
 @media (min-width: 1024px) {
   .brandBlock strong { font-size: 1.45rem; }
   .main { padding-block: var(--space-dashboard-md); }
-  .pageHeader h1, .creationHeader h1 { font-size: clamp(1.75rem, 2.5vw, 2.2rem); }
-  .metricStrip dl > div { min-height: 104px; }
-  .metricStrip dd { font-size: 1.8rem; }
-  .productTable th, .productTable td { padding-block: 1rem; }
+  .pageHeader h1, .creationHeader h1 { font-size: clamp(1.5rem, 2vw, 1.875rem); }
+  .metricStrip dl > div { min-height: 80px; }
+  .metricStrip dd { font-size: 1.5rem; }
+  .productTable th, .productTable td { padding-block: .75rem; }
 }

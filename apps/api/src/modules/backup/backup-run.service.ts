@@ -20,14 +20,19 @@ export class BackupRunService {
   ) {}
 
   async overview(): Promise<AdminBackupOverview> {
-    const [settings, destinations, recentRows, active, storage] = await Promise.all([
+    const [settings, destinations, recentRows, recentRestores, active, storage] = await Promise.all([
       this.settings.get(), this.destinations.list(),
       this.prisma.backup_runs.findMany({ include: this.relations(), orderBy: [{ created_at: "desc" }, { id: "desc" }], take: 5 }),
+      this.prisma.backup_restore_events.findMany({ orderBy: [{ created_at: "desc" }, { id: "desc" }], take: 10 }),
       this.prisma.backup_runs.findFirst({ where: { status: { in: ["queued", "running"] } }, select: { id: true }, orderBy: { created_at: "asc" } }),
       this.prisma.backup_runs.aggregate({ where: { status: { in: ["success", "partial"] }, archive_path: { not: null } }, _sum: { archive_bytes: true } })
     ]);
     return {
       settings, destinations, recentRuns: recentRows.map((row) => this.map(row)),
+      recentRestores: recentRestores.map((row) => ({
+        id: row.id, archiveId: row.archive_id, status: row.status as AdminBackupOverview["recentRestores"][number]["status"],
+        phase: row.phase as AdminBackupOverview["recentRestores"][number]["phase"], errorCode: row.error_code, createdAt: row.created_at.toISOString()
+      })),
       localArchiveBytes: Number(storage._sum.archive_bytes ?? 0n), activeRunId: active?.id ?? null
     };
   }
@@ -74,6 +79,19 @@ export class BackupRunService {
     const expected = this.paths.archivePath(row.archive_name);
     if (expected !== row.archive_path || !(await stat(expected).catch(() => null))?.isFile()) throw new NotFoundException("Backup archive file is unavailable");
     return { name: row.archive_name, path: expected };
+  }
+
+  async retryDeliveries(id: string) {
+    await this.archiveForDownload(id);
+    const reset = await this.prisma.$transaction(async (transaction) => {
+      await transaction.$queryRaw`SELECT pg_advisory_xact_lock(8204211946)`;
+      return transaction.backup_deliveries.updateMany({
+        where: { run_id: id, status: "failed", destination_id: { not: null } },
+        data: { status: "pending", attempts: 0, error_code: null, next_attempt_at: new Date(), started_at: null, completed_at: null }
+      });
+    });
+    if (!reset.count) throw new ConflictException("This backup has no failed remote deliveries to retry");
+    return this.get(id);
   }
 
   findRun(id: string) {

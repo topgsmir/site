@@ -216,11 +216,11 @@ export class AuthRateLimitService {
     await this.consumeSensitiveMutation("product_bulk_undo", userId, clientIp);
   }
 
-  async consumeCommentSubmit(userId: string | null, productId: string, clientIp: string) {
+  async consumeCommentSubmit(userId: string | null, targetKey: string, clientIp: string) {
     if (userId) {
       await this.consumeSensitiveMutation("comment_submit", userId, clientIp);
     } else {
-      await this.consumePublicOperation("comment_submit", "ip_product", `${this.normalizeIp(clientIp)}:${productId}`, clientIp, "comment_submit_guest");
+      await this.consumePublicOperation("comment_submit", "ip_target", `${this.normalizeIp(clientIp)}:${targetKey}`, clientIp, "comment_submit_guest");
     }
   }
 

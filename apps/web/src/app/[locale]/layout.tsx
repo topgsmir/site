@@ -11,6 +11,7 @@ import { GoghdiWidget } from "@/components/goghdi/GoghdiWidget";
 import { TrafficSourceCapture } from "@/components/TrafficSourceCapture";
 import { PlatformNotice } from "@/components/PlatformNotice";
 import { MaintenanceGate } from "@/components/MaintenanceGate";
+import { SITE_URL } from "@/lib/seo";
 
 type LocaleLayoutProps = Readonly<{
   children: React.ReactNode;
@@ -24,6 +25,7 @@ export function generateStaticParams() {
 }
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Top GSM",
     template: "%s | Top GSM"
