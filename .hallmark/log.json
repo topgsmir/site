@@ -1,5 +1,46 @@
 [
   {
+    "date": "2026-09-24",
+    "macrostructure": "Stat-Led",
+    "theme": "TopGSM",
+    "nav": "Existing dashboard side rail",
+    "footer": "Report update timestamp",
+    "enrichment": "Real sales timeline",
+    "brief": "Admin and seller overview redesign with financial hierarchy, permission-aware actions, settlement context and resilient data states"
+  },
+  {
+    "date": "2026-09-24",
+    "macrostructure": "Index-First",
+    "theme": "TopGSM brand",
+    "nav": "Existing shared public header",
+    "footer": "Inline compact",
+    "enrichment": "Existing article thumbnails",
+    "brief": "Aggressively compact multilingual blog listing with small typography and thumbnail article rows"
+  },
+  {
+    "date": "2026-09-24",
+    "macrostructure": "Ecosystem Index",
+    "theme": "TopGSM brand",
+    "nav": "N1b existing public header",
+    "footer": "Ft1 Mast-headed",
+    "enrichment": "Three generated editorial repair photographs",
+    "brief": "Admin-editable TopGSM homepage with service collections, offers, experts and latest products"
+  },
+  {
+    "date": "2026-09-24",
+    "macrostructure": "Download Dossier",
+    "theme": "TopGSM",
+    "enrichment": "existing product cover or honest file placeholder",
+    "brief": "Downloadable product pages with full descriptions before purchase, localized download guidance, and direct-download offer metadata"
+  },
+  {
+    "date": "2026-09-23",
+    "macrostructure": "Split Studio / Narrative Workflow",
+    "theme": "TopGSM",
+    "enrichment": "existing product photography",
+    "brief": "Distinct physical equipment and service product pages, including assisted-service checkout, with localized requirements and SEO"
+  },
+  {
     "date": "2026-09-22",
     "macrostructure": "Workbench",
     "theme": "TopGSM Technical",
@@ -47,5 +88,12 @@
     "theme": "TopGSM Technical Editorial",
     "enrichment": "uploaded cover imagery",
     "brief": "Localized public blog index, long-form article, taxonomy, seller-author, and product discovery surfaces"
+  },
+  {
+    "date": "2026-09-24",
+    "macrostructure": "Focused Conversation Studio",
+    "theme": "TopGSM brand",
+    "enrichment": "none",
+    "brief": "Assistant welcome prompts, searchable conversation rail, mobile history panel and focused composer"
   }
 ]

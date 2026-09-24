@@ -37,7 +37,7 @@ If the user types anything that does not clearly map to `audit`, `redesign`, or 
 
 The default Design flow always picks a theme. By default it picks one of the **21 named themes** — the *catalog* — and rotates among them per the diversification rule. There is also a quiet *custom* branch that constructs a one-off OKLCH palette + free-font pairing for the brief; the custom route fires **only when the brief carries a creative-intent signal** (the user names a brand colour, names a multi-attribute vibe the catalog can't carry, or explicitly asks for a custom theme). For vanilla briefs, the user never sees the words "catalog" or "custom" — the catalog runs silently. See Step 1 (signal detection) and Step 2.6 (dispatch); the protocol lives in [`references/custom-theme.md`](references/custom-theme.md).
 
-**TopGSM brand lock.** When working in the TopGSM repository, load [`references/topgsm-brand.md`](references/topgsm-brand.md) before any design or UI change. Its palette overrides catalog and custom theme colours. Preserve its semantic role mapping and derive any additional colour from those five brand primitives through named tokens.
+**TopGSM brand lock.** TopGSM's primary brand and interaction colour is blue. When working in the TopGSM repository, load [`references/topgsm-brand.md`](references/topgsm-brand.md) before any design or UI change. Its palette overrides catalog and custom theme colours. Preserve its semantic role mapping and derive any additional colour from those five brand primitives through named tokens.
 
 ---
 

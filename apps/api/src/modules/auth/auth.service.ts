@@ -42,12 +42,13 @@ type StoredUser = {
     | "seller_staff"
     | "buyer";
   sellers?: Array<{
+    id: string;
     permissions: Array<{ permission: VendorPermission }>;
   }>;
   platform_permissions?: Array<{ permission: PlatformPermission }>;
   seller_memberships?: Array<{
     active: boolean;
-    seller: { permissions: Array<{ permission: VendorPermission }> };
+    seller: { id: string; permissions: Array<{ permission: VendorPermission }> };
   }>;
 };
 
@@ -138,14 +139,14 @@ export class AuthService {
             email: true,
             role: true,
             sellers: {
-              select: { permissions: { select: { permission: true } } }
+              select: { id: true, permissions: { select: { permission: true } } }
             },
             platform_permissions: { select: { permission: true } },
             seller_memberships: {
               where: { active: true },
               select: {
                 active: true,
-                seller: { select: { permissions: { select: { permission: true } } } }
+                seller: { select: { id: true, permissions: { select: { permission: true } } } }
               }
             }
           }
@@ -287,6 +288,9 @@ export class AuthService {
       (item) => item.permission
     );
     if (permissions) publicUser.permissions = permissions;
+    publicUser.sellerId =
+      user.seller_memberships?.find((item) => item.active)?.seller.id ??
+      user.sellers?.[0]?.id;
     publicUser.isPlatformOwner = user.role === "platform_admin";
     publicUser.platformPermissions =
       user.role === "platform_admin"

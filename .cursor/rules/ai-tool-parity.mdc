@@ -1,0 +1,18 @@
+---
+description: Keep every admin and site feature available to the owner-only AI assistant
+alwaysApply: true
+---
+
+# AI Tool Parity
+
+Whenever a feature or API route is added, removed, renamed, or behaviorally changed:
+
+- Add or update its allowlisted definition in `apps/api/src/modules/data-assistant/admin-tool-catalog.ts`.
+- Give the tool an exact route, method, risk, bounded input hint, and clear description. Use `$secureInput` for credentials and `$fileInput` for local files.
+- Keep mutations owner-approved and browser-executed through the original endpoint. Never bypass its guards, tenant checks, DTO validation, CSRF protection, rate limits, audit behavior, or idempotency controls.
+- Do not expose login, logout, registration, OTP/CAPTCHA, one-time setup/restore tokens, provider callbacks, or the assistant's own routes. Any new exclusion must be explicit and justified in the controller-coverage test.
+- Update or add tool tests when request preparation, result sanitization, approval behavior, or capability descriptions change.
+- Run the controller-to-catalog coverage test in `admin-tool-catalog.spec.ts`; a normal controller route without a catalog entry must fail the change.
+- Confirm `describe_admin_capabilities` remains accurate through its live catalog-derived counts; do not hard-code feature totals in prompts or UI copy.
+
+Before completion, run API type-check, lint, focused data-assistant tests, and build.

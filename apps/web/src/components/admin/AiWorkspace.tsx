@@ -16,6 +16,7 @@ import remarkGfm from "remark-gfm";
 import type { Locale } from "@/lib/i18n";
 import { API_BASE, api } from "@/lib/api/client";
 import styles from "./AiWorkspace.module.css";
+import { AiRunError, aiRunErrorMessage } from "./ai-run-error";
 
 type View = "models" | "assistant";
 type Profile = {
@@ -52,10 +53,22 @@ type Evidence = {
   sql?: string;
   executionId?: string;
   purpose?: string;
-  approvalType?: "continuation";
+  approvalType?: "continuation" | "sql" | "browser_tool";
+  request?: BrowserToolRequest;
   rowCount?: number;
   durationMs?: number;
 };
+type BrowserToolRequest = {
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  path: string;
+  query?: Record<string, string | number | boolean | Array<string | number | boolean>>;
+  body?: unknown;
+  risk: "read" | "write" | "destructive" | "critical";
+  description: string;
+  idempotencyKey?: string;
+  responseMode?: "json" | "download";
+};
+type FileInputSpec = { label: string; accept: string; maxBytes: number };
 type ToolResult = {
   tool: string;
   rows: Record<string, unknown>[];
@@ -133,14 +146,18 @@ const copy = {
     active: "Default",
     deactivate: "Deactivate",
     selectModel: "Model for this conversation",
-    question: "Ask about sales, orders, payouts, products, or fulfillment…",
-    send: "Analyze",
-    working: "Analyzing…",
-    empty: "Choose or start a conversation, then ask an operational question.",
-    disclosure: "Masked reporting data is sent to the selected provider.",
-    approve: "Continue",
+    question: "Ask about or manage any admin and site feature…",
+    send: "Send",
+    working: "Working…",
+    empty: "Choose or start a conversation, then ask an operational question or request an admin action.",
+    disclosure: "Masked reporting data and approved, redacted tool results are sent to the selected provider. API actions run in this browser under your current permissions.",
+    toolsAvailable: "allowlisted tools available across",
+    toolDomains: "feature areas",
+    approve: "Approve and run",
     reject: "Stop",
     sqlTitle: "SQL approval required",
+    toolTitle: "Tool approval required",
+    toolRunningTitle: "Tool result pending",
     continuationTitle: "Continue this analysis?",
     rows: "Supporting rows",
     noRows: "No supporting rows were returned.",
@@ -202,15 +219,19 @@ const copy = {
     active: "پیش‌فرض",
     deactivate: "غیرفعال‌کردن",
     selectModel: "مدل این گفت‌وگو",
-    question: "درباره فروش، سفارش، تسویه، محصول یا تحویل بپرسید…",
-    send: "تحلیل",
-    working: "در حال تحلیل…",
-    empty: "یک گفت‌وگو را انتخاب یا ایجاد کنید و سپس سؤال عملیاتی بپرسید.",
+    question: "درباره هر بخش مدیریت یا سایت بپرسید یا کاری درخواست کنید…",
+    send: "ارسال",
+    working: "در حال انجام…",
+    empty: "یک گفت‌وگو را انتخاب یا ایجاد کنید؛ سپس سؤال عملیاتی بپرسید یا یک اقدام مدیریتی درخواست کنید.",
     disclosure:
-      "داده‌های گزارش‌گیری پوشیده‌شده به ارائه‌دهنده منتخب ارسال می‌شوند.",
-    approve: "ادامه تحلیل",
+      "داده‌های گزارش و نتیجهٔ پالایش‌شدهٔ ابزارهای تأییدشده برای مدل فرستاده می‌شود. هر درخواست API در همین مرورگر و با دسترسی فعلی شما اجرا می‌شود.",
+    toolsAvailable: "ابزار مجاز در",
+    toolDomains: "حوزه قابلیت در دسترس است",
+    approve: "تأیید و اجرا",
     reject: "توقف",
     sqlTitle: "تأیید SQL لازم است",
+    toolTitle: "تأیید ابزار لازم است",
+    toolRunningTitle: "نتیجهٔ ابزار هنوز نرسیده است",
     continuationTitle: "تحلیل ادامه پیدا کند؟",
     rows: "ردیف‌های پشتیبان",
     noRows: "داده پشتیبانی برنگشت.",
@@ -272,14 +293,18 @@ const copy = {
     active: "الافتراضي",
     deactivate: "تعطيل",
     selectModel: "نموذج هذه المحادثة",
-    question: "اسأل عن المبيعات أو الطلبات أو الدفعات أو المنتجات أو التنفيذ…",
-    send: "تحليل",
-    working: "جارٍ التحليل…",
-    empty: "اختر محادثة أو ابدأ واحدة ثم اطرح سؤالاً تشغيلياً.",
-    disclosure: "تُرسل بيانات التقارير المخفية إلى المزود المحدد.",
-    approve: "متابعة التحليل",
+    question: "اسأل عن أي ميزة في الإدارة أو الموقع أو اطلب إجراءً…",
+    send: "إرسال",
+    working: "جارٍ العمل…",
+    empty: "اختر محادثة أو ابدأ واحدة، ثم اطرح سؤالاً تشغيلياً أو اطلب إجراءً إدارياً.",
+    disclosure: "تُرسل بيانات التقارير المخفية ونتائج الأدوات الموافق عليها بعد تنقيحها إلى المزود المحدد. تُنفذ عمليات API في هذا المتصفح وفق صلاحياتك الحالية.",
+    toolsAvailable: "أداة مسموحة متاحة عبر",
+    toolDomains: "مجالات للميزات",
+    approve: "موافقة وتنفيذ",
     reject: "إيقاف",
     sqlTitle: "موافقة SQL مطلوبة",
+    toolTitle: "موافقة الأداة مطلوبة",
+    toolRunningTitle: "نتيجة الأداة معلّقة",
     continuationTitle: "متابعة هذا التحليل؟",
     rows: "الصفوف الداعمة",
     noRows: "لم تُرجع صفوف داعمة.",
@@ -444,8 +469,179 @@ function providerErrorFrom(error: unknown): ProviderError | null {
     : null;
 }
 
+function secureInputLabels(value: unknown): string[] {
+  const labels = new Set<string>();
+  const visit = (item: unknown) => {
+    if (!item || typeof item !== "object") return;
+    if (!Array.isArray(item) && Object.keys(item).length === 1 && typeof (item as { $secureInput?: unknown }).$secureInput === "string") {
+      labels.add((item as { $secureInput: string }).$secureInput);
+      return;
+    }
+    for (const child of Array.isArray(item) ? item : Object.values(item)) visit(child);
+  };
+  visit(value);
+  return [...labels];
+}
+
+function fileInputSpecs(value: unknown): FileInputSpec[] {
+  const specs = new Map<string, FileInputSpec>();
+  const visit = (item: unknown) => {
+    if (!item || typeof item !== "object") return;
+    if (!Array.isArray(item) && Object.keys(item).length === 1) {
+      const spec = (item as { $fileInput?: unknown }).$fileInput;
+      if (spec && typeof spec === "object" && !Array.isArray(spec) && typeof (spec as FileInputSpec).label === "string") {
+        const typed = spec as FileInputSpec;
+        specs.set(typed.label, typed);
+        return;
+      }
+    }
+    for (const child of Array.isArray(item) ? item : Object.values(item)) visit(child);
+  };
+  visit(value);
+  return [...specs.values()];
+}
+
+function resolveBrowserInputs(value: unknown, secureValues: Record<string, string>, files: Record<string, File | null>): unknown {
+  if (!value || typeof value !== "object") return value;
+  if (!Array.isArray(value) && Object.keys(value).length === 1 && typeof (value as { $secureInput?: unknown }).$secureInput === "string") return secureValues[(value as { $secureInput: string }).$secureInput] ?? "";
+  if (!Array.isArray(value) && Object.keys(value).length === 1) {
+    const spec = (value as { $fileInput?: unknown }).$fileInput;
+    if (spec && typeof spec === "object" && !Array.isArray(spec) && typeof (spec as FileInputSpec).label === "string") return files[(spec as FileInputSpec).label] ?? null;
+  }
+  if (Array.isArray(value)) return value.map((item) => resolveBrowserInputs(item, secureValues, files));
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, resolveBrowserInputs(item, secureValues, files)]));
+}
+
+function multipartBody(value: unknown): FormData {
+  const form = new FormData();
+  if (!value || typeof value !== "object" || Array.isArray(value)) return form;
+  for (const [key, item] of Object.entries(value)) {
+    if (item instanceof File) form.append(key, item, item.name);
+    else if (item !== undefined && item !== null) form.append(key, typeof item === "object" ? JSON.stringify(item) : String(item));
+  }
+  return form;
+}
+
+async function readBoundedResponse(response: Response, limit = 100_000) {
+  if (!response.body) return { text: "", truncated: false };
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  let truncated = false;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    text += decoder.decode(value, { stream: true });
+    if (text.length > limit) { text = text.slice(0, limit); truncated = true; await reader.cancel(); break; }
+  }
+  return { text: text + decoder.decode(), truncated };
+}
+
+async function executeBrowserTool(request: BrowserToolRequest, secureValues: Record<string, string>, files: Record<string, File | null>) {
+  const started = performance.now();
+  if (!/^\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*$/.test(request.path) || request.path.includes("//") || request.path.includes("\\")) {
+    return { ok: false, status: 400, data: { message: "The approved tool path was invalid." }, errorCode: "INVALID_TOOL_PATH", durationMs: 0 };
+  }
+  const query = new URLSearchParams();
+  for (const [key, raw] of Object.entries(request.query ?? {})) {
+    const values = Array.isArray(raw) ? raw : [raw];
+    for (const value of values) query.append(key, String(value));
+  }
+  const url = `${API_BASE}${request.path}${query.size ? `?${query.toString()}` : ""}`;
+  const hasBody = request.body !== undefined && request.method !== "GET";
+  const resolvedBody = hasBody ? resolveBrowserInputs(request.body, secureValues, files) : undefined;
+  const multipart = fileInputSpecs(request.body).length > 0;
+  try {
+    const response = await fetch(url, {
+      method: request.method,
+      credentials: "include",
+      headers: {
+        ...(hasBody && !multipart ? { "Content-Type": "application/json" } : {}),
+        ...(request.idempotencyKey ? { "Idempotency-Key": request.idempotencyKey } : {}),
+      },
+      body: hasBody ? multipart ? multipartBody(resolvedBody) : JSON.stringify(resolvedBody) : undefined,
+    });
+    if (request.responseMode === "download" && response.ok) {
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = (response.headers.get("content-disposition")?.match(/filename="?([^";]+)"?/i)?.[1] ?? "download").replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 200) || "download";
+      anchor.hidden = true;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+      return { ok: true, status: response.status, data: { downloaded: true, filename: anchor.download, bytes: blob.size, contentType: blob.type || null }, durationMs: Math.round(performance.now() - started) };
+    }
+    const bounded = await readBoundedResponse(response);
+    const text = bounded.text;
+    let data: unknown = null;
+    if (text) {
+      try { data = bounded.truncated ? { truncated: true, preview: text } : JSON.parse(text); }
+      catch { data = bounded.truncated ? { truncated: true, preview: text } : text; }
+    }
+    const code = data && typeof data === "object" && !Array.isArray(data) && typeof (data as { code?: unknown }).code === "string" ? (data as { code: string }).code : undefined;
+    return { ok: response.ok, status: response.status, data, ...(code ? { errorCode: code.slice(0, 100) } : {}), durationMs: Math.round(performance.now() - started) };
+  } catch {
+    return { ok: false, status: 502, data: { message: "The browser could not reach the approved API tool." }, errorCode: "BROWSER_TOOL_NETWORK_ERROR", durationMs: Math.round(performance.now() - started) };
+  }
+}
+
+const assistantCopy = {
+  fa: {
+    newChat: "گفت‌وگوی جدید", search: "جست‌وجوی گفت‌وگوها", noHistory: "گفت‌وگوهای شما اینجا ذخیره می‌شوند.", noMatches: "گفت‌وگویی پیدا نشد.",
+    title: "از کجا شروع کنیم؟", intro: "از وضعیت فروش بپرسید، سفارش‌ها را بررسی کنید یا کارهای فروشگاه را پیش ببرید.",
+    eyebrow: "دستیار مدیریت تاپ جی‌اس‌ام", privacy: "دسترسی و حریم خصوصی", keyboard: "ارسال با Ctrl / ⌘ + Enter", settings: "تنظیم مدل‌ها", close: "بستن تاریخچه",
+    prompts: [
+      { title: "نبض فروش", detail: "فروش و روند درآمد", prompt: "فروش ۷ روز گذشته را خلاصه کن و با هفته قبل مقایسه کن.", icon: "chart" },
+      { title: "پیگیری سفارش‌ها", detail: "سفارش‌های نیازمند بررسی", prompt: "کدام سفارش‌ها هنوز در انتظار رسیدگی هستند؟", icon: "box" },
+      { title: "بررسی موجودی", detail: "محصولات رو به اتمام", prompt: "محصولاتی که موجودی کمی دارند را به من نشان بده.", icon: "layers" },
+    ],
+  },
+  en: {
+    newChat: "New conversation", search: "Search conversations", noHistory: "Your conversations will appear here.", noMatches: "No conversations found.",
+    title: "Where shall we start?", intro: "Explore sales, follow up on orders, or get things done across your store.",
+    eyebrow: "TopGSM admin assistant", privacy: "Access & privacy", keyboard: "Ctrl / ⌘ + Enter to send", settings: "Model settings", close: "Close history",
+    prompts: [
+      { title: "Sales overview", detail: "Revenue and sales trends", prompt: "Summarize sales over the last 7 days and compare with the previous week.", icon: "chart" },
+      { title: "Follow up on orders", detail: "Orders that need attention", prompt: "Which orders are still waiting to be processed?", icon: "box" },
+      { title: "Check inventory", detail: "Products running low", prompt: "Show me products with low stock.", icon: "layers" },
+    ],
+  },
+  ar: {
+    newChat: "محادثة جديدة", search: "البحث في المحادثات", noHistory: "ستظهر محادثاتك هنا.", noMatches: "لم يتم العثور على محادثات.",
+    title: "من أين نبدأ؟", intro: "استعرض المبيعات، وتابع الطلبات، وأنجز مهام متجرك.",
+    eyebrow: "مساعد إدارة TopGSM", privacy: "الوصول والخصوصية", keyboard: "Ctrl / ⌘ + Enter للإرسال", settings: "إعدادات النماذج", close: "إغلاق السجل",
+    prompts: [
+      { title: "نظرة على المبيعات", detail: "الإيرادات واتجاهات المبيعات", prompt: "لخص مبيعات آخر ٧ أيام وقارنها بالأسبوع السابق.", icon: "chart" },
+      { title: "متابعة الطلبات", detail: "طلبات تحتاج إلى مراجعة", prompt: "ما الطلبات التي لا تزال تنتظر المعالجة؟", icon: "box" },
+      { title: "مراجعة المخزون", detail: "منتجات أوشكت على النفاد", prompt: "اعرض المنتجات ذات المخزون المنخفض.", icon: "layers" },
+    ],
+  },
+};
+
+function AssistantIcon({ name }: { name: string }) {
+  const paths: Record<string, string> = {
+    chart: "M4 19V5m0 14h16M8 15v-4m5 4V7m5 8v-6",
+    box: "m3 7 9-4 9 4v10l-9 4-9-4V7Zm0 0 9 4 9-4M12 11v10M7 5l10 4",
+    layers: "m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5",
+    chat: "M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6 3V6a2 2 0 0 1 2-2ZM7 9h10M7 13h6",
+    search: "M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z",
+    plus: "M12 5v14M5 12h14",
+  };
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name] ?? paths.chat} /></svg>;
+}
+
 export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
   const c = copy[locale];
+  const ui = assistantCopy[locale];
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyBusy, setHistoryBusy] = useState(false);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const historyToggleRef = useRef<HTMLButtonElement>(null);
+  const historySearchRef = useRef<HTMLInputElement>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [defaultProfileId, setDefaultProfileId] = useState("");
   const [selectedProfileId, setSelectedProfileId] = useState("");
@@ -460,6 +656,9 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
   const [activity, setActivity] = useState<Activity[]>([]);
   const [runMeta, setRunMeta] = useState<RunMeta | null>(null);
   const [pending, setPending] = useState<Evidence | null>(null);
+  const [secureValues, setSecureValues] = useState<Record<string, string>>({});
+  const [fileValues, setFileValues] = useState<Record<string, File | null>>({});
+  const [toolInventory, setToolInventory] = useState({ count: 0, domains: 0 });
   const [question, setQuestion] = useState("");
   const [hydrated, setHydrated] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -474,6 +673,20 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
   );
   const [confirmingDeleteId, setConfirmingDeleteId] = useState("");
   const messagesRef = useRef<HTMLDivElement>(null);
+
+  async function navigateConversation(action: () => Promise<void>) {
+    if (busy || historyBusy) return;
+    setHistoryBusy(true);
+    try {
+      await action();
+      setHistoryOpen(false);
+    } catch {
+      setError(c.error);
+    } finally {
+      setHistoryBusy(false);
+      requestAnimationFrame(() => composerRef.current?.focus());
+    }
+  }
 
   const load = useCallback(async () => {
     const [profileResponse, bindingResponse] = await Promise.all([
@@ -498,10 +711,14 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
           loadedProfiles.find((profile) => profile.status === "active")?.id ??
           ""),
     );
-    if (view === "assistant")
-      setConversations(
-        (await api.get<ConversationSummary[]>("/ai/data/conversations")).data,
-      );
+    if (view === "assistant") {
+      const [conversationResponse, toolResponse] = await Promise.all([
+        api.get<ConversationSummary[]>("/ai/data/conversations"),
+        api.get<Array<{ domain: string }>>("/ai/data/tools"),
+      ]);
+      setConversations(conversationResponse.data);
+      setToolInventory({ count: toolResponse.data.length, domains: new Set(toolResponse.data.map((item) => item.domain)).size });
+    }
   }, [view]);
   useEffect(() => {
     setHydrated(true);
@@ -517,6 +734,8 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
   async function openConversation(id: string, preserveActivity = false) {
     setConversationId(id);
     setPending(null);
+    setSecureValues({});
+    setFileValues({});
     setEvidence([]);
     if (!preserveActivity) setActivity([]);
     setError("");
@@ -532,8 +751,14 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
     setEvidence([]);
     setActivity([]);
     setRunMeta(response.data.runs[0] ?? null);
-    const proposed = tools.find((tool) => tool.status === "proposed");
-    if (proposed) setPending({ ...proposed, executionId: proposed.id });
+    const pendingTool = tools.find((tool) => tool.status === "proposed" || (tool.status === "running" && tool.approvalType === "browser_tool"));
+    if (pendingTool) {
+      setPending({ ...pendingTool, executionId: pendingTool.id });
+      if (pendingTool.status === "proposed") {
+        setSecureValues(Object.fromEntries(secureInputLabels(pendingTool.request?.body).map((label) => [label, ""])));
+        setFileValues(Object.fromEntries(fileInputSpecs(pendingTool.request?.body).map((spec) => [spec.label, null])));
+      }
+    }
   }
   async function createConversation() {
     const response = await api.post<ConversationSummary>(
@@ -553,6 +778,9 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
     setEvidence([]);
     setActivity([]);
     setRunMeta(null);
+    setPending(null);
+    setSecureValues({});
+    setFileValues({});
     await load();
   }
   async function saveProfile(event: React.FormEvent) {
@@ -663,6 +891,8 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
     url: string,
     body?: unknown,
     refreshConversationId = conversationId,
+    approvedSecureValues: Record<string, string> = {},
+    approvedFiles: Record<string, File | null> = {},
   ) {
     const response = await fetch(`${API_BASE}${url}`, {
       method: "POST",
@@ -675,6 +905,7 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
     const decoder = new TextDecoder();
     let buffer = "";
     let assistantText = "";
+    let browserTool: { executionId: string; request: BrowserToolRequest } | null = null;
     for (;;) {
       const { done, value } = await reader.read();
       buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
@@ -741,6 +972,31 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
             },
           ]);
         }
+        if (event === "tool_approval_required") {
+          const next = {
+            ...(data as Evidence),
+            id: String(data.executionId ?? "tool-proposal"),
+            name: String(data.tool ?? "tool"),
+            status: "proposed",
+            approvalType: "browser_tool" as const,
+          };
+          setPending(next);
+          setSecureValues(Object.fromEntries(secureInputLabels(next.request?.body).map((label) => [label, ""])));
+          setFileValues(Object.fromEntries(fileInputSpecs(next.request?.body).map((spec) => [spec.label, null])));
+          setEvidence((current) => [
+            ...current.filter((item) => item.id !== next.id),
+            next,
+          ]);
+        }
+        if (event === "browser_tool_request") {
+          const request = data.request;
+          if (request && typeof request === "object" && !Array.isArray(request)) {
+            browserTool = {
+              executionId: String(data.executionId ?? ""),
+              request: request as BrowserToolRequest,
+            };
+          }
+        }
         if (event === "continuation_approval_required") {
           const next = {
             ...(data as Evidence),
@@ -766,9 +1022,21 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
             ...(data.usage as object),
             durationMs: Number(data.durationMs) || null,
           });
-        if (event === "failed") throw new Error(String(data.code));
+        if (event === "failed") throw new AiRunError(String(data.code));
       }
       if (done) break;
+    }
+    if (browserTool) {
+      const approvedTool = browserTool as { executionId: string; request: BrowserToolRequest };
+      const result = await executeBrowserTool(approvedTool.request, approvedSecureValues, approvedFiles);
+      await consumeStream(
+        `/ai/data/query-executions/${approvedTool.executionId}/result`,
+        result,
+        refreshConversationId,
+        {},
+        {},
+      );
+      return;
     }
     if (refreshConversationId)
       await openConversation(refreshConversationId, true);
@@ -776,34 +1044,34 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
   async function ask(event: React.FormEvent) {
     event.preventDefault();
     const text = question.trim();
-    if (!text || busy || !selectedProfileId) return;
-    let id = conversationId;
-    if (!id) {
-      const response = await api.post<ConversationSummary>(
-        "/ai/data/conversations",
-        { title: text.slice(0, 160) },
-      );
-      id = response.data.id;
-      setConversationId(id);
-    }
-    setMessages((current) => [
-      ...current,
-      { id: `local-${Date.now()}`, role: "user", content: text },
-    ]);
-    setEvidence([]);
-    setActivity([]);
-    setRunMeta(null);
-    setQuestion("");
+    if (!text || busy || historyBusy || pending || !selectedProfileId) return;
     setBusy(true);
     setError("");
     try {
-      await consumeStream(
+      let id = conversationId;
+      if (!id) {
+        const response = await api.post<ConversationSummary>(
+          "/ai/data/conversations",
+          { title: text.slice(0, 160) },
+        );
+        id = response.data.id;
+        setConversationId(id);
+      }
+      setMessages((current) => [
+        ...current,
+        { id: `local-${Date.now()}`, role: "user", content: text },
+      ]);
+      setEvidence([]);
+      setActivity([]);
+      setRunMeta(null);
+      setQuestion("");
+        await consumeStream(
         `/ai/data/conversations/${id}/messages`,
         { question: text, profileId: selectedProfileId },
         id,
       );
       await load();
-    } catch {
+    } catch (caught) {
       setActivity((current) =>
         current.map((item) =>
           item.status === "running" ? { ...item, status: "failed" } : item,
@@ -814,21 +1082,30 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
           item.status === "running" ? { ...item, status: "failed" } : item,
         ),
       );
-      setError(c.error);
+      setError(aiRunErrorMessage(caught, locale, c.error));
     } finally {
       setBusy(false);
     }
   }
   async function approve() {
     if (!pending?.executionId) return;
+    const executionId = pending.executionId;
+    const approvedSecureValues = secureValues;
+    const approvedFiles = fileValues;
+    setPending(null);
+    setSecureValues({});
+    setFileValues({});
     setBusy(true);
     setError("");
     try {
       await consumeStream(
-        `/ai/data/query-executions/${pending.executionId}/approve`,
+        `/ai/data/query-executions/${executionId}/approve`,
+        undefined,
+        conversationId,
+        approvedSecureValues,
+        approvedFiles,
       );
-      setPending(null);
-    } catch {
+    } catch (caught) {
       setActivity((current) =>
         current.map((item) =>
           item.status === "running" ? { ...item, status: "failed" } : item,
@@ -839,7 +1116,7 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
           item.status === "running" ? { ...item, status: "failed" } : item,
         ),
       );
-      setError(c.error);
+      setError(aiRunErrorMessage(caught, locale, c.error));
     } finally {
       setBusy(false);
     }
@@ -848,6 +1125,8 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
     if (!pending?.executionId) return;
     await api.post(`/ai/data/query-executions/${pending.executionId}/reject`);
     setPending(null);
+    setSecureValues({});
+    setFileValues({});
     if (conversationId) await openConversation(conversationId);
   }
   const activeProfiles = useMemo(
@@ -1028,31 +1307,30 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
       className={`${styles.workspace} ${styles.assistantWorkspace}`}
       aria-label={c.assistantTitle}
     >
-      {error ? (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      ) : null}
       <div className={styles.assistantLayout}>
-        <aside className={styles.history}>
+        <aside className={styles.history} data-open={historyOpen} id="assistant-history" onKeyDown={(event) => { if (event.key === "Escape" && historyOpen) { setHistoryOpen(false); requestAnimationFrame(() => historyToggleRef.current?.focus()); } }}>
           <div className={styles.asideTitle}>
-            <h2>{c.history}</h2>
-            <button type="button" onClick={createConversation}>
-              + {c.newChat}
+            <div className={styles.historyHeading}><h2>{c.history}</h2><button className={styles.closeHistory} type="button" onClick={() => { setHistoryOpen(false); requestAnimationFrame(() => historyToggleRef.current?.focus()); }} aria-label={ui.close}>×</button></div>
+            <button type="button" disabled={busy || historyBusy} onClick={() => navigateConversation(createConversation)}>
+              <AssistantIcon name="plus" /> {ui.newChat}
             </button>
           </div>
-          <nav>
-            {conversations.map((conversation) => (
+          <label className={styles.historySearch}><AssistantIcon name="search" /><input ref={historySearchRef} type="search" value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder={ui.search} aria-label={ui.search} /></label>
+          <nav aria-label={c.history}>
+            {!conversations.length ? <p className={styles.historyEmpty}>{ui.noHistory}</p> : null}
+            {conversations.length > 0 && !conversations.some((item) => item.title.toLocaleLowerCase(locale).includes(historySearch.trim().toLocaleLowerCase(locale))) ? <p className={styles.historyEmpty}>{ui.noMatches}</p> : null}
+            {conversations.filter((item) => item.title.toLocaleLowerCase(locale).includes(historySearch.trim().toLocaleLowerCase(locale))).map((conversation) => (
               <button
                 key={conversation.id}
                 type="button"
+                disabled={busy || historyBusy}
                 aria-current={
                   conversation.id === conversationId ? "page" : undefined
                 }
-                onClick={() => openConversation(conversation.id)}
+                onClick={() => navigateConversation(() => openConversation(conversation.id))}
               >
                 <strong>{conversation.title}</strong>
-                <time>
+                <time dateTime={conversation.updatedAt}>
                   {new Date(conversation.updatedAt).toLocaleDateString(locale)}{" "}
                   · {formatUsd(conversation.estimatedCostUsd, locale)}
                 </time>
@@ -1063,13 +1341,19 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
             <button
               className={styles.delete}
               type="button"
-              onClick={deleteConversation}
+              disabled={busy || historyBusy}
+              onClick={() => navigateConversation(deleteConversation)}
             >
               {c.delete}
             </button>
           ) : null}
         </aside>
         <main className={styles.chat} aria-busy={busy}>
+          <header className={styles.chatHeader}>
+            <div className={styles.chatIdentity}><span className={styles.assistantMark}><AssistantIcon name="chat" /></span><div><h1>{c.assistantTitle}</h1><p>{ui.eyebrow}</p></div></div>
+            <button ref={historyToggleRef} className={styles.historyToggle} type="button" aria-expanded={historyOpen} aria-controls="assistant-history" onClick={() => { setHistoryOpen(true); requestAnimationFrame(() => historySearchRef.current?.focus()); }}><AssistantIcon name="chat" /><span>{c.history}</span></button>
+            <a className={styles.settingsLink} href={`/${locale}/admin/ai/models`}>{ui.settings}<span aria-hidden="true">↗</span></a>
+          </header>
           <div className={styles.messages} ref={messagesRef}>
             {runMeta ? (
               <div className={styles.runMeta}>
@@ -1164,25 +1448,63 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
               </>
             ) : (
               <div className={styles.empty}>
-                <strong>AI / DB</strong>
-                <p>{selectedProfile ? c.empty : c.configure}</p>
+                <span className={styles.welcomeMark}><AssistantIcon name="chat" /></span>
+                <h2>{ui.title}</h2>
+                <p>{selectedProfile ? ui.intro : c.configure}</p>
+                {selectedProfile ? <div className={styles.suggestions}>{ui.prompts.map((item) => <button type="button" key={item.icon} disabled={busy || historyBusy || Boolean(pending)} onClick={() => { setQuestion(item.prompt); composerRef.current?.focus(); }}><AssistantIcon name={item.icon} /><strong>{item.title}</strong><span>{item.detail}</span><b aria-hidden="true">↗</b></button>)}</div> : <a className={styles.setupLink} href={`/${locale}/admin/ai/models`}>{ui.settings}<span aria-hidden="true">↗</span></a>}
               </div>
             )}
           </div>
           <div className={styles.chatFooter}>
+            {error ? <p className={styles.error} role="alert">{error}</p> : null}
             {pending ? (
               <section className={styles.approval}>
                 <h2>
-                  {pending.approvalType === "continuation"
+                  {pending.status === "running" && pending.approvalType === "browser_tool"
+                    ? c.toolRunningTitle
+                    : pending.approvalType === "continuation"
                     ? c.continuationTitle
-                    : c.sqlTitle}
+                    : pending.approvalType === "browser_tool"
+                      ? c.toolTitle
+                      : c.sqlTitle}
                 </h2>
-                <p>{pending.purpose}</p>
-                {pending.sql ? <pre dir="ltr">{pending.sql}</pre> : null}
-                <div>
-                  <button type="button" onClick={approve} disabled={busy}>
-                    {c.approve}
-                  </button>
+                <div className={styles.approvalDetails}>
+                  <p>{pending.purpose}</p>
+                  {pending.sql ? <pre dir="ltr">{pending.sql}</pre> : null}
+                  {pending.request ? (
+                    <pre dir="ltr">
+                      {JSON.stringify(
+                        {
+                          risk: pending.request.risk,
+                          method: pending.request.method,
+                          path: pending.request.path,
+                          query: pending.request.query,
+                          body: pending.request.body,
+                        },
+                        null,
+                        2,
+                      )}
+                    </pre>
+                  ) : null}
+                  {Object.keys(secureValues).map((label) => (
+                    <label className={styles.secureInput} key={label}>
+                      <span>{label}</span>
+                      <input type="password" autoComplete="off" value={secureValues[label]} onChange={(event) => setSecureValues((current) => ({ ...current, [label]: event.target.value }))} />
+                    </label>
+                  ))}
+                  {fileInputSpecs(pending.request?.body).map((spec) => (
+                    <label className={styles.secureInput} key={spec.label}>
+                      <span>{spec.label} · ≤ {(spec.maxBytes / 1_048_576).toLocaleString(locale, { maximumFractionDigits: 1 })} MB</span>
+                      <input type="file" accept={spec.accept} onChange={(event) => setFileValues((current) => ({ ...current, [spec.label]: event.target.files?.[0] ?? null }))} />
+                    </label>
+                  ))}
+                </div>
+                <div className={styles.approvalActions}>
+                  {pending.status !== "running" ? (
+                    <button type="button" onClick={approve} disabled={busy || Object.values(secureValues).some((value) => !value) || fileInputSpecs(pending.request?.body).some((spec) => !fileValues[spec.label] || fileValues[spec.label]!.size > spec.maxBytes)}>
+                      {c.approve}
+                    </button>
+                  ) : null}
                   <button type="button" onClick={reject} disabled={busy}>
                     {c.reject}
                   </button>
@@ -1193,13 +1515,15 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
               <label>
                 <span className={styles.composerLabel}>{c.assistantTitle}</span>
                 <textarea
+                  ref={composerRef}
                   rows={3}
                   maxLength={4000}
                   value={question}
                   onChange={(event) => setQuestion(event.target.value)}
+                  onKeyDown={(event) => { if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }}
                   placeholder={c.question}
-                  aria-disabled={!hydrated || busy || !selectedProfileId}
-                  disabled={hydrated ? busy || !selectedProfileId : undefined}
+                  aria-disabled={!hydrated || busy || historyBusy || Boolean(pending) || !selectedProfileId}
+                  disabled={hydrated ? busy || historyBusy || Boolean(pending) || !selectedProfileId : undefined}
                 />
               </label>
               <div className={styles.composerBar}>
@@ -1218,11 +1542,11 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
                   className={styles.sendButton}
                   type="submit"
                   aria-disabled={
-                    !hydrated || busy || !question.trim() || !selectedProfileId
+                    !hydrated || busy || historyBusy || Boolean(pending) || !question.trim() || !selectedProfileId
                   }
                   disabled={
                     hydrated
-                      ? busy || !question.trim() || !selectedProfileId
+                      ? busy || historyBusy || Boolean(pending) || !question.trim() || !selectedProfileId
                       : undefined
                   }
                 >
@@ -1237,6 +1561,7 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
                 </button>
               </div>
             </form>
+            <div className={styles.composerHelp}><details className={styles.toolDisclosure}><summary>{ui.privacy}</summary><p>{toolInventory.count.toLocaleString(locale)} {c.toolsAvailable} {toolInventory.domains.toLocaleString(locale)} {c.toolDomains}. {c.disclosure}</p></details><span>{ui.keyboard}</span></div>
           </div>
         </main>
       </div>
@@ -1501,11 +1826,12 @@ function AgentTrace({
                   ? ` · ${item.durationMs} ms`
                   : ""}
               </span>
-              {item.sql || item.purpose ? (
+              {item.sql || item.purpose || item.request ? (
                 <details className={styles.toolDetails}>
-                  <summary>SQL</summary>
+                  <summary>{item.request ? `${item.request.method} ${item.request.path}` : item.sql ? "SQL" : c.toolCall}</summary>
                   {item.purpose ? <p>{item.purpose}</p> : null}
                   {item.sql ? <pre dir="ltr">{item.sql}</pre> : null}
+                  {item.request ? <pre dir="ltr">{JSON.stringify({ risk: item.request.risk, query: item.request.query, body: item.request.body }, null, 2)}</pre> : null}
                 </details>
               ) : null}
             </div>

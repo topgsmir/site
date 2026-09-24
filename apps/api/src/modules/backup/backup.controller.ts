@@ -1,5 +1,5 @@
 import {
-  BadRequestException, Body, Controller, Delete, Get, Headers, HttpCode, HttpStatus, Ip, NotFoundException, Param, Patch, Post, Query, Req, Res,
+  BadRequestException, Body, Controller, Delete, Get, Headers, HttpCode, HttpStatus, Ip, NotFoundException, Param, ParseUUIDPipe, Patch, Post, Query, Req, Res,
   StreamableFile, UploadedFile, UseGuards, UseInterceptors
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
@@ -23,7 +23,7 @@ export class BackupSystemController {
   @Get("status") status() { return readSystemStatus(); }
 
   @Get("restores/:id")
-  async restoreStatus(@Param("id") id: string, @Headers("authorization") authorization?: string) {
+  async restoreStatus(@Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Headers("authorization") authorization?: string) {
     const token = authorization?.match(/^Bearer ([A-Za-z0-9_-]{43})$/)?.[1] ?? "";
     if (!await verifyRestoreMonitorToken(id, token)) throw new NotFoundException("Restore status was not found");
     const progress = await readRestoreProgress(id);
@@ -64,14 +64,14 @@ export class BackupController {
 
   @Patch("destinations/:id")
   @BrowserSessionMutation()
-  async updateDestination(@Param("id") id: string, @Body() body: UpdateBackupDestinationDto, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+  async updateDestination(@Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Body() body: UpdateBackupDestinationDto, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
     await this.rateLimits.consumeBackupAdmin(request.authenticatedUser!.id, clientIp);
     return this.destinations.update(id, body, request.authenticatedUser!.id);
   }
 
   @Delete("destinations/:id")
   @BrowserSessionMutation()
-  async removeDestination(@Param("id") id: string, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+  async removeDestination(@Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
     await this.rateLimits.consumeBackupAdmin(request.authenticatedUser!.id, clientIp);
     return this.destinations.remove(id, request.authenticatedUser!.id);
   }
@@ -79,7 +79,7 @@ export class BackupController {
   @Post("destinations/:id/test")
   @HttpCode(HttpStatus.OK)
   @BrowserSessionMutation()
-  async testDestination(@Param("id") id: string, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+  async testDestination(@Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
     await this.rateLimits.consumeBackupAdmin(request.authenticatedUser!.id, clientIp);
     return this.destinations.test(id, request.authenticatedUser!.id);
   }
@@ -92,12 +92,12 @@ export class BackupController {
     await this.rateLimits.consumeBackupAdmin(request.authenticatedUser!.id, clientIp);
     return this.destinations.listArchives(body.destinationId);
   }
-  @Get("runs/:id") getRun(@Param("id") id: string) { return this.runs.get(id); }
+  @Get("runs/:id") getRun(@Param("id", new ParseUUIDPipe({ version: "4" })) id: string) { return this.runs.get(id); }
 
   @Post("runs/:id/retry-deliveries")
   @HttpCode(HttpStatus.ACCEPTED)
   @BrowserSessionMutation()
-  async retryDeliveries(@Param("id") id: string, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+  async retryDeliveries(@Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
     await this.rateLimits.consumeBackupAdmin(request.authenticatedUser!.id, clientIp);
     return this.runs.retryDeliveries(id);
   }
@@ -112,7 +112,8 @@ export class BackupController {
   }
 
   @Get("runs/:id/download")
-  async download(@Param("id") id: string, @Res({ passthrough: true }) response: { setHeader(name: string, value: string): void }) {
+  async download(@Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Req() request: AuthenticatedRequest, @Ip() clientIp: string, @Res({ passthrough: true }) response: { setHeader(name: string, value: string): void }) {
+    await this.rateLimits.consumeBackupAdmin(request.authenticatedUser!.id, clientIp);
     const archive = await this.runs.archiveForDownload(id);
     response.setHeader("Content-Type", "application/octet-stream");
     response.setHeader("Content-Disposition", `attachment; filename="${archive.name}"`);

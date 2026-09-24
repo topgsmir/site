@@ -139,6 +139,16 @@ describe("database-backed authentication", () => {
   });
 
   it("persists every abuse-sensitive rate-limit action", async () => {
+    await rateLimits.consumeProfileMutation(rateUser, rateIp);
+    await rateLimits.consumeAdminUserOperation(rateUser, rateIp);
+    await rateLimits.consumeBlogMutation(rateUser, rateIp);
+    await rateLimits.consumeCouponMutation(rateUser, rateIp);
+    await rateLimits.consumeDigitalDownload(rateUser, rateIp);
+    await rateLimits.consumeNoticeConfiguration(rateUser, rateIp);
+    await rateLimits.consumeProductMutation(rateUser, rateIp);
+    await rateLimits.consumeSellerOperation(rateUser, rateIp);
+    await rateLimits.consumeStaffAdmin(rateUser, rateIp);
+    await rateLimits.consumeUsdConfiguration(rateUser, rateIp);
     await rateLimits.consumeMediaUpload(rateUser, rateIp);
     await rateLimits.consumeOtp(ratePhone, rateIp);
     await rateLimits.consumePaymentInitiation(rateUser, rateIp);
@@ -156,6 +166,16 @@ describe("database-backed authentication", () => {
       where: {
         action: {
           in: [
+            "profile",
+            "admin_user",
+            "blog",
+            "coupon",
+            "digital_download",
+            "notice_configuration",
+            "product",
+            "seller",
+            "staff_admin",
+            "usd_configuration",
             "media",
             "otp",
             "payment",
@@ -175,6 +195,16 @@ describe("database-backed authentication", () => {
     });
     const actions = new Set(rows.map((row) => row.action));
     for (const action of [
+      "profile",
+      "admin_user",
+      "blog",
+      "coupon",
+      "digital_download",
+      "notice_configuration",
+      "product",
+      "seller",
+      "staff_admin",
+      "usd_configuration",
       "media",
       "otp",
       "payment",

@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Ip, Param, ParseUUIDPipe, Patch, Post, Query, Req, Res, UseGuards } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { ParseConstrainedStringPipe } from "../../common/http/parse-constrained-string.pipe";
 import { AuthenticatedGuard } from "../../modules/auth/authenticated.guard";
 import { AuthRateLimitService } from "../../modules/auth/auth-rate-limit.service";
 import { IdempotencyKey } from "../../modules/auth/idempotency-key.decorator";
@@ -27,7 +28,14 @@ export class PaymentController {
 
   @Get("local/:authority")
   @UseGuards(AuthenticatedGuard)
-  localPayment(@Req() request: AuthenticatedRequest, @Param("authority") authority: string) {
+  localPayment(
+    @Req() request: AuthenticatedRequest,
+    @Param("authority", new ParseConstrainedStringPipe({
+      label: "Payment authority",
+      maxLength: 42,
+      pattern: /^local-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    })) authority: string
+  ) {
     return this.application.localPayment(request.authenticatedUser!, authority);
   }
 
@@ -36,7 +44,11 @@ export class PaymentController {
   async completeLocalPayment(
     @Req() request: AuthenticatedRequest,
     @Ip() clientIp: string,
-    @Param("authority") authority: string,
+    @Param("authority", new ParseConstrainedStringPipe({
+      label: "Payment authority",
+      maxLength: 42,
+      pattern: /^local-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    })) authority: string,
     @Body() body: CompleteLocalPaymentDto
   ) {
     await this.rateLimits.consumePaymentCallback(authority, clientIp);
@@ -60,13 +72,20 @@ export class PaymentController {
   async callback(@Query() query: PaymentCallbackQueryDto, @Ip() clientIp: string, @Res({ passthrough: true }) response: { redirect?(url: string): void }) {
     await this.rateLimits.consumePaymentCallback(query.Authority, clientIp);
     const result = await this.application.callback("zarinpal", query.Authority, query.Status);
-    const webUrl = this.config.get<string>("WEB_APP_URL")?.trim().replace(/\/$/, "");
-    if (webUrl && /^https:\/\//i.test(webUrl) && response.redirect) {
+    const configuredWebUrl = this.config.get<string>("WEB_APP_URL")?.trim();
+    let webOrigin: string | null = null;
+    try {
+      const parsed = new URL(configuredWebUrl ?? "");
+      if (parsed.protocol === "https:" && !parsed.username && !parsed.password && parsed.pathname === "/" && !parsed.search && !parsed.hash) {
+        webOrigin = parsed.origin;
+      }
+    } catch { /* A malformed deployment URL disables the browser redirect. */ }
+    if (webOrigin && response.redirect) {
       const locale = this.config.get<string>("DEFAULT_LOCALE")?.trim() || "fa";
       const safeLocale = ["fa", "en", "ar"].includes(locale) ? locale : "fa";
       const destination = "checkoutId" in result && result.checkoutId
-        ? `${webUrl}/${safeLocale}/checkout/${result.checkoutId}?payment=${result.status}`
-        : `${webUrl}/${safeLocale}/orders/${"orderId" in result ? result.orderId : ""}?payment=${result.status}`;
+        ? `${webOrigin}/${safeLocale}/checkout/${result.checkoutId}?payment=${result.status}`
+        : `${webOrigin}/${safeLocale}/orders/${"orderId" in result ? result.orderId : ""}?payment=${result.status}`;
       response.redirect(destination);
     }
     return result;

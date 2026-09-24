@@ -135,7 +135,7 @@ export class BackupDestinationService {
   }
 
   async upload(destination: StoredDestination, localPath: string, archiveName: string) {
-    if (!/^topgsm-[0-9]{8}T[0-9]{6}Z-[0-9a-f-]{36}[.]topgsm-backup$/i.test(archiveName) || basename(archiveName) !== archiveName) throw new BadRequestException("Archive name is invalid");
+    if (!/^topgsm-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}[.]topgsm-backup$/i.test(archiveName) || basename(archiveName) !== archiveName) throw new BadRequestException("Archive name is invalid");
     const remotePath = posix.join(destination.remote_path, archiveName);
     await this.withConnection(destination, async (connection) => {
       if (connection.kind === "sftp") {
@@ -151,7 +151,7 @@ export class BackupDestinationService {
   }
 
   async download(destination: StoredDestination, remoteName: string, localPath: string) {
-    if (!/^topgsm-[0-9]{8}T[0-9]{6}Z-[0-9a-f-]{36}[.]topgsm-backup$/i.test(remoteName)) throw new BadRequestException("Remote archive name is invalid");
+    if (!/^topgsm-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}[.]topgsm-backup$/i.test(remoteName)) throw new BadRequestException("Remote archive name is invalid");
     await this.withConnection(destination, async (connection) => {
       if (connection.kind === "sftp") await connection.client.fastGet(posix.join(destination.remote_path, remoteName), localPath);
       else { await connection.client.cd(destination.remote_path); await connection.client.downloadTo(localPath, remoteName); }
@@ -163,11 +163,11 @@ export class BackupDestinationService {
     if (!destination.verified_at) throw new ConflictException("Test the destination successfully before refreshing its backup catalog");
     const values = await this.withConnection(destination, async (connection) => {
       if (connection.kind === "sftp") return (await connection.client.list(destination.remote_path)).flatMap((entry) => {
-        if (entry.type !== "-" || !/^topgsm-[0-9]{8}T[0-9]{6}Z-[0-9a-f-]{36}[.]topgsm-backup$/i.test(entry.name)) return [];
+        if (entry.type !== "-" || !/^topgsm-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}[.]topgsm-backup$/i.test(entry.name)) return [];
         return [this.remoteArchive(destination, entry.name, entry.size, entry.modifyTime > 0 ? new Date(entry.modifyTime) : null)];
       });
       return (await connection.client.list(destination.remote_path)).flatMap((entry) => {
-        if (!entry.isFile || !/^topgsm-[0-9]{8}T[0-9]{6}Z-[0-9a-f-]{36}[.]topgsm-backup$/i.test(entry.name)) return [];
+        if (!entry.isFile || !/^topgsm-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}[.]topgsm-backup$/i.test(entry.name)) return [];
         return [this.remoteArchive(destination, entry.name, entry.size, entry.modifiedAt ?? null)];
       });
     });
@@ -204,7 +204,7 @@ export class BackupDestinationService {
       const entries = connection.kind === "sftp"
         ? (await connection.client.list(destination.remote_path)).filter((item) => item.type === "-").map((item) => item.name)
         : (await connection.client.list(destination.remote_path)).filter((item) => item.isFile).map((item) => item.name);
-      const archives = entries.filter((name) => /^topgsm-[0-9]{8}T[0-9]{6}Z-[0-9a-f-]{36}[.]topgsm-backup$/i.test(name)).sort().reverse();
+      const archives = entries.filter((name) => /^topgsm-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}[.]topgsm-backup$/i.test(name)).sort().reverse();
       if (connection.kind === "ftp") await connection.client.cd(destination.remote_path);
       for (const name of archives.slice(destination.retention_count)) {
         if (connection.kind === "sftp") await connection.client.delete(posix.join(destination.remote_path, name));

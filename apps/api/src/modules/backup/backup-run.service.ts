@@ -129,7 +129,7 @@ export class BackupRunService {
     try {
       const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as { v?: number; createdAt?: string; id?: string };
       const createdAt = new Date(parsed.createdAt ?? "");
-      if (parsed.v !== 1 || Number.isNaN(createdAt.getTime()) || !parsed.id || !/^[0-9a-f-]{36}$/i.test(parsed.id)) throw new Error("invalid");
+      if (parsed.v !== 1 || Number.isNaN(createdAt.getTime()) || !parsed.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(parsed.id)) throw new Error("invalid");
       return { createdAt, id: parsed.id };
     } catch { throw new ConflictException("Backup cursor is invalid"); }
   }

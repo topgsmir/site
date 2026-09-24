@@ -68,6 +68,16 @@ describe("multilingual blog security", () => {
       }),
       BadRequestException
     );
+    assert.throws(
+      () => validateRichText({
+        type: "doc",
+        content: [{
+          type: "paragraph",
+          content: [{ type: "text", text: "email", marks: [{ type: "link", attrs: { href: "mailto:user%0a@example.com" } }] }]
+        }]
+      }),
+      BadRequestException
+    );
   });
 
   it("accepts allowlisted content and extracts same-origin media ids", () => {
@@ -91,6 +101,22 @@ describe("multilingual blog security", () => {
         },
         { type: "horizontalRule" }
       ]
+    });
+  });
+
+  it("canonicalizes rich text and drops unrecognized attributes and properties", () => {
+    const result = validateRichText({
+      type: "doc",
+      ignored: "not persisted",
+      content: [{
+        type: "paragraph",
+        attrs: { onclick: "alert(1)" },
+        content: [{ type: "text", text: "Safe", unknown: true, marks: [{ type: "bold", attrs: { style: "display:none" } }] }]
+      }]
+    });
+    assert.deepEqual(result.content, {
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text: "Safe", marks: [{ type: "bold" }] }] }]
     });
   });
 

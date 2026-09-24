@@ -81,7 +81,7 @@
 .profileDialog form > header button { border: 0; color: var(--color-dashboard-muted); background: transparent; cursor: pointer; }
 .profileDialog fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-dashboard-md); padding: 0; border: 0; }
 .profileDialog label { display: grid; gap: var(--space-dashboard-xs); color: var(--color-dashboard-ink-soft); font-size: var(--text-dashboard-xs); font-weight: 600; }
-.profileDialog input:not([type="checkbox"]), .profileDialog textarea { width: 100%; min-height: 44px; padding: .7rem var(--space-dashboard-md); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-control); color: var(--color-dashboard-ink); background: var(--color-dashboard-surface-raised); font: inherit; }
+.profileDialog input:not([type="checkbox"]), .profileDialog select, .profileDialog textarea { width: 100%; min-height: 44px; padding: .7rem var(--space-dashboard-md); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-control); color: var(--color-dashboard-ink); background: var(--color-dashboard-surface-raised); font: inherit; }
 .profileDialog textarea { min-height: 6rem; resize: vertical; }
 .profileDialog footer button { min-height: 44px; padding-inline: var(--space-dashboard-lg); border: 0; border-radius: var(--radius-dashboard-round); color: var(--color-dashboard-accent-ink); background: var(--color-dashboard-accent); font: inherit; font-weight: 700; cursor: pointer; }
 .enableBox { display: flex !important; align-items: center; gap: var(--space-dashboard-sm) !important; }

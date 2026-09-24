@@ -7,8 +7,7 @@ import { Client } from "pg";
 import type { BackupComponent } from "@topgsm/shared-types";
 import { BackupArchiveService, type BackupArchiveManifest } from "./backup-archive.service";
 import { BackupPathsService } from "./backup-paths.service";
-
-const MEDIA_BACKUP_LOCK = 8_204_211_947;
+import { MEDIA_BACKUP_LOCK } from "../media/media-backup-lock";
 
 type CreatedBackup = {
   manifest: BackupArchiveManifest;
@@ -123,6 +122,8 @@ export class BackupCreatorService {
       SELECT path FROM blog_media_variants
       UNION
       SELECT path FROM product_media_variants
+      UNION
+      SELECT path FROM seller_profile_media_assets
       ORDER BY path
     `);
     return rows.rows.map(({ path }) => path.replaceAll("\\", "/"));
@@ -172,4 +173,4 @@ export class BackupCreatorService {
   }
 }
 
-export { MEDIA_BACKUP_LOCK };
+export { MEDIA_BACKUP_LOCK } from "../media/media-backup-lock";

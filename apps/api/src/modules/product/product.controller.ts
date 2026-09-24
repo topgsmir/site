@@ -1,4 +1,7 @@
 import { ProductTranslationsService } from "./product-translations.service";
+import { ProductCategoriesQueryDto, UpdateProductCategoryDto } from "./dto/product-category.dto";
+import { BrowserSessionMutation } from "../auth/browser-session-mutation.decorator";
+import { ParseConstrainedStringPipe, ROUTE_SLUG_PATTERN } from "../../common/http/parse-constrained-string.pipe";
 import { ProductLocaleQueryDto, ProductTranslationParamsDto, ProductTranslationDraftDto } from "./dto/product-seo.dto";
 import {
   Body,
@@ -59,6 +62,24 @@ export class ProductController {
     return this.productService.listPublicPage(query);
   }
 
+  @Get("categories")
+  listCategories(@Query() query: ProductCategoriesQueryDto) {
+    return this.productService.listCategories(query);
+  }
+
+  @Patch("admin/categories/:categoryId")
+  @BrowserSessionMutation()
+  @UseGuards(PlatformAdminGuard)
+  async updateCategory(
+    @Param("categoryId", new ParseUUIDPipe({ version: "4" })) categoryId: string,
+    @Body() body: UpdateProductCategoryDto,
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
+  ) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
+    return this.productService.updateCategory(categoryId, request.authenticatedUser!.id, body);
+  }
+
   @Get("admin/:productId/translations")
   @UseGuards(PlatformAdminGuard)
   listTranslations(@Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string) {
@@ -67,19 +88,22 @@ export class ProductController {
 
   @Patch("admin/:productId/translations/:locale")
   @UseGuards(PlatformAdminGuard)
-  saveTranslation(@Param() params: ProductTranslationParamsDto, @Body() body: ProductTranslationDraftDto, @Req() request: AuthenticatedRequest) {
+  async saveTranslation(@Param() params: ProductTranslationParamsDto, @Body() body: ProductTranslationDraftDto, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
     return this.translations.change(params.productId, params.locale, request.authenticatedUser!.id, "draft", body);
   }
 
   @Post("admin/:productId/translations/:locale/publish")
   @UseGuards(PlatformAdminGuard)
-  publishTranslation(@Param() params: ProductTranslationParamsDto, @Req() request: AuthenticatedRequest) {
+  async publishTranslation(@Param() params: ProductTranslationParamsDto, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
     return this.translations.change(params.productId, params.locale, request.authenticatedUser!.id, "publish");
   }
 
   @Post("admin/:productId/translations/:locale/unpublish")
   @UseGuards(PlatformAdminGuard)
-  unpublishTranslation(@Param() params: ProductTranslationParamsDto, @Req() request: AuthenticatedRequest) {
+  async unpublishTranslation(@Param() params: ProductTranslationParamsDto, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
     return this.translations.change(params.productId, params.locale, request.authenticatedUser!.id, "unpublish");
   }
 
@@ -110,7 +134,8 @@ export class ProductController {
 
   @Post("admin/changes/bulk-undo/preview")
   @UseGuards(PlatformAdminGuard)
-  previewBulkUndo(@Body() body: PreviewBulkUndoProductChangesDto) {
+  async previewBulkUndo(@Body() body: PreviewBulkUndoProductChangesDto, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+    await this.rateLimits.consumeProductBulkUndo(request.authenticatedUser!.id, clientIp);
     return this.productService.previewBulkUndo(body);
   }
 
@@ -142,11 +167,13 @@ export class ProductController {
 
   @Post("admin/:productId/restore")
   @UseGuards(PlatformAdminGuard)
-  restoreProduct(
+  async restoreProduct(
     @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
     @Body() body: RestoreProductChangeDto,
-    @Req() request: AuthenticatedRequest
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
   ) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
     return this.productService.restoreProductChange(
       productId,
       body.changeId,
@@ -171,10 +198,12 @@ export class ProductController {
 
   @Post()
   @UseGuards(SellerProductsGuard)
-  create(
+  async create(
     @Body() body: CreateProductDto,
-    @Req() request: AuthenticatedRequest
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
   ) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
     return this.productService.createProduct(
       request.sellerContext!.sellerId,
       request.sellerContext!.user.id,
@@ -184,11 +213,13 @@ export class ProductController {
 
   @Patch("admin/:productId")
   @UseGuards(PlatformAdminGuard)
-  updateForAdmin(
+  async updateForAdmin(
     @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
     @Body() body: UpdateAdminProductDto,
-    @Req() request: AuthenticatedRequest
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
   ) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
     return this.productService.updateAdminProduct(
       productId,
       request.authenticatedUser!.id,
@@ -198,7 +229,7 @@ export class ProductController {
 
   @Post("admin/:productId/image")
   @UseGuards(PlatformAdminGuard)
-  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 8 * 1024 * 1024, files: 1 } }))
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 8 * 1024 * 1024, files: 1, fields: 0, parts: 1 } }))
   async uploadImageForAdmin(
     @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
     @UploadedFile() file: Express.Multer.File | undefined,
@@ -211,16 +242,18 @@ export class ProductController {
 
   @Delete("admin/:productId/image")
   @UseGuards(PlatformAdminGuard)
-  deleteImageForAdmin(
+  async deleteImageForAdmin(
     @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
-    @Req() request: AuthenticatedRequest
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
   ) {
+    await this.rateLimits.consumeMediaUpload(request.authenticatedUser!.id, clientIp);
     return this.media.deleteProductImage(productId, null, request.authenticatedUser!.id);
   }
 
   @Post(":productId/image")
   @UseGuards(SellerProductsGuard)
-  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 8 * 1024 * 1024, files: 1 } }))
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 8 * 1024 * 1024, files: 1, fields: 0, parts: 1 } }))
   async uploadImage(
     @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
     @UploadedFile() file: Express.Multer.File | undefined,
@@ -238,38 +271,48 @@ export class ProductController {
 
   @Delete(":productId/image")
   @UseGuards(SellerProductsGuard)
-  deleteImage(
+  async deleteImage(
     @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
-    @Req() request: AuthenticatedRequest
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
   ) {
+    await this.rateLimits.consumeMediaUpload(request.authenticatedUser!.id, clientIp);
     return this.media.deleteProductImage(productId, request.sellerContext!.sellerId, request.authenticatedUser!.id);
   }
 
   @Patch("admin/listings/:listingId")
   @UseGuards(PlatformAdminGuard)
-  updateListingForAdmin(
+  async updateListingForAdmin(
     @Param("listingId", new ParseUUIDPipe({ version: "4" })) listingId: string,
-    @Body() body: UpdateAdminListingDto
+    @Body() body: UpdateAdminListingDto,
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
   ) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
     return this.productService.updateAdminListing(listingId, body.status);
   }
 
   @Patch("admin/offers/:offerId")
   @UseGuards(PlatformAdminGuard)
-  updateOfferForAdmin(
+  async updateOfferForAdmin(
     @Param("offerId", new ParseUUIDPipe({ version: "4" })) offerId: string,
-    @Body() body: UpdateSellerOfferDto
+    @Body() body: UpdateSellerOfferDto,
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
   ) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
     return this.productService.updateAdminOffer(offerId, body);
   }
 
   @Patch(":productId")
   @UseGuards(SellerProductsGuard)
-  update(
+  async update(
     @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
     @Body() body: UpdateProductDto,
-    @Req() request: AuthenticatedRequest
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
   ) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
     return this.productService.updateProduct(
       request.sellerContext!.sellerId,
       productId,
@@ -280,11 +323,13 @@ export class ProductController {
 
   @Patch("admin/:productId/review")
   @UseGuards(PlatformAdminGuard)
-  review(
+  async review(
     @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
     @Body() body: ReviewProductDto,
-    @Req() request: AuthenticatedRequest
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
   ) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
     return this.productService.reviewProduct(
       productId,
       request.authenticatedUser!.id,
@@ -295,11 +340,13 @@ export class ProductController {
 
   @Post(":productId/offers")
   @UseGuards(SellerProductsGuard)
-  addOffers(
+  async addOffers(
     @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
     @Body() body: AddSellerOffersDto,
-    @Req() request: AuthenticatedRequest
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
   ) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
     return this.productService.addSellerOffers(
       request.sellerContext!.sellerId,
       productId,
@@ -309,11 +356,13 @@ export class ProductController {
 
   @Patch("offers/:offerId")
   @UseGuards(SellerProductsGuard)
-  updateOffer(
+  async updateOffer(
     @Param("offerId", new ParseUUIDPipe({ version: "4" })) offerId: string,
     @Body() body: UpdateSellerOfferDto,
-    @Req() request: AuthenticatedRequest
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
   ) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
     return this.productService.updateSellerOffer(
       request.sellerContext!.sellerId,
       offerId,
@@ -322,7 +371,7 @@ export class ProductController {
   }
 
   @Get(":idOrSlug")
-  get(@Param("idOrSlug") idOrSlug: string, @Query() query: ProductLocaleQueryDto) {
+  get(@Param("idOrSlug", new ParseConstrainedStringPipe({ label: "Product identifier", maxLength: 200, pattern: ROUTE_SLUG_PATTERN })) idOrSlug: string, @Query() query: ProductLocaleQueryDto) {
     return this.productService.getPublic(idOrSlug, query.locale);
   }
 }

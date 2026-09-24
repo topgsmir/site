@@ -60,6 +60,14 @@ export class QuoteCheckoutDto {
   items!: CheckoutLineDto[];
 }
 
+export class CheckoutShippingPlacesDto extends QuoteCheckoutDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  provinceId?: number;
+}
+
 export class ShippingAddressDto {
   @IsString() @MinLength(2) @MaxLength(120) recipientName!: string;
   @IsString() @Matches(/^(?:\+98|0098|98|0)?9\d{9}$/) phoneNumber!: string;

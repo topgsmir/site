@@ -9,9 +9,9 @@
 .toggle > span { display: grid; gap: var(--space-dashboard-2xs); }
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-dashboard-md); }
 .workspace form label { display: grid; gap: var(--space-dashboard-xs); color: var(--color-dashboard-ink-soft); font-size: var(--text-dashboard-xs); font-weight: 600; }
-.workspace input:not([type="checkbox"]), .workspace textarea { width: 100%; min-height: 44px; padding: .75rem var(--space-dashboard-md); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-control); color: var(--color-dashboard-ink); background: var(--color-dashboard-surface-raised); font: inherit; }
+.workspace input:not([type="checkbox"]), .workspace select, .workspace textarea { width: 100%; min-height: 44px; padding: .75rem var(--space-dashboard-md); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-control); color: var(--color-dashboard-ink); background: var(--color-dashboard-surface-raised); font: inherit; }
 .workspace textarea { min-height: 7rem; resize: vertical; }
-.workspace input:focus-visible, .workspace textarea:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
+.workspace input:focus-visible, .workspace select:focus-visible, .workspace textarea:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
 .workspace footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-dashboard-lg); padding-block-start: var(--space-dashboard-lg); border-block-start: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
 .workspace footer span { color: var(--color-dashboard-success); font-size: var(--text-dashboard-sm); }
 .workspace footer span[data-error="true"] { color: var(--color-dashboard-error); }

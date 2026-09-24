@@ -24,12 +24,14 @@ export class BridgeController {
   }
 
   @Post("connections") @UseGuards(SellerBridgeGuard)
-  createConnection(@Req() request: AuthenticatedRequest, @Body() body: CreateBridgeConnectionDto) {
+  async createConnection(@Req() request: AuthenticatedRequest, @Ip() clientIp: string, @Body() body: CreateBridgeConnectionDto) {
+    await this.rateLimits.consumeBridgeOperation(request.authenticatedUser!.id, clientIp);
     return this.bridge.createConnection(request.sellerContext!.sellerId, request.sellerContext!.membershipRole, body);
   }
 
   @Patch("connections/:id") @UseGuards(SellerBridgeGuard)
-  rotateConnection(@Req() request: AuthenticatedRequest, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Body() body: RotateBridgeConnectionDto) {
+  async rotateConnection(@Req() request: AuthenticatedRequest, @Ip() clientIp: string, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Body() body: RotateBridgeConnectionDto) {
+    await this.rateLimits.consumeBridgeOperation(request.authenticatedUser!.id, clientIp);
     return this.bridge.rotateConnection(request.sellerContext!.sellerId, request.sellerContext!.membershipRole, id, body);
   }
 
@@ -46,7 +48,8 @@ export class BridgeController {
   }
 
   @Delete("connections/:id") @UseGuards(SellerBridgeGuard)
-  deactivate(@Req() request: AuthenticatedRequest, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string) {
+  async deactivate(@Req() request: AuthenticatedRequest, @Ip() clientIp: string, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string) {
+    await this.rateLimits.consumeBridgeOperation(request.authenticatedUser!.id, clientIp);
     return this.bridge.deactivate(request.sellerContext!.sellerId, request.sellerContext!.membershipRole, id);
   }
 
@@ -63,20 +66,24 @@ export class BridgeController {
   adminServices() { return this.bridge.listAdminServices(); }
 
   @Post("products/:productId/accept-schema") @UseGuards(SellerBridgeGuard)
-  acceptSchema(
+  async acceptSchema(
     @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string,
     @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string
   ) {
+    await this.rateLimits.consumeBridgeOperation(request.authenticatedUser!.id, clientIp);
     return this.bridge.acceptProductSchema(request.sellerContext!.sellerId, productId);
   }
 
   @Post("admin/grants") @UseGuards(PlatformAdminGuard)
-  grant(@Req() request: AuthenticatedRequest, @Body() body: GrantBridgeServiceDto) {
+  async grant(@Req() request: AuthenticatedRequest, @Ip() clientIp: string, @Body() body: GrantBridgeServiceDto) {
+    await this.rateLimits.consumeBridgeOperation(request.authenticatedUser!.id, clientIp);
     return this.bridge.activateGrant(body.serviceId, request.authenticatedUser!.id);
   }
 
   @Post("admin/grants/:id/revoke") @UseGuards(PlatformAdminGuard)
-  revoke(@Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Body() body: RevokeBridgeGrantDto) {
+  async revoke(@Req() request: AuthenticatedRequest, @Ip() clientIp: string, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Body() body: RevokeBridgeGrantDto) {
+    await this.rateLimits.consumeBridgeOperation(request.authenticatedUser!.id, clientIp);
     return this.bridge.revokeGrant(id, body.productAction);
   }
 
@@ -86,7 +93,8 @@ export class BridgeController {
   }
 
   @Post("orders/:id/complete") @UseGuards(SellerBridgeGuard)
-  completeOrder(@Req() request: AuthenticatedRequest, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Body() body: CompleteBridgeOrderDto) {
+  async completeOrder(@Req() request: AuthenticatedRequest, @Ip() clientIp: string, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Body() body: CompleteBridgeOrderDto) {
+    await this.rateLimits.consumeBridgeOperation(request.authenticatedUser!.id, clientIp);
     return this.fulfillments.completeManual(request.sellerContext!.sellerId, request.authenticatedUser!.id, id, body.result);
   }
 
@@ -97,7 +105,8 @@ export class BridgeController {
   }
 
   @Post("orders/:id/refund-request") @UseGuards(AuthenticatedGuard)
-  requestRefund(@Req() request: AuthenticatedRequest, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Body() body: RequestBridgeRefundDto) {
+  async requestRefund(@Req() request: AuthenticatedRequest, @Ip() clientIp: string, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Body() body: RequestBridgeRefundDto) {
+    await this.rateLimits.consumeBridgeOperation(request.authenticatedUser!.id, clientIp);
     return this.fulfillments.requestRefund(request.authenticatedUser!.id, id, body.reason);
   }
 

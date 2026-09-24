@@ -62,6 +62,8 @@ const fields: Record<string, { fa: string; ar: string }> = {
   externalOrderId: { fa: "شناسه سفارش حمل", ar: "معرّف طلب الشحن" },
   providerOrderId: { fa: "شناسه سفارش نزد سرویس", ar: "معرّف الطلب لدى الخدمة" },
   amadastTrackingCode: { fa: "کد رهگیری آمادست", ar: "رمز تتبع أمادست" },
+  providerTrackingCode: { fa: "کد رهگیری سرویس", ar: "رمز تتبع المزود" },
+  providerOrderReference: { fa: "شناسه سفارش سرویس", ar: "مرجع طلب المزود" },
   courierTrackingCode: { fa: "کد رهگیری پیک", ar: "رمز تتبع المندوب" },
   courierTitle: { fa: "نام پیک", ar: "اسم المندوب" },
   attemptCount: { fa: "تعداد تلاش‌ها", ar: "عدد المحاولات" },
@@ -175,7 +177,7 @@ const values: Record<string, { fa: string; ar: string }> = {
 };
 
 const translatedValueKeys = new Set(["status", "fromStatus", "toStatus", "productType", "mode", "role", "trafficSource", "outcome", "action", "type"]);
-const ltrKeys = new Set(["id", "buyerId", "sellerId", "checkoutId", "itemId", "offerId", "groupId", "grantId", "providerOrderId", "externalOrderId", "externalServiceId", "providerReference", "email", "username", "phoneNumber", "postalCode", "trackingCode", "amadastTrackingCode", "courierTrackingCode", "downloadUrl", "destinationHost", "currency", "errorCode", "failureCode"]);
+const ltrKeys = new Set(["id", "buyerId", "sellerId", "checkoutId", "itemId", "offerId", "groupId", "grantId", "providerOrderId", "providerOrderReference", "externalOrderId", "externalServiceId", "providerReference", "email", "username", "phoneNumber", "postalCode", "trackingCode", "providerTrackingCode", "amadastTrackingCode", "courierTrackingCode", "downloadUrl", "destinationHost", "currency", "errorCode", "failureCode"]);
 
 export function orderFieldLabel(key: string, locale: Locale) {
   if (locale !== "en" && fields[key]) return fields[key][locale];

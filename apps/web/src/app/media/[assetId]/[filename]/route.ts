@@ -8,15 +8,20 @@ export async function GET(
   { params }: { params: Promise<{ assetId: string; filename: string }> }
 ) {
   const { assetId, filename } = await params;
-  if (!/^[0-9a-f-]{36}$/i.test(assetId) || !/^[a-z0-9-]+\.webp$/.test(filename)) {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(assetId) ||
+    filename.length > 85 ||
+    !/^[a-z0-9-]{1,80}\.webp$/.test(filename)
+  ) {
     return new Response("Not found", { status: 404 });
   }
   const mediaOrigin = SERVER_API_BASE.replace(/\/api$/, "");
   const cookie = (await cookies()).toString();
+  const ifNoneMatch = request.headers.get("if-none-match");
   const upstream = await fetch(`${mediaOrigin}/media/${assetId}/${filename}`, {
     headers: {
       ...(cookie ? { cookie } : {}),
-      ...(request.headers.get("if-none-match") ? { "if-none-match": request.headers.get("if-none-match")! } : {})
+      ...(ifNoneMatch && ifNoneMatch.length <= 128 ? { "if-none-match": ifNoneMatch } : {})
     },
     cache: "no-store"
   });

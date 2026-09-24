@@ -537,7 +537,16 @@ export class BlogService {
         id: product.id,
         title: product.translations.find((item) => item.locale === locale)?.published_title ?? product.title,
         slug: product.slug,
-        startingPrices: this.startingPrices(product)
+        startingPrices: this.startingPrices(product),
+        image: product.media ? {
+          id: product.media.id,
+          variants: product.media.variants.map((variant) => ({
+            name: variant.variant as "thumb" | "large",
+            url: `/media/${product.media!.id}/${variant.variant}.webp`,
+            width: variant.width,
+            height: variant.height
+          }))
+        } : null
       })),
       alternateSlugs: Object.fromEntries(
         post.routes.filter((item) => item.is_current).map((item) => [item.locale, item.slug])
@@ -1107,7 +1116,8 @@ export class BlogService {
               product: {
                 include: {
                   translations: { where: { locale, published_at: { not: null } }, select: { locale: true, published_title: true } },
-                  variants: { include: { offers: { where: { status: "active" }, select: { price: true, currency: true } } } }
+                  media: { include: { variants: true } },
+                  variants: { include: { offers: { where: { status: "active", listing: { status: "active", seller: { approved: true, invited: false, suspended_at: null } } }, select: { price: true, currency: true } } } }
                 }
               }
             }
@@ -1195,11 +1205,12 @@ export class BlogService {
     const minimum = new Map<string, Prisma.Decimal>();
     for (const variant of product.variants) {
       for (const offer of variant.offers) {
-        const current = minimum.get(offer.currency);
-        if (!current || offer.price.lessThan(current)) minimum.set(offer.currency, offer.price);
+        const currency = offer.currency.trim();
+        const current = minimum.get(currency);
+        if (!current || offer.price.lessThan(current)) minimum.set(currency, offer.price);
       }
     }
-    return [...minimum.entries()].map(([currency, price]) => ({ currency: currency.trim(), price: price.toString() }));
+    return [...minimum.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([currency, price]) => ({ currency, price: price.toString() }));
   }
 
   private clean(value: string) {

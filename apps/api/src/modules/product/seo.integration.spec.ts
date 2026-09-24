@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { Client } from "pg";
 import { ConfigService } from "@nestjs/config";
 import { Test } from "@nestjs/testing";
+import { Reflector } from "@nestjs/core";
 import { ValidationPipe, UnauthorizedException, type INestApplication } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
 import { assertDedicatedTestDatabase } from "../../test/test-database";
@@ -14,6 +15,7 @@ import { ProductTranslationsService } from "./product-translations.service";
 import { ProductController } from "./product.controller";
 import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
 import { RequestAuthenticationService } from "../auth/request-authentication.service";
+import { BrowserMutationGuard } from "../auth/browser-mutation.guard";
 import type { AuthenticatedRequest } from "../auth/platform-admin.guard";
 import { MediaService } from "../media/media.service";
 import { SeoService } from "../seo/seo.service";
@@ -22,7 +24,7 @@ import type { BlogActor } from "../blog/blog-manage.guard";
 
 assertDedicatedTestDatabase();
 const prisma = new PrismaService();
-const config = new ConfigService({ BRIDGE_FEATURE_ENABLED: "false" });
+const config = new ConfigService({ BRIDGE_FEATURE_ENABLED: "false", WEB_ORIGIN: "http://localhost:3000" });
 const products = new ProductService(prisma, config);
 const translations = new ProductTranslationsService(prisma);
 const seo = new SeoService(prisma, config);
@@ -37,6 +39,7 @@ const postIds: string[] = [];
 let categoryId: string;
 let tagId: string;
 let mediaId: string;
+let productCategoryId: string;
 
 before(async () => {
   await prisma.$connect();
@@ -80,6 +83,7 @@ before(async () => {
     } } }
   ] }).compile();
   app = module.createNestApplication({ logger: false });
+  app.useGlobalGuards(new BrowserMutationGuard(new Reflector(),config));
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }));
   await app.listen(0, "127.0.0.1");
   base = await app.getUrl();
@@ -95,12 +99,34 @@ after(async () => {
   await prisma.product_change_events.deleteMany({ where: { product_id: { in: ids } } });
   await prisma.seller_listings.deleteMany({ where: { product_id: { in: ids } } });
   await prisma.products.deleteMany({ where: { id: { in: ids } } });
+  if (productCategoryId) {
+    await prisma.product_category_events.deleteMany({ where: { category_id: productCategoryId } });
+    await prisma.product_categories.delete({ where: { id: productCategoryId } });
+  }
   if (sellerId) await prisma.sellers.delete({ where: { id: sellerId } });
   await prisma.users.deleteMany({ where: { id: { in: [adminId, sellerUserId].filter(Boolean) } } });
   await prisma.$disconnect();
 });
 
 describe("product SEO database and HTTP contracts", () => {
+  it("bounds category reads and restricts shared category edits to administrators", async () => {
+    const product = await products.updateAdminProduct(ids[1]!,adminId,{ category: `HTTP category ${suffix}` });
+    productCategoryId = product.categoryId!;
+    const url = `${base}/products/admin/categories/${productCategoryId}`;
+    const options = { method: "PATCH",headers: { "Content-Type": "application/json", origin: "http://localhost:3000" },body: JSON.stringify({ name: `Renamed HTTP category ${suffix}` }) };
+    assert.equal((await fetch(url,options)).status,401);
+    assert.equal((await fetch(url,{ ...options,headers: { ...options.headers,authorization: "seller" } })).status,403);
+    assert.equal((await fetch(url,{ ...options,headers: { ...options.headers,authorization: "admin" } })).status,200);
+    assert.equal((await fetch(url,{ ...options,headers: { ...options.headers,authorization: "admin",origin: "https://attacker.example" } })).status,403);
+    assert.equal((await fetch(url,{ ...options,headers: { ...options.headers,authorization: "admin" },body: JSON.stringify({ name: " " }) })).status,400);
+    assert.equal((await fetch(url,{ ...options,headers: { ...options.headers,authorization: "admin" },body: JSON.stringify({ translations: [null] }) })).status,400);
+    assert.equal((await fetch(`${base}/products/categories?limit=51`)).status,400);
+    assert.equal((await fetch(`${base}/products/categories?cursor=invalid`)).status,400);
+    const page = await (await fetch(`${base}/products/categories?limit=1`)).json() as { items: Array<{ id: string }> };
+    assert.equal(page.items.length,1);
+    assert.equal(page.items[0].id,productCategoryId);
+  });
+
   it("paginates beyond 50 products, preserves the legacy array and rejects invalid cursors", async () => {
     const first = await products.listPublicPage({ search: suffix, limit: 50 });
     assert.equal(first.items.length, 50); assert.ok(first.nextCursor);

@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { ForbiddenException } from "@nestjs/common";
+import { ConflictException, ForbiddenException } from "@nestjs/common";
 import { describe, it } from "node:test";
 import type { AppUser } from "@topgsm/shared-types";
 import type { PrismaService } from "../../prisma/prisma.service";
@@ -13,7 +13,9 @@ const input = {
   province: "Tehran",
   city: "Tehran",
   addressLine: "Seller origin address",
-  postalCode: "1234567890"
+  postalCode: "1234567890",
+  latitude: 35.6892,
+  longitude: 51.389
 };
 
 describe("SellerShippingProfileService", () => {
@@ -29,13 +31,21 @@ describe("SellerShippingProfileService", () => {
     await assert.rejects(() => new SellerShippingProfileService(prisma).updateAdmin("seller-1", "admin-1", input), ForbiddenException);
   });
 
+  it("prevents two ready shipping tenants from sharing one provider account mobile", async () => {
+    const prisma = {
+      seller_memberships: { findFirst: async () => ({ seller_id: "seller-1" }) },
+      seller_shipping_profiles: { findFirst: async () => ({ seller_id: "seller-2" }) }
+    } as unknown as PrismaService;
+    await assert.rejects(() => new SellerShippingProfileService(prisma).updateMine(sellerActor, input), ConflictException);
+  });
+
   it("scopes seller writes to the authenticated membership and audits only changed field names", async () => {
     let upsertSellerId: string | undefined;
     let audit: Record<string, unknown> | undefined;
-    const saved = { enabled: true, sender_name: "Seller Shop", sender_mobile: "09120000000", province: "Tehran", city: "Tehran", address_line: "Seller origin address", postal_code: "1234567890", updated_at: new Date("2026-09-17T00:00:00Z") };
+    const saved = { enabled: true, sender_name: "Seller Shop", sender_mobile: "09120000000", province: "Tehran", city: "Tehran", address_line: "Seller origin address", postal_code: "1234567890", latitude: 35.6892, longitude: 51.389, updated_at: new Date("2026-09-17T00:00:00Z") };
     const prisma = {
       seller_memberships: { findFirst: async () => ({ seller_id: "seller-from-membership" }) },
-      seller_shipping_profiles: { findUnique: async () => null },
+      seller_shipping_profiles: { findUnique: async () => null, findFirst: async () => null },
       $transaction: async (callback: (tx: Record<string, unknown>) => unknown) => callback({
         seller_shipping_profiles: {
           findUnique: async () => null,
@@ -49,6 +59,6 @@ describe("SellerShippingProfileService", () => {
     assert.equal(upsertSellerId, "seller-from-membership");
     assert.equal(profile.enabled, true);
     assert.equal(JSON.stringify(audit).includes(input.addressLine), false);
-    assert.deepEqual(audit?.changed_fields, ["enabled", "sender_name", "sender_mobile", "province", "city", "address_line", "postal_code"]);
+    assert.deepEqual(audit?.changed_fields, ["enabled", "sender_name", "sender_mobile", "province", "city", "address_line", "postal_code", "latitude", "longitude"]);
   });
 });

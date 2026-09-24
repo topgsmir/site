@@ -90,7 +90,7 @@ function isFiniteNumber(value: unknown): value is number {
 function isProductImage(value: unknown): value is NonNullable<PublicProduct["image"]> {
   return isRecord(value) && isString(value.id) && Array.isArray(value.variants) && value.variants.every((variant) => (
     isRecord(variant) && ["thumb", "large"].includes(String(variant.name)) &&
-    isString(variant.url) && /^\/media\/[0-9a-f-]{36}\/(?:thumb|large)\.webp$/i.test(variant.url) &&
+    isString(variant.url) && /^\/media\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/(?:thumb|large)\.webp$/i.test(variant.url) &&
     isFiniteNumber(variant.width) && isFiniteNumber(variant.height)
   ));
 }
@@ -243,7 +243,7 @@ export const getPublicProduct = cache(async (slug: string, locale: "fa" | "en" |
   const response = await fetch(`${SERVER_API_BASE}/products/${encodeURIComponent(normalizedSlug)}?locale=${locale}`, {
     headers: { accept: "application/json" },
     signal: AbortSignal.timeout(10_000),
-    next: { revalidate: 300, tags: [`product:${normalizedSlug}`] }
+    cache: "no-store"
   });
 
   if (response.status === 404) return null;

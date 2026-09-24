@@ -13,6 +13,7 @@ const now = "2026-09-22T00:00:00.000Z";
 const summaries = Array.from({ length: 51 }, (_, n) => ({ id: id(n + 1), title: `Product ${n}`, slug: `product-${n}`, category: "Tools", kind: "simple", type: "physical", image: null, startingPrices: [{ price: "1000", currency: "TOMAN" }], createdAt: now }));
 const posts = Array.from({ length: 31 }, (_, n) => ({ id: id(n + 101), title: `Article ${n}`, slug: `article-${n}`, excerpt: "Repair guide", status: "published", cover: null, author: { id: null, name: "Editorial", type: "editorial" }, category: null, publishedAt: now, createdAt: now, updatedAt: now }));
 let sitemapMode = "failure";
+let productDescription = "Detailed repair product description.";
 const manifest = ["fa", "en", "ar"].flatMap((locale) => ["products", "posts", "categories", "tags", "sellers"].map((kind) => ({ kind, locale, count: kind === "products" && locale === "fa" ? 51 : 0 })));
 function page(items, cursor, limit) {
   const index = cursor ? items.findIndex((row) => row.id === cursor) + 1 : 0;
@@ -44,9 +45,13 @@ const fixture = createServer((request, response) => {
     const n = slug === "old-product" || slug === id(1) ? 0 : Number(slug.replace("product-", ""));
     const row = summaries[n];
     if (!row) return json({}, 404);
-    return json({ ...row, title: locale === "en" && n === 0 ? "Translated repair tool" : row.title, description: "Detailed repair product description.", updatedAt: now,
+    const type = n === 1 ? "service" : n === 2 ? "bridge" : n >= 5 && n <= 7 ? "digital" : "physical";
+    const fulfillment = type === "service" ? { service: { serviceType: "Device diagnostics", estimatedHours: 24, inputs: [{ key: "model", label: "Device model", type: "text", required: true, helpText: "Find the model in device settings." }] } } : type === "physical" ? { physical: { inStock: n !== 3, weightGrams: 100 } } : type === "digital" ? { digital: { maxDownloads: n === 6 ? 0 : 5 } } : {};
+    return json({ ...row, type, title: locale === "en" && n === 0 ? "Translated repair tool" : row.title, description: productDescription, updatedAt: now,
+      ...(type === "bridge" ? { bridge: { fields: [{ key: "imei", label: "IMEI", type: "text", required: true }], minimumQuantity: 1, maximumQuantity: 5 } } : {}),
+      ...(n === 0 ? { image: { id: id(999), variants: [{ name: "large", url: `/media/${id(999)}/large.webp`, width: 1000, height: 1000 }] } } : {}),
       availableLocales: n === 0 ? ["fa", "en"] : ["fa"], contentLocale: n === 0 && locale === "en" ? "en" : "fa",
-      options: [], variants: [{ id: id(500 + n), name: null, options: [], offers: [{ id: id(600 + n), price: "1000", currency: "TOMAN", seller: { id: id(700), shopName: "Repair shop" }, physical: { inStock: true, weightGrams: 100 } }] }]
+      options: [], variants: [{ id: id(500 + n), name: null, options: [], offers: n === 4 || n === 7 ? [] : [{ id: id(600 + n), price: "1000", currency: "TOMAN", seller: { id: id(700), shopName: "Repair shop" }, ...fulfillment }] }]
     });
   }
   if (/^\/api\/blog\/public\/(fa|en|ar)\//.test(url.pathname)) {
@@ -144,6 +149,64 @@ try {
   for (const slug of ["old-product", id(1)]) {
     const redirect = await html(`/en/products/${slug}`, 308);
     assert.equal(redirect.response.headers.get("location"), "/en/products/product-0");
+  }
+  console.log("Checking type-specific pages, social images and truthful structured data…");
+  for (const [n, type] of [[0, "physical"], [1, "service"], [2, "bridge"], [3, "physical"], [4, "physical"], [5, "digital"]]) {
+    const body = (await html(`/en/products/product-${n}`)).body;
+    assert.ok(body.includes(`data-product-type="${type}"`));
+    assert.equal((body.match(/<h1\b/g) ?? []).length, 1);
+    assert.equal((body.match(/<main\b/g) ?? []).length, 1);
+    const graphs = [...body.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)].map((match) => JSON.parse(match[1]));
+    const graph = graphs.find((entry) => entry["@graph"])?.["@graph"];
+    assert.ok(graph);
+    const entity = graph.find((entry) => entry["@id"].endsWith("#product"));
+    assert.equal(entity["@type"], type === "service" || type === "bridge" ? "Service" : "Product");
+    assert.equal(entity.offers.length, n === 4 ? 0 : 1);
+    if (n !== 4) {
+      assert.equal(entity.offers[0].priceCurrency, "IRR");
+      assert.equal(entity.offers[0].price, "10000");
+      assert.equal(entity.offers[0].availability, `https://schema.org/${n === 3 ? "OutOfStock" : "InStock"}`);
+    }
+    assert.equal(graph.find((entry) => entry["@type"] === "BreadcrumbList").itemListElement.length, 3);
+    if (n === 0) {
+      assert.ok(entity.image[0].endsWith("/large.webp"));
+      assert.match(body, /property="og:image"/);
+      assert.match(body, /name="twitter:image"/);
+      assert.match(body, /Shipping &amp; delivery/);
+    }
+    if (n === 1) { assert.match(body, /Device model/); assert.match(body, /Estimated turnaround/); }
+    if (n === 2) { assert.match(body, /IMEI/); assert.match(body, /Verify your mobile/); }
+    if (n === 4) assert.match(body, /There are no active offers/);
+    if (type === "digital") {
+      assert.equal(entity.offers[0].availableDeliveryMethod, "http://purl.org/goodrelations/v1#DeliveryModeDirectDownload");
+      // Inspect server-rendered content, excluding serialized hydration payloads.
+      const main = body.match(/<main\b[\s\S]*?<\/main>/)?.[0] ?? "";
+      const descriptionAt = main.indexOf('id="download-description"');
+      assert.ok(descriptionAt >= 0);
+      assert.ok(descriptionAt < main.indexOf('id="purchase"'));
+      assert.ok(main.indexOf("Detailed repair product description.", descriptionAt) < main.indexOf(">Add to cart</button>", descriptionAt));
+      assert.equal((main.match(/Detailed repair product description\./g) ?? []).length, 1);
+      assert.match(main, /5 downloads/);
+      assert.match(main, /From checkout to download/);
+      assert.match(body, /href="#purchase"/);
+    }
+  }
+  assert.match((await html("/en/products/product-6")).body, /Unlimited downloads/);
+  const unavailableDownload = (await html("/en/products/product-7")).body;
+  assert.match(unavailableDownload, /There are no active offers/);
+  assert.match(unavailableDownload, /id="download-description"/);
+  productDescription = "Updated repair product description.";
+  const refreshedProduct = (await html("/en/products/product-5")).body;
+  assert.match(refreshedProduct, /Updated repair product description\./);
+  assert.doesNotMatch(refreshedProduct, /Detailed repair product description\./);
+  if (process.env.PRODUCT_PREVIEW === "1") {
+    console.log(`PRODUCT_PREVIEW_URL=${origin}`);
+    const stopFile = resolve(web, `${output}.stop`);
+    console.log(`PRODUCT_PREVIEW_STOP=${stopFile}`);
+    await new Promise((done) => {
+      const timer = setInterval(() => { if (existsSync(stopFile)) { clearInterval(timer); done(); } }, 500);
+      process.once("SIGINT", () => { clearInterval(timer); done(); });
+    });
   }
   console.log("PASS: raw HTML, pagination, indexing, redirects, translation eligibility, malformed responses, timeouts and sitemap outages");
 } finally {

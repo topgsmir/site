@@ -269,7 +269,7 @@ export class BackupArchiveService {
     let parsed: Partial<EnvelopeHeader>;
     try { parsed = JSON.parse(value.toString("utf8")) as Partial<EnvelopeHeader>; }
     catch { throw new BadRequestException("Backup package header is invalid"); }
-    if (parsed.version !== 1 || typeof parsed.archiveId !== "string" || !/^[0-9a-f-]{36}$/i.test(parsed.archiveId) ||
+    if (parsed.version !== 1 || typeof parsed.archiveId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(parsed.archiveId) ||
       typeof parsed.keyId !== "string" || typeof parsed.wrappedKey !== "string" || typeof parsed.noncePrefix !== "string" ||
       parsed.chunkBytes !== CHUNK_BYTES || !Number.isSafeInteger(parsed.plaintextBytes) || parsed.plaintextBytes! <= 0 || parsed.plaintextBytes! > this.maxArchiveBytes ||
       !Number.isSafeInteger(parsed.chunkCount) || parsed.chunkCount !== Math.ceil(parsed.plaintextBytes! / CHUNK_BYTES)) {
@@ -282,7 +282,7 @@ export class BackupArchiveService {
     let parsed: Partial<BackupArchiveManifest>;
     try { parsed = JSON.parse(value.toString("utf8")) as Partial<BackupArchiveManifest>; }
     catch { throw new BadRequestException("Backup manifest is invalid"); }
-    if (parsed.formatVersion !== 1 || typeof parsed.archiveId !== "string" || !/^[0-9a-f-]{36}$/i.test(parsed.archiveId) ||
+    if (parsed.formatVersion !== 1 || typeof parsed.archiveId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(parsed.archiveId) ||
       typeof parsed.createdAt !== "string" || Number.isNaN(Date.parse(parsed.createdAt)) || typeof parsed.appVersion !== "string" || parsed.appVersion.length > 100 ||
       !(parsed.migrationId === null || typeof parsed.migrationId === "string" && parsed.migrationId.length <= 200) ||
       !Array.isArray(parsed.components) || parsed.components.length < 1 || parsed.components.length > 2 || new Set(parsed.components).size !== parsed.components.length || parsed.components.some((item) => item !== "database" && item !== "uploads") ||

@@ -6,6 +6,7 @@ import { cache } from "react";
 import type {
   BlogPostsPage,
   BlogCollectionPage,
+  BlogSidebarDocument,
   PublicBlogPost,
   PublicProduct,
   PublicProductSummary
@@ -39,6 +40,10 @@ export const getBlogPost = cache((locale: Locale, slug: string) =>
   request<PublicBlogPost | { redirectTo: string | null; permanent: true }>(
     `/blog/public/${locale}/posts/${encodeRouteSegment(slug)}`
   )
+);
+
+export const getBlogSidebar = cache((locale: Locale) =>
+  request<BlogSidebarDocument>(`/blog/sidebar?locale=${locale}`, 0)
 );
 
 export const getBlogPosts = cache(async (locale: Locale, cursor?: string) => checkedBlogPage(

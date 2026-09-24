@@ -12,8 +12,8 @@ const detailsSelect = {
     user: { select: { id: true, full_name: true, email: true, phone_number: true } } } },
   shipping_address: { select: { created_at: true } },
   shipment: { select: { updated_at: true } },
-  amadast_shipment: { select: {
-    id: true, status: true, provider_order_id: true, amadast_tracking_code: true,
+  shipping_dispatch: { select: {
+    id: true, provider: true, status: true, provider_order_reference: true, legacy_provider_order_id: true, provider_tracking_code: true,
     courier_tracking_code: true, courier_title: true, attempt_count: true,
     last_error_code: true, last_attempted_at: true, registered_at: true,
     tracking_synced_at: true, created_at: true, updated_at: true
@@ -102,19 +102,19 @@ export class AdminOrderDetailsService {
           email: order.seller.user.email, phoneNumber: order.seller.user.phone_number } },
       shippingAddressCreatedAt: order.shipping_address?.created_at.toISOString() ?? null,
       shipmentUpdatedAt: order.shipment?.updated_at.toISOString() ?? null,
-      amadastShipment: order.amadast_shipment ? {
-        id: order.amadast_shipment.id, status: order.amadast_shipment.status,
-        providerOrderId: order.amadast_shipment.provider_order_id,
-        amadastTrackingCode: order.amadast_shipment.amadast_tracking_code,
-        courierTrackingCode: order.amadast_shipment.courier_tracking_code,
-        courierTitle: order.amadast_shipment.courier_title,
-        attemptCount: order.amadast_shipment.attempt_count,
-        errorCode: order.amadast_shipment.last_error_code,
-        lastAttemptedAt: order.amadast_shipment.last_attempted_at.toISOString(),
-        registeredAt: order.amadast_shipment.registered_at?.toISOString() ?? null,
-        trackingSyncedAt: order.amadast_shipment.tracking_synced_at?.toISOString() ?? null,
-        createdAt: order.amadast_shipment.created_at.toISOString(),
-        updatedAt: order.amadast_shipment.updated_at.toISOString()
+      shippingDispatch: order.shipping_dispatch ? {
+        id: order.shipping_dispatch.id, provider: order.shipping_dispatch.provider, status: order.shipping_dispatch.status,
+        providerOrderReference: order.shipping_dispatch.provider_order_reference ?? (order.shipping_dispatch.legacy_provider_order_id ? String(order.shipping_dispatch.legacy_provider_order_id) : null),
+        providerTrackingCode: order.shipping_dispatch.provider_tracking_code,
+        courierTrackingCode: order.shipping_dispatch.courier_tracking_code,
+        courierTitle: order.shipping_dispatch.courier_title,
+        attemptCount: order.shipping_dispatch.attempt_count,
+        errorCode: order.shipping_dispatch.last_error_code,
+        lastAttemptedAt: order.shipping_dispatch.last_attempted_at.toISOString(),
+        registeredAt: order.shipping_dispatch.registered_at?.toISOString() ?? null,
+        trackingSyncedAt: order.shipping_dispatch.tracking_synced_at?.toISOString() ?? null,
+        createdAt: order.shipping_dispatch.created_at.toISOString(),
+        updatedAt: order.shipping_dispatch.updated_at.toISOString()
       } : null,
       itemOperations: order.items.map((item) => ({
         itemId: item.id,

@@ -34,7 +34,7 @@ export function decodeUploadCursor(value: string, sort: Cursor["sort"]): Cursor 
   try {
     const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as Partial<Cursor>;
     if (parsed.v !== 1 || parsed.sort !== sort || !["blog", "product"].includes(parsed.source ?? "") ||
-      typeof parsed.value !== "string" || typeof parsed.id !== "string" || !/^[0-9a-f-]{36}$/i.test(parsed.id)) {
+      typeof parsed.value !== "string" || typeof parsed.id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(parsed.id)) {
       throw new Error("invalid");
     }
     if (sort === "size" ? !/^\d+$/.test(parsed.value) : Number.isNaN(Date.parse(parsed.value))) throw new Error("invalid");
@@ -128,7 +128,7 @@ export class AdminUploadsService implements OnModuleInit, OnModuleDestroy {
           COALESCE((SELECT SUM(v.byte_size) FROM product_media_variants v WHERE v.asset_id = a.id), 0),
           a.checksum, a.created_at, a.trashed_at, a.purge_after,
           (SELECT v.variant FROM product_media_variants v WHERE v.asset_id = a.id ORDER BY v.byte_size ASC LIMIT 1),
-          u.id, u.full_name, u.email, p.id, p.title, CASE WHEN p.id IS NULL THEN NULL ELSE 'product' END
+          u.id, u.full_name, u.email, p.id::text, p.title, CASE WHEN p.id IS NULL THEN NULL ELSE 'product' END
         FROM product_media_assets a JOIN users u ON u.id = a.uploaded_by_user_id LEFT JOIN products p ON p.id = COALESCE(a.product_id, a.restore_product_id)
       ), ranked AS (SELECT *, ${sortExpression} AS sort_value FROM unified)
       SELECT source, id, kind, state, link_state, original_filename, original_mime_type, width, height,
@@ -265,7 +265,7 @@ export class AdminUploadsService implements OnModuleInit, OnModuleDestroy {
         if (!asset.trashed_at) return;
         if (asset.purging_at) throw new ConflictException("Purge has already started");
         if (!asset.restore_product_id) throw new ConflictException("The original product no longer exists");
-        await tx.$queryRaw(Prisma.sql`SELECT id FROM products WHERE id = ${asset.restore_product_id} FOR UPDATE`);
+        await tx.$queryRaw(Prisma.sql`SELECT id FROM products WHERE id = ${asset.restore_product_id}::uuid FOR UPDATE`);
         const product = await tx.products.findUnique({ where: { id: asset.restore_product_id }, select: { id: true, media: { select: { id: true } } } });
         if (!product) throw new ConflictException("The original product no longer exists");
         if (product.media && product.media.id !== item.id) throw new ConflictException("The product already has a replacement image");

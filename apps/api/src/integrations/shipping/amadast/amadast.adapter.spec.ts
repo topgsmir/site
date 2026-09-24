@@ -42,4 +42,48 @@ describe("Amadast provider contract", () => {
     const tracking = await new AmadastAdapter(http).findTracking(config, "09120000000", 91);
     assert.equal(tracking?.courierTrackingCode, "POST-91");
   });
+
+  it("fetches the documented province and city catalog", async () => {
+    const calls: string[] = [];
+    const http = { request: async (_base: string, path: string) => {
+      calls.push(path);
+      if (path === "/v1/auth/token/12") return { data: { access_token: "token" } };
+      if (path === "/v1/cities") return { data: [{ id: 8, title: "تهران", parent: null }] };
+      if (path === "/v1/cities?province_id=8") return { data: [{ id: 360, title: "تهران", parent: 8 }] };
+      throw new Error(`Unexpected path ${path}`);
+    } } as unknown as SafeHttpService;
+    const adapter = new AmadastAdapter(http);
+
+    assert.deepEqual(await adapter.listPlaces(config), [{ id: 8, title: "تهران", parentId: null }]);
+    assert.deepEqual(await adapter.listPlaces(config, 8), [{ id: 360, title: "تهران", parentId: 8 }]);
+    assert.deepEqual(calls, ["/v1/auth/token/12", "/v1/cities", "/v1/auth/token/12", "/v1/cities?province_id=8"]);
+  });
+
+  it("creates the documented user, location, and store resources", async () => {
+    const calls: Array<{ path: string; init: RequestInit }> = [];
+    const http = { request: async (_base: string, path: string, init: RequestInit) => {
+      calls.push({ path, init });
+      if (path === "/v1/users") return { data: { id: 11 } };
+      if (path === "/v1/auth/token/11") return { data: { access_token: "tenant-token" } };
+      if (path === "/v1/cities") return { data: [{ id: 8, title: "تهران" }] };
+      if (path === "/v1/cities?province_id=8") return { data: [{ id: 360, title: "تهران" }] };
+      if (path === "/v1/locations") return { data: { id: 22 } };
+      if (path === "/v1/stores") return { data: { id: 33 } };
+      throw new Error(`Unexpected path ${path}`);
+    } } as SafeHttpService;
+    const adapter = new AmadastAdapter(http);
+
+    const userId = await adapter.createUser(config.clientCode, "فروشنده", "09120000000");
+    const locationId = await adapter.createLocation({ clientCode: config.clientCode, userId }, {
+      title: "TopGSM-tenant", address: "نشانی مبدأ", province: "تهران", city: "تهران",
+      postalCode: "1234567890", latitude: 35.6892, longitude: 51.389
+    });
+    const storeId = await adapter.createStore({ clientCode: config.clientCode, userId }, {
+      title: "فروشگاه", locationId, adminName: "فروشنده", phone: "09120000000"
+    });
+
+    assert.deepEqual({ userId, locationId, storeId }, { userId: 11, locationId: 22, storeId: 33 });
+    assert.equal(JSON.parse(String(calls.find((call) => call.path === "/v1/locations")?.init.body)).province_id, 8);
+    assert.equal(JSON.parse(String(calls.find((call) => call.path === "/v1/stores")?.init.body)).location_id, 22);
+  });
 });

@@ -29,14 +29,14 @@ export class BackupPathsService {
   }
 
   archivePath(name: string) {
-    if (!/^topgsm-[0-9]{8}T[0-9]{6}Z-[0-9a-f-]{36}[.]topgsm-backup$/i.test(name)) {
+    if (!/^topgsm-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}[.]topgsm-backup$/i.test(name)) {
       throw new BadRequestException("Backup archive name is invalid");
     }
     return this.safeChild(this.archives, name);
   }
 
   stagingPath(id: string, suffix: string) {
-    if (!/^[0-9a-f-]{36}$/i.test(id) || !/^[a-z0-9.-]{1,40}$/i.test(suffix)) throw new BadRequestException("Backup staging path is invalid");
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id) || !/^[a-z0-9.-]{1,40}$/i.test(suffix)) throw new BadRequestException("Backup staging path is invalid");
     return this.safeChild(this.staging, `${id}.${suffix}`);
   }
 

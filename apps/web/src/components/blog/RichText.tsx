@@ -1,9 +1,9 @@
 import type { RichTextDocument, RichTextNode } from "@topgsm/shared-types";
 import Image from "next/image";
 import type { ReactNode } from "react";
+import { safeExternalHref } from "@/lib/safe-navigation";
 
-const SAFE_LINK = /^(https?:|mailto:|tel:)/i;
-const SAFE_IMAGE = /^\/media\/[0-9a-f-]{36}\/[a-z0-9-]+\.webp$/i;
+const SAFE_IMAGE = /^\/media\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/[a-z0-9-]{1,80}\.webp$/i;
 
 export function RichText({ document, headingAnchors = false }: { document: RichTextDocument; headingAnchors?: boolean }) {
   return <div className="article-prose">{renderNodes(document.content ?? [], "", headingAnchors)}</div>;
@@ -47,9 +47,7 @@ function renderNode(node: RichTextNode, key: number, path: string, headingAnchor
     else if (mark.type === "strike") result = <s key={`${key}-strike`}>{result}</s>;
     else if (mark.type === "code") result = <code key={`${key}-code`}>{result}</code>;
     else if (mark.type === "link") {
-      const href = typeof mark.attrs?.href === "string" && SAFE_LINK.test(mark.attrs.href)
-        ? mark.attrs.href
-        : undefined;
+      const href = safeExternalHref(mark.attrs?.href) ?? undefined;
       if (href) result = <a key={`${key}-link`} href={href} rel="nofollow noopener">{result}</a>;
     }
   }

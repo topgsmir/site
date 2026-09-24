@@ -58,11 +58,11 @@ export async function writePendingRestore(value: PendingRestore) {
 }
 
 export const readPendingRestore = () => readJson<PendingRestore>(pendingPath());
-export const readRestoreProgress = (id: string) => /^[0-9a-f-]{36}$/i.test(id) ? readJson<BackupRestoreProgress>(progressPath(id)) : Promise.resolve(null);
+export const readRestoreProgress = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id) ? readJson<BackupRestoreProgress>(progressPath(id)) : Promise.resolve(null);
 export const writeRestoreProgress = (value: BackupRestoreProgress) => atomicJson(progressPath(value.id), value);
 
 export async function verifyRestoreMonitorToken(id: string, token: string) {
-  if (!/^[0-9a-f-]{36}$/i.test(id) || !/^[A-Za-z0-9_-]{43}$/.test(token)) return false;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id) || !/^[A-Za-z0-9_-]{43}$/.test(token)) return false;
   const expected = await readFile(monitorPath(id), "utf8").catch(() => "");
   const actual = hashMonitorToken(token);
   return expected.length === actual.length && timingSafeEqual(Buffer.from(expected), Buffer.from(actual));

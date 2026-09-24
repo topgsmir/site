@@ -25,7 +25,7 @@ export class ProductTranslationsService {
 
   async change(productId: string, locale: "en" | "ar", actorId: string, action: "draft" | "publish" | "unpublish", draft?: ProductTranslationDraftDto) {
     await this.prisma.$transaction(async (tx) => {
-      const locked = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM products WHERE id = ${productId} FOR UPDATE`;
+      const locked = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM products WHERE id = ${productId}::uuid FOR UPDATE`;
       if (!locked.length) throw new NotFoundException("Product was not found");
       const where = { product_id_locale: { product_id: productId, locale } };
       if (action === "draft" && draft) {

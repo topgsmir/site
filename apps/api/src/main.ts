@@ -9,6 +9,7 @@ import {
 import { SecureSocketIoAdapter } from "./modules/realtime/secure-socket-io.adapter";
 import { randomUUID } from "node:crypto";
 import { ApiExceptionFilter } from "./common/http/api-exception.filter";
+import { RejectUnsafeInputCharactersPipe } from "./common/http/reject-unsafe-input-characters.pipe";
 import { runPendingRestoreBeforeBootstrap } from "./modules/backup/backup-restore-bootstrap";
 
 async function bootstrap() {
@@ -36,7 +37,8 @@ async function bootstrap() {
   app.useWebSocketAdapter(new SecureSocketIoAdapter(app, allowedOrigins));
   app.useGlobalFilters(new ApiExceptionFilter());
   app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true })
+    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+    new RejectUnsafeInputCharactersPipe()
   );
   app.setGlobalPrefix("api", {
     exclude: [{ path: "media/:assetId/:filename", method: RequestMethod.GET }]

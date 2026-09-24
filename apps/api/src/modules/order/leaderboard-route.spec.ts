@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { Test } from "@nestjs/testing";
 import { AuthenticatedGuard } from "../auth/authenticated.guard";
 import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
-import { AmadastShippingService } from "../../integrations/shipping/amadast/amadast-shipping.service";
+import { ShippingService } from "../../integrations/shipping/shipping.service";
 import { AdminOrderDetailsService } from "./admin-order-details.service";
 import { LeaderboardService } from "./leaderboard.service";
 import { OrderController } from "./order.controller";
@@ -18,7 +18,7 @@ test("GET /orders/leaderboard reaches the leaderboard route before /orders/:id",
       { provide: AdminOrderDetailsService, useValue: {} },
       { provide: LeaderboardService, useValue: { get: () => ({ leaders: [], you: { place: null } }) } },
       { provide: AuthRateLimitService, useValue: { consumeAnalyticsRead: async () => undefined } },
-      { provide: AmadastShippingService, useValue: {} }
+      { provide: ShippingService, useValue: {} }
     ]
   }).overrideGuard(AuthenticatedGuard).useValue({
     canActivate: (context: { switchToHttp(): { getRequest(): { authenticatedUser?: { id: string; role: string } } } }) => {
@@ -46,7 +46,7 @@ test("GET /orders/new-count reaches the count route before /orders/:id", async (
       { provide: AdminOrderDetailsService, useValue: {} },
       { provide: LeaderboardService, useValue: {} },
       { provide: AuthRateLimitService, useValue: {} },
-      { provide: AmadastShippingService, useValue: {} }
+      { provide: ShippingService, useValue: {} }
     ]
   }).overrideGuard(AuthenticatedGuard).useValue({
     canActivate: (context: { switchToHttp(): { getRequest(): { authenticatedUser?: { id: string; role: string } } } }) => {
@@ -75,7 +75,7 @@ test("POST /orders/seen records the authenticated viewer", async () => {
       { provide: AdminOrderDetailsService, useValue: {} },
       { provide: LeaderboardService, useValue: {} },
       { provide: AuthRateLimitService, useValue: {} },
-      { provide: AmadastShippingService, useValue: {} }
+      { provide: ShippingService, useValue: {} }
     ]
   }).overrideGuard(AuthenticatedGuard).useValue({
     canActivate: (context: { switchToHttp(): { getRequest(): { authenticatedUser?: { id: string; role: string } } } }) => {

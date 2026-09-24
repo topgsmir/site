@@ -10,13 +10,17 @@ function policy(ipLimit: number, subjectLimit: number, ipWindowSeconds = 900, su
 /** Defaults match the limits enforced before admin policy controls existed. */
 export const SECURITY_DEFAULTS = {
   login: policy(40, 8), register: policy(10, 3, 3600, 86400), otp: policy(20, 5, 3600),
+  profile: policy(30, 10), admin_user: policy(120, 30),
   captcha_challenge: policy(30, 30), checkout_quote: policy(120, 30),
   comment_submit_guest: policy(20, 5, 3600), comment_submit: policy(30, 8),
   comment_reply: policy(90, 30), comment_admin: policy(90, 30),
-  order: policy(100, 30), shipping: policy(30, 10), shipping_configuration: policy(30, 10),
+  blog: policy(120, 40), coupon: policy(90, 30), product: policy(120, 40),
+  order: policy(100, 30), digital_download: policy(60, 20), shipping: policy(30, 10), shipping_configuration: policy(30, 10),
   payout: policy(60, 20), media: policy(90, 30), media_admin: policy(30, 10), payment: policy(40, 10),
   payment_callback: policy(60, 10), payment_refund: policy(30, 10), payment_configuration: policy(30, 10),
-  sms_configuration: policy(30, 10), goghdi_configuration: policy(30, 10), auth_configuration: policy(30, 10), staff_setup: policy(30, 10, 3600),
+  sms_configuration: policy(30, 10), goghdi_configuration: policy(30, 10), auth_configuration: policy(30, 10),
+  notice_configuration: policy(30, 10), usd_configuration: policy(30, 10), staff_admin: policy(30, 10), staff_setup: policy(30, 10, 3600),
+  seller: policy(60, 20),
   bridge: policy(60, 20), signed_ticket: policy(90, 30), ai_profile: policy(30, 10),
   ai_profile_test: policy(90, 30), ai_run: policy(60, 20), product_bulk_undo: policy(15, 5),
   analytics: policy(180, 60), backup_admin: policy(20, 8), backup_restore: policy(5, 2, 3600)

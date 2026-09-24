@@ -17,6 +17,71 @@ model platform_notice {
   @@map("platform_notice")
 }
 
+model homepage_content {
+  locale        String   @id @db.Text
+  content       Json
+  version       Int      @default(1)
+  updated_at    DateTime @default(now()) @updatedAt @db.Timestamptz()
+  updated_by_id String
+  updated_by    users    @relation("homepage_content_editor", fields: [updated_by_id], references: [id], onDelete: Restrict)
+
+  @@index([updated_by_id])
+}
+
+model blog_sidebar_settings {
+  locale        blog_locale            @id
+  enabled       Boolean                @default(true)
+  title         String                 @db.Text
+  description   String                 @db.Text
+  cta_label     String                 @db.Text
+  cta_href      String                 @db.Text
+  version       Int                    @default(1)
+  updated_at    DateTime               @default(now()) @updatedAt @db.Timestamptz()
+  updated_by_id String
+  updated_by    users                  @relation("blog_sidebar_editor", fields: [updated_by_id], references: [id], onDelete: Restrict)
+  products      blog_sidebar_products[]
+
+  @@index([updated_by_id])
+}
+
+model blog_sidebar_products {
+  locale     blog_locale
+  product_id String                @db.Uuid
+  position   Int
+  sidebar    blog_sidebar_settings @relation(fields: [locale], references: [locale], onDelete: Cascade)
+  product    products              @relation(fields: [product_id], references: [id], onDelete: Restrict)
+
+  @@id([locale, product_id])
+  @@unique([locale, position])
+  @@index([product_id])
+}
+
+model homepage_stories {
+  id                 String      @id @default(uuid()) @db.Uuid
+  locale             blog_locale
+  title              String      @db.VarChar(80)
+  target_url         String      @db.VarChar(2048)
+  position           Int         @default(0)
+  enabled            Boolean     @default(true)
+  image_path         String      @unique @db.VarChar(512)
+  image_width        Int
+  image_height       Int
+  image_byte_size    Int
+  image_checksum     String      @db.Char(64)
+  original_filename  String?     @db.VarChar(255)
+  original_mime_type String?     @db.VarChar(100)
+  created_by_id      String
+  updated_by_id      String
+  created_at         DateTime    @default(now()) @db.Timestamptz(3)
+  updated_at         DateTime    @default(now()) @updatedAt @db.Timestamptz(3)
+  created_by         users       @relation("homepage_story_creator", fields: [created_by_id], references: [id], onDelete: Restrict)
+  updated_by         users       @relation("homepage_story_updater", fields: [updated_by_id], references: [id], onDelete: Restrict)
+
+  @@index([locale, enabled, position, created_at, id])
+  @@index([created_by_id])
+  @@index([updated_by_id])
+}
+
 enum user_role {
   platform_admin
   platform_staff
@@ -294,6 +359,7 @@ enum staff_invitation_status {
 }
 
 model users {
+  product_category_events product_category_events[]
   id                           String                         @id @default(uuid()) @map("id")
   full_name                    String                         @map("full_name")
   username                     String?                        @unique @map("username")
@@ -322,6 +388,7 @@ model users {
   blog_moderation_events       blog_moderation_events[]
   blog_media                   blog_media_assets[]
   product_media                product_media_assets[]
+  seller_profile_media         seller_profile_media_assets[]
   trashed_blog_media           blog_media_assets[]            @relation("blog_media_trasher")
   trashed_product_media        product_media_assets[]         @relation("product_media_trasher")
   media_admin_events           media_admin_events[]           @relation("media_admin_actor")
@@ -360,6 +427,10 @@ model users {
   backup_restore_challenges    backup_restore_challenges[]   @relation("backup_restore_challenge_actor")
   backup_restore_events        backup_restore_events[]       @relation("backup_restore_actor")
   backup_restore_jobs          backup_restore_jobs[]         @relation("backup_restore_job_actor")
+  created_homepage_stories     homepage_stories[]            @relation("homepage_story_creator")
+  edited_homepage_content      homepage_content[]            @relation("homepage_content_editor")
+  updated_homepage_stories     homepage_stories[]            @relation("homepage_story_updater")
+  edited_blog_sidebars         blog_sidebar_settings[]        @relation("blog_sidebar_editor")
 
   @@index([role, created_at(sort: Desc), id(sort: Desc)])
   @@index([username(ops: raw("gin_trgm_ops"))], type: Gin, map: "users_username_trgm_idx")
@@ -656,6 +727,9 @@ model sellers {
   id                   String                        @id @default(uuid()) @map("id")
   user_id              String                        @unique @map("user_id")
   shop_name            String                        @map("shop_name")
+  profile_name         String?                       @map("profile_name") @db.VarChar(120)
+  profile_specialty    String?                       @map("profile_specialty") @db.VarChar(160)
+  profile_bio          String?                       @map("profile_bio") @db.Text
   invited              Boolean                       @default(false) @map("invited")
   approved             Boolean                       @default(false) @map("approved")
   commission           Decimal                       @default(0.1) @map("commission") @db.Decimal(9, 6)
@@ -674,16 +748,36 @@ model sellers {
   permissions          seller_permissions[]
   blog_posts           blog_posts[]
   blog_media           blog_media_assets[]
+  profile_media        seller_profile_media_assets?
   coupons              coupons[]
   memberships          seller_memberships[]
   bridge_connections   bridge_connections[]
   bridge_grants        bridge_service_grants[]
   payment_method_rules payment_method_seller_rules[]
-  shipping_profile     seller_shipping_profiles?
-  shipping_events      seller_shipping_profile_events[]
+  shipping_profile          seller_shipping_profiles?
+  shipping_events           seller_shipping_profile_events[]
+  shipping_provider_tenants shipping_provider_tenants[]
   comment_assignments  comment_assignments[]
 
   @@map("sellers")
+}
+
+model seller_profile_media_assets {
+  id                  String   @id @default(uuid()) @db.Uuid
+  seller_id           String   @unique
+  uploaded_by_user_id String
+  width               Int
+  height              Int
+  byte_size           Int
+  checksum            String   @db.Char(64)
+  path                String   @unique @db.VarChar(512)
+  original_filename   String?  @db.VarChar(255)
+  original_mime_type  String?  @db.VarChar(100)
+  created_at          DateTime @default(now()) @db.Timestamptz(3)
+  seller              sellers  @relation(fields: [seller_id], references: [id], onDelete: Cascade)
+  uploaded_by         users    @relation(fields: [uploaded_by_user_id], references: [id], onDelete: Restrict)
+
+  @@index([uploaded_by_user_id])
 }
 
 model seller_agents {
@@ -773,7 +867,7 @@ model blog_posts {
   excerpt               String?                  @map("excerpt") @db.VarChar(500)
   content               String?                  @map("content")
   status                blog_post_status         @default(draft) @map("status")
-  product_id            String?                  @map("product_id")
+  product_id            String?                  @map("product_id") @db.Uuid
   seller                sellers?                 @relation(fields: [seller_id], references: [id], onDelete: Restrict)
   creator               users                    @relation("blog_post_creator", fields: [creator_user_id], references: [id], onDelete: Restrict)
   product               products?                @relation("legacy_blog_product", fields: [product_id], references: [id], onDelete: SetNull)
@@ -935,7 +1029,7 @@ model blog_revision_tags {
 
 model blog_revision_products {
   revision_id String         @map("revision_id")
-  product_id  String         @map("product_id")
+  product_id  String         @map("product_id") @db.Uuid
   position    Int            @map("position")
   revision    blog_revisions @relation(fields: [revision_id], references: [id], onDelete: Cascade)
   product     products       @relation(fields: [product_id], references: [id], onDelete: Restrict)
@@ -1038,13 +1132,50 @@ model seller_permissions {
   @@map("seller_permissions")
 }
 
+model product_categories {
+  id              String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String @db.VarChar(100)
+  normalized_name String @unique @db.VarChar(100)
+  created_at      DateTime @default(now()) @db.Timestamptz(3)
+  updated_at      DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  products        products[]
+  translations    product_category_translations[]
+  events          product_category_events[]
+
+  @@index([name, id])
+}
+
+model product_category_translations {
+  category_id String @db.Uuid
+  locale      blog_locale
+  name        String @db.VarChar(100)
+  category    product_categories @relation(fields: [category_id], references: [id], onDelete: Cascade)
+
+  @@id([category_id, locale])
+}
+
+model product_category_events {
+  id            String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category_id   String @db.Uuid
+  actor_user_id String
+  before_data   Json
+  after_data    Json
+  created_at    DateTime @default(now()) @db.Timestamptz(3)
+  category      product_categories @relation(fields: [category_id], references: [id], onDelete: Restrict)
+  actor         users @relation(fields: [actor_user_id], references: [id], onDelete: Restrict)
+
+  @@index([category_id, created_at(sort: Desc), id(sort: Desc)])
+  @@index([actor_user_id])
+}
+
 model products {
-  id                   String                   @id @default(uuid()) @map("id")
+  id                   String                   @id @default(uuid()) @map("id") @db.Uuid
   created_by_seller_id String                   @map("created_by_seller_id")
   title                String                   @map("title") @db.VarChar(200)
   slug                 String                   @unique @map("slug") @db.VarChar(200)
   description          String?                  @map("description")
-  category             String?                  @map("category") @db.VarChar(100)
+  category_id          String?                  @db.Uuid
+  category_record      product_categories?      @relation(fields: [category_id], references: [id], onDelete: Restrict)
   kind                 product_kind             @default(simple) @map("kind")
   type                 product_type             @map("type")
   status               product_status           @default(active) @map("status")
@@ -1064,18 +1195,22 @@ model products {
   comments             comments[]
   slug_routes          product_slug_routes[]
   translations         product_translations[]
+  blog_sidebar_placements blog_sidebar_products[]
 
   @@index([created_by_seller_id])
   @@index([status, created_at, id])
   @@index([title(ops: raw("gin_trgm_ops"))], type: Gin, map: "products_title_trgm_idx")
   @@index([slug(ops: raw("gin_trgm_ops"))], type: Gin, map: "products_slug_trgm_idx")
-  @@index([category(ops: raw("gin_trgm_ops"))], type: Gin, map: "products_category_trgm_idx")
+  @@index([category_id, updated_at(sort: Desc), id(sort: Desc)])
+  @@index([updated_at(sort: Desc), id(sort: Desc)])
+  @@index([created_at(sort: Desc), id(sort: Desc)])
+  @@index([title, id])
   @@map("products")
 }
 
 model product_slug_routes {
   slug       String   @id
-  product_id String
+  product_id String @db.Uuid
   created_at DateTime @default(now()) @db.Timestamptz(3)
   product    products @relation(fields: [product_id], references: [id], onDelete: Cascade)
 
@@ -1083,7 +1218,7 @@ model product_slug_routes {
 }
 
 model product_translations {
-  product_id            String
+  product_id            String @db.Uuid
   locale                blog_locale
   draft_title           String   @default("")
   draft_description     String   @default("")
@@ -1102,8 +1237,8 @@ model product_translations {
 
 model product_media_assets {
   id                  String                   @id @default(uuid()) @map("id")
-  product_id          String?                  @unique @map("product_id")
-  restore_product_id  String?                  @map("restore_product_id")
+  product_id          String?                  @unique @map("product_id") @db.Uuid
+  restore_product_id  String?                  @map("restore_product_id") @db.Uuid
   uploaded_by_user_id String                   @map("uploaded_by_user_id")
   width               Int                      @map("width")
   height              Int                      @map("height")
@@ -1161,7 +1296,7 @@ model product_media_variants {
 
 model product_change_events {
   id                     String                  @id @default(uuid()) @map("id")
-  product_id             String                  @map("product_id")
+  product_id             String                  @map("product_id") @db.Uuid
   actor_user_id          String                  @map("actor_user_id")
   action                 content_change_action   @map("action")
   changed_fields         String[]                @map("changed_fields")
@@ -1185,7 +1320,7 @@ model product_change_events {
 
 model product_review_events {
   id          String         @id @default(uuid()) @map("id")
-  product_id  String         @map("product_id")
+  product_id  String         @map("product_id") @db.Uuid
   reviewer_id String         @map("reviewer_id")
   from_status product_status @map("from_status")
   to_status   product_status @map("to_status")
@@ -1199,8 +1334,8 @@ model product_review_events {
 }
 
 model product_options {
-  id              String                  @id @default(uuid()) @map("id")
-  product_id      String                  @map("product_id")
+  id              String                  @id @default(uuid()) @map("id") @db.Uuid
+  product_id      String                  @map("product_id") @db.Uuid
   name            String                  @map("name") @db.VarChar(50)
   normalized_name String                  @map("normalized_name") @db.VarChar(50)
   position        Int                     @map("position")
@@ -1214,8 +1349,8 @@ model product_options {
 }
 
 model product_option_values {
-  id               String                   @id @default(uuid()) @map("id")
-  option_id        String                   @map("option_id")
+  id               String                   @id @default(uuid()) @map("id") @db.Uuid
+  option_id        String                   @map("option_id") @db.Uuid
   value            String                   @map("value") @db.VarChar(100)
   normalized_value String                   @map("normalized_value") @db.VarChar(100)
   position         Int                      @map("position")
@@ -1229,8 +1364,8 @@ model product_option_values {
 }
 
 model product_variants {
-  id               String                   @id @default(uuid()) @map("id")
-  product_id       String                   @map("product_id")
+  id               String                   @id @default(uuid()) @map("id") @db.Uuid
+  product_id       String                   @map("product_id") @db.Uuid
   name             String?                  @map("name") @db.VarChar(200)
   option_signature String                   @map("option_signature") @db.Char(64)
   created_at       DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -1245,9 +1380,9 @@ model product_variants {
 }
 
 model product_variant_values {
-  variant_id      String                @map("variant_id")
-  option_id       String                @map("option_id")
-  option_value_id String                @map("option_value_id")
+  variant_id      String                @map("variant_id") @db.Uuid
+  option_id       String                @map("option_id") @db.Uuid
+  option_value_id String                @map("option_value_id") @db.Uuid
   variant         product_variants      @relation(fields: [variant_id], references: [id], onDelete: Cascade)
   option_value    product_option_values @relation(fields: [option_value_id, option_id], references: [id, option_id], onDelete: Restrict)
 
@@ -1258,9 +1393,9 @@ model product_variant_values {
 }
 
 model seller_listings {
-  id         String          @id @default(uuid()) @map("id")
+  id         String          @id @default(uuid()) @map("id") @db.Uuid
   seller_id  String          @map("seller_id")
-  product_id String          @map("product_id")
+  product_id String          @map("product_id") @db.Uuid
   status     listing_status  @default(active) @map("status")
   created_at DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
   updated_at DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -1270,14 +1405,16 @@ model seller_listings {
 
   @@unique([seller_id, product_id])
   @@index([seller_id, status, updated_at, id])
+  @@index([seller_id, updated_at(sort: Desc), id(sort: Desc)])
+  @@index([seller_id, created_at(sort: Desc), id(sort: Desc)])
   @@index([product_id, status])
   @@map("seller_listings")
 }
 
 model seller_offers {
-  id                     String                   @id @default(uuid()) @map("id")
-  listing_id             String                   @map("listing_id")
-  variant_id             String                   @map("variant_id")
+  id                     String                   @id @default(uuid()) @map("id") @db.Uuid
+  listing_id             String                   @map("listing_id") @db.Uuid
+  variant_id             String                   @map("variant_id") @db.Uuid
   price                  Decimal                  @map("price") @db.Decimal(21, 5)
   currency               String                   @map("currency") @db.VarChar(5)
   seller_sku             String?                  @map("seller_sku") @db.VarChar(100)
@@ -1300,7 +1437,7 @@ model seller_offers {
 }
 
 model seller_offer_digital {
-  offer_id       String        @id @map("offer_id")
+  offer_id       String        @id @map("offer_id") @db.Uuid
   file_reference String        @map("file_reference") @db.VarChar(2048)
   file_references String[] @default([])
   max_downloads  Int           @default(0) @map("max_downloads")
@@ -1310,7 +1447,7 @@ model seller_offer_digital {
 }
 
 model seller_offer_physical {
-  offer_id             String        @id @map("offer_id")
+  offer_id             String        @id @map("offer_id") @db.Uuid
   weight_grams         Int           @default(0) @map("weight_grams")
   stock                Int           @default(0) @map("stock")
   legacy_tracking_code String?       @map("legacy_tracking_code")
@@ -1321,7 +1458,7 @@ model seller_offer_physical {
 }
 
 model seller_offer_service {
-  offer_id        String        @id @map("offer_id")
+  offer_id        String        @id @map("offer_id") @db.Uuid
   estimated_hours Int           @default(1) @map("estimated_hours")
   service_type    String        @map("service_type") @db.VarChar(100)
   instructions    String?       @map("instructions")
@@ -1332,7 +1469,7 @@ model seller_offer_service {
 }
 
 model seller_offer_bridge {
-  offer_id String        @id @map("offer_id")
+  offer_id String        @id @map("offer_id") @db.Uuid
   offer    seller_offers @relation(fields: [offer_id], references: [id], onDelete: Cascade)
 
   @@map("seller_offer_bridge")
@@ -1362,8 +1499,8 @@ model orders {
   checkout         checkouts?                      @relation(fields: [checkout_id], references: [id], onDelete: Restrict)
   payment_groups   checkout_payment_group_orders[]
   shipping_address order_shipping_addresses?
-  shipment         order_shipments?
-  amadast_shipment amadast_shipments?
+  shipment          order_shipments?
+  shipping_dispatch shipping_dispatches?
 
   @@unique([buyer_id, idempotency_key])
   @@unique([id, seller_id])
@@ -1375,16 +1512,19 @@ model orders {
   @@map("orders")
 }
 
-model amadast_shipments {
+model shipping_dispatches {
   id                     Int      @id @default(autoincrement()) @map("id")
   order_id               String   @unique @map("order_id")
+  provider               String   @default("amadast") @map("provider") @db.VarChar(32)
   status                 String   @default("registering") @map("status") @db.VarChar(32)
-  provider_order_id      Int?     @unique @map("provider_order_id")
-  amadast_tracking_code  String?  @map("amadast_tracking_code") @db.VarChar(200)
+  provider_order_reference String? @map("provider_order_reference") @db.VarChar(200)
+  legacy_provider_order_id Int?    @unique @map("provider_order_id")
+  provider_tracking_code String?  @map("amadast_tracking_code") @db.VarChar(200)
   courier_tracking_code  String?  @map("courier_tracking_code") @db.VarChar(200)
   courier_title          String?  @map("courier_title") @db.VarChar(100)
   idempotency_key        String   @unique @map("idempotency_key") @db.Uuid
   request_hash           String   @map("request_hash") @db.Char(64)
+  claim_token            String?  @map("claim_token") @db.Uuid
   attempt_count          Int      @default(0) @map("attempt_count")
   last_error_code        String?  @map("last_error_code") @db.VarChar(64)
   last_attempted_at      DateTime @default(now()) @map("last_attempted_at") @db.Timestamptz(3)
@@ -1394,6 +1534,7 @@ model amadast_shipments {
   updated_at             DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   order                  orders   @relation(fields: [order_id], references: [id], onDelete: Restrict)
 
+  @@unique([provider, provider_order_reference], map: "amadast_shipments_provider_order_reference_key")
   @@index([status, updated_at])
   @@map("amadast_shipments")
 }
@@ -1401,7 +1542,7 @@ model amadast_shipments {
 model order_items {
   id                    String                  @id @default(uuid()) @map("id")
   order_id              String                  @map("order_id")
-  offer_id              String                  @map("offer_id")
+  offer_id              String                  @map("offer_id") @db.Uuid
   product_type          product_type            @map("product_type")
   product_title         String                  @map("product_title") @db.VarChar(200)
   quantity              Int                     @map("quantity")
@@ -1578,7 +1719,7 @@ model bridge_service_grants {
 }
 
 model bridge_product_bindings {
-  product_id           String                  @id @map("product_id")
+  product_id           String                  @id @map("product_id") @db.Uuid
   grant_id             String                  @map("grant_id")
   mode                 bridge_fulfillment_mode @map("mode")
   minimum_quantity     Int                     @default(1) @map("minimum_quantity")
@@ -1768,7 +1909,7 @@ model order_shipments {
 model inventory_reservations {
   id            String                       @id @default(uuid()) @map("id")
   order_item_id String                       @unique @map("order_item_id")
-  offer_id      String                       @map("offer_id")
+  offer_id      String                       @map("offer_id") @db.Uuid
   quantity      Int                          @map("quantity")
   status        inventory_reservation_status @default(active) @map("status")
   expires_at    DateTime                     @map("expires_at") @db.Timestamptz(3)
@@ -2004,10 +2145,11 @@ model sms_setting_events {
 
 model shipping_settings {
   id                    Int                       @id @default(1) @map("id") @db.SmallInt
-  amadast_enabled       Boolean                   @default(false) @map("amadast_enabled")
-  encrypted_client_code String?                   @map("encrypted_client_code") @db.Text
+  provider              String                    @default("amadast") @map("provider") @db.VarChar(32)
+  enabled               Boolean                   @default(false) @map("amadast_enabled")
+  encrypted_api_key     String?                   @map("encrypted_client_code") @db.Text
   encryption_key_id     String?                   @map("encryption_key_id") @db.VarChar(32)
-  client_code_hint      String?                   @map("client_code_hint") @db.VarChar(4)
+  api_key_hint          String?                   @map("client_code_hint") @db.VarChar(4)
   user_id               Int?                      @map("user_id")
   store_id              Int?                      @map("store_id")
   sender_name           String?                   @map("sender_name") @db.VarChar(200)
@@ -2025,9 +2167,10 @@ model shipping_setting_events {
   id                  String            @id @default(uuid()) @map("id")
   settings_id         Int               @map("settings_id") @db.SmallInt
   actor_user_id       String            @map("actor_user_id")
-  amadast_enabled     Boolean           @map("amadast_enabled")
+  provider            String            @default("amadast") @map("provider") @db.VarChar(32)
+  enabled             Boolean           @map("amadast_enabled")
   credentials_changed Boolean           @default(false) @map("credentials_changed")
-  client_code_hint    String?           @map("client_code_hint") @db.VarChar(4)
+  api_key_hint        String?           @map("client_code_hint") @db.VarChar(4)
   user_id             Int?              @map("user_id")
   store_id            Int?              @map("store_id")
   sender_name         String?           @map("sender_name") @db.VarChar(200)
@@ -2052,6 +2195,8 @@ model seller_shipping_profiles {
   city               String                           @map("city") @db.VarChar(100)
   address_line       String                           @map("address_line") @db.VarChar(500)
   postal_code        String                           @map("postal_code") @db.Char(10)
+  latitude           Float?                           @map("latitude") @db.DoublePrecision
+  longitude          Float?                           @map("longitude") @db.DoublePrecision
   updated_by_user_id String                           @map("updated_by_user_id")
   created_at         DateTime                         @default(now()) @map("created_at") @db.Timestamptz(3)
   updated_at         DateTime                         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -2061,6 +2206,29 @@ model seller_shipping_profiles {
   @@index([enabled, updated_at(sort: Desc), seller_id])
   @@index([updated_by_user_id])
   @@map("seller_shipping_profiles")
+}
+
+model shipping_provider_tenants {
+  seller_id          String   @map("seller_id")
+  provider           String   @map("provider") @db.VarChar(32)
+  status             String   @default("pending") @map("status") @db.VarChar(32)
+  credential_hash    String   @map("credential_hash") @db.Char(64)
+  profile_hash       String?  @map("profile_hash") @db.Char(64)
+  account_reference  String?  @map("account_reference") @db.VarChar(200)
+  state               Json     @default("{}") @map("state")
+  claim_token         String?  @map("claim_token") @db.Uuid
+  attempt_count       Int      @default(0) @map("attempt_count")
+  last_error_code     String?  @map("last_error_code") @db.VarChar(64)
+  last_attempted_at   DateTime @default(now()) @map("last_attempted_at") @db.Timestamptz(3)
+  provisioned_at      DateTime? @map("provisioned_at") @db.Timestamptz(3)
+  created_at          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updated_at          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  seller              sellers  @relation(fields: [seller_id], references: [id], onDelete: Cascade)
+
+  @@id([seller_id, provider])
+  @@unique([provider, credential_hash, account_reference], map: "shipping_provider_tenants_provider_credential_account_key")
+  @@index([provider, status, last_attempted_at])
+  @@map("shipping_provider_tenants")
 }
 
 model seller_shipping_profile_events {
@@ -2129,7 +2297,7 @@ model comment_settings {
 
 model comments {
   id                 String                @id @default(uuid()) @db.Uuid
-  product_id         String?
+  product_id         String? @db.Uuid
   blog_post_id       String?
   author_user_id     String?
   guest_name         String?               @db.VarChar(100)

@@ -20,6 +20,8 @@ type SellerDashboardPageProps = {
   }>;
   searchParams?: Promise<{
     section?: string;
+    editProduct?: string;
+    productTitle?: string;
   }>;
 };
 
@@ -33,6 +35,7 @@ export default async function SellerDashboardPage({ params, searchParams }: Sell
   const user = await requireUser(locale, ["seller-admin", "seller-staff"]);
   const requestedSection = query?.section;
   const initialSection = requestedSection === "products" ||
+    (requestedSection === "profile" && user.role === "seller-admin") ||
     (requestedSection === "statistics" && user.permissions?.includes("analytics_view")) ||
     (requestedSection === "orders" && user.permissions?.includes("orders_manage")) ||
     (requestedSection === "shipping" && user.permissions?.includes("physical_products_manage")) ||
@@ -41,6 +44,16 @@ export default async function SellerDashboardPage({ params, searchParams }: Sell
     (requestedSection === "blog" && user.permissions?.includes("blog_manage"))
     ? requestedSection
     : "overview";
+  const initialEditProductId = query?.editProduct && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(query.editProduct)
+    ? query.editProduct
+    : undefined;
+  const initialProductSearch = initialEditProductId ? query?.productTitle?.slice(0, 200) : undefined;
 
-  return <SellerDashboard locale={locale} user={user} initialSection={initialSection} />;
+  return <SellerDashboard
+    locale={locale}
+    user={user}
+    initialSection={initialSection}
+    initialEditProductId={initialEditProductId}
+    initialProductSearch={initialProductSearch}
+  />;
 }

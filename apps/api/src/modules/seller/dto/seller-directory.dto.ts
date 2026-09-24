@@ -1,4 +1,4 @@
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   IsBoolean,
   IsEmail,
@@ -11,6 +11,31 @@ import {
   Min,
   MinLength
 } from "class-validator";
+
+const trimText = ({ value }: { value: unknown }) =>
+  typeof value === "string" ? value.trim() : value;
+
+export class UpdateSellerPublicProfileDto {
+  @IsOptional()
+  @Transform(trimText)
+  @IsString()
+  @MinLength(2)
+  @MaxLength(120)
+  publicName?: string | null;
+
+  @IsOptional()
+  @Transform(trimText)
+  @IsString()
+  @MinLength(2)
+  @MaxLength(160)
+  specialty?: string | null;
+
+  @IsOptional()
+  @Transform(trimText)
+  @IsString()
+  @MaxLength(1000)
+  bio?: string | null;
+}
 
 export class CreateSellerAgentDto {
   @IsString()

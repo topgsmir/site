@@ -75,7 +75,20 @@
 .navGroup button:hover { color: var(--color-dashboard-ink); background: var(--color-dashboard-surface-raised); }
 .navGroup button[aria-pressed="true"] { color: var(--color-dashboard-accent-strong); background: var(--color-dashboard-surface-raised); font-weight: 700; }
 .mobileCategory { display: none; }
+/* Hallmark · existing TopGSM tokens, practical admin hierarchy.
+ * Pre-emit critique: P4 H4 E4 S5 R5 V3. */
 .historyContent { display: grid; min-width: 0; gap: 10px; }
+.categoryIntro { padding-block: 4px 12px; border-bottom: 1px solid var(--color-dashboard-rule); }
+.categoryIntro h4 { font-size: .95rem; }
+.categoryIntro p, .technicalDetails > p, .accountTechnical > p { margin-block: 6px 12px; color: var(--color-dashboard-muted); font-size: .8rem; line-height: 1.8; }
+.technicalDetails, .accountTechnical { min-width: 0; border-top: 1px solid var(--color-dashboard-rule); color: var(--color-dashboard-muted); }
+.accountTechnical { padding: 4px var(--space-dashboard-lg) 12px; }
+.technicalDetails > summary, .accountTechnical > summary, .rawDetails > summary { width: fit-content; min-height: 44px; align-content: center; font-size: .8rem; font-weight: 600; cursor: pointer; }
+.technicalDetails > summary:hover, .accountTechnical > summary:hover, .rawDetails > summary:hover { color: var(--color-dashboard-ink); }
+.technicalDetails > summary:active, .accountTechnical > summary:active { color: var(--color-dashboard-accent-strong); }
+.technicalDetails .recordFields { margin-block: 12px; }
+.technicalDetails code, .accountTechnical code { overflow-wrap: anywhere; }
+.rawDetails pre { max-width: 100%; margin: 0; padding: 12px; border: 1px solid var(--color-dashboard-rule); background: var(--color-dashboard-surface); color: var(--color-dashboard-ink); font-size: .75rem; white-space: pre-wrap; overflow-wrap: anywhere; text-align: left; }
 .records { display: grid; gap: 8px; }
 .record { min-width: 0; overflow: hidden; border: 1px solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-control); background: var(--color-dashboard-surface-raised); }
 .record[open] { border-color: var(--color-dashboard-rule-strong); }

@@ -11,5 +11,5 @@ export class LoginDto {
   @MaxLength(128)
   password!: string;
 
-  @IsOptional() @IsString() @Matches(/^[0-9a-f-]{36}\.[0-9]{1,10}$/i) captchaToken?: string;
+  @IsOptional() @IsString() @Matches(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.[0-9]{1,10}$/i) captchaToken?: string;
 }

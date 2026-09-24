@@ -42,6 +42,7 @@ export class PaymentCallbackQueryDto {
   @IsString()
   @MinLength(1)
   @MaxLength(128)
+  @Matches(/^[A-Za-z0-9-]+$/)
   Authority!: string;
 
   @IsOptional()

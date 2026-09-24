@@ -27,6 +27,8 @@ import { CommentsModule } from "./modules/comments/comments.module";
 import { CaptchaModule } from "./modules/captcha/captcha.module";
 import { PlatformNoticeModule } from "./modules/platform-notice/platform-notice.module";
 import { BackupModule } from "./modules/backup/backup.module";
+import { HomepageStoriesModule } from "./modules/homepage-stories/homepage-stories.module";
+import { HomepageModule } from "./modules/homepage/homepage.module";
 
 @Module({
   imports: [
@@ -56,6 +58,8 @@ import { BackupModule } from "./modules/backup/backup.module";
     CommentsModule,
     CaptchaModule,
     PlatformNoticeModule,
+    HomepageStoriesModule,
+    HomepageModule,
     BackupModule,
     PayoutModule,
     RealtimeModule,

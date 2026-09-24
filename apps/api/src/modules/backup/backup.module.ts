@@ -33,7 +33,7 @@ import { BackupCatalogService } from "./backup-catalog.service";
         const fileSize = Number.isSafeInteger(configuredLimit) && configuredLimit > 0 ? configuredLimit : 25 * 1024 ** 3;
         return {
           storage: diskStorage({ destination, filename: (_request, _file, callback) => callback(null, `${randomUUID()}.upload`) }),
-          limits: { files: 1, fileSize }
+          limits: { files: 1, fields: 0, parts: 1, fileSize }
         };
       }
     })

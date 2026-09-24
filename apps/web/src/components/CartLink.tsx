@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { Route } from "next";
+import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import type { Locale } from "@/lib/i18n";
 import { CART_EVENT, cartQuantity, readCart, type CartItem } from "@/lib/cart";
@@ -15,12 +16,14 @@ const copy = {
 } as const;
 
 export function CartLink({ locale, className, current = false }: { locale: Locale; className?: string; current?: boolean }) {
+  const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
   const [hovered, setHovered] = useState(false);
   const [pinned, setPinned] = useState(false);
   const [mobileTop, setMobileTop] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pointerType = useRef<string | null>(null);
   const open = hovered || pinned;
   const count = cartQuantity(items);
   const c = copy[locale];
@@ -69,7 +72,18 @@ export function CartLink({ locale, className, current = false }: { locale: Local
     onPointerLeave={(event) => { if (event.pointerType === "mouse") { if (hoverTimer.current) clearTimeout(hoverTimer.current); setHovered(false); } }}
     onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) { setPinned(false); setHovered(false); } }}
   >
-    <button type="button" className={className} aria-label={`${label}: ${number.format(count)}`} aria-expanded={open} aria-controls="cart-preview" aria-current={current ? "page" : undefined} onClick={() => { if (hoverTimer.current) clearTimeout(hoverTimer.current); if (pinned) { setPinned(false); setHovered(false); } else setPinned(true); }}>
+    <button type="button" className={className} aria-label={`${label}: ${number.format(count)}`} aria-expanded={open} aria-controls="cart-preview" aria-current={current ? "page" : undefined} onPointerDown={(event) => { pointerType.current = event.pointerType; }} onClick={() => {
+      if (hoverTimer.current) clearTimeout(hoverTimer.current);
+      const clickedWithMouse = pointerType.current === "mouse";
+      pointerType.current = null;
+      if (clickedWithMouse || pinned) {
+        setPinned(false);
+        setHovered(false);
+        router.push(`/${locale}/cart`);
+      } else {
+        setPinned(true);
+      }
+    }}>
       <DesignIcon name="bag" /><span>{label}</span><strong>{number.format(count)}</strong>
     </button>
     {open && <section className={styles.panel} id="cart-preview" aria-label={c.cart} style={{ "--cart-preview-top": `${mobileTop}px` } as CSSProperties}>

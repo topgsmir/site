@@ -4,7 +4,7 @@ import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
 import { IdempotencyKey } from "../auth/idempotency-key.decorator";
 import type { AuthenticatedRequest } from "../auth/platform-admin.guard";
 import { CheckoutService } from "./checkout.service";
-import { CreateCheckoutDto, QuoteCheckoutDto } from "./dto/checkout.dto";
+import { CheckoutShippingPlacesDto, CreateCheckoutDto, QuoteCheckoutDto } from "./dto/checkout.dto";
 
 @Controller("checkouts")
 export class CheckoutController {
@@ -14,6 +14,13 @@ export class CheckoutController {
   async quote(@Body() body: QuoteCheckoutDto, @Ip() clientIp: string) {
     await this.rateLimits.consumeCheckoutQuote(body.items.map((item) => item.offerId).sort().join(":"), clientIp);
     return this.checkouts.quote(body);
+  }
+
+  @Post("shipping-places")
+  async shippingPlaces(@Body() body: CheckoutShippingPlacesDto, @Ip() clientIp: string) {
+    const subject = body.items.map((item) => item.offerId).sort().join(":");
+    await this.rateLimits.consumeCheckoutQuote(`shipping-places:${subject}:${body.provinceId ?? "provinces"}`, clientIp);
+    return this.checkouts.shippingPlaces(body);
   }
 
   @Post()

@@ -16,8 +16,9 @@ const NODE_TYPES = new Set([
   "image"
 ]);
 const MARK_TYPES = new Set(["bold", "italic", "strike", "code", "link"]);
-const MEDIA_URL = /^\/media\/([0-9a-f-]{36})\/[a-z0-9-]+\.webp$/i;
-const SAFE_LINK = /^(https?:|mailto:|tel:)/i;
+const MEDIA_URL = /^\/media\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/[a-z0-9-]{1,80}\.webp$/i;
+const MAIL_LINK = /^mailto:[^%?\s@]+@[^%?\s@]+$/i;
+const PHONE_LINK = /^tel:[+0-9(). -]{1,64}$/i;
 
 type JsonRecord = Record<string, unknown>;
 
@@ -29,7 +30,7 @@ export function validateRichText(value: unknown) {
     throw new BadRequestException("Rich-text content is too large");
   }
 
-  const visit = (node: unknown, depth: number): void => {
+  const visit = (node: unknown, depth: number): JsonRecord => {
     if (!isRecord(node) || depth > 12 || ++nodes > 2_000) {
       throw new BadRequestException("Rich-text document is too complex");
     }
@@ -40,14 +41,19 @@ export function validateRichText(value: unknown) {
     if (type === "doc" && depth !== 0) {
       throw new BadRequestException("Nested rich-text documents are not allowed");
     }
-    if (type === "text" && typeof node.text !== "string") {
-      throw new BadRequestException("Rich-text text nodes must contain a string");
+    const sanitized: JsonRecord = { type };
+    if (type === "text") {
+      const text = node.text;
+      if (typeof text !== "string") throw new BadRequestException("Rich-text text nodes must contain a string");
+      if (text.length > 20_000) throw new BadRequestException("Rich-text text nodes are too large");
+      sanitized.text = text;
     }
     if (type === "heading") {
       const level = isRecord(node.attrs) ? node.attrs.level : undefined;
       if (level !== 2 && level !== 3) {
         throw new BadRequestException("Only level 2 and 3 headings are allowed");
       }
+      sanitized.attrs = { level };
     }
     if (type === "image") {
       const src = isRecord(node.attrs) ? node.attrs.src : undefined;
@@ -56,39 +62,56 @@ export function validateRichText(value: unknown) {
         throw new BadRequestException("Inline images must use owned media URLs");
       }
       mediaIds.add(match[1]);
+      sanitized.attrs = { src };
     }
     if (node.marks !== undefined) {
-      if (!Array.isArray(node.marks)) {
+      if (!Array.isArray(node.marks) || node.marks.length > 8) {
         throw new BadRequestException("Rich-text marks must be an array");
       }
-      for (const mark of node.marks) {
+      sanitized.marks = node.marks.map((mark) => {
         if (!isRecord(mark) || typeof mark.type !== "string" || !MARK_TYPES.has(mark.type)) {
           throw new BadRequestException("Rich-text document contains an unsupported mark");
         }
         if (mark.type === "link") {
           const href = isRecord(mark.attrs) ? mark.attrs.href : undefined;
-          if (typeof href !== "string" || !SAFE_LINK.test(href)) {
-            throw new BadRequestException("Rich-text link uses an unsafe URL protocol");
-          }
+          return { type: "link", attrs: { href: safeRichTextLink(href) } };
         }
-      }
+        return { type: mark.type };
+      });
     }
     if (node.content !== undefined) {
       if (!Array.isArray(node.content)) {
         throw new BadRequestException("Rich-text node content must be an array");
       }
-      node.content.forEach((child) => visit(child, depth + 1));
+      sanitized.content = node.content.map((child) => visit(child, depth + 1));
     }
+    return sanitized;
   };
 
-  visit(value, 0);
+  const content = visit(value, 0);
   if (!isRecord(value) || value.type !== "doc") {
     throw new BadRequestException("Rich-text content must be a document");
   }
   return {
-    content: JSON.parse(encoded) as Prisma.InputJsonValue,
+    content: content as Prisma.InputJsonValue,
     mediaIds: [...mediaIds]
   };
+}
+
+function safeRichTextLink(value: unknown) {
+  if (typeof value !== "string" || !value || value.length > 2_048 || /[\p{Cc}\p{Cf}]/u.test(value)) {
+    throw new BadRequestException("Rich-text link is invalid");
+  }
+  if (MAIL_LINK.test(value) || PHONE_LINK.test(value)) return value;
+  try {
+    const parsed = new URL(value);
+    if ((parsed.protocol !== "http:" && parsed.protocol !== "https:") || parsed.username || parsed.password) {
+      throw new Error("unsafe");
+    }
+    return parsed.toString();
+  } catch {
+    throw new BadRequestException("Rich-text link uses an unsafe URL");
+  }
 }
 
 export function hasMeaningfulRichText(value: unknown): boolean {

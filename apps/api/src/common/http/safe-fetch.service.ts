@@ -7,11 +7,19 @@ import { PublicUrlService } from "./public-url.service";
 export class SafeFetchService {
   constructor(private readonly publicUrls: PublicUrlService) {}
 
-  readonly fetch: typeof fetch = async (input, init = {}) => {
+  readonly fetch: typeof fetch = (input, init) => this.request(input, init, 30_000);
+
+  withTimeout(timeoutMs: number): typeof fetch {
+    return (input, init) => this.request(input, init, timeoutMs);
+  }
+
+  private async request(input: Parameters<typeof fetch>[0], init: RequestInit = {}, timeoutMs: number): Promise<Response> {
+    init.signal?.throwIfAborted();
     const target = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
     const approved = await this.publicUrls.validate(target.origin);
     if (target.origin !== approved.url.origin) throw new BadGatewayException("Provider request escaped its approved origin");
     await this.publicUrls.assertStillPublic(approved.url, approved.addresses);
+    init.signal?.throwIfAborted();
     const pinnedAddress = [...approved.addresses][0];
     if (!pinnedAddress) throw new BadGatewayException("Provider has no public address");
     const body = typeof init.body === "string" ? Buffer.from(init.body, "utf8") : init.body == null ? undefined : (() => { throw new BadGatewayException("Unsupported provider request body"); })();
@@ -23,7 +31,7 @@ export class SafeFetchService {
       let settled = false;
       let streamController: ReadableStreamDefaultController<Uint8Array> | undefined;
       const lookup: LookupFunction = (_hostname, _options, callback) => callback(null, pinnedAddress, pinnedAddress.includes(":") ? 6 : 4);
-      const request = httpsRequest(target, { method: init.method ?? "GET", headers: Object.fromEntries(headers.entries()), timeout: 30_000, lookup, servername: target.hostname, family: pinnedAddress.includes(":") ? 6 : 4 }, (response) => {
+      const request = httpsRequest(target, { method: init.method ?? "GET", headers: Object.fromEntries(headers.entries()), timeout: timeoutMs, lookup, servername: target.hostname, family: pinnedAddress.includes(":") ? 6 : 4 }, (response) => {
         let length = 0;
         const bodyStream = new ReadableStream<Uint8Array>({
           start(controller) {
@@ -38,10 +46,13 @@ export class SafeFetchService {
         resolve(new Response(bodyStream, { status: response.statusCode ?? 502, headers: response.headers as HeadersInit }));
       });
       request.on("timeout", () => request.destroy(new Error("request_timeout")));
-      request.on("error", (error) => { const safeError = error.message === "request_timeout" ? new RequestTimeoutException("Provider request timed out") : new BadGatewayException(error.message === "response_too_large" ? "Provider response is too large" : "Provider request failed"); if (settled) streamController?.error(safeError); else reject(safeError); });
-      init.signal?.addEventListener("abort", () => request.destroy(new Error("request_aborted")), { once: true });
+      request.on("error", (error) => { const safeError = error.message === "request_timeout" || (init.signal?.aborted && init.signal.reason?.name === "TimeoutError") ? new RequestTimeoutException("Provider request timed out") : new BadGatewayException(error.message === "response_too_large" ? "Provider response is too large" : "Provider request failed"); if (settled) streamController?.error(safeError); else reject(safeError); });
+      const abort = () => request.destroy(new Error("request_aborted"));
+      init.signal?.addEventListener("abort", abort, { once: true });
+      request.once("close", () => init.signal?.removeEventListener("abort", abort));
+      if (init.signal?.aborted) { abort(); return; }
       if (body) request.write(body);
       request.end();
     });
-  };
+  }
 }

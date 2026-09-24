@@ -15,6 +15,7 @@ function offer(input: { id: string; sellerId: string; type: "digital" | "physica
     physical: input.type === "physical" ? { stock: input.stock ?? 10 } : null,
     service: input.type === "service" ? { input_schema: input.serviceInputs ?? [] } : null,
     listing: {
+      seller_id: input.sellerId,
       seller: { id: input.sellerId, shop_name: `Seller ${input.sellerId}`, commission: new Prisma.Decimal("0.1"), holdback_rate: new Prisma.Decimal("0.05"), permissions: input.type === "physical" && input.physicalGranted !== false ? [{ permission: "physical_products_manage" }] : [] },
       product: {
         id: `product-${input.id}`,
@@ -26,7 +27,7 @@ function offer(input: { id: string; sellerId: string; type: "digital" | "physica
   };
 }
 
-function service(offers: ReturnType<typeof offer>[]) {
+function service(offers: ReturnType<typeof offer>[], shippingTenants: { listPlacesForConfiguredSeller: (input: { sellerId: string; provinceId?: number }) => Promise<unknown> } = { listPlacesForConfiguredSeller: async () => [] }) {
   const prisma = {
     seller_offers: { findMany: async () => offers },
     payment_method_configs: {
@@ -37,10 +38,24 @@ function service(offers: ReturnType<typeof offer>[]) {
     listProviders: async () => [{ code: "zarinpal", name: "Zarinpal", available: true }]
   };
   const usdRates = { getTomanPerUsd: async () => new Prisma.Decimal("232750") };
-  return new CheckoutService(prisma as never, payments as never, {} as never, usdRates as never);
+  return new CheckoutService(prisma as never, payments as never, {} as never, usdRates as never, shippingTenants as never);
 }
 
 describe("CheckoutService quotes", () => {
+  it("loads shipping places through a seller derived from validated physical offers", async () => {
+    const calls: Array<{ sellerId: string; provinceId?: number }> = [];
+    const physicalOffer = offer({ id: "00000000-0000-4000-8000-000000000120", sellerId: "seller-a", type: "physical", price: "1000" });
+    const result = await service([physicalOffer], {
+      listPlacesForConfiguredSeller: async (input) => {
+        calls.push(input);
+        return [{ id: 360, title: "تهران", parentId: 8 }];
+      }
+    }).shippingPlaces({ items: [{ offerId: physicalOffer.id, quantity: 1 }], provinceId: 8 });
+
+    assert.deepEqual(result, [{ id: 360, title: "تهران", parentId: 8 }]);
+    assert.deepEqual(calls, [{ sellerId: "seller-a", provinceId: 8 }]);
+  });
+
   it("groups a marketplace cart by seller and product type without exposing delivery URLs", async () => {
     const result = await service([
       offer({ id: "00000000-0000-4000-8000-000000000101", sellerId: "seller-a", type: "digital", price: "1000" }),
@@ -150,7 +165,7 @@ describe("CheckoutService service answer encryption", () => {
       SERVICE_INPUT_CURRENT_KEY_ID: "service1",
       SERVICE_INPUT_CREDENTIAL_KEYS: `service1:${key}`
     }));
-    const checkout = new CheckoutService({} as never, {} as never, {} as never, {} as never, crypto);
+    const checkout = new CheckoutService({} as never, {} as never, {} as never, {} as never, {} as never, crypto);
     const encrypt = checkout as unknown as {
       encryptServiceAnswers(itemId: string, answers: Array<{ key: string; value: string }>): { ciphertext: string; keyId: string } | null;
     };

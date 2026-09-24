@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import type { HomepageDocument, HomepageStory } from "@topgsm/shared-types";
 import { notFound } from "next/navigation";
 import {
   LandingPage,
-  type HomepageAgent,
+  type HomepageExpert,
   type HomepageProduct
 } from "@/components/landing/LandingPage";
 import { SERVER_API_BASE } from "@/lib/api/server";
@@ -31,15 +32,22 @@ const metadataByLocale = {
 
 type HomePageProps = { params: Promise<{ locale: string }> };
 
-async function fetchCollection<T>(path: string): Promise<T[]> {
+async function fetchCollection<T>(path: string): Promise<{ items: T[]; unavailable: boolean }> {
   try {
-    const response = await fetch(`${SERVER_API_BASE}${path}`, { next: { revalidate: 60 } });
-    if (!response.ok) return [];
+    const response = await fetch(`${SERVER_API_BASE}${path}`, { next: { revalidate: 60 }, signal: AbortSignal.timeout(5000) });
+    if (!response.ok) return { items: [], unavailable: true };
     const value: unknown = await response.json();
-    return Array.isArray(value) ? (value as T[]) : [];
+    return Array.isArray(value) ? { items: value as T[], unavailable: false } : { items: [], unavailable: true };
   } catch {
-    return [];
+    return { items: [], unavailable: true };
   }
+}
+
+async function fetchHomepage(locale: string): Promise<HomepageDocument | null> {
+  try {
+    const response = await fetch(`${SERVER_API_BASE}/homepage?locale=${locale}`, { cache: "no-store", signal: AbortSignal.timeout(5000) });
+    return response.ok ? await response.json() as HomepageDocument : null;
+  } catch { return null; }
 }
 
 export async function generateMetadata({ params }: HomePageProps): Promise<Metadata> {
@@ -79,10 +87,12 @@ export default async function HomePage({ params }: HomePageProps) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
 
-  const [products, agents, user] = await Promise.all([
+  const [products, experts, stories, user, homepage] = await Promise.all([
     fetchCollection<HomepageProduct>("/products?locale=" + locale),
-    fetchCollection<HomepageAgent>("/seller/agents"),
-    getCurrentUser()
+    fetchCollection<HomepageExpert>("/seller/directory"),
+    fetchCollection<HomepageStory>("/stories?locale=" + locale),
+    getCurrentUser(),
+    fetchHomepage(locale)
   ]);
 
   const structuredData = {
@@ -106,7 +116,7 @@ export default async function HomePage({ params }: HomePageProps) {
       {
         "@type": "ItemList",
         name: metadataByLocale[locale].title,
-        itemListElement: products.slice(0, 8).map((product, index) => ({
+        itemListElement: products.items.slice(0, 8).map((product, index) => ({
           "@type": "ListItem",
           position: index + 1,
           url: `${siteUrl}/${locale}/products/${product.slug ?? product.id}`,
@@ -121,9 +131,14 @@ export default async function HomePage({ params }: HomePageProps) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} />
       <LandingPage
         locale={locale}
-        products={products}
-        agents={agents}
+        products={products.items}
+        productsUnavailable={products.unavailable}
+        experts={experts.items}
+        expertsUnavailable={experts.unavailable}
+        stories={stories.items}
         accountHref={user ? dashboardFor(user, locale) : null}
+        content={homepage?.content ?? undefined}
+        editable={user?.role === "platform-admin"}
       />
     </>
   );

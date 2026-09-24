@@ -4,9 +4,11 @@ import { BadRequestException } from "@nestjs/common";
 import type { ConfigService } from "@nestjs/config";
 import type { PrismaService } from "../../prisma/prisma.service";
 import { ProductService } from "./product.service";
+import { productCategorySelect } from "./product-category";
 
 const PRODUCT_ID = "00000000-0000-4000-8000-000000000001";
 const ACTOR_ID = "00000000-0000-4000-8000-000000000002";
+const CATEGORY_ID = "00000000-0000-4000-8000-000000000006";
 
 function serviceWith(prisma: unknown) {
   return new ProductService(
@@ -43,14 +45,14 @@ describe("managed product lists", () => {
     await service.listAdminProducts({ search: "phone", category: "accessories", status: "active", type: "physical", kind: "variable", sort: "title_asc", limit: 20 });
     assert.deepEqual(query?.where, {
       type: "physical", kind: "variable", status: "active",
-      category: { contains: "accessories", mode: "insensitive" },
+      category_record: { name: { contains: "accessories", mode: "insensitive" } },
       OR: [
         { title: { contains: "phone", mode: "insensitive" } },
         { slug: { contains: "phone", mode: "insensitive" } },
-        { category: { contains: "phone", mode: "insensitive" } }
+        { category_record: { name: { contains: "phone", mode: "insensitive" } } }
       ]
     });
-    assert.deepEqual(query?.orderBy, [{ title: "asc" }, { id: "desc" }]);
+    assert.deepEqual(query?.orderBy, [{ title: "asc" }, { id: "asc" }]);
     assert.equal(query?.take, 21);
   });
 
@@ -64,7 +66,7 @@ describe("managed product lists", () => {
       product: { is: { status: "draft", OR: [
         { title: { contains: "charger", mode: "insensitive" } },
         { slug: { contains: "charger", mode: "insensitive" } },
-        { category: { contains: "charger", mode: "insensitive" } }
+        { category_record: { name: { contains: "charger", mode: "insensitive" } } }
       ] } }
     });
     assert.deepEqual(query?.cursor, { id: PRODUCT_ID });
@@ -126,7 +128,7 @@ describe("admin product editing", () => {
         title: "Clean title",
         slug: "catalog-product",
         description: "Clean description",
-        category: null,
+        category_record: { disconnect: true },
         status: "active"
       },
       select: {
@@ -134,7 +136,7 @@ describe("admin product editing", () => {
         title: true,
         slug: true,
         description: true,
-        category: true,
+        category_record: { select: productCategorySelect },
         kind: true,
         type: true,
         status: true,
@@ -187,7 +189,7 @@ describe("admin product editing", () => {
       title: "Earlier title",
       slug: "catalog-product",
       description: null,
-      category: "Tools",
+      category_record: { id: CATEGORY_ID, name: "Tools", translations: [] },
       kind: "simple",
       type: "service",
       status: "draft",
@@ -197,6 +199,7 @@ describe("admin product editing", () => {
     };
     const service = serviceWith({
       $transaction: async (callback: (tx: unknown) => unknown) => callback({
+        $queryRaw: async () => [{ id: CATEGORY_ID }],
         product_change_events: {
           findFirst: async () => ({
             id: "00000000-0000-4000-8000-000000000003",
@@ -217,7 +220,7 @@ describe("admin product editing", () => {
       ACTOR_ID
     );
 
-    assert.deepEqual(restoredData, { title: "Earlier title", description: null, category: "Tools", status: "draft" });
+    assert.deepEqual(restoredData, { title: "Earlier title", description: null, category_record: { connect: { id: CATEGORY_ID } }, status: "draft" });
     assert.equal((auditData as { action: string }).action, "restore");
     assert.equal((auditData as { restored_from_event_id: string }).restored_from_event_id, "00000000-0000-4000-8000-000000000003");
     assert.equal(result.title, "Earlier title");

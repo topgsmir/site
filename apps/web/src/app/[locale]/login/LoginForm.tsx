@@ -5,6 +5,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { safeInternalPath } from "@/lib/safe-navigation";
 import type { Locale } from "@/lib/i18n";
 import type { AuthLoginMethods, PlatformPermission } from "@topgsm/shared-types";
 import { CaptchaWidget } from "@/components/CaptchaWidget";
@@ -77,23 +78,22 @@ function destinationFor(user: AuthUser, locale: Locale, nextPath?: string) {
         ? `/${locale}/seller-dashboard`
         : `/${locale}/account`;
 
-  if (!nextPath?.startsWith(`/${locale}/`) || nextPath.includes("://")) {
-    return fallback;
-  }
-  if (nextPath.startsWith(`/${locale}/admin`) && !["platform-admin", "platform-staff"].includes(user.role)) {
+  const safeNextPath = safeInternalPath(nextPath, `/${locale}/`);
+  if (!safeNextPath) return fallback;
+  if (safeNextPath.startsWith(`/${locale}/admin`) && !["platform-admin", "platform-staff"].includes(user.role)) {
     return fallback;
   }
   if (
-    nextPath.startsWith(`/${locale}/seller-dashboard`) &&
+    safeNextPath.startsWith(`/${locale}/seller-dashboard`) &&
     !["platform-admin", "platform-staff", "seller-admin", "seller-staff"].includes(user.role)
   ) {
     return fallback;
   }
-  if (nextPath.startsWith(`/${locale}/account`) && user.role !== "buyer") {
+  if (safeNextPath.startsWith(`/${locale}/account`) && user.role !== "buyer") {
     return fallback;
   }
 
-  return nextPath;
+  return safeNextPath;
 }
 
 export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {

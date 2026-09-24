@@ -5,9 +5,19 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import type { Locale } from "@/lib/i18n";
+import { isUuidV4 } from "@/lib/safe-navigation";
 import styles from "./LocalGateway.module.css";
 
 type LocalPayment = { status: string; amount: string; currency: string; orderId: string; checkoutId: string | null };
+
+function isLocalPayment(value: unknown): value is LocalPayment {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const payment = value as Record<string, unknown>;
+  return ["pending", "succeeded", "failed"].includes(String(payment.status)) &&
+    typeof payment.amount === "string" && /^\d{1,18}(?:\.\d{1,2})?$/.test(payment.amount) &&
+    typeof payment.currency === "string" && /^[A-Z]{3,8}$/.test(payment.currency) &&
+    isUuidV4(payment.orderId) && (payment.checkoutId === null || isUuidV4(payment.checkoutId));
+}
 
 const COPY = {
   en: { title: "Local test gateway", description: "Choose a test result for this payment. No money will be charged.", paid: "Mark as paid", canceled: "Cancel payment", pending: "Awaiting test result", done: "This payment has already been completed.", error: "Could not load or update this payment.", busy: "Processing…", back: "Back to checkout" },
@@ -23,6 +33,7 @@ export function LocalGateway({ locale, authority }: { locale: Locale; authority:
   const load = useCallback(async () => {
     try {
       const response = await api.get<LocalPayment>(`/payments/local/${encodeURIComponent(authority)}`);
+      if (!isLocalPayment(response.data)) throw new Error("Invalid payment response");
       setPayment(response.data);
     } catch { setError(c.error); }
   }, [authority, c.error]);

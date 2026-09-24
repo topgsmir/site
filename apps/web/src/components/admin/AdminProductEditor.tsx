@@ -36,9 +36,9 @@ const COPY = {
 } as const;
 
 const IMAGE_COPY = {
-  en: { title: "Product image", hint: "WebP or SVG · up to 8 MiB", choose: "Choose image", replace: "Replace image", remove: "Remove", saved: "Product image saved.", removed: "Product image removed.", error: "The product image could not be updated." },
-  fa: { title: "تصویر محصول", hint: "WebP یا SVG · حداکثر ۸ مگابایت", choose: "انتخاب تصویر", replace: "تغییر تصویر", remove: "حذف", saved: "تصویر محصول ذخیره شد.", removed: "تصویر محصول حذف شد.", error: "به‌روزرسانی تصویر محصول انجام نشد." },
-  ar: { title: "صورة المنتج", hint: "WebP أو SVG · حتى 8 ميغابايت", choose: "اختيار صورة", replace: "تغيير الصورة", remove: "حذف", saved: "تم حفظ صورة المنتج.", removed: "تم حذف صورة المنتج.", error: "تعذر تحديث صورة المنتج." }
+  en: { title: "Product image", hint: "JPEG, PNG, or WebP · up to 8 MiB", choose: "Choose image", replace: "Replace image", remove: "Remove", saved: "Product image saved.", removed: "Product image removed.", error: "The product image could not be updated." },
+  fa: { title: "تصویر محصول", hint: "JPEG، PNG یا WebP · حداکثر ۸ مگابایت", choose: "انتخاب تصویر", replace: "تغییر تصویر", remove: "حذف", saved: "تصویر محصول ذخیره شد.", removed: "تصویر محصول حذف شد.", error: "به‌روزرسانی تصویر محصول انجام نشد." },
+  ar: { title: "صورة المنتج", hint: "JPEG أو PNG أو WebP · حتى 8 ميغابايت", choose: "اختيار صورة", replace: "تغيير الصورة", remove: "حذف", saved: "تم حفظ صورة المنتج.", removed: "تم حذف صورة المنتج.", error: "تعذر تحديث صورة المنتج." }
 } as const;
 
 type CoreDraft = Pick<AdminProductDetails, "title" | "slug" | "status"> & {
@@ -255,7 +255,7 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
               return variant ? <Image className={styles.productImage} unoptimized src={variant.url} alt={product.title} width={variant.width} height={variant.height} /> : null;
             })() : <div className={styles.imagePlaceholder}><span aria-hidden="true">＋</span></div>}
             <div className={styles.imageActions}>
-              <label className={styles.secondaryButton}>{product.image ? imageCopy.replace : imageCopy.choose}<input type="file" accept="image/webp,image/svg+xml" disabled={Boolean(busy)} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file); event.currentTarget.value = ""; }} /></label>
+              <label className={styles.secondaryButton}>{product.image ? imageCopy.replace : imageCopy.choose}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={Boolean(busy)} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file); event.currentTarget.value = ""; }} /></label>
               {product.image ? <button className={styles.secondaryButton} type="button" disabled={Boolean(busy)} onClick={() => void removeImage()}>{imageCopy.remove}</button> : null}
             </div>
           </section>

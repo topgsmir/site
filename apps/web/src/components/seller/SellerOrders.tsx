@@ -14,7 +14,7 @@ type SellerOrder = {
   buyer?: { fullName: string; email: string; phoneNumber: string | null };
   shippingAddress?: { recipientName: string; phoneNumber: string; province: string; city: string; postalCode: string; addressLine: string } | null;
   shipment?: { carrier: string | null; trackingCode: string | null } | null;
-  amadastShipment?: { externalOrderId: number; status: string; courierTrackingCode: string | null; courierTitle: string | null; errorCode: string | null } | null;
+  shippingDispatch?: { externalOrderId: number; provider: string; status: string; providerTrackingCode: string | null; courierTrackingCode: string | null; courierTitle: string | null; errorCode: string | null } | null;
   items: Array<{ offerId: string; productTitle: string; productType: string; quantity: number; serviceNote?: string | null; serviceInputs?: Array<{ key: string; label: string; value: string | null; sensitive: boolean }>; bridge?: BridgeDetails }>;
 };
 type BridgeOrderAction = { id: string; mayRetry: boolean };
@@ -38,6 +38,12 @@ function displaySource(source: string | null | undefined, locale: Locale) {
   return source;
 }
 
+function providerActionLabel(locale: Locale, action: "register" | "sync", providerName: string) {
+  if (locale === "fa") return action === "sync" ? `دریافت رهگیری ${providerName}` : `ارسال با ${providerName}`;
+  if (locale === "ar") return action === "sync" ? `تحديث تتبع ${providerName}` : `الشحن عبر ${providerName}`;
+  return action === "sync" ? `Refresh ${providerName} tracking` : `Send with ${providerName}`;
+}
+
 export function SellerOrders({ locale, onOrderUpdated }: { locale: Locale; onOrderUpdated?: () => void | Promise<void> }) {
   const c = COPY[locale];
   const [draft, setDraft] = useState(initialFilters);
@@ -50,7 +56,7 @@ export function SellerOrders({ locale, onOrderUpdated }: { locale: Locale; onOrd
   const [bridgeActions, setBridgeActions] = useState<BridgeOrderAction[]>([]);
   const [results, setResults] = useState<Record<string, string>>({});
   const [shipping, setShipping] = useState<Record<string, { carrier: string; trackingCode: string }>>({});
-  const [amadastEnabled, setAmadastEnabled] = useState(false);
+  const [shippingProvider, setShippingProvider] = useState<{ code: string; name: string; enabled: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -61,14 +67,14 @@ export function SellerOrders({ locale, onOrderUpdated }: { locale: Locale; onOrd
     const id = ++requestId.current;
     setLoading(true); setError("");
     try {
-      const response = await api.get<{ items: SellerOrder[]; nextCursor: string | null; shippingProviders: { amadast: { enabled: boolean } } }>("/orders", { params: {
+      const response = await api.get<{ items: SellerOrder[]; nextCursor: string | null; shippingProvider: { code: string; name: string; enabled: boolean } | null }>("/orders", { params: {
         limit: 20, ...(cursor ? { cursor } : {}), ...(active.search ? { search: active.search } : {}),
         ...(active.status ? { status: active.status } : {}), ...(active.productType ? { productType: active.productType } : {}),
         ...(active.dateFrom ? { dateFrom: active.dateFrom } : {}), ...(active.dateTo ? { dateTo: active.dateTo } : {}), sort: active.sort
       } });
       if (id !== requestId.current) return;
       setOrders(response.data.items); setNextCursor(response.data.nextCursor);
-      setAmadastEnabled(response.data.shippingProviders.amadast.enabled);
+      setShippingProvider(response.data.shippingProvider);
       setExpanded((current) => current && response.data.items.some((order) => order.id === current) ? current : null);
       if (process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true") {
         const bridgeResponse = await api.get<BridgeOrderAction[]>("/bridge/orders");
@@ -105,9 +111,9 @@ export function SellerOrders({ locale, onOrderUpdated }: { locale: Locale; onOrd
     try { await api.patch(`/orders/${orderId}/shipping`, shipping[orderId] ?? {}, { headers: { "Idempotency-Key": crypto.randomUUID() } }); await reloadPage(); }
     catch { setError(c.actionError); } finally { setBusy(""); }
   }
-  async function amadast(orderId: string, action: "register" | "sync") {
+  async function providerShipping(orderId: string, action: "register" | "sync") {
     setBusy(orderId); setError("");
-    try { await api.post(`/orders/${orderId}/shipping/amadast${action === "sync" ? "/sync" : ""}`, {}, { headers: { "Idempotency-Key": crypto.randomUUID() } }); await reloadPage(); }
+    try { await api.post(`/orders/${orderId}/shipping/${action}`, {}, { headers: { "Idempotency-Key": crypto.randomUUID() } }); await reloadPage(); }
     catch { setError(c.actionError); } finally { setBusy(""); }
   }
 
@@ -145,7 +151,7 @@ export function SellerOrders({ locale, onOrderUpdated }: { locale: Locale; onOrd
           <td data-label={c.status}><span className={styles.badge} data-status={order.status}>{c[order.status as keyof typeof c] ?? order.status}</span></td>
           <td data-label={c.date}><time dateTime={order.createdAt}>{new Date(order.createdAt).toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" })}</time></td>
           <td><button className={styles.detailsButton} type="button" aria-expanded={isExpanded} aria-controls={`seller-order-${order.id}`} onClick={() => setExpanded(isExpanded ? null : order.id)}>{isExpanded ? c.close : c.details}</button></td>
-        </tr>{isExpanded ? <tr className={styles.detailRow}><td colSpan={8}><OrderDetails order={order} locale={locale} c={c} retryable={retryable} results={results} shipping={shipping} amadastEnabled={amadastEnabled} busy={busy} setResults={setResults} setShipping={setShipping} bridgeAction={bridgeAction} transition={transition} ship={ship} amadast={amadast} /></td></tr> : null}</Fragment>;
+        </tr>{isExpanded ? <tr className={styles.detailRow}><td colSpan={8}><OrderDetails order={order} locale={locale} c={c} retryable={retryable} results={results} shipping={shipping} shippingProvider={shippingProvider} busy={busy} setResults={setResults} setShipping={setShipping} bridgeAction={bridgeAction} transition={transition} ship={ship} providerShipping={providerShipping} /></td></tr> : null}</Fragment>;
       })}</tbody></table>
       {loading ? <p className={styles.state} role="status">{c.loading}</p> : !error && orders.length === 0 ? <p className={styles.state}>{c.empty}</p> : null}
     </div>
@@ -154,21 +160,35 @@ export function SellerOrders({ locale, onOrderUpdated }: { locale: Locale; onOrd
 }
 
 type OrderDetailsProps = {
-  order: SellerOrder; locale: Locale; c: typeof COPY[Locale]; retryable: Set<string>; results: Record<string, string>; shipping: Record<string, { carrier: string; trackingCode: string }>; amadastEnabled: boolean; busy: string;
+  order: SellerOrder; locale: Locale; c: typeof COPY[Locale]; retryable: Set<string>; results: Record<string, string>; shipping: Record<string, { carrier: string; trackingCode: string }>; shippingProvider: { code: string; name: string; enabled: boolean } | null; busy: string;
   setResults: Dispatch<SetStateAction<Record<string, string>>>; setShipping: Dispatch<SetStateAction<Record<string, { carrier: string; trackingCode: string }>>>;
-  bridgeAction: (id: string, action: "complete" | "retry") => Promise<void>; transition: (id: string, status: "processing" | "awaiting_confirmation") => Promise<void>; ship: (id: string) => Promise<void>; amadast: (id: string, action: "register" | "sync") => Promise<void>;
+  bridgeAction: (id: string, action: "complete" | "retry") => Promise<void>; transition: (id: string, status: "processing" | "awaiting_confirmation") => Promise<void>; ship: (id: string) => Promise<void>; providerShipping: (id: string, action: "register" | "sync") => Promise<void>;
 };
 
-function OrderDetails({ order, locale, c, retryable, results, shipping, amadastEnabled, busy, setResults, setShipping, bridgeAction, transition, ship, amadast }: OrderDetailsProps) {
+function OrderDetails({ order, locale, c, retryable, results, shipping, shippingProvider, busy, setResults, setShipping, bridgeAction, transition, ship, providerShipping }: OrderDetailsProps) {
   const hasBridge = order.items.some((item) => item.productType === "bridge");
   const allPhysical = order.items.every((item) => item.productType === "physical");
+  const providerAction = order.shippingDispatch?.status === "registered" || order.shippingDispatch?.status === "tracking_available" ? "sync" : "register";
   return <section className={styles.detailPanel} id={`seller-order-${order.id}`} aria-label={`${c.details} #${order.id}`}>
     <div className={styles.detailGrid}>
       <section><h3>{c.delivery}</h3>{order.shippingAddress ? <address>{order.shippingAddress.recipientName}<br />{order.shippingAddress.province}، {order.shippingAddress.city}، {order.shippingAddress.addressLine}<br /><span dir="ltr">{order.shippingAddress.phoneNumber} · {order.shippingAddress.postalCode}</span></address> : <p>{c.noDelivery}</p>}</section>
       <section><h3>{c.items}</h3><ul className={styles.itemList}>{order.items.map((item) => <li key={item.offerId}><strong>{item.productTitle}</strong><span>{item.quantity.toLocaleString(locale)} × {c[item.productType as keyof typeof c] ?? item.productType}</span>{item.serviceNote ? <small>{item.serviceNote}</small> : null}{item.serviceInputs?.length ? <dl className={styles.serviceAnswers}>{item.serviceInputs.map((field) => <div key={field.key}><dt>{field.label}</dt><dd>{field.value ?? "—"}</dd></div>)}</dl> : null}</li>)}</ul></section>
-      <section><h3>{c.tracking}</h3><p>{order.amadastShipment?.courierTrackingCode ?? order.shipment?.trackingCode ?? c.noTracking}</p>{order.amadastShipment?.courierTitle || order.shipment?.carrier ? <small>{order.amadastShipment?.courierTitle ?? order.shipment?.carrier}</small> : null}</section>
+      <section><h3>{c.tracking}</h3><p>{order.shippingDispatch?.courierTrackingCode ?? order.shippingDispatch?.providerTrackingCode ?? order.shipment?.trackingCode ?? c.noTracking}</p>{order.shippingDispatch?.courierTitle || order.shipment?.carrier ? <small>{order.shippingDispatch?.courierTitle ?? order.shipment?.carrier}</small> : null}</section>
     </div>
     {order.items.map((item) => item.bridge ? <section className={styles.fulfilment} key={item.bridge.id}><header><div><h3>{item.productTitle}</h3><p>{c.fulfilment}</p></div><span className={styles.badge} data-status={item.bridge.status}>{item.bridge.status}</span></header>{Object.keys(item.bridge.input?.fields ?? {}).length ? <dl className={styles.bridgeFields}>{Object.entries(item.bridge.input?.fields ?? {}).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl> : null}{["manual_required", "failed"].includes(item.bridge.status) ? <div className={styles.actionForm}><label><span>{c.result}</span><textarea value={results[item.bridge.id] ?? ""} onChange={(event) => setResults((current) => ({ ...current, [item.bridge!.id]: event.target.value }))} maxLength={10000} /><small>{item.bridge.errorCode ?? " "}</small></label><div className={styles.actions}><button className={styles.primary} type="button" disabled={!results[item.bridge.id]?.trim() || Boolean(busy)} onClick={() => void bridgeAction(item.bridge!.id, "complete")}>{c.complete}</button>{retryable.has(item.bridge.id) ? <button className={styles.secondary} type="button" disabled={Boolean(busy)} onClick={() => void bridgeAction(item.bridge!.id, "retry")}>{c.retry}</button> : null}</div></div> : null}</section> : null)}
-    {!hasBridge ? <section className={styles.fulfilment}><header><div><h3>{c.fulfilment}</h3><p>{c[order.status as keyof typeof c] ?? order.status}</p></div></header><div className={styles.actions}>{order.status === "paid" ? <button className={styles.primary} type="button" disabled={Boolean(busy)} onClick={() => void transition(order.id, "processing")}>{c.process}</button> : null}{order.status === "processing" && allPhysical ? <><input aria-label={c.carrier} placeholder={c.carrier} value={shipping[order.id]?.carrier ?? ""} onChange={(event) => setShipping((current) => ({ ...current, [order.id]: { carrier: event.target.value, trackingCode: current[order.id]?.trackingCode ?? "" } }))} /><input aria-label={c.tracking} placeholder={c.tracking} value={shipping[order.id]?.trackingCode ?? ""} onChange={(event) => setShipping((current) => ({ ...current, [order.id]: { carrier: current[order.id]?.carrier ?? "", trackingCode: event.target.value } }))} /><button className={styles.primary} type="button" disabled={Boolean(busy) || (!shipping[order.id]?.carrier.trim() && !shipping[order.id]?.trackingCode.trim())} onClick={() => void ship(order.id)}>{c.ship}</button>{amadastEnabled ? <button className={styles.secondary} type="button" disabled={Boolean(busy)} onClick={() => void amadast(order.id, order.amadastShipment && order.amadastShipment.status !== "failed" ? "sync" : "register")}>{order.amadastShipment && order.amadastShipment.status !== "failed" ? c.amadastSync : c.amadast}</button> : null}{order.amadastShipment?.errorCode ? <small className={styles.actionError}>{order.amadastShipment.errorCode}</small> : null}</> : null}{order.status === "processing" && !allPhysical ? <button className={styles.primary} type="button" disabled={Boolean(busy)} onClick={() => void transition(order.id, "awaiting_confirmation")}>{c.ready}</button> : null}</div></section> : null}
+    {!hasBridge ? <section className={styles.fulfilment}>
+      <header><div><h3>{c.fulfilment}</h3><p>{c[order.status as keyof typeof c] ?? order.status}</p></div></header>
+      <div className={styles.actions}>
+        {order.status === "paid" ? <button className={styles.primary} type="button" disabled={Boolean(busy)} onClick={() => void transition(order.id, "processing")}>{c.process}</button> : null}
+        {order.status === "processing" && allPhysical ? <>
+          <input aria-label={c.carrier} placeholder={c.carrier} value={shipping[order.id]?.carrier ?? ""} onChange={(event) => setShipping((current) => ({ ...current, [order.id]: { carrier: event.target.value, trackingCode: current[order.id]?.trackingCode ?? "" } }))} />
+          <input aria-label={c.tracking} placeholder={c.tracking} value={shipping[order.id]?.trackingCode ?? ""} onChange={(event) => setShipping((current) => ({ ...current, [order.id]: { carrier: current[order.id]?.carrier ?? "", trackingCode: event.target.value } }))} />
+          <button className={styles.primary} type="button" disabled={Boolean(busy) || (!shipping[order.id]?.carrier.trim() && !shipping[order.id]?.trackingCode.trim())} onClick={() => void ship(order.id)}>{c.ship}</button>
+          {shippingProvider?.enabled ? <button className={styles.secondary} type="button" disabled={Boolean(busy)} onClick={() => void providerShipping(order.id, providerAction)}>{providerActionLabel(locale, providerAction, shippingProvider.name)}</button> : null}
+          {order.shippingDispatch?.errorCode ? <small className={styles.actionError}>{order.shippingDispatch.errorCode}</small> : null}
+        </> : null}
+        {order.status === "processing" && !allPhysical ? <button className={styles.primary} type="button" disabled={Boolean(busy)} onClick={() => void transition(order.id, "awaiting_confirmation")}>{c.ready}</button> : null}
+      </div>
+    </section> : null}
   </section>;
 }

@@ -3,6 +3,7 @@ import {
   Injectable,
   ServiceUnavailableException
 } from "@nestjs/common";
+import { readBoundedJsonResponse } from "../../../../common/http/bounded-json-response";
 import { BasePaymentAdapter } from "../../base-payment.adapter";
 import { PaymentCredentialService } from "../../payment-credential.service";
 import type {
@@ -123,7 +124,7 @@ export class ZarinpalAdapter extends BasePaymentAdapter {
         })
       });
       if (!response.ok) throw new BadGatewayException("Zarinpal refund failed");
-      const result = (await response.json()) as ZarinpalGraphqlResponse;
+      const result = parseGraphqlResponse(await readBoundedJsonResponse(response));
       const providerRefundId = result.data?.resource?.id;
       return providerRefundId && !result.errors?.length ? { providerRefundId } : null;
     } catch (error) {
@@ -151,7 +152,7 @@ export class ZarinpalAdapter extends BasePaymentAdapter {
       if (!response.ok) {
         throw new BadGatewayException(`Zarinpal returned HTTP ${response.status}`);
       }
-      return (await response.json()) as ZarinpalResponse;
+      return parseZarinpalResponse(await readBoundedJsonResponse(response));
     } catch (error) {
       if (error instanceof BadGatewayException) throw error;
       throw new BadGatewayException("Zarinpal request failed");
@@ -174,4 +175,45 @@ export class ZarinpalAdapter extends BasePaymentAdapter {
     }
     return Number(rials);
   }
+}
+
+function parseZarinpalResponse(value: unknown): ZarinpalResponse {
+  const root = record(value);
+  const data = root.data === undefined ? undefined : record(root.data);
+  const code = data?.code;
+  const authority = data?.authority;
+  const referenceId = data?.ref_id;
+  if (
+    (code !== undefined && (!Number.isSafeInteger(code) || typeof code !== "number")) ||
+    (authority !== undefined && (typeof authority !== "string" || !/^[A-Za-z0-9-]{1,128}$/.test(authority))) ||
+    (referenceId !== undefined && !(
+      typeof referenceId === "number" && Number.isSafeInteger(referenceId) && referenceId >= 0 ||
+      typeof referenceId === "string" && /^\d{1,128}$/.test(referenceId)
+    ))
+  ) throw new BadGatewayException("Zarinpal returned an invalid response");
+  return { data: data ? { code: code as number | undefined, authority: authority as string | undefined, ref_id: referenceId as number | string | undefined } : undefined };
+}
+
+function parseGraphqlResponse(value: unknown): ZarinpalGraphqlResponse {
+  const root = record(value);
+  const data = root.data === undefined ? undefined : record(root.data);
+  const resource = data?.resource === undefined || data.resource === null ? undefined : record(data.resource);
+  const id = resource?.id;
+  if (id !== undefined && (typeof id !== "string" || !/^[A-Za-z0-9_-]{1,200}$/.test(id))) {
+    throw new BadGatewayException("Zarinpal returned an invalid refund response");
+  }
+  if (root.errors !== undefined && (!Array.isArray(root.errors) || root.errors.length > 100)) {
+    throw new BadGatewayException("Zarinpal returned an invalid refund response");
+  }
+  return {
+    data: data ? { resource: resource ? { id: id as string | undefined } : undefined } : undefined,
+    errors: root.errors as unknown[] | undefined
+  };
+}
+
+function record(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new BadGatewayException("Zarinpal returned an invalid response");
+  }
+  return value as Record<string, unknown>;
 }

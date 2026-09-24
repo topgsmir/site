@@ -299,25 +299,26 @@ export class AnalyticsService {
 
   private async topProducts(sellerId: string | null, from: string, to: string, timezone: string) {
     const rows = await this.prisma.$queryRaw<RankingRow[]>(Prisma.sql`
-      SELECT p.id, p.title AS label, p.category AS secondary_label,
+      SELECT p.id, p.title AS label, c.name AS secondary_label,
              COUNT(DISTINCT o.id) AS count, COALESCE(SUM(oi.quantity), 0) AS units,
              COALESCE(SUM(CASE WHEN o.status = 'cancelled' THEN 0 ELSE oi.total_amount END), 0) AS amount
       FROM order_events oe
       JOIN orders o ON o.id = oe.order_id JOIN order_items oi ON oi.order_id = o.id
       JOIN seller_offers so ON so.id = oi.offer_id JOIN seller_listings sl ON sl.id = so.listing_id
       JOIN products p ON p.id = sl.product_id
+      LEFT JOIN product_categories c ON c.id = p.category_id
       WHERE oe.to_status = 'paid'
         AND oe.created_at >= (${from}::date AT TIME ZONE ${timezone})
         AND oe.created_at < ((${to}::date + 1) AT TIME ZONE ${timezone})
         ${this.sellerPredicate(sellerId)}
-      GROUP BY p.id, p.title, p.category ORDER BY amount DESC, units DESC LIMIT 8
+      GROUP BY p.id, p.title, c.name ORDER BY amount DESC, units DESC LIMIT 8
     `);
     return this.mapRanking(rows);
   }
 
   private async topCategories(sellerId: string | null, from: string, to: string, timezone: string) {
     const rows = await this.prisma.$queryRaw<RankingRow[]>(Prisma.sql`
-      SELECT COALESCE(p.category, 'uncategorized') AS id, COALESCE(p.category, 'Uncategorized') AS label,
+      SELECT COALESCE(c.id::text, 'uncategorized') AS id, COALESCE(c.name, 'Uncategorized') AS label,
              NULL::text AS secondary_label, COUNT(DISTINCT o.id) AS count,
              COALESCE(SUM(oi.quantity), 0) AS units,
              COALESCE(SUM(CASE WHEN o.status = 'cancelled' THEN 0 ELSE oi.total_amount END), 0) AS amount
@@ -325,11 +326,12 @@ export class AnalyticsService {
       JOIN orders o ON o.id = oe.order_id JOIN order_items oi ON oi.order_id = o.id
       JOIN seller_offers so ON so.id = oi.offer_id JOIN seller_listings sl ON sl.id = so.listing_id
       JOIN products p ON p.id = sl.product_id
+      LEFT JOIN product_categories c ON c.id = p.category_id
       WHERE oe.to_status = 'paid'
         AND oe.created_at >= (${from}::date AT TIME ZONE ${timezone})
         AND oe.created_at < ((${to}::date + 1) AT TIME ZONE ${timezone})
         ${this.sellerPredicate(sellerId)}
-      GROUP BY p.category ORDER BY amount DESC, units DESC LIMIT 8
+      GROUP BY c.id, c.name ORDER BY amount DESC, units DESC LIMIT 8
     `);
     return this.mapRanking(rows);
   }

@@ -5,27 +5,28 @@ import type { AdminSellerShippingProfile, AdminSellerShippingProfilesPage } from
 import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
 import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
+import { AmadastPlaceSelects } from "@/components/shipping/AmadastPlaceSelects";
 import styles from "./SmsSettingsWorkspace.module.css";
 
 const copy = {
   en: {
     title: "Seller sender profiles", intro: "Sellers granted physical-product access manage their own sender identity and origin address. Platform admins can review and correct every profile.",
     search: "Search shop, owner, or email…", noResults: "No sellers match this search.", granted: "Physical products granted", notGranted: "Physical products not granted", ready: "Profile ready", incomplete: "Profile incomplete", enabled: "Shipping enabled", disabled: "Shipping disabled",
-    manage: "Manage profile", close: "Close", senderName: "Sender name", senderMobile: "Sender mobile", province: "Province", city: "City", address: "Origin address", postalCode: "Postal code", save: "Save seller profile", saving: "Saving…", saved: "Seller shipping profile saved.", loadError: "Seller profiles could not be loaded.", saveError: "The seller profile could not be saved.", grantHint: "Grant “Sell physical products” in Vendors before enabling this profile.", loadMore: "Load more"
+    manage: "Manage profile", close: "Close", senderName: "Sender name", senderMobile: "Sender mobile", province: "Province", city: "City", address: "Origin address", postalCode: "Postal code", latitude: "Latitude", longitude: "Longitude", save: "Save seller profile", saving: "Saving…", saved: "Seller shipping profile saved.", loadError: "Seller profiles could not be loaded.", saveError: "The seller profile could not be saved.", grantHint: "Grant “Sell physical products” in Vendors before enabling this profile.", loadMore: "Load more"
   },
   fa: {
     title: "پروفایل فرستنده فروشندگان", intro: "فروشنده‌ای که مجوز محصول فیزیکی دارد، مشخصات فرستنده و نشانی مبدأ خود را مدیریت می‌کند. مدیر پلتفرم می‌تواند همه پروفایل‌ها را ببیند و اصلاح کند.",
     search: "جست‌وجوی فروشگاه، مالک یا ایمیل…", noResults: "فروشنده‌ای با این جست‌وجو پیدا نشد.", granted: "مجوز محصول فیزیکی دارد", notGranted: "مجوز محصول فیزیکی ندارد", ready: "پروفایل کامل", incomplete: "پروفایل تکمیل نشده", enabled: "ارسال فعال", disabled: "ارسال غیرفعال",
-    manage: "مدیریت پروفایل", close: "بستن", senderName: "نام فرستنده", senderMobile: "موبایل فرستنده", province: "استان", city: "شهر", address: "نشانی مبدأ", postalCode: "کد پستی", save: "ذخیره پروفایل فروشنده", saving: "در حال ذخیره…", saved: "پروفایل ارسال فروشنده ذخیره شد.", loadError: "پروفایل‌های فروشندگان بارگذاری نشد.", saveError: "ذخیره پروفایل فروشنده انجام نشد.", grantHint: "پیش از فعال‌سازی، دسترسی «فروش محصولات فیزیکی» را در بخش فروشندگان اعطا کنید.", loadMore: "نمایش بیشتر"
+    manage: "مدیریت پروفایل", close: "بستن", senderName: "نام فرستنده", senderMobile: "موبایل فرستنده", province: "استان", city: "شهر", address: "نشانی مبدأ", postalCode: "کد پستی", latitude: "عرض جغرافیایی", longitude: "طول جغرافیایی", save: "ذخیره پروفایل فروشنده", saving: "در حال ذخیره…", saved: "پروفایل ارسال فروشنده ذخیره شد.", loadError: "پروفایل‌های فروشندگان بارگذاری نشد.", saveError: "ذخیره پروفایل فروشنده انجام نشد.", grantHint: "پیش از فعال‌سازی، دسترسی «فروش محصولات فیزیکی» را در بخش فروشندگان اعطا کنید.", loadMore: "نمایش بیشتر"
   },
   ar: {
     title: "ملفات مرسلي البائعين", intro: "يدير البائع الممنوح صلاحية المنتجات المادية هوية المرسل وعنوان المنشأ. يمكن لمسؤولي المنصة مراجعة جميع الملفات وتصحيحها.",
     search: "ابحث عن المتجر أو المالك أو البريد…", noResults: "لا يوجد بائعون مطابقون.", granted: "صلاحية المنتجات المادية ممنوحة", notGranted: "صلاحية المنتجات المادية غير ممنوحة", ready: "الملف مكتمل", incomplete: "الملف غير مكتمل", enabled: "الشحن مفعّل", disabled: "الشحن معطّل",
-    manage: "إدارة الملف", close: "إغلاق", senderName: "اسم المرسل", senderMobile: "جوال المرسل", province: "المحافظة", city: "المدينة", address: "عنوان المنشأ", postalCode: "الرمز البريدي", save: "حفظ ملف البائع", saving: "جارٍ الحفظ…", saved: "تم حفظ ملف شحن البائع.", loadError: "تعذر تحميل ملفات البائعين.", saveError: "تعذر حفظ ملف البائع.", grantHint: "امنح صلاحية «بيع المنتجات المادية» في قسم البائعين قبل تفعيل الملف.", loadMore: "تحميل المزيد"
+    manage: "إدارة الملف", close: "إغلاق", senderName: "اسم المرسل", senderMobile: "جوال المرسل", province: "المحافظة", city: "المدينة", address: "عنوان المنشأ", postalCode: "الرمز البريدي", latitude: "خط العرض", longitude: "خط الطول", save: "حفظ ملف البائع", saving: "جارٍ الحفظ…", saved: "تم حفظ ملف شحن البائع.", loadError: "تعذر تحميل ملفات البائعين.", saveError: "تعذر حفظ ملف البائع.", grantHint: "امنح صلاحية «بيع المنتجات المادية» في قسم البائعين قبل تفعيل الملف.", loadMore: "تحميل المزيد"
   }
 } as const;
 
-type Draft = { enabled: boolean; senderName: string; senderMobile: string; province: string; city: string; addressLine: string; postalCode: string };
+type Draft = { enabled: boolean; senderName: string; senderMobile: string; province: string; city: string; addressLine: string; postalCode: string; latitude: string; longitude: string };
 const draftFrom = (profile: AdminSellerShippingProfile): Draft => ({
   enabled: profile.enabled,
   senderName: profile.senderName ?? profile.shopName,
@@ -33,7 +34,9 @@ const draftFrom = (profile: AdminSellerShippingProfile): Draft => ({
   province: profile.province ?? "",
   city: profile.city ?? "",
   addressLine: profile.addressLine ?? "",
-  postalCode: profile.postalCode ?? ""
+  postalCode: profile.postalCode ?? "",
+  latitude: profile.latitude?.toString() ?? "",
+  longitude: profile.longitude?.toString() ?? ""
 });
 
 export function AdminSellerShippingProfiles({ locale }: { locale: Locale }) {
@@ -71,7 +74,7 @@ export function AdminSellerShippingProfiles({ locale }: { locale: Locale }) {
     if (!editing || !draft) return;
     setSaving(true); setError(""); setMessage("");
     try {
-      const response = await api.patch<AdminSellerShippingProfile>(`/admin/settings/shipping/profiles/${editing.sellerId}`, draft);
+      const response = await api.patch<AdminSellerShippingProfile>(`/admin/settings/shipping/profiles/${editing.sellerId}`, { ...draft, latitude: Number(draft.latitude), longitude: Number(draft.longitude) });
       setItems((current) => current.map((item) => item.sellerId === response.data.sellerId ? response.data : item));
       setEditing(response.data); setDraft(draftFrom(response.data)); setMessage(c.saved);
     } catch { setError(c.saveError); } finally { setSaving(false); }
@@ -95,8 +98,9 @@ export function AdminSellerShippingProfiles({ locale }: { locale: Locale }) {
       {!editing.granted ? <p className={styles.warning}>{c.grantHint}</p> : null}
       <label className={styles.enableBox}><input type="checkbox" checked={draft.enabled} disabled={!editing.granted || saving} onChange={(event) => change("enabled", event.target.checked)} /><span>{draft.enabled ? c.enabled : c.disabled}</span></label>
       <fieldset>{([
-        ["senderName", c.senderName, "text", ""], ["senderMobile", c.senderMobile, "tel", "09xxxxxxxxx"], ["province", c.province, "text", ""], ["city", c.city, "text", ""], ["postalCode", c.postalCode, "text", "0000000000"]
-      ] as const).map(([key, label, type, placeholder]) => <label key={key}><span>{label}</span><input required type={type} placeholder={placeholder} value={draft[key]} minLength={key === "senderName" || key === "province" || key === "city" ? 2 : undefined} maxLength={key === "senderName" ? 200 : key === "province" || key === "city" ? 100 : key === "postalCode" ? 10 : 16} pattern={key === "postalCode" ? "[0-9]{10}" : undefined} disabled={saving} onChange={(event) => change(key, event.target.value)} /></label>)}</fieldset>
+        ["senderName", c.senderName, "text", ""], ["senderMobile", c.senderMobile, "tel", "09xxxxxxxxx"], ["postalCode", c.postalCode, "text", "0000000000"]
+      ] as const).map(([key, label, type, placeholder]) => <label key={key}><span>{label}</span><input required type={type} placeholder={placeholder} value={draft[key]} minLength={key === "senderName" ? 2 : undefined} maxLength={key === "senderName" ? 200 : key === "postalCode" ? 10 : 16} pattern={key === "postalCode" ? "[0-9]{10}" : undefined} disabled={saving} onChange={(event) => change(key, event.target.value)} /></label>)}<AmadastPlaceSelects locale={locale} sellerId={editing.sellerId} senderName={draft.senderName} senderMobile={draft.senderMobile} province={draft.province} city={draft.city} disabled={saving} onProvinceChange={(value) => change("province", value)} onCityChange={(value) => change("city", value)} /></fieldset>
+      <fieldset>{(["latitude", "longitude"] as const).map((key) => <label key={key}><span>{c[key]}</span><input required type="number" inputMode="decimal" step="0.00000001" min={key === "latitude" ? -90 : -180} max={key === "latitude" ? 90 : 180} value={draft[key]} disabled={saving} onChange={(event) => change(key, event.target.value)} /></label>)}</fieldset>
       <label><span>{c.address}</span><textarea required minLength={5} maxLength={500} value={draft.addressLine} disabled={saving} onChange={(event) => change("addressLine", event.target.value)} /></label>
       <footer><span aria-live="polite">{error ? <b className={styles.errorText}>{error}</b> : message}</span><button type="submit" disabled={saving}>{saving ? c.saving : c.save}</button></footer>
     </form></div> : null}

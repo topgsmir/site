@@ -76,18 +76,18 @@ export class ListBackupRunsDto {
 }
 
 export class BackupRestorePreflightDto {
-  @IsOptional() @IsUUID() runId?: string;
-  @IsOptional() @IsUUID() uploadId?: string;
-  @IsOptional() @IsUUID() destinationId?: string;
-  @IsOptional() @IsString() @Matches(/^topgsm-[0-9]{8}T[0-9]{6}Z-[0-9a-f-]{36}[.]topgsm-backup$/i) remoteName?: string;
+  @IsOptional() @IsUUID("4") runId?: string;
+  @IsOptional() @IsUUID("4") uploadId?: string;
+  @IsOptional() @IsUUID("4") destinationId?: string;
+  @IsOptional() @IsString() @Matches(/^topgsm-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}[.]topgsm-backup$/i) remoteName?: string;
 }
 
 export class RefreshRemoteBackupCatalogDto {
-  @IsUUID() destinationId!: string;
+  @IsUUID("4") destinationId!: string;
 }
 
 export class ConfirmBackupRestoreDto {
-  @IsUUID() challengeId!: string;
+  @IsUUID("4") challengeId!: string;
   @IsString() @MinLength(1) @MaxLength(512) password!: string;
   @IsString() @MinLength(1) @MaxLength(100) phrase!: string;
 }

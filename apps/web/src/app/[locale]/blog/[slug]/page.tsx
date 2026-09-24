@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import type { Route } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { BlogArticle } from "@/components/blog/BlogArticle";
+import { getCurrentUser } from "@/lib/auth/server";
 import { isLocale } from "@/lib/i18n";
-import { getBlogPost, getProducts, isApiNotFound } from "@/lib/public-data";
+import { getBlogPost, getBlogSidebar, getProducts, isApiNotFound } from "@/lib/public-data";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://top-gsm.ir";
 
@@ -39,6 +40,17 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ lo
     if (!result.redirectTo) notFound();
     permanentRedirect(`/${locale}/blog/${result.redirectTo}` as Route);
   }
+  const user = await getCurrentUser();
+  const canManageAsPlatform = user?.role === "platform-admin" || (
+    user?.role === "platform-staff" && (user.isPlatformOwner || user.platformPermissions?.includes("blog_manage"))
+  );
+  const canManageAsSeller = (user?.role === "seller-admin" || user?.role === "seller-staff") &&
+    user.permissions?.includes("blog_manage") && result.author.type === "seller" && result.author.id === user.sellerId;
+  const editHref = canManageAsPlatform
+    ? (`/${locale}/admin/blog/${result.id}` as Route)
+    : canManageAsSeller
+      ? (`/${locale}/seller-dashboard/blog/${result.id}` as Route)
+      : undefined;
   const canonical = `${SITE_URL}/${locale}/blog/${result.slug}`;
   const images = result.cover?.variants.map((item) => `${SITE_URL}${item.url}`) ?? [];
   const jsonLd = [
@@ -67,7 +79,9 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ lo
       ]
     }
   ];
-  // Promotions are optional: a catalog outage must not hide the article.
-  const storeProducts = result.relatedProducts.length ? [] : await getProducts("", "all", locale).catch(() => []);
-  return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} /><BlogArticle locale={locale} post={result} storeProducts={storeProducts.slice(0, 3)} /></>;
+  // Promotions are optional: a settings or catalog outage must not hide the article.
+  const sidebar = await getBlogSidebar(locale).catch(() => null);
+  const promotionEnabled = sidebar?.content?.enabled ?? true;
+  const storeProducts = !promotionEnabled || result.relatedProducts.length || sidebar?.products.length ? [] : await getProducts("", "all", locale).catch(() => []);
+  return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} /><BlogArticle locale={locale} post={result} sidebar={sidebar} storeProducts={storeProducts.slice(0, 3)} editHref={editHref} /></>;
 }

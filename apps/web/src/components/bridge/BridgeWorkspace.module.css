@@ -59,6 +59,21 @@
   padding-block: var(--space-dashboard-lg);
 }
 
+/* Compact public-product checkout; dashboard forms retain their own layout. */
+.embeddedCheckout { min-width: 0; }
+.embeddedCheckout .main { padding-block: 12px 0; }
+.embeddedCheckout .form { gap: 12px; padding: 0; border: 0; border-radius: 0; background: none; }
+.embeddedCheckout .formGrid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.embeddedCheckout .sectionHead,
+.embeddedCheckout .cardHead { flex-direction: column; align-items: stretch; gap: 8px; }
+.embeddedCheckout .sectionHead h2 { margin-block: 0; font-size: .875rem; }
+.embeddedCheckout .sectionHead p { margin-block: 4px 8px; font-size: .8rem; line-height: 1.6; }
+.embeddedCheckout .field span { display: block; }
+.embeddedCheckout .field small { min-height: 0; }
+.embeddedCheckout .cardHead strong { font-size: 1.125rem; overflow-wrap: anywhere; }
+.embeddedCheckout .button { width: 100%; }
+.checkoutFields { display: grid; min-width: 0; gap: var(--space-dashboard-md); margin: 0; padding: 0; border: 0; }
+
 .workspace {
   display: grid;
   gap: var(--space-dashboard-xl);

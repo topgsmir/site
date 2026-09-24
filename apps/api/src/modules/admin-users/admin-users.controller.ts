@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Query, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Ip, Param, Patch, Query, Req, UseGuards } from "@nestjs/common";
+import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
 import { PlatformAdminGuard, type AuthenticatedRequest } from "../auth/platform-admin.guard";
 import { BrowserSessionMutation } from "../auth/browser-session-mutation.decorator";
 import { AdminUsersService } from "./admin-users.service";
@@ -7,7 +8,7 @@ import { AdminUserHistoryQueryDto, ListAdminUsersQueryDto, UpdateAdminUserDto, U
 @Controller("admin/users")
 @UseGuards(PlatformAdminGuard)
 export class AdminUsersController {
-  constructor(private readonly users: AdminUsersService) {}
+  constructor(private readonly users: AdminUsersService, private readonly rateLimits: AuthRateLimitService) {}
 
   @Get()
   list(@Query() query: ListAdminUsersQueryDto) {
@@ -24,7 +25,8 @@ export class AdminUsersController {
 
   @Patch(":id")
   @BrowserSessionMutation()
-  update(@Param() params: UserIdDto, @Body() body: UpdateAdminUserDto, @Req() request: AuthenticatedRequest) {
+  async update(@Param() params: UserIdDto, @Body() body: UpdateAdminUserDto, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+    await this.rateLimits.consumeAdminUserOperation(request.authenticatedUser!.id, clientIp);
     return this.users.update(params.id, request.authenticatedUser!.id, body);
   }
 }

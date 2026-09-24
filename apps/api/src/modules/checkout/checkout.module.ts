@@ -6,9 +6,10 @@ import { CheckoutController } from "./checkout.controller";
 import { CheckoutService } from "./checkout.service";
 import { CheckoutExpiryService } from "./checkout-expiry.service";
 import { CredentialCryptoService } from "../../common/security/credential-crypto.service";
+import { ShippingModule } from "../../integrations/shipping/shipping.module";
 
 @Module({
-  imports: [AuthModule, PaymentsModule, UsdRateModule],
+  imports: [AuthModule, PaymentsModule, ShippingModule, UsdRateModule],
   controllers: [CheckoutController],
   providers: [CheckoutService, CheckoutExpiryService, CredentialCryptoService]
 })

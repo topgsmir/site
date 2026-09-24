@@ -38,6 +38,10 @@ const SLUG_PATTERN = /^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u;
 
 export class ListProductsQueryDto {
   @IsOptional()
+  @IsUUID("4")
+  categoryId?: string;
+
+  @IsOptional()
   @IsIn(["fa", "en", "ar"])
   locale?: "fa" | "en" | "ar";
 
@@ -252,6 +256,10 @@ export class AddSellerOfferDto extends SellerOfferFieldsDto {
 }
 
 export class CreateProductDto {
+  @IsOptional()
+  @IsUUID("4")
+  categoryId?: string;
+
   @IsString()
   @MinLength(2)
   @MaxLength(200)
@@ -361,6 +369,10 @@ export class UpdateSellerOfferDto {
 }
 
 export class UpdateProductDto {
+  @IsOptional()
+  @IsUUID("4")
+  categoryId?: string | null;
+
   @IsOptional()
   @IsString()
   @MinLength(2)

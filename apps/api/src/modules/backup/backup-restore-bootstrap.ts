@@ -209,7 +209,7 @@ async function startMaintenanceServer(config: ConfigService) {
       response.end(JSON.stringify(await readSystemStatus()));
       return;
     }
-    const match = request.method === "GET" ? /^\/api\/system\/restores\/([0-9a-f-]{36})$/i.exec(request.url ?? "") : null;
+    const match = request.method === "GET" ? /^\/api\/system\/restores\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(request.url ?? "") : null;
     const token = request.headers.authorization?.match(/^Bearer ([A-Za-z0-9_-]{43})$/)?.[1];
     if (match?.[1] && token && await verifyRestoreMonitorToken(match[1], token)) {
       const value = await readRestoreProgress(match[1]);

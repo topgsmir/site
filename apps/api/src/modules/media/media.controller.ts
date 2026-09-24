@@ -37,7 +37,7 @@ export class MediaController {
 
   @Post("blog/media")
   @UseGuards(BlogManageGuard)
-  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 8 * 1024 * 1024, files: 1 } }))
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 8 * 1024 * 1024, files: 1, fields: 3, parts: 4, fieldSize: 2_048 } }))
   async upload(
     @UploadedFile() file: Express.Multer.File | undefined,
     @Body() body: UploadBlogMediaDto,
@@ -56,7 +56,12 @@ export class MediaController {
     @Req() request: AuthenticatedRequest,
     @Res() response: HttpResponse
   ) {
-    if (!/^[a-z0-9-]+\.webp$/.test(filename)) {
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(assetId) ||
+      filename.length > 85 ||
+      !/^[a-z0-9-]{1,80}\.webp$/.test(filename) ||
+      (ifNoneMatch !== undefined && ifNoneMatch.length > 128)
+    ) {
       return response.status(404).end();
     }
     const variant = filename.slice(0, -5);

@@ -41,10 +41,14 @@ import { SecuritySettingsWorkspace } from "@/components/admin/SecuritySettingsWo
 import { ShippingSettingsWorkspace } from "@/components/admin/ShippingSettingsWorkspace";
 import { UsdSettingsWorkspace } from "@/components/admin/UsdSettingsWorkspace";
 import { NoticeSettingsWorkspace } from "@/components/admin/NoticeSettingsWorkspace";
+import { HomepageStoriesWorkspace } from "@/components/admin/HomepageStoriesWorkspace";
+import { HomepageContentWorkspace } from "@/components/admin/HomepageContentWorkspace";
+import { BlogSidebarWorkspace } from "@/components/admin/BlogSidebarWorkspace";
 import { AdminCommentsWorkspace } from "@/components/comments/AdminCommentsWorkspace";
 import type { AdminSection } from "@/components/admin/AdminPanelRoute";
 import navigationStyles from "@/components/dashboard/DashboardNavigation.module.css";
 import { AnalyticsOverview } from "@/components/analytics/AnalyticsOverview";
+import { PanelOverview } from "@/components/dashboard/PanelOverview";
 import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
 import { useNewOrderCount } from "@/components/dashboard/useNewOrderCount";
 import { DashboardMobileNavigation } from "@/components/dashboard/DashboardMobileNavigation";
@@ -85,10 +89,12 @@ const copy = {
     ai: "Artificial intelligence",
     aiModels: "Models",
     aiAssistant: "AI assistant",
-    settings: "Settings",
+    website: "Website",
+    content: "Content",
+    integrations: "Integrations",
     comments: "Comments",
     backupRestore: "Backup & Restore",
-    security: "Security",
+    security: "Security & backups",
     rateLimit: "Rate limit",
     captcha: "CAPTCHA",
     auth: "Sign in",
@@ -227,10 +233,12 @@ const copy = {
     ai: "هوش مصنوعی",
     aiModels: "مدل‌ها",
     aiAssistant: "دستیار هوشمند",
-    settings: "تنظیمات",
+    website: "وب‌سایت",
+    content: "محتوا",
+    integrations: "سرویس‌های متصل",
     comments: "دیدگاه‌ها",
     backupRestore: "پشتیبان‌گیری و بازیابی",
-    security: "امنیت",
+    security: "امنیت و پشتیبان‌گیری",
     rateLimit: "محدودیت درخواست",
     captcha: "کپچا",
     auth: "ورود",
@@ -369,10 +377,12 @@ const copy = {
     ai: "الذكاء الاصطناعي",
     aiModels: "النماذج",
     aiAssistant: "المساعد الذكي",
-    settings: "الإعدادات",
+    website: "الموقع",
+    content: "المحتوى",
+    integrations: "الخدمات المتصلة",
     comments: "التعليقات",
     backupRestore: "النسخ والاستعادة",
-    security: "الأمان",
+    security: "الأمان والنسخ الاحتياطي",
     rateLimit: "حد الطلبات",
     captcha: "التحقق البشري",
     auth: "تسجيل الدخول",
@@ -622,7 +632,9 @@ export function VendorManagement({
   const [salesServiceOpen, setSalesServiceOpen] = useState(false);
   const [paymentServiceOpen, setPaymentServiceOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [websiteOpen, setWebsiteOpen] = useState(false);
+  const [contentOpen, setContentOpen] = useState(false);
+  const [integrationsOpen, setIntegrationsOpen] = useState(false);
   const [securityOpen, setSecurityOpen] = useState(false);
   const [usdRateFailed, setUsdRateFailed] = useState(false);
   const { count: newOrderCount, markSeen: markOrdersSeen } = useNewOrderCount(ownerNavigation);
@@ -637,13 +649,17 @@ export function VendorManagement({
   const usersExpanded = isUsersSection || usersOpen;
   const isSalesServiceSection = section === "products" || section === "product-changes" || section === "coupons" || section === "orders" || section === "order-detail";
   const salesServiceExpanded = isSalesServiceSection || salesServiceOpen;
-  const isPaymentServiceSection = section === "payment-transactions" || section === "payment-methods";
+  const isPaymentServiceSection = section === "payment-transactions" || section === "payment-methods" || section === "settings-usd";
   const paymentServiceExpanded = isPaymentServiceSection || paymentServiceOpen;
   const isAiSection = section === "ai-models" || section === "ai-assistant";
   const aiExpanded = isAiSection || aiOpen;
-  const isSettingsSection = section === "settings-sms" || section === "settings-goghdi" || section === "settings-shipping" || section === "settings-usd" || section === "settings-comments" || section === "settings-notice" || section === "settings-backup";
-  const settingsExpanded = isSettingsSection || settingsOpen;
-  const isSecuritySection = section === "security-rate-limit" || section === "security-login" || section === "security-captcha";
+  const isWebsiteSection = section === "settings-homepage" || section === "settings-notice" || section === "settings-stories" || section === "settings-blog-sidebar";
+  const websiteExpanded = isWebsiteSection || websiteOpen;
+  const isContentSection = section === "uploads" || section === "editorial" || section === "settings-comments";
+  const contentExpanded = isContentSection || contentOpen;
+  const isIntegrationsSection = section === "settings-sms" || section === "settings-goghdi" || section === "settings-shipping" || section === "bridge";
+  const integrationsExpanded = isIntegrationsSection || integrationsOpen;
+  const isSecuritySection = section === "security-rate-limit" || section === "security-login" || section === "security-captcha" || section === "settings-backup";
   const securityExpanded = isSecuritySection || securityOpen;
   const currentSectionLabel = ({
     overview: c.overview,
@@ -670,6 +686,9 @@ export function VendorManagement({
     "settings-usd": c.usd,
     "settings-comments": c.comments,
     "settings-notice": locale === "fa" ? "اطلاعیه" : locale === "ar" ? "الإشعار" : "Notice",
+    "settings-stories": locale === "fa" ? "استوری‌ها" : locale === "ar" ? "القصص" : "Stories",
+    "settings-blog-sidebar": locale === "fa" ? "تبلیغ کنار مقاله" : locale === "ar" ? "إعلان جانب المقال" : "Article sidebar",
+    "settings-homepage": locale === "fa" ? "صفحه اصلی" : locale === "ar" ? "الصفحة الرئيسية" : "Homepage",
     "settings-backup": c.backupRestore,
     editorial: c.editorial,
     uploads: c.uploads
@@ -1050,17 +1069,37 @@ export function VendorManagement({
                 <PaymentMethodsIcon />
                 <span>{c.paymentMethods}</span>
               </Link>
+              <Link
+                className={navigationStyles.item}
+                href={`/${locale}/admin/settings/usd` as Route}
+                aria-current={section === "settings-usd" ? "page" : undefined}
+                data-alert={usdRateFailed}
+              >
+                <UsdIcon />
+                <span>{c.usd}</span>
+                {usdRateFailed ? <strong className={navigationStyles.alert} aria-label={c.usdAlert} title={c.usdAlert}>!</strong> : null}
+              </Link>
             </div>
           </div>
           </> : null}
-          {canManageUploads ? <Link className={navigationStyles.item} href={`/${locale}/admin/uploads` as Route} aria-current={section === "uploads" ? "page" : undefined}>
-            <UploadsIcon />
-            <span>{c.uploads}</span>
-          </Link> : null}
-          {canManageBlog ? <Link className={navigationStyles.item} href={`/${locale}/admin/blog` as Route} aria-current={section === "editorial" ? "page" : undefined}>
-            <EditorialIcon />
-            <span>{c.editorial}</span>
-          </Link> : null}
+          {canManageUploads || canManageBlog ? <div className={navigationStyles.group} data-active={isContentSection} data-open={contentExpanded}>
+            <button className={navigationStyles.groupTrigger} type="button" aria-expanded={contentExpanded} aria-controls="admin-content-navigation" onClick={() => setContentOpen((current) => !current)}>
+              <EditorialIcon /><span>{c.content}</span><span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
+            </button>
+            <div className={navigationStyles.subNavigation} id="admin-content-navigation">
+              {canManageUploads ? <Link className={navigationStyles.item} href={`/${locale}/admin/uploads` as Route} aria-current={section === "uploads" ? "page" : undefined}>
+                <UploadsIcon />
+                <span>{c.uploads}</span>
+              </Link> : null}
+              {canManageBlog ? <Link className={navigationStyles.item} href={`/${locale}/admin/blog` as Route} aria-current={section === "editorial" ? "page" : undefined}>
+                <EditorialIcon />
+                <span>{c.editorial}</span>
+              </Link> : null}
+              {ownerNavigation ? <Link className={navigationStyles.item} href={`/${locale}/admin/settings/comments` as Route} aria-current={section === "settings-comments" ? "page" : undefined}>
+                <EditorialIcon /><span>{c.comments}</span>
+              </Link> : null}
+            </div>
+          </div> : null}
           {ownerNavigation ? <>
           <div
             className={navigationStyles.group}
@@ -1089,32 +1128,30 @@ export function VendorManagement({
               </Link>
             </div>
           </div>
-          <div
-            className={navigationStyles.group}
-            data-active={isSettingsSection}
-            data-open={settingsExpanded}
-          >
-            <button
-              className={navigationStyles.groupTrigger}
-              type="button"
-              aria-expanded={settingsExpanded}
-              aria-controls="admin-settings-navigation"
-              onClick={() => setSettingsOpen((current) => !current)}
-            >
-              <SettingsIcon />
-              <span>{c.settings}</span>
-              <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
+          <div className={navigationStyles.group} data-active={isWebsiteSection} data-open={websiteExpanded}>
+            <button className={navigationStyles.groupTrigger} type="button" aria-expanded={websiteExpanded} aria-controls="admin-website-navigation" onClick={() => setWebsiteOpen((current) => !current)}>
+              <EditorialIcon /><span>{c.website}</span><span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
             </button>
-            <div className={navigationStyles.subNavigation} id="admin-settings-navigation">
+            <div className={navigationStyles.subNavigation} id="admin-website-navigation">
+              <Link className={navigationStyles.item} href={`/${locale}/admin/settings/homepage` as Route} aria-current={section === "settings-homepage" ? "page" : undefined}>
+                <EditorialIcon /><span>{locale === "fa" ? "صفحه اصلی" : locale === "ar" ? "الصفحة الرئيسية" : "Homepage"}</span>
+              </Link>
               <Link className={navigationStyles.item} href={`/${locale}/admin/settings/notice` as Route} aria-current={section === "settings-notice" ? "page" : undefined}>
                 <EditorialIcon /><span>{locale === "fa" ? "اطلاعیه" : locale === "ar" ? "الإشعار" : "Notice"}</span>
               </Link>
-              <Link className={navigationStyles.item} href={`/${locale}/admin/settings/comments` as Route} aria-current={section === "settings-comments" ? "page" : undefined}>
-                <EditorialIcon /><span>{c.comments}</span>
+              <Link className={navigationStyles.item} href={`/${locale}/admin/settings/stories` as Route} aria-current={section === "settings-stories" ? "page" : undefined}>
+                <EditorialIcon /><span>{locale === "fa" ? "استوری‌ها" : locale === "ar" ? "القصص" : "Stories"}</span>
               </Link>
-              <Link className={navigationStyles.item} href={`/${locale}/admin/settings/backup` as Route} aria-current={section === "settings-backup" ? "page" : undefined}>
-                <SettingsIcon /><span>{c.backupRestore}</span>
+              <Link className={navigationStyles.item} href={`/${locale}/admin/settings/blog-sidebar` as Route} aria-current={section === "settings-blog-sidebar" ? "page" : undefined}>
+                <EditorialIcon /><span>{locale === "fa" ? "تبلیغ کنار مقاله" : locale === "ar" ? "إعلان جانب المقال" : "Article sidebar"}</span>
               </Link>
+            </div>
+          </div>
+          <div className={navigationStyles.group} data-active={isIntegrationsSection} data-open={integrationsExpanded}>
+            <button className={navigationStyles.groupTrigger} type="button" aria-expanded={integrationsExpanded} aria-controls="admin-integrations-navigation" onClick={() => setIntegrationsOpen((current) => !current)}>
+              <SettingsIcon /><span>{c.integrations}</span><span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
+            </button>
+            <div className={navigationStyles.subNavigation} id="admin-integrations-navigation">
               <Link
                 className={navigationStyles.item}
                 href={`/${locale}/admin/settings/shipping` as Route}
@@ -1135,16 +1172,12 @@ export function VendorManagement({
                 <SmsIcon />
                 <span>{c.goghdi}</span>
               </Link>
-              <Link
-                className={navigationStyles.item}
-                href={`/${locale}/admin/settings/usd` as Route}
-                aria-current={section === "settings-usd" ? "page" : undefined}
-                data-alert={usdRateFailed}
-              >
-                <UsdIcon />
-                <span>{c.usd}</span>
-                {usdRateFailed ? <strong className={navigationStyles.alert} aria-label={c.usdAlert} title={c.usdAlert}>!</strong> : null}
-              </Link>
+              {process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true" ? (
+                <Link className={navigationStyles.item} href={`/${locale}/admin/bridge` as Route} aria-current={section === "bridge" ? "page" : undefined}>
+                  <BridgeIcon />
+                  <span>Bridge</span>
+                </Link>
+              ) : null}
             </div>
           </div>
           <div className={navigationStyles.group} data-active={isSecuritySection} data-open={securityExpanded}>
@@ -1155,14 +1188,12 @@ export function VendorManagement({
               <Link className={navigationStyles.item} href={`/${locale}/admin/security/rate-limit` as Route} aria-current={section === "security-rate-limit" ? "page" : undefined}><SettingsIcon /><span>{c.rateLimit}</span></Link>
               <Link className={navigationStyles.item} href={`/${locale}/admin/security/login` as Route} aria-current={section === "security-login" ? "page" : undefined}><SettingsIcon /><span>{c.auth}</span></Link>
               <Link className={navigationStyles.item} href={`/${locale}/admin/security/captcha` as Route} aria-current={section === "security-captcha" ? "page" : undefined}><SettingsIcon /><span>{c.captcha}</span></Link>
+              <Link className={navigationStyles.item} href={`/${locale}/admin/settings/backup` as Route} aria-current={section === "settings-backup" ? "page" : undefined}>
+                <SettingsIcon /><span>{c.backupRestore}</span>
+              </Link>
             </div>
           </div>
-          {process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true" ? (
-            <Link className={navigationStyles.item} href={`/${locale}/admin/bridge` as Route} aria-current={section === "bridge" ? "page" : undefined}>
-              <BridgeIcon />
-              <span>Bridge</span>
-            </Link>
-          ) : null}
+
           </> : null}
         </nav>
         <div className="admin-rail-account" data-mobile-open={true}>
@@ -1178,7 +1209,7 @@ export function VendorManagement({
 
       <main className="admin-shell" id="admin-content" ref={root}>
 
-      {section === "overview" ? <AnalyticsOverview locale={locale} audience="admin" compact /> : null}
+      {section === "overview" ? <PanelOverview locale={locale} audience="admin" analytics={ownerNavigation} canManageOrders={ownerNavigation} canManageProducts={ownerNavigation} newOrderCount={newOrderCount} /> : null}
       {section === "statistics" ? <AnalyticsOverview locale={locale} audience="admin" /> : null}
 
       {section === "vendors" ? <section className="vendor-workspace grid-flow-dense" data-vendor-workspace>
@@ -1347,6 +1378,9 @@ export function VendorManagement({
       {section === "settings-usd" ? <UsdSettingsWorkspace locale={locale} /> : null}
       {section === "settings-comments" ? <AdminCommentsWorkspace locale={locale} /> : null}
       {section === "settings-notice" ? <NoticeSettingsWorkspace locale={locale} /> : null}
+      {section === "settings-stories" ? <HomepageStoriesWorkspace locale={locale} /> : null}
+      {section === "settings-blog-sidebar" ? <BlogSidebarWorkspace locale={locale} /> : null}
+      {section === "settings-homepage" ? <HomepageContentWorkspace locale={locale} /> : null}
       {section === "settings-backup" ? <BackupRestoreWorkspace locale={locale} /> : null}
 
       {panelMode ? (

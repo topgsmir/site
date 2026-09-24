@@ -6,6 +6,31 @@ export type AmadastConfig = {
   packageType: number;
 };
 
+export type AmadastTenantConfig = Pick<AmadastConfig, "clientCode" | "userId">;
+
+export type AmadastPlace = {
+  id: number;
+  title: string;
+  parentId: number | null;
+};
+
+export type AmadastLocationInput = {
+  title: string;
+  address: string;
+  province: string;
+  city: string;
+  postalCode: string;
+  latitude: number;
+  longitude: number;
+};
+
+export type AmadastStoreInput = {
+  title: string;
+  locationId: number;
+  adminName: string;
+  phone: string;
+};
+
 export type AmadastOrderPayload = {
   store_id: number;
   external_order_id: number;

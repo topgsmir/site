@@ -14,16 +14,19 @@ export class AdminUploadsController {
   constructor(private readonly uploads: AdminUploadsService, private readonly rateLimits: AuthRateLimitService) {}
 
   @Get()
-  list(@Query() query: AdminUploadsQueryDto) { return this.uploads.list(query); }
+  async list(@Query() query: AdminUploadsQueryDto, @Ip() clientIp: string, @Req() request: AuthenticatedRequest) { await this.rateLimits.consumeMediaAdmin(request.authenticatedUser!.id, clientIp); return this.uploads.list(query); }
 
   @Get("summary")
-  summary() { return this.uploads.summary(); }
+  async summary(@Ip() clientIp: string, @Req() request: AuthenticatedRequest) { await this.rateLimits.consumeMediaAdmin(request.authenticatedUser!.id, clientIp); return this.uploads.summary(); }
 
   @Get(":source/:id")
-  detail(
+  async detail(
     @Param("source", new ParseEnumPipe({ blog: "blog", product: "product" })) source: "blog" | "product",
-    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string
+    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
+    @Ip() clientIp: string,
+    @Req() request: AuthenticatedRequest
   ) {
+    await this.rateLimits.consumeMediaAdmin(request.authenticatedUser!.id, clientIp);
     return this.uploads.detail(source, id);
   }
 

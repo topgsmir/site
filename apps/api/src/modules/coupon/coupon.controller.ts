@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Ip, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
 import { PlatformAdminGuard, type AuthenticatedRequest } from "../auth/platform-admin.guard";
 import { CouponService } from "./coupon.service";
 import { CreateAdminCouponDto, CreateCouponDto, ListAdminCouponsQueryDto, ListCouponsQueryDto, UpdateCouponDto } from "./dto/coupon.dto";
@@ -6,7 +7,7 @@ import { SellerCouponsGuard } from "./seller-coupons.guard";
 
 @Controller("coupons")
 export class CouponController {
-  constructor(private readonly couponService: CouponService) {}
+  constructor(private readonly couponService: CouponService, private readonly rateLimits: AuthRateLimitService) {}
 
   @Get("mine")
   @UseGuards(SellerCouponsGuard)
@@ -19,10 +20,12 @@ export class CouponController {
 
   @Post()
   @UseGuards(SellerCouponsGuard)
-  create(
+  async create(
     @Body() body: CreateCouponDto,
-    @Req() request: AuthenticatedRequest
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
   ) {
+    await this.rateLimits.consumeCouponMutation(request.authenticatedUser!.id, clientIp);
     return this.couponService.create(request.sellerContext!.sellerId, body);
   }
 
@@ -34,22 +37,27 @@ export class CouponController {
 
   @Post("admin")
   @UseGuards(PlatformAdminGuard)
-  createAdmin(@Body() body: CreateAdminCouponDto) {
+  async createAdmin(@Body() body: CreateAdminCouponDto, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+    await this.rateLimits.consumeCouponMutation(request.authenticatedUser!.id, clientIp);
     return this.couponService.createAdmin(body);
   }
 
   @Patch("admin/:id")
   @UseGuards(PlatformAdminGuard)
-  updateAdmin(
+  async updateAdmin(
     @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
-    @Body() body: UpdateCouponDto
+    @Body() body: UpdateCouponDto,
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
   ) {
+    await this.rateLimits.consumeCouponMutation(request.authenticatedUser!.id, clientIp);
     return this.couponService.updateAdmin(id, body);
   }
 
   @Delete("admin/:id")
   @UseGuards(PlatformAdminGuard)
-  deleteAdmin(@Param("id", new ParseUUIDPipe({ version: "4" })) id: string) {
+  async deleteAdmin(@Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+    await this.rateLimits.consumeCouponMutation(request.authenticatedUser!.id, clientIp);
     return this.couponService.deleteAdmin(id);
   }
 }

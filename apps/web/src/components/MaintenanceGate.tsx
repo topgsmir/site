@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
 import styles from "./MaintenanceGate.module.css";
+import { isUuidV4 } from "@/lib/safe-navigation";
 
 const copy = {
   en: {
@@ -34,8 +35,11 @@ type Monitor = { id: string; token: string; locale?: string };
 
 function savedMonitor(): Monitor | null {
   try {
-    const parsed = JSON.parse(localStorage.getItem("topgsm-restore-monitor") ?? "null") as Monitor | null;
-    return parsed?.id && parsed.token ? parsed : null;
+    const parsed: unknown = JSON.parse(localStorage.getItem("topgsm-restore-monitor") ?? "null");
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    const value = parsed as Record<string, unknown>;
+    if (!isUuidV4(value.id) || typeof value.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(value.token)) return null;
+    return { id: value.id, token: value.token, ...(typeof value.locale === "string" && ["fa", "en", "ar"].includes(value.locale) ? { locale: value.locale } : {}) };
   } catch { return null; }
 }
 

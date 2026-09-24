@@ -1,7 +1,20 @@
+export type { HomepageLocale, HomepageLink, HomepageCard, HomepageSection, HomepageContent, HomepageDocument } from "./homepage";
 export type ProductType = "digital" | "physical" | "service" | "bridge";
 export type ProductKind = "simple" | "variable";
 export type ProductStatus = "draft" | "pending_review" | "active" | "archived";
 export type SellerListingStatus = "draft" | "active" | "archived";
+
+export interface HomepageStory {
+  id: string;
+  locale: "fa" | "en" | "ar";
+  title: string;
+  targetUrl: string;
+  position: number;
+  enabled: boolean;
+  image: { url: string; width: number; height: number };
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface ProductOptionSelection {
   name: string;
@@ -45,6 +58,7 @@ export interface ProductImage {
 }
 
 export interface PublicProductSummary {
+  categoryId?: string | null;
   availableLocales?: Array<"fa" | "en" | "ar">;
   id: string;
   title: string;
@@ -77,6 +91,7 @@ export interface PublicProductVariant {
 }
 
 export interface PublicProduct {
+  categoryId?: string | null;
   availableLocales?: Array<"fa" | "en" | "ar">;
   contentLocale?: "fa" | "en" | "ar";
   id: string;
@@ -132,6 +147,7 @@ export interface SellerListing {
   id: string;
   status: SellerListingStatus;
   product: {
+    categoryId?: string | null;
     id: string;
     title: string;
     slug: string;
@@ -217,6 +233,23 @@ export interface RelatedProductSummary {
   title: string;
   slug: string;
   startingPrices: ProductStartingPrice[];
+  image?: ProductImage | null;
+}
+
+export interface BlogSidebarContent {
+  enabled: boolean;
+  title: string;
+  description: string;
+  ctaLabel: string;
+  ctaHref: string;
+}
+
+export interface BlogSidebarDocument {
+  locale: BlogLocale;
+  version: number;
+  content: BlogSidebarContent | null;
+  products: RelatedProductSummary[];
+  updatedAt: string | null;
 }
 
 export interface ManagedBlogPost {
@@ -321,6 +354,7 @@ export interface AdminSellerCouponsPage {
 }
 
 export interface AdminProductSummary {
+  categoryId?: string | null;
   id: string;
   title: string;
   slug: string;
@@ -510,14 +544,11 @@ export interface AdminAuthLoginSettings extends AuthLoginMethods {
 
 export interface AdminShippingSettings {
   enabled: boolean;
-  provider: "amadast";
-  clientCodeConfigured: boolean;
-  clientCodeHint: string | null;
+  provider: string;
+  providerName: string;
+  apiKeyConfigured: boolean;
+  apiKeyHint: string | null;
   credentialSource: "database" | "environment" | "none";
-  userId: number | null;
-  storeId: number | null;
-  productType: number;
-  packageType: number;
   updatedAt: string | null;
 }
 
@@ -532,7 +563,44 @@ export interface SellerShippingProfile {
   city: string | null;
   addressLine: string | null;
   postalCode: string | null;
+  latitude: number | null;
+  longitude: number | null;
   updatedAt: string | null;
+}
+
+export interface ShippingPlaceOption {
+  id: number;
+  title: string;
+  parentId: number | null;
+}
+
+export interface SellerPublicProfileSettings {
+  sellerId: string;
+  shopName: string;
+  publicName: string | null;
+  specialty: string | null;
+  bio: string | null;
+  profilePicture: SellerProfilePicture | null;
+  updatedAt: string;
+}
+
+export interface SellerProfilePicture {
+  id: string;
+  url: string;
+  width: number;
+  height: number;
+}
+
+export interface PublicExpertSummary {
+  id: string;
+  name: string;
+  specialty: string | null;
+  profilePicture: SellerProfilePicture | null;
+  activeProductCount: number;
+}
+
+export interface PublicExpertProfile extends PublicExpertSummary {
+  bio: string | null;
 }
 
 export interface AdminSellerShippingProfile extends SellerShippingProfile {
@@ -749,6 +817,7 @@ export type Role =
 
 export interface AppUser {
   id: string;
+  sellerId?: string;
   fullName: string;
   username?: string | null;
   email: string | null;

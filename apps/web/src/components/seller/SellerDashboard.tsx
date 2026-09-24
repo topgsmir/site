@@ -30,6 +30,7 @@ import { ProductPublicUrl } from "@/components/product/ProductPublicUrl";
 import { SellerBridgeWorkspace } from "@/components/bridge/SellerBridgeWorkspace";
 import { SellerOrders } from "@/components/seller/SellerOrders";
 import { SellerShippingProfileWorkspace } from "@/components/seller/SellerShippingProfileWorkspace";
+import { SellerExpertProfileWorkspace } from "@/components/seller/SellerExpertProfileWorkspace";
 import { SellerCoupons } from "./SellerCoupons";
 import { SellerBlogPanel } from "./SellerBlogPanel";
 import { DesignIcon } from "@/components/DesignIcon";
@@ -38,11 +39,12 @@ import styles from "./SellerDashboard.module.css";
 import creation from "./ProductCreation.module.css";
 import navigationStyles from "@/components/dashboard/DashboardNavigation.module.css";
 import { AnalyticsOverview } from "@/components/analytics/AnalyticsOverview";
+import { PanelOverview } from "@/components/dashboard/PanelOverview";
 import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
 import { useNewOrderCount } from "@/components/dashboard/useNewOrderCount";
 import { DashboardMobileNavigation } from "@/components/dashboard/DashboardMobileNavigation";
 
-type DashboardSection = "overview" | "statistics" | "products" | "blog" | "coupons" | "orders" | "shipping" | "payouts" | "bridge";
+type DashboardSection = "overview" | "statistics" | "products" | "profile" | "blog" | "coupons" | "orders" | "shipping" | "payouts" | "bridge";
 type RequestState = "idle" | "loading" | "error" | "success";
 
 const FILTER_COPY = {
@@ -53,8 +55,10 @@ const FILTER_COPY = {
 
 type SellerDashboardProps = {
   locale: Locale;
-  user: Pick<AppUser, "fullName" | "email" | "permissions">;
+  user: Pick<AppUser, "fullName" | "email" | "permissions" | "role">;
   initialSection?: DashboardSection;
+  initialEditProductId?: string;
+  initialProductSearch?: string;
 };
 
 type SellerProductCreationProps = Omit<SellerDashboardProps, "initialSection">;
@@ -111,6 +115,7 @@ type DashboardCopy = {
   orders: string;
   newOrders: string;
   shipping: string;
+  profile: string;
   payouts: string;
   account: string;
   welcome: string;
@@ -225,6 +230,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     orders: "Orders",
     newOrders: "new orders",
     shipping: "Shipping profile",
+    profile: "Expert profile",
     payouts: "Payouts",
     account: "Account",
     welcome: "Your selling workspace",
@@ -330,6 +336,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     orders: "سفارش‌ها",
     newOrders: "سفارش جدید",
     shipping: "پروفایل ارسال",
+    profile: "پروفایل کارشناس",
     payouts: "تسویه‌ها",
     account: "حساب کاربری",
     welcome: "فضای مدیریت فروش شما",
@@ -435,6 +442,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     orders: "الطلبات",
     newOrders: "طلبات جديدة",
     shipping: "ملف الشحن",
+    profile: "ملف الخبير",
     payouts: "الدفعات",
     account: "الحساب",
     welcome: "مساحة إدارة مبيعاتك",
@@ -534,9 +542,9 @@ const MONEY_PATTERN = /^(?:0|[1-9]\d{0,15})(?:\.\d{1,4})?$/;
 const CURRENCY_PATTERN = /^(?:TOMAN|USD)$/;
 
 const PRODUCT_IMAGE_COPY = {
-  en: { title: "Product image", hint: "WebP or SVG · up to 8 MiB", choose: "Choose image", replace: "Replace image", remove: "Remove image", error: "The product image could not be updated." },
-  fa: { title: "تصویر محصول", hint: "WebP یا SVG · حداکثر ۸ مگابایت", choose: "انتخاب تصویر", replace: "تغییر تصویر", remove: "حذف تصویر", error: "به‌روزرسانی تصویر محصول انجام نشد." },
-  ar: { title: "صورة المنتج", hint: "WebP أو SVG · حتى 8 ميغابايت", choose: "اختيار صورة", replace: "تغيير الصورة", remove: "حذف الصورة", error: "تعذر تحديث صورة المنتج." }
+  en: { title: "Product image", hint: "JPEG, PNG, or WebP · up to 8 MiB", choose: "Choose image", replace: "Replace image", remove: "Remove image", error: "The product image could not be updated." },
+  fa: { title: "تصویر محصول", hint: "JPEG، PNG یا WebP · حداکثر ۸ مگابایت", choose: "انتخاب تصویر", replace: "تغییر تصویر", remove: "حذف تصویر", error: "به‌روزرسانی تصویر محصول انجام نشد." },
+  ar: { title: "صورة المنتج", hint: "JPEG أو PNG أو WebP · حتى 8 ميغابايت", choose: "اختيار صورة", replace: "تغيير الصورة", remove: "حذف الصورة", error: "تعذر تحديث صورة المنتج." }
 } as const;
 
 function makeOffer(id: string): OfferDraft {
@@ -580,6 +588,7 @@ function Icon({ name }: { name: DashboardSection | "plus" | "search" | "close" |
     coupons: <><path d="M4 7a3 3 0 0 0 3-3h13v6a2 2 0 0 0 0 4v6H7a3 3 0 0 0-3-3z"/><path d="M12 7v2M12 11v2M12 15v2"/></>,
     orders: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></>,
     shipping: <><path d="M3 6h11v10H3z"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></>,
+    profile: <><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></>,
     payouts: <><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 15h2"/></>,
     bridge: <><path d="M8 7H6a4 4 0 0 0 0 8h2M16 7h2a4 4 0 0 1 0 8h-2"/><path d="M8 12h8"/></>,
     plus: <path d="M12 5v14M5 12h14"/>,
@@ -795,7 +804,7 @@ function OfferFields({
   );
 }
 
-export function SellerDashboard({ locale, user, initialSection = "overview" }: SellerDashboardProps) {
+export function SellerDashboard({ locale, user, initialSection = "overview", initialEditProductId, initialProductSearch = "" }: SellerDashboardProps) {
   const router = useRouter();
   const copy = COPY[locale];
   const imageCopy = PRODUCT_IMAGE_COPY[locale];
@@ -806,8 +815,8 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
   const [listPage, setListPage] = useState(0);
   const [listState, setListState] = useState<RequestState>("loading");
   const [listError, setListError] = useState("");
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [search, setSearch] = useState(initialProductSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialProductSearch.trim());
   const [categoryFilter, setCategoryFilter] = useState("");
   const [debouncedCategory, setDebouncedCategory] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProductStatus | "all">("all");
@@ -821,6 +830,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
   const [editError, setEditError] = useState("");
   const [sellServiceOpen, setSellServiceOpen] = useState(false);
   const productEditorRef = useRef<HTMLElement>(null);
+  const editProductTarget = useRef(initialEditProductId);
   const listRequestId = useRef(0);
   const hasAnalytics = Boolean(user.permissions?.includes("analytics_view"));
   const canManageOrders = Boolean(user.permissions?.includes("orders_manage"));
@@ -829,6 +839,14 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
   useEffect(() => {
     if (section === "orders") void markOrdersSeen();
   }, [markOrdersSeen, section]);
+
+  useEffect(() => {
+    if (listState !== "success" || !editProductTarget.current) return;
+    const listing = listings.find((item) => item.product.id === editProductTarget.current && item.product.canEdit);
+    if (!listing) return;
+    editProductTarget.current = undefined;
+    openProductEditor(listing);
+  }, [listState, listings]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { setDebouncedSearch(search.trim()); setDebouncedCategory(categoryFilter.trim()); }, 300);
@@ -997,6 +1015,9 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
       : [])
   ];
   const secondaryNavigation: Array<{ id: DashboardSection; label: string }> = [
+    ...(user.role === "seller-admin"
+      ? [{ id: "profile" as const, label: copy.profile }]
+      : []),
     ...(user.permissions?.includes("blog_manage")
       ? [{ id: "blog" as const, label: copy.blog }]
       : []),
@@ -1104,22 +1125,22 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
       </DashboardMobileNavigation>
 
       <main className={styles.main} tabIndex={-1}>
-        <header className={styles.pageHeader}>
+        {section !== "overview" ? <header className={styles.pageHeader}>
           <div>
             <p>{copy.workspace}</p>
-            <h1>{section === "overview" ? copy.welcome : copy[section]}</h1>
+            <h1>{copy[section]}</h1>
           </div>
-          {(section === "overview" || section === "products") ? (
+          {section === "products" ? (
             <button className={styles.primaryButton} type="button" onClick={openProductPage} data-state="default">
               <Icon name="plus" />
               {copy.addProduct}
             </button>
           ) : null}
-        </header>
+        </header> : null}
 
         <div className={styles.sectionBody} key={section}>
           {section === "overview" ? (
-            hasAnalytics ? <AnalyticsOverview locale={locale} audience="seller" compact /> : <section aria-labelledby="catalog-snapshot-title">
+            <><PanelOverview locale={locale} audience="seller" analytics={hasAnalytics} canManageOrders={canManageOrders} canManageProducts={Boolean(user.permissions?.includes("products_manage"))} newOrderCount={newOrderCount} onNavigate={selectSection} />{!hasAnalytics ? <section aria-labelledby="catalog-snapshot-title">
               <div className={styles.introRow}>
                 <p>{copy.overviewDescription}</p>
                 {nextCursor ? <span className={styles.moreNote}>{copy.moreAvailable}</span> : null}
@@ -1127,9 +1148,9 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
               <div className={styles.metricStrip} aria-labelledby="catalog-snapshot-title">
                 <h2 id="catalog-snapshot-title" className={styles.srOnly}>{copy.catalogHealth}</h2>
                 <dl>
-                  <div><dt>{copy.loadedProducts}</dt><dd>{listings.length}</dd></div>
-                  <div><dt>{copy.activeListings}</dt><dd>{activeListings}</dd></div>
-                  <div><dt>{copy.offersShown}</dt><dd>{offersShown}</dd></div>
+                  <div><dt>{copy.loadedProducts}</dt><dd>{listState === "success" ? listings.length : "—"}</dd></div>
+                  <div><dt>{copy.activeListings}</dt><dd>{listState === "success" ? activeListings : "—"}</dd></div>
+                  <div><dt>{copy.offersShown}</dt><dd>{listState === "success" ? offersShown : "—"}</dd></div>
                 </dl>
               </div>
               <div className={styles.workspaceBlock}>
@@ -1150,7 +1171,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
                   onEdit={openProductEditor}
                 />
               </div>
-            </section>
+            </section> : null}</>
           ) : null}
 
           {section === "statistics" && hasAnalytics ? <AnalyticsOverview locale={locale} audience="seller" /> : null}
@@ -1204,6 +1225,8 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
 
           {section === "shipping" ? <SellerShippingProfileWorkspace locale={locale} /> : null}
 
+          {section === "profile" ? <SellerExpertProfileWorkspace locale={locale} /> : null}
+
           {section === "payouts" ? (
             <section className={styles.unavailable} aria-labelledby="unavailable-title">
               <Icon name={section} />
@@ -1237,7 +1260,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview" }: S
                   })() : <span aria-hidden="true">＋</span>}
                 </div>
                 <p><strong>{imageCopy.title}</strong><small>{imageCopy.hint}</small></p>
-                <label className={styles.secondaryButton}>{editingProduct.product.image ? imageCopy.replace : imageCopy.choose}<input type="file" accept="image/webp,image/svg+xml" disabled={editState === "loading"} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadProductImage(file); event.currentTarget.value = ""; }} /></label>
+                <label className={styles.secondaryButton}>{editingProduct.product.image ? imageCopy.replace : imageCopy.choose}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={editState === "loading"} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadProductImage(file); event.currentTarget.value = ""; }} /></label>
                 {editingProduct.product.image ? <button className={styles.textButton} type="button" disabled={editState === "loading"} onClick={() => void removeProductImage()}>{imageCopy.remove}</button> : null}
               </section>
               <label className={styles.field}><span>{copy.title}</span><input autoFocus required minLength={2} maxLength={200} value={editDraft.title} onChange={(event) => setEditDraft((current) => ({ ...current, title: event.target.value }))} /></label>
@@ -1278,7 +1301,7 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
 
   function selectImage(file: File | undefined) {
     if (!file) return;
-    if (!(["image/webp", "image/svg+xml"].includes(file.type)) || file.size > 8 * 1024 * 1024) {
+    if (!(["image/jpeg", "image/png", "image/webp"].includes(file.type)) || file.size > 8 * 1024 * 1024) {
       setFormError(formCopy.imageInvalid);
       return;
     }
@@ -1448,7 +1471,7 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
               <label className={styles.field}><span>{copy.category}<small>{formCopy.optional}</small></span><input maxLength={100} value={draft.category} onChange={(event) => updateDraft("category", event.target.value)} /></label>
               <div className={creation.imageField}>
                 <div className={creation.imagePreview}>{imagePreview ? <Image unoptimized src={imagePreview} alt="" width={120} height={120} /> : <DesignIcon name="layers" />}</div>
-                <div><strong>{imageCopy.title}</strong><small>{imageCopy.hint}</small><label className={creation.imagePicker}>{imageFile ? imageCopy.replace : imageCopy.choose}<input type="file" accept="image/webp,image/svg+xml" disabled={submitState === "loading"} onChange={(event) => { selectImage(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>{imageFile ? <button className={creation.imageRemove} type="button" disabled={submitState === "loading"} onClick={() => setImageFile(null)}>{imageCopy.remove}</button> : null}</div>
+                <div><strong>{imageCopy.title}</strong><small>{imageCopy.hint}</small><label className={creation.imagePicker}>{imageFile ? imageCopy.replace : imageCopy.choose}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={submitState === "loading"} onChange={(event) => { selectImage(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>{imageFile ? <button className={creation.imageRemove} type="button" disabled={submitState === "loading"} onClick={() => setImageFile(null)}>{imageCopy.remove}</button> : null}</div>
               </div>
             </section>
             <fieldset className={creation.deliveryCard}>

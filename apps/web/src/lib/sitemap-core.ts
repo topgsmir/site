@@ -5,7 +5,7 @@ export type SitemapEntry = { path: string; updatedAt?: string; alternates?: Reco
 export type SitemapBatch = { items: Array<SitemapEntry & { id: string }>; nextCursor: string | null };
 
 export function staticEntries(): SitemapEntry[] {
-  return (["fa", "en", "ar"] as const).flatMap((locale) => ["", "/blog", "/products", ...["digital", "physical", "service", "bridge"].map((type) => `/products?type=${type}`)].map((suffix) => ({
+  return (["fa", "en", "ar"] as const).flatMap((locale) => ["", "/blog", "/products", "/contact-us", ...["digital", "physical", "service", "bridge"].map((type) => `/products?type=${type}`)].map((suffix) => ({
     path: `/${locale}${suffix}`,
     alternates: Object.fromEntries(["fa", "en", "ar", "x-default"].map((code) => [code, `/${code === "x-default" ? "fa" : code}${suffix}`]))
   })));

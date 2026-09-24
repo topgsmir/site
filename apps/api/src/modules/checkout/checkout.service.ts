@@ -19,6 +19,8 @@ import { PublicHttpException } from "../../common/http/public-http.exception";
 import type { CreateCheckoutDto, QuoteCheckoutDto, ShippingAddressDto } from "./dto/checkout.dto";
 import { UsdRateService } from "../usd-rate/usd-rate.service";
 import { CredentialCryptoService } from "../../common/security/credential-crypto.service";
+import { ShippingTenantService } from "../../integrations/shipping/shipping-tenant.service";
+import type { CheckoutShippingPlacesDto } from "./dto/checkout.dto";
 
 const RESERVATION_MS = 15 * 60 * 1000;
 
@@ -100,8 +102,37 @@ export class CheckoutService {
     private readonly payments: PaymentService,
     private readonly paymentApplication: PaymentApplicationService,
     private readonly usdRates: UsdRateService,
+    private readonly shippingTenants: ShippingTenantService,
     @Optional() private readonly crypto?: CredentialCryptoService
   ) {}
+
+  async shippingPlaces(input: CheckoutShippingPlacesDto) {
+    const offerIds = input.items.map((item) => item.offerId);
+    const offers = await this.prisma.seller_offers.findMany({
+      where: {
+        id: { in: offerIds },
+        status: "active",
+        listing: {
+          status: "active",
+          product: { status: "active", type: "physical" },
+          seller: {
+            invited: false,
+            approved: true,
+            suspended_at: null,
+            permissions: { some: { permission: "physical_products_manage" } },
+            shipping_profile: { is: { enabled: true, latitude: { not: null }, longitude: { not: null } } }
+          }
+        }
+      },
+      select: { id: true, listing: { select: { seller_id: true } } }
+    });
+    if (offers.length !== offerIds.length) {
+      throw new BadRequestException("A valid physical cart with configured shipping is required");
+    }
+    const sellerId = [...new Set(offers.map((offer) => offer.listing.seller_id))].sort()[0];
+    if (!sellerId) throw new BadRequestException("A physical cart is required");
+    return this.shippingTenants.listPlacesForConfiguredSeller({ sellerId, provinceId: input.provinceId });
+  }
 
   async quote(input: QuoteCheckoutDto) {
     const descriptors = (await this.payments.listProviders()).filter((provider) => provider.available);

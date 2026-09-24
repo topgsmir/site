@@ -68,7 +68,10 @@ it("limits profile writes by both account and IP before the eleventh edit", asyn
     },
     auth_rate_limits: { deleteMany: async () => ({ count: 0 }) }
   } as unknown as PrismaService;
-  const limits = new AuthRateLimitService(prisma, {} as SecurityPolicyService);
+  const policies = {
+    get: async () => ({ ipLimit: 30, subjectLimit: 10, ipWindowSeconds: 900, subjectWindowSeconds: 900 })
+  } as unknown as SecurityPolicyService;
+  const limits = new AuthRateLimitService(prisma, policies);
   for (let attempt = 0; attempt < 10; attempt++) await limits.consumeProfileMutation(actor.id, "127.0.0.1");
   await assert.rejects(() => limits.consumeProfileMutation(actor.id, "127.0.0.1"), { status: 429 });
   assert.equal(counts.get(expectedAccountKey), 11);

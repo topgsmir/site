@@ -90,23 +90,43 @@ export class AuthRateLimitService {
   }
 
   async consumeProfileMutation(userId: string, clientIp: string) {
-    await this.consume({
-      action: "profile",
-      scope: "ip",
-      value: this.normalizeIp(clientIp),
-      limit: 30,
-      windowSeconds: 900,
-      blockSeconds: 900
-    });
-    await this.consume({
-      action: "profile",
-      scope: "account",
-      value: userId,
-      limit: 10,
-      windowSeconds: 900,
-      blockSeconds: 900
-    });
-    await this.pruneStaleBuckets();
+    await this.consumeSensitiveMutation("profile", userId, clientIp);
+  }
+
+  async consumeAdminUserOperation(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("admin_user", userId, clientIp);
+  }
+
+  async consumeBlogMutation(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("blog", userId, clientIp);
+  }
+
+  async consumeCouponMutation(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("coupon", userId, clientIp);
+  }
+
+  async consumeDigitalDownload(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("digital_download", userId, clientIp);
+  }
+
+  async consumeNoticeConfiguration(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("notice_configuration", userId, clientIp);
+  }
+
+  async consumeProductMutation(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("product", userId, clientIp);
+  }
+
+  async consumeSellerOperation(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("seller", userId, clientIp);
+  }
+
+  async consumeStaffAdmin(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("staff_admin", userId, clientIp);
+  }
+
+  async consumeUsdConfiguration(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("usd_configuration", userId, clientIp);
   }
 
   async consumeOrderMutation(userId: string, clientIp: string) {
@@ -274,30 +294,7 @@ export class AuthRateLimitService {
   }
 
   private async consumeSensitiveMutation(
-    action:
-      | "order"
-      | "shipping"
-      | "shipping_configuration"
-      | "payout"
-      | "media"
-      | "media_admin"
-      | "payment"
-      | "payment_refund"
-      | "payment_configuration"
-      | "sms_configuration"
-      | "goghdi_configuration"
-      | "auth_configuration"
-      | "bridge"
-      | "signed_ticket"
-      | "ai_profile"
-      | "ai_profile_test"
-      | "ai_run"
-      | "product_bulk_undo"
-      | "comment_submit"
-      | "comment_reply"
-      | "comment_admin"
-      | "backup_admin"
-      | "backup_restore",
+    action: SecurityAction,
     userId: string,
     clientIp: string
   ) {
@@ -386,8 +383,12 @@ export class AuthRateLimitService {
     const result = rows[0];
 
     if (result?.blocked_until && result.blocked_until.getTime() > Date.now()) {
+      const retryAfterSeconds = Math.max(
+        1,
+        Math.ceil((result.blocked_until.getTime() - Date.now()) / 1000)
+      );
       throw new HttpException(
-        "Too many attempts. Try again later.",
+        { message: "Too many attempts. Try again later.", retryAfterSeconds },
         HttpStatus.TOO_MANY_REQUESTS
       );
     }

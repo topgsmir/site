@@ -28,7 +28,7 @@ import {
 import { OrderService } from "./order.service";
 import { AdminOrderDetailsService } from "./admin-order-details.service";
 import { LeaderboardService } from "./leaderboard.service";
-import { AmadastShippingService } from "../../integrations/shipping/amadast/amadast-shipping.service";
+import { ShippingService } from "../../integrations/shipping/shipping.service";
 
 @Controller("orders")
 @UseGuards(AuthenticatedGuard)
@@ -38,7 +38,7 @@ export class OrderController {
     private readonly adminDetails: AdminOrderDetailsService,
     private readonly leaderboard: LeaderboardService,
     private readonly rateLimits: AuthRateLimitService,
-    private readonly amadastShipping: AmadastShippingService
+    private readonly shipping: ShippingService
   ) {}
 
   @Get()
@@ -129,26 +129,26 @@ export class OrderController {
     return this.orders.ship(request.authenticatedUser!, id, body, idempotencyKey);
   }
 
-  @Post(":id/shipping/amadast")
-  async registerAmadastShipping(
+  @Post([":id/shipping/register", ":id/shipping/amadast"])
+  async registerProviderShipping(
     @Req() request: AuthenticatedRequest,
     @Ip() clientIp: string,
     @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
     @IdempotencyKey() idempotencyKey: string
   ) {
     await this.rateLimits.consumeShippingMutation(request.authenticatedUser!.id, clientIp);
-    return this.amadastShipping.register(request.authenticatedUser!, id, idempotencyKey);
+    return this.shipping.register(request.authenticatedUser!, id, idempotencyKey);
   }
 
-  @Post(":id/shipping/amadast/sync")
-  async syncAmadastShipping(
+  @Post([":id/shipping/sync", ":id/shipping/amadast/sync"])
+  async syncProviderShipping(
     @Req() request: AuthenticatedRequest,
     @Ip() clientIp: string,
     @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
     @IdempotencyKey() idempotencyKey: string
   ) {
     await this.rateLimits.consumeShippingMutation(request.authenticatedUser!.id, clientIp);
-    return this.amadastShipping.sync(request.authenticatedUser!, id, idempotencyKey);
+    return this.shipping.sync(request.authenticatedUser!, id, idempotencyKey);
   }
 
   @Get(":orderId/items/:itemId/download")
@@ -160,6 +160,7 @@ export class OrderController {
     @Param("itemId", new ParseUUIDPipe({ version: "4" })) itemId: string,
     @Res() response: { redirect(url: string): void }
   ) {
+    await this.rateLimits.consumeDigitalDownload(request.authenticatedUser!.id, clientIp);
     const url = await this.orders.claimDigitalDownload(request.authenticatedUser!, orderId, itemId, clientIp, query.fileIndex);
     response.redirect(url);
   }

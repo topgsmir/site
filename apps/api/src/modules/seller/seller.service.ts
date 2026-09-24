@@ -1,16 +1,25 @@
 import {
+  BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException
 } from "@nestjs/common";
 import { Prisma } from "../../prisma/client";
-import type { Vendor, VendorStatus } from "@topgsm/shared-types";
+import type {
+  PublicExpertProfile,
+  PublicExpertSummary,
+  SellerPublicProfileSettings,
+  Vendor,
+  VendorStatus
+} from "@topgsm/shared-types";
 import { AuthService } from "../auth/auth.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import type { CreateVendorDto, UpdateVendorDto } from "./dto/vendor.dto";
 import type {
   CreateSellerAgentDto,
-  CreateSellerInviteDto
+  CreateSellerInviteDto,
+  UpdateSellerPublicProfileDto
 } from "./dto/seller-directory.dto";
 
 @Injectable()
@@ -46,6 +55,161 @@ export class SellerService {
       }
     });
     return agents.map((agent) => ({ ...agent, rating: Number(agent.rating) }));
+  }
+
+  async listPublicSellers(): Promise<PublicExpertSummary[]> {
+    const sellers = await this.prisma.sellers.findMany({
+      where: {
+        invited: false,
+        approved: true,
+        suspended_at: null
+      },
+      orderBy: [{ shop_name: "asc" }, { id: "asc" }],
+      take: 50,
+      select: {
+        id: true,
+        shop_name: true,
+        profile_name: true,
+        profile_specialty: true,
+        profile_media: { select: { id: true, width: true, height: true } },
+        _count: {
+          select: {
+            listings: {
+              where: {
+                status: "active",
+                product: { status: "active" },
+                offers: { some: { status: "active" } }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    return sellers.map((seller) => ({
+      id: seller.id,
+      name: seller.profile_name ?? seller.shop_name,
+      specialty: seller.profile_specialty,
+      profilePicture: this.toProfilePicture(seller.profile_media),
+      activeProductCount: seller._count.listings
+    }));
+  }
+
+  async getPublicSeller(sellerId: string): Promise<PublicExpertProfile> {
+    const seller = await this.prisma.sellers.findFirst({
+      where: {
+        id: sellerId,
+        invited: false,
+        approved: true,
+        suspended_at: null
+      },
+      select: {
+        id: true,
+        shop_name: true,
+        profile_name: true,
+        profile_specialty: true,
+        profile_bio: true,
+        profile_media: { select: { id: true, width: true, height: true } },
+        _count: {
+          select: {
+            listings: {
+              where: {
+                status: "active",
+                product: { status: "active" },
+                offers: { some: { status: "active" } }
+              }
+            }
+          }
+        }
+      }
+    });
+    if (!seller) throw new NotFoundException("Expert profile was not found");
+
+    return {
+      id: seller.id,
+      name: seller.profile_name ?? seller.shop_name,
+      specialty: seller.profile_specialty,
+      bio: seller.profile_bio,
+      profilePicture: this.toProfilePicture(seller.profile_media),
+      activeProductCount: seller._count.listings
+    };
+  }
+
+  async getOwnProfile(sellerId: string): Promise<SellerPublicProfileSettings> {
+    const seller = await this.prisma.sellers.findFirst({
+      where: {
+        id: sellerId,
+        invited: false,
+        approved: true,
+        suspended_at: null
+      },
+      select: {
+        id: true,
+        shop_name: true,
+        profile_name: true,
+        profile_specialty: true,
+        profile_bio: true,
+        profile_media: { select: { id: true, width: true, height: true } },
+        updated_at: true
+      }
+    });
+    if (!seller) throw new NotFoundException("Seller was not found");
+    return this.toProfileSettings(seller);
+  }
+
+  async updateOwnProfile(
+    sellerId: string,
+    membershipRole: "admin" | "staff",
+    input: UpdateSellerPublicProfileDto
+  ): Promise<SellerPublicProfileSettings> {
+    if (membershipRole !== "admin") {
+      throw new ForbiddenException("Only a seller administrator can edit the public profile");
+    }
+    if (
+      input.publicName === undefined &&
+      input.specialty === undefined &&
+      input.bio === undefined
+    ) {
+      throw new BadRequestException("At least one profile field is required");
+    }
+
+    try {
+      const seller = await this.prisma.sellers.update({
+        where: {
+          id: sellerId,
+          invited: false,
+          approved: true,
+          suspended_at: null
+        },
+        data: {
+          ...(input.publicName !== undefined
+            ? { profile_name: input.publicName || null }
+            : {}),
+          ...(input.specialty !== undefined
+            ? { profile_specialty: input.specialty || null }
+            : {}),
+          ...(input.bio !== undefined ? { profile_bio: input.bio || null } : {})
+        },
+        select: {
+          id: true,
+          shop_name: true,
+          profile_name: true,
+          profile_specialty: true,
+          profile_bio: true,
+          profile_media: { select: { id: true, width: true, height: true } },
+          updated_at: true
+        }
+      });
+      return this.toProfileSettings(seller);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2025"
+      ) {
+        throw new ForbiddenException("The seller profile is no longer editable");
+      }
+      throw error;
+    }
   }
 
   async createAgent(input: CreateSellerAgentDto, actorUserId: string) {
@@ -300,6 +464,35 @@ export class SellerService {
       return { invited: false, approved: false, suspended_at: new Date() };
     }
     return { invited: false, approved: true, suspended_at: null };
+  }
+
+  private toProfileSettings(seller: {
+    id: string;
+    shop_name: string;
+    profile_name: string | null;
+    profile_specialty: string | null;
+    profile_bio: string | null;
+    profile_media: { id: string; width: number; height: number } | null;
+    updated_at: Date;
+  }): SellerPublicProfileSettings {
+    return {
+      sellerId: seller.id,
+      shopName: seller.shop_name,
+      publicName: seller.profile_name,
+      specialty: seller.profile_specialty,
+      bio: seller.profile_bio,
+      profilePicture: this.toProfilePicture(seller.profile_media),
+      updatedAt: seller.updated_at.toISOString()
+    };
+  }
+
+  private toProfilePicture(media: { id: string; width: number; height: number } | null) {
+    return media ? {
+      id: media.id,
+      url: `/media/${media.id}/profile.webp`,
+      width: media.width,
+      height: media.height
+    } : null;
   }
 
   private toVendor(seller: {

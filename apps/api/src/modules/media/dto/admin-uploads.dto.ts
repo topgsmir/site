@@ -30,7 +30,7 @@ export class AdminUploadsQueryDto {
 
 export class AdminUploadRefDto {
   @IsIn(["blog", "product"]) source!: "blog" | "product";
-  @IsUUID() id!: string;
+  @IsUUID("4") id!: string;
 }
 
 export class TrashAdminUploadsDto {

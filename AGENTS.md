@@ -14,3 +14,11 @@
 
 Report security defects and meaningful best-practice problems discovered while
 working, even when they are outside the immediate change.
+
+## Admin AI tool parity
+
+- Follow `.cursor/rules/ai-tool-parity.mdc` for every feature or API change.
+- Keep ordinary admin/site controller routes represented in
+  `apps/api/src/modules/data-assistant/admin-tool-catalog.ts`.
+- Run the catalog controller-coverage test; security-flow exclusions must be
+  explicit and justified rather than silently omitted.

@@ -6,12 +6,14 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import type { CheckoutDetail, CheckoutQuote } from "@topgsm/shared-types";
 import { DesignIcon } from "@/components/DesignIcon";
+import { CheckoutPlaceSelects } from "@/components/checkout/CheckoutPlaceSelects";
 import { api } from "@/lib/api/client";
 import { captchaTokenFor } from "@/lib/security-captcha";
 import { getTrafficSource } from "@/lib/traffic-source";
 import { readCart, writeCart, type CartItem } from "@/lib/cart";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import type { Locale } from "@/lib/i18n";
+import { isUuidV4, safePaymentHref } from "@/lib/safe-navigation";
 import styles from "./Checkout.module.css";
 
 const COPY = {
@@ -159,6 +161,7 @@ export function CartCheckout({ locale, signedInBuyer }: { locale: Locale; signed
 
   const pricedOffers = useMemo(() => new Map(quote?.groups.flatMap((group) => group.items.map((item) => [item.offerId, item])) ?? []), [quote]);
   const offerGroups = useMemo(() => new Map(quote?.groups.flatMap((group) => group.items.map((item) => [item.offerId, group])) ?? []), [quote]);
+  const physicalOfferIds = useMemo(() => quote?.groups.filter((group) => group.productType === "physical").flatMap((group) => group.items.map((item) => item.offerId)) ?? [], [quote]);
   const itemCount = useMemo(() => items.reduce((total, item) => total + item.quantity, 0), [items]);
   const otpRemaining = challenge ? Math.max(0, Math.ceil((challenge.expiresAt - clock) / 1000)) : 0;
   const resendRemaining = challenge ? Math.max(0, Math.ceil((challenge.resendAt - clock) / 1000)) : 0;
@@ -290,10 +293,14 @@ export function CartCheckout({ locale, signedInBuyer }: { locale: Locale; signed
     };
     const checkout = await api.post<CheckoutDetail>("/checkouts", body, { headers: { "Idempotency-Key": checkoutKey.current } });
     const group = checkout.data.paymentGroups.find((item) => item.status === "pending");
+    if (!isUuidV4(checkout.data.id)) throw new Error("Checkout response is invalid");
     if (!group) { window.location.assign(`/${locale}/checkout/${checkout.data.id}`); return; }
     const payment = await api.post<{ paymentUrl?: string }>(`/checkouts/${checkout.data.id}/payment-groups/${group.id}/initiate`, {}, { headers: { "Idempotency-Key": crypto.randomUUID() } });
-    const paymentUrl = payment.data.paymentUrl;
-    window.location.assign(paymentUrl?.startsWith("/pay/local/") ? `/${locale}${paymentUrl}` : paymentUrl ?? `/${locale}/checkout/${checkout.data.id}`);
+    const destination = payment.data.paymentUrl
+      ? safePaymentHref(payment.data.paymentUrl, locale)
+      : `/${locale}/checkout/${checkout.data.id}`;
+    if (!destination) throw new Error("Payment provider returned an invalid redirect URL");
+    window.location.assign(destination);
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -364,7 +371,7 @@ export function CartCheckout({ locale, signedInBuyer }: { locale: Locale; signed
       <aside className={styles.summary}>
         <div className={styles.summaryTitle}><div><p>{c.summary}</p><span>{number.format(itemCount)} {itemCount === 1 ? c.item : c.items}</span></div>{quote ? <><strong>{formatCurrencyAmount(quote.totalAmount, quote.currency, locale)} <small>{currencyLabel(quote.currency)}</small></strong>{quoteUpdating ? <span className={styles.updating} role="status">{c.updating}</span> : null}</> : <span className={styles.pricePlaceholder}>{c.loading}</span>}</div>
         {quote?.groups.map((group) => <div className={styles.paymentGroup} key={group.key}><div><span>{group.seller.shopName}</span><strong>{formatCurrencyAmount(group.totalAmount, quote.currency, locale)} {currencyLabel(quote.currency)}</strong></div><label><span>{c.payment}</span><select value={selections[group.key] ?? ""} onChange={(event) => setSelections((current) => ({ ...current, [group.key]: event.target.value }))}>{group.paymentMethods.map((method) => <option key={method.code} value={method.code}>{method.name}</option>)}</select></label></div>)}
-        {quote?.requiresShippingAddress ? <fieldset><legend>{c.address}</legend><label><span>{c.recipient}</span><input name="recipientName" autoComplete="name" minLength={2} maxLength={120} required /></label><label><span>{c.phone}</span><input name="shippingPhone" type="tel" inputMode="tel" autoComplete="tel" pattern="(?:\+98|0098|98|0)?9[0-9]{9}" required /></label><div><label><span>{c.province}</span><input name="province" autoComplete="address-level1" minLength={2} maxLength={100} required /></label><label><span>{c.city}</span><input name="city" autoComplete="address-level2" minLength={2} maxLength={100} required /></label></div><label><span>{c.postal}</span><input name="postalCode" autoComplete="postal-code" pattern="[0-9]{10}" inputMode="numeric" required /></label><label><span>{c.street}</span><textarea name="addressLine" autoComplete="street-address" minLength={10} maxLength={1000} required /></label></fieldset> : null}
+        {quote?.requiresShippingAddress ? <fieldset><legend>{c.address}</legend><label><span>{c.recipient}</span><input name="recipientName" autoComplete="name" minLength={2} maxLength={120} required /></label><label><span>{c.phone}</span><input name="shippingPhone" type="tel" inputMode="tel" autoComplete="tel" pattern="(?:\+98|0098|98|0)?9[0-9]{9}" required /></label><div><CheckoutPlaceSelects locale={locale} offerIds={physicalOfferIds} /></div><label><span>{c.postal}</span><input name="postalCode" autoComplete="postal-code" pattern="[0-9]{10}" inputMode="numeric" required /></label><label><span>{c.street}</span><textarea name="addressLine" autoComplete="street-address" minLength={10} maxLength={1000} required /></label></fieldset> : null}
         {!authenticated ? <fieldset><legend>{c.signin}</legend><p className={styles.fieldHint}>{c.signinHint}</p><label><span>{c.phone}</span><input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} inputMode="tel" autoComplete="tel" pattern="(?:\+98|0098|98|0)?9[0-9]{9}" disabled={Boolean(challenge)} required /></label>{challenge ? <><div className={styles.otpMeta}><p>{c.otpSent} <b dir="ltr">{challenge.requestedPhone}</b></p><button type="button" onClick={changePhone}>{c.changePhone}</button></div><p className={otpRemaining === 0 ? styles.otpExpired : styles.otpTimer} role={otpRemaining === 0 ? "status" : undefined}>{otpRemaining === 0 ? c.otpExpired : `${c.otpExpires} ${formatCountdown(otpRemaining, locale)}`}</p>{otpRemaining > 0 ? <label><span>{c.code}</span><input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" autoFocus required /></label> : null}<p className={styles.fieldHint}>{c.newBuyerHint}</p><label><span>{c.fullName}</span><input name="fullName" autoComplete="name" minLength={2} maxLength={120} /></label><button className={styles.resend} type="button" disabled={busy || resendRemaining > 0} onClick={() => void resendOtp()}>{resendRemaining > 0 ? `${c.resendIn} ${formatCountdown(resendRemaining, locale)}` : c.resend}</button></> : null}</fieldset> : null}
         {quoteIssue ? <div className={styles.quoteError} role="alert"><p>{quoteIssue.message}</p><div><button type="button" onClick={() => void refresh(items)} disabled={quoteUpdating}>{c.retry}</button>{quoteIssue.offerIds.length ? <button type="button" onClick={() => removeOffers(quoteIssue.offerIds)}>{c.removeUnavailable}</button> : null}</div></div> : null}
         {error ? <p className={styles.error} role="alert">{error}</p> : null}

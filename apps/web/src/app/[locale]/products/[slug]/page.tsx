@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import type { Route } from "next";
+import { cookies } from "next/headers";
 import { notFound, permanentRedirect } from "next/navigation";
 import { BridgeCheckout } from "@/components/bridge/BridgeCheckout";
-import { getCurrentUser } from "@/lib/auth/server";
+import { SERVER_API_BASE } from "@/lib/api/server";
+import { dashboardFor, getCurrentUser } from "@/lib/auth/server";
 import { getDictionary, isLocale, type Locale } from "@/lib/i18n";
 import { ProductPage } from "./ProductPage";
-import { ProductComments } from "@/components/comments/ProductComments";
 import { getPublicProduct, type PublicProduct } from "./product.server";
+import { productPageCopy } from "./product-copy";
+import { schemaPrice } from "@/lib/product-seo";
 
 type ProductRouteProps = {
   params: Promise<{ locale: string; slug: string }>;
@@ -33,7 +36,7 @@ function compactDescription(product: PublicProduct, locale: Locale) {
   if (source) {
     return source.length > 158 ? `${source.slice(0, 155).trimEnd()}…` : source;
   }
-  const type = product.type === "bridge" ? "Bridge" : copy[product.type];
+  const type = product.type === "bridge" ? productPageCopy[locale].bridge : copy[product.type];
   return `${product.title} — ${type} ${product.category ? `· ${product.category}` : ""} | Top GSM`.replace(/\s+/g, " ");
 }
 
@@ -52,6 +55,8 @@ export async function generateMetadata({ params }: ProductRouteProps): Promise<M
   const description = compactDescription(product, localeParam);
   const canonical = canonicalProductUrl(product.slug, product.contentLocale);
   const indexable = product.availableLocales.includes(localeParam);
+  const image = product.image?.variants.find((variant) => variant.name === "large") ?? product.image?.variants[0];
+  const images = image ? [{ url: new URL(image.url, SITE_URL).href, width: image.width, height: image.height, alt: product.title }] : undefined;
 
   return {
     title: product.title,
@@ -59,7 +64,7 @@ export async function generateMetadata({ params }: ProductRouteProps): Promise<M
     keywords: [
       product.title,
       product.category,
-      product.type === "bridge" ? "Bridge" : getDictionary(localeParam).product[product.type],
+      product.type === "bridge" ? productPageCopy[localeParam].bridge : getDictionary(localeParam).product[product.type],
       "Top GSM"
     ].filter((value): value is string => Boolean(value)),
     alternates: { canonical, ...(indexable ? { languages: Object.fromEntries([...product.availableLocales.map((code) => [code, canonicalProductUrl(product.slug, code)]), ["x-default", canonicalProductUrl(product.slug)]]) } : {}) },
@@ -69,12 +74,14 @@ export async function generateMetadata({ params }: ProductRouteProps): Promise<M
       siteName: "Top GSM",
       title: product.title,
       description,
-      locale: openGraphLocales[localeParam]
+      locale: openGraphLocales[product.contentLocale],
+      ...(images ? { images } : {})
     },
     twitter: {
-      card: "summary_large_image",
+      card: images ? "summary_large_image" : "summary",
       title: product.title,
-      description
+      description,
+      ...(images ? { images } : {})
     },
     robots: {
       index: indexable,
@@ -97,9 +104,9 @@ function productJsonLd(product: PublicProduct, locale: Locale) {
     variant.offers.map((offer) => ({
       "@type": "Offer",
       url,
-      price: offer.price,
-      priceCurrency: offer.currency,
+      ...schemaPrice(offer.price, offer.currency),
       availability: `https://schema.org/${offer.physical?.inStock === false ? "OutOfStock" : "InStock"}`,
+      ...(product.type === "digital" ? { availableDeliveryMethod: "http://purl.org/goodrelations/v1#DeliveryModeDirectDownload" } : {}),
       seller: {
         "@type": "Organization",
         name: offer.seller.shopName
@@ -111,12 +118,13 @@ function productJsonLd(product: PublicProduct, locale: Locale) {
     "@context": "https://schema.org",
     "@graph": [
       {
-        "@type": "Product",
+        "@type": product.type === "service" || product.type === "bridge" ? "Service" : "Product",
         "@id": `${url}#product`,
         name: product.title,
         description,
-        sku: product.id,
-        category: product.category ?? (product.type === "bridge" ? "Bridge" : getDictionary(locale).product[product.type]),
+        ...(product.type === "service" || product.type === "bridge" ? {} : { sku: product.id }),
+        category: product.category ?? (product.type === "bridge" ? productPageCopy[locale].bridge : getDictionary(locale).product[product.type]),
+        ...(product.image?.variants.length ? { image: product.image.variants.map((image) => new URL(image.url, SITE_URL).href) } : {}),
         url,
         offers
       },
@@ -133,6 +141,12 @@ function productJsonLd(product: PublicProduct, locale: Locale) {
           {
             "@type": "ListItem",
             position: 2,
+            name: productPageCopy[locale].catalog,
+            item: `${SITE_URL}/${locale}/products?type=${product.type}`
+          },
+          {
+            "@type": "ListItem",
+            position: 3,
             name: product.title,
             item: url
           }
@@ -161,17 +175,26 @@ export default async function ProductRoute({ params }: ProductRouteProps) {
   const product = await loadProduct(slug, localeParam);
   if (!product) notFound();
 
+  const user = await getCurrentUser();
+  const accountHref = user ? dashboardFor(user, localeParam) : null;
+  const sellerCanEdit = (user?.role === "seller-admin" || user?.role === "seller-staff") && user.permissions?.includes("products_manage")
+    ? await canSellerEditProduct(product.id, product.slug)
+    : false;
+  const editHref = user?.role === "platform-admin"
+    ? (`/${localeParam}/admin/products/${product.id}` as Route)
+    : sellerCanEdit
+      ? (`/${localeParam}/seller-dashboard?section=products&editProduct=${encodeURIComponent(product.id)}&productTitle=${encodeURIComponent(product.title)}` as Route)
+      : undefined;
   const jsonLd = productJsonLd(product, localeParam);
   if (product.type === "bridge") {
-    const user = await getCurrentUser();
     return (
       <>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
         />
-        <BridgeCheckout locale={localeParam} product={product} signedInBuyer={user?.role === "buyer"} />
-        <ProductComments productId={product.id} locale={localeParam} />
+        <ProductPage key={product.id} product={product} locale={localeParam} copy={getDictionary(localeParam).product} editHref={editHref} accountHref={accountHref}
+          bridgeCheckout={<BridgeCheckout locale={localeParam} product={product} signedInBuyer={user?.role === "buyer"} embedded />} />
       </>
     );
   }
@@ -184,9 +207,27 @@ export default async function ProductRoute({ params }: ProductRouteProps) {
           __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c")
         }}
       />
-      <ProductPage product={product} locale={localeParam} copy={getDictionary(localeParam).product} />
+      <ProductPage key={product.id} product={product} locale={localeParam} copy={getDictionary(localeParam).product} editHref={editHref} accountHref={accountHref} />
     </>
   );
+}
+
+async function canSellerEditProduct(productId: string, productSlug: string) {
+  const cookieHeader = (await cookies()).toString();
+  if (!cookieHeader) return false;
+  try {
+    const response = await fetch(`${SERVER_API_BASE}/products/mine?limit=20&search=${encodeURIComponent(productSlug)}`, {
+      headers: { accept: "application/json", cookie: cookieHeader },
+      cache: "no-store"
+    });
+    if (!response.ok) return false;
+    const payload = await response.json() as {
+      items?: Array<{ product?: { id?: string; canEdit?: boolean } }>;
+    };
+    return payload.items?.some((item) => item.product?.id === productId && item.product.canEdit === true) ?? false;
+  } catch {
+    return false;
+  }
 }
 
 async function loadProduct(slug: string, locale: Locale) {

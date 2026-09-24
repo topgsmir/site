@@ -14,8 +14,8 @@ describe("AmadastSettingsService", () => {
     const prisma = { shipping_settings: { findUnique: async () => null } } as unknown as PrismaService;
     const settings = await new AmadastSettingsService(prisma, crypto, config).get();
     assert.equal(settings.enabled, false);
-    assert.equal(settings.clientCodeConfigured, false);
-    assert.equal("clientCode" in settings, false);
+    assert.equal(settings.apiKeyConfigured, false);
+    assert.equal("apiKey" in settings, false);
   });
 
   it("encrypts the client code and writes secret-free audit data", async () => {
@@ -26,21 +26,21 @@ describe("AmadastSettingsService", () => {
       $transaction: async (callback: (tx: Record<string, unknown>) => unknown) => callback({
         shipping_settings: { upsert: async ({ create }: { create: Record<string, unknown> }) => {
           stored = create;
-          return { amadast_enabled: true, encrypted_client_code: create.encrypted_client_code, encryption_key_id: create.encryption_key_id, client_code_hint: create.client_code_hint, user_id: 12, store_id: 34, sender_name: "TopGSM", sender_mobile: "09120000000", product_type: 1, package_type: 1, updated_at: new Date("2026-09-17T00:00:00Z") };
+          return { provider: "amadast", enabled: true, encrypted_api_key: create.encrypted_api_key, encryption_key_id: create.encryption_key_id, api_key_hint: create.api_key_hint, user_id: 12, store_id: 34, sender_name: "TopGSM", sender_mobile: "09120000000", product_type: 1, package_type: 1, updated_at: new Date("2026-09-17T00:00:00Z") };
         } },
         shipping_setting_events: { create: async ({ data }: { data: Record<string, unknown> }) => { audited = data; return { id: "event" }; } }
       })
     } as unknown as PrismaService;
-    const result = await new AmadastSettingsService(prisma, crypto, config).update({ enabled: true, clientCode: "secret-client-code", userId: 12, storeId: 34, productType: 1, packageType: 1 }, "admin-id");
-    assert.equal(String(stored?.encrypted_client_code).includes("secret-client-code"), false);
+    const result = await new AmadastSettingsService(prisma, crypto, config).updateApiKey("secret-client-code", "admin-id");
+    assert.equal(String(stored?.encrypted_api_key).includes("secret-client-code"), false);
     assert.equal(JSON.stringify(audited).includes("secret-client-code"), false);
-    assert.equal(result.clientCodeHint, "code");
+    assert.equal(result.apiKeyHint, "code");
   });
 
   it("decrypts database credentials for shipping without returning them to admins", async () => {
     const encrypted = crypto.encrypt("database-client-code", "shipping:amadast:client-code", "SHIPPING");
-    const prisma = { shipping_settings: { findUnique: async () => ({ amadast_enabled: true, encrypted_client_code: encrypted.ciphertext, encryption_key_id: encrypted.keyId, client_code_hint: "code", user_id: 12, store_id: 34, sender_name: null, sender_mobile: null, product_type: 1, package_type: 1, updated_at: new Date() }) } } as unknown as PrismaService;
+    const prisma = { shipping_settings: { findUnique: async () => ({ provider: "amadast", enabled: true, encrypted_api_key: encrypted.ciphertext, encryption_key_id: encrypted.keyId, api_key_hint: "code", user_id: 12, store_id: 34, sender_name: null, sender_mobile: null, product_type: 1, package_type: 1, updated_at: new Date() }) } } as unknown as PrismaService;
     const effective = await new AmadastSettingsService(prisma, crypto, config).effective();
-    assert.equal(effective.clientCode, "database-client-code");
+    assert.deepEqual(effective, { clientCode: "database-client-code" });
   });
 });

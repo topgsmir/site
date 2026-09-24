@@ -11,6 +11,27 @@
   --color-brand-teal: #2ec4b6;
   --color-brand-off-white: #f6f7f8;
   --color-brand-blue: #20a4f3;
+  --color-assistant-action: var(--color-dashboard-accent);
+  --color-assistant-action-ink: var(--color-dashboard-accent-ink);
+  --color-assistant-selection: var(--color-dashboard-accent-soft);
+  --color-assistant-marker: var(--color-role-primary);
+  --color-home-accent: var(--color-dashboard-accent);
+  --color-home-accent-ink: var(--color-dashboard-accent-ink);
+  --color-home-highlight: var(--color-dashboard-accent);
+  --color-home-accent-soft: var(--color-dashboard-accent-soft);
+  --color-home-azure-surface: color-mix(in srgb, var(--color-brand-blue) 10%, var(--color-dashboard-surface));
+  --color-home-azure-border: color-mix(in srgb, var(--color-brand-blue) 24%, var(--color-dashboard-paper));
+  --color-home-image-label: color-mix(in srgb, var(--color-brand-blue) 10%, var(--color-brand-off-white));
+  --color-home-image-label-ink: color-mix(in srgb, var(--color-brand-blue) 52%, var(--color-brand-navy));
+  --color-home-band: color-mix(in srgb, var(--color-dashboard-paper) 96%, var(--color-dashboard-ink));
+  --color-home-tool-blue: color-mix(in srgb, var(--color-brand-blue) 66%, var(--color-brand-navy));
+  --color-home-tool-medium: color-mix(in srgb, var(--color-brand-blue) 20%, var(--color-brand-navy));
+  --color-home-tool-light: color-mix(in srgb, var(--color-brand-blue) 24%, var(--color-brand-off-white));
+  --color-home-tool-paper: color-mix(in srgb, var(--color-brand-blue) 10%, var(--color-brand-off-white));
+  --color-home-about-paper: color-mix(in srgb, var(--color-brand-blue) 8%, var(--color-brand-navy));
+  --color-home-about-rule: color-mix(in srgb, var(--color-brand-blue) 30%, var(--color-brand-navy));
+  --color-home-about-accent: color-mix(in srgb, var(--color-brand-blue) 65%, var(--color-brand-off-white));
+  --color-home-positive-marker: color-mix(in srgb, var(--color-brand-teal) 12%, var(--color-home-about-paper));
   --color-neutral-white: #ffffff;
   --color-status-amber: #f5a623;
 

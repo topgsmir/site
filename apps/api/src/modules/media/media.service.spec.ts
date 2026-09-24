@@ -130,47 +130,16 @@ describe("media boundary", () => {
     await assert.rejects(service.get("asset", "wide"), ForbiddenException);
   });
 
-  it("accepts SVG blog uploads and stores their WebP variants under the blog directory", async () => {
-    const base = join(process.cwd(), "var");
-    await mkdir(base, { recursive: true });
-    const root = await mkdtemp(join(base, "media-svg-"));
-    const variantPaths: string[] = [];
-    const prisma = {
-      blog_media_assets: {
-        create: async (input: {
-          data: {
-            id: string;
-            kind: "cover" | "inline";
-            width: number;
-            height: number;
-            variants: { create: Array<{ variant: string; width: number; height: number; path: string }> };
-          };
-        }) => {
-          variantPaths.push(...input.data.variants.create.map((variant) => variant.path));
-          return {
-            id: input.data.id,
-            kind: input.data.kind,
-            width: input.data.width,
-            height: input.data.height,
-            variants: input.data.variants.create
-          };
-        }
-      }
-    } as unknown as PrismaService;
-    const service = new MediaService(new ConfigService({ MEDIA_ROOT: root }), prisma);
-    try {
-      const result = await service.upload(actor, {
-        buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="24"><rect width="32" height="24" fill="#2457ff"/></svg>'),
+  it("rejects SVG uploads before passing XML to the image decoder", async () => {
+    const service = new MediaService(new ConfigService({ MEDIA_ROOT: "var/test-media" }), {} as PrismaService);
+    await assert.rejects(
+      service.upload(actor, {
+        buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="24"><image href="file:///etc/passwd" /></svg>'),
         mimetype: "image/svg+xml",
-        originalname: "valid.svg"
-      } as Express.Multer.File, { kind: "inline", focalX: 0.5, focalY: 0.5 });
-
-      assert.equal(result.variants.length, 3);
-      assert.equal(variantPaths.every((path) => path.startsWith("blog/")), true);
-      assert.equal(variantPaths.every((path) => path.endsWith(".webp")), true);
-    } finally {
-      await rm(root, { force: true, recursive: true });
-    }
+        originalname: "unsafe.svg"
+      } as Express.Multer.File, { kind: "inline", focalX: 0.5, focalY: 0.5 }),
+      BadRequestException
+    );
   });
 
   it("rejects invalid product image bytes before writing files", async () => {
@@ -215,5 +184,50 @@ describe("media boundary", () => {
       } as Express.Multer.File),
       BadRequestException
     );
+  });
+
+  it("rejects seller staff profile-picture uploads before decoding the file", async () => {
+    const service = new MediaService(new ConfigService({ MEDIA_ROOT: "var/test-media" }), {} as PrismaService);
+    await assert.rejects(
+      service.uploadSellerProfilePicture(actor.sellerId, actor.user.id, "staff", undefined),
+      ForbiddenException
+    );
+  });
+
+  it("stores seller profile pictures below the authenticated seller path", async () => {
+    const base = join(process.cwd(), "var");
+    await mkdir(base, { recursive: true });
+    const root = await mkdtemp(join(base, "seller-profile-media-"));
+    const image = await sharp({ create: { width: 80, height: 60, channels: 4, background: "#2457ff" } })
+      .png()
+      .toBuffer();
+    let created: Record<string, unknown> | undefined;
+    const tx = {
+      $queryRaw: async () => [],
+      sellers: { findFirst: async () => ({ id: actor.sellerId }) },
+      seller_profile_media_assets: {
+        findUnique: async () => null,
+        create: async ({ data }: { data: Record<string, unknown> }) => { created = data; }
+      }
+    };
+    const prisma = {
+      sellers: { findFirst: async () => ({ id: actor.sellerId }) },
+      $transaction: async (callback: (client: typeof tx) => Promise<void>) => callback(tx)
+    } as unknown as PrismaService;
+    const service = new MediaService(new ConfigService({ MEDIA_ROOT: root }), prisma);
+    try {
+      const result = await service.uploadSellerProfilePicture(actor.sellerId, actor.user.id, "admin", {
+        buffer: image,
+        mimetype: "image/png",
+        originalname: "portrait.png"
+      } as Express.Multer.File);
+      assert.match(String(created?.path), new RegExp(`^sellers/${actor.sellerId}/profile/[0-9a-f-]+\\.webp$`));
+      assert.equal(created?.seller_id, actor.sellerId);
+      assert.equal(result.url, `/media/${result.id}/profile.webp`);
+      assert.equal(result.width, 640);
+      assert.equal(result.height, 640);
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
   });
 });

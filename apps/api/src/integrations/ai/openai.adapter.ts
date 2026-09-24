@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateText, streamText } from "ai";
 import { SafeFetchService } from "../../common/http/safe-fetch.service";
+import { AI_REQUEST_TIMEOUT_MS } from "./ai-request-policy";
 import { parseAiJson, type AiCompletion, type AiModelAdapter, type AiProfileCredentials, type AiStructuredCompletion, type AiToolCallCompletion } from "./ai.types";
 
 @Injectable()
@@ -9,15 +10,15 @@ export class OpenAiAdapter implements AiModelAdapter {
   readonly provider = "openai" as const;
   constructor(private readonly safeFetch: SafeFetchService) {}
   async complete(profile: AiProfileCredentials, system: string, prompt: string): Promise<AiCompletion> {
-    const client = createOpenAI({ apiKey: profile.apiKey, baseURL: profile.baseUrl, fetch: this.safeFetch.fetch });
-    const result = await generateText({ model: client(profile.modelId), system, prompt, maxOutputTokens: 4_000, maxRetries: 0, abortSignal: AbortSignal.timeout(35_000) });
+    const client = createOpenAI({ apiKey: profile.apiKey, baseURL: profile.baseUrl, fetch: this.safeFetch.withTimeout(AI_REQUEST_TIMEOUT_MS) });
+    const result = await generateText({ model: client(profile.modelId), system, prompt, maxOutputTokens: 4_000, maxRetries: 0, abortSignal: AbortSignal.timeout(AI_REQUEST_TIMEOUT_MS) });
     return { text: result.text.slice(0, 30_000), inputTokens: result.usage.inputTokens ?? null, outputTokens: result.usage.outputTokens ?? null, providerRequestId: result.providerMetadata?.openai?.responseId as string ?? null };
   }
   async stream(profile: AiProfileCredentials, system: string, prompt: string, onText: (text: string) => void): Promise<AiCompletion> {
-    const client = createOpenAI({ apiKey: profile.apiKey, baseURL: profile.baseUrl, fetch: this.safeFetch.fetch });
-    const result = streamText({ model: client(profile.modelId), system, prompt, maxOutputTokens: 4_000, maxRetries: 0, abortSignal: AbortSignal.timeout(35_000) });
+    const client = createOpenAI({ apiKey: profile.apiKey, baseURL: profile.baseUrl, fetch: this.safeFetch.withTimeout(AI_REQUEST_TIMEOUT_MS) });
+    const result = streamText({ model: client(profile.modelId), system, prompt, maxOutputTokens: 4_000, maxRetries: 0, abortSignal: AbortSignal.timeout(AI_REQUEST_TIMEOUT_MS) });
     let text = "";
-    for await (const delta of result.textStream) { if (text.length >= 30_000) continue; const bounded = delta.slice(0, 30_000 - text.length); text += bounded; onText(bounded); }
+    for await (const part of result.fullStream) { if (part.type === "error") throw part.error; if (part.type !== "text-delta") continue; const delta = part.text; if (text.length >= 30_000) continue; const bounded = delta.slice(0, 30_000 - text.length); text += bounded; onText(bounded); }
     const usage = await result.usage; const metadata = await result.providerMetadata;
     return { text, inputTokens: usage.inputTokens ?? null, outputTokens: usage.outputTokens ?? null, providerRequestId: metadata?.openai?.responseId as string ?? null };
   }

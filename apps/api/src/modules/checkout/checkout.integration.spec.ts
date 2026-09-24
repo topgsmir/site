@@ -35,7 +35,7 @@ const paymentService = {
   initiateWithProvider: (_code: string, input: PaymentIntentInput) => adapter.initiate(input)
 } as unknown as PaymentService;
 const application = new PaymentApplicationService(prisma, paymentService, {} as PaymentCredentialService);
-const checkouts = new CheckoutService(prisma, paymentService, application, new UsdRateService(prisma));
+const checkouts = new CheckoutService(prisma, paymentService, application, new UsdRateService(prisma), {} as never);
 
 let buyer: AppUser;
 let physicalOfferId: string;

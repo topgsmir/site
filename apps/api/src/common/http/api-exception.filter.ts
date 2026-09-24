@@ -55,6 +55,14 @@ export class ApiExceptionFilter implements ExceptionFilter {
       : sourceBody?.message ?? (typeof source === "string" ? source : "The request could not be completed");
 
     response.setHeader("X-Request-Id", requestId);
+    if (
+      status === HttpStatus.TOO_MANY_REQUESTS &&
+      typeof sourceBody?.retryAfterSeconds === "number" &&
+      Number.isSafeInteger(sourceBody.retryAfterSeconds) &&
+      sourceBody.retryAfterSeconds > 0
+    ) {
+      response.setHeader("Retry-After", String(sourceBody.retryAfterSeconds));
+    }
     if (status >= 500) {
       this.logger.error(JSON.stringify({
         event: "http.request.failed",

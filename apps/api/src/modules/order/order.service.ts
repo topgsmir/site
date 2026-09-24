@@ -21,7 +21,7 @@ import type {
   UpdateOrderStatusDto
 } from "./dto/order.dto";
 import { UsdRateService } from "../usd-rate/usd-rate.service";
-import { AmadastSettingsService } from "../../integrations/shipping/amadast/amadast-settings.service";
+import { ShippingProviderRegistry } from "../../integrations/shipping/shipping-provider.registry";
 import { SellerShippingProfileService } from "../../integrations/shipping/seller-shipping-profile.service";
 import { signUploadDownloadLink } from "./upload-download-link";
 
@@ -42,7 +42,7 @@ const orderSelect = {
   buyer: { select: { full_name: true, email: true, phone_number: true } },
   shipping_address: { select: { recipient_name: true, phone_number: true, province: true, city: true, postal_code: true, address_line: true } },
   shipment: { select: { carrier: true, tracking_code: true, shipped_at: true } },
-  amadast_shipment: { select: { id: true, status: true, provider_order_id: true, amadast_tracking_code: true, courier_tracking_code: true, courier_title: true, last_error_code: true, registered_at: true, tracking_synced_at: true } },
+  shipping_dispatch: { select: { id: true, provider: true, status: true, provider_order_reference: true, legacy_provider_order_id: true, provider_tracking_code: true, courier_tracking_code: true, courier_title: true, last_error_code: true, registered_at: true, tracking_synced_at: true } },
   items: {
     select: {
       id: true,
@@ -92,7 +92,7 @@ export class OrderService {
     @Optional() private readonly crypto?: CredentialCryptoService,
     @Optional() private readonly config?: ConfigService,
     @Optional() private readonly usdRates?: UsdRateService,
-    @Optional() private readonly amadastSettings?: AmadastSettingsService,
+    @Optional() private readonly shippingProviders?: ShippingProviderRegistry,
     @Optional() private readonly sellerShippingProfiles?: SellerShippingProfileService
   ) {}
 
@@ -247,14 +247,21 @@ export class OrderService {
     const page = hasMore ? rows.slice(0, input.limit) : rows;
     await this.auditBridgeAccess(actor.id, page, "list");
     const revealServiceAnswers = actor.role === "seller-admin" || actor.role === "seller-staff";
+    const activeShippingProvider = this.shippingProviders?.active();
+    const shippingEnabled = actor.role === "seller-admin" || actor.role === "seller-staff"
+      ? Boolean(activeShippingProvider && await activeShippingProvider.isConfigured() && await this.sellerShippingProfiles?.isReadyForActor(actor))
+      : false;
     return {
       items: page.map((order) => this.map(order, revealServiceAnswers)),
       nextCursor: hasMore ? page.at(-1)?.id ?? null : null,
+      shippingProvider: activeShippingProvider ? {
+        code: activeShippingProvider.code,
+        name: activeShippingProvider.displayName,
+        enabled: shippingEnabled
+      } : null,
       shippingProviders: {
         amadast: {
-          enabled: actor.role === "seller-admin" || actor.role === "seller-staff"
-            ? Boolean(await this.amadastSettings?.isEnabled() && await this.sellerShippingProfiles?.isReadyForActor(actor))
-            : false
+          enabled: activeShippingProvider?.code === "amadast" && shippingEnabled
         }
       }
     };
@@ -786,7 +793,18 @@ export class OrderService {
       holdbackRate: order.holdback_rate.toString(),
       shippingAddress: order.shipping_address ? { recipientName: order.shipping_address.recipient_name, phoneNumber: order.shipping_address.phone_number, province: order.shipping_address.province, city: order.shipping_address.city, postalCode: order.shipping_address.postal_code.trim(), addressLine: order.shipping_address.address_line } : null,
       shipment: order.shipment ? { carrier: order.shipment.carrier, trackingCode: order.shipment.tracking_code, shippedAt: order.shipment.shipped_at.toISOString() } : null,
-      amadastShipment: order.amadast_shipment ? { externalOrderId: order.amadast_shipment.id, status: order.amadast_shipment.status, providerOrderId: order.amadast_shipment.provider_order_id, amadastTrackingCode: order.amadast_shipment.amadast_tracking_code, courierTrackingCode: order.amadast_shipment.courier_tracking_code, courierTitle: order.amadast_shipment.courier_title, errorCode: order.amadast_shipment.last_error_code, registeredAt: order.amadast_shipment.registered_at?.toISOString() ?? null, trackingSyncedAt: order.amadast_shipment.tracking_synced_at?.toISOString() ?? null } : null,
+      shippingDispatch: order.shipping_dispatch ? this.mapShippingDispatch(order.shipping_dispatch) : null,
+      amadastShipment: order.shipping_dispatch?.provider === "amadast" ? {
+        externalOrderId: order.shipping_dispatch.id,
+        status: order.shipping_dispatch.status,
+        providerOrderId: order.shipping_dispatch.legacy_provider_order_id ?? this.numericReference(order.shipping_dispatch.provider_order_reference),
+        amadastTrackingCode: order.shipping_dispatch.provider_tracking_code,
+        courierTrackingCode: order.shipping_dispatch.courier_tracking_code,
+        courierTitle: order.shipping_dispatch.courier_title,
+        errorCode: order.shipping_dispatch.last_error_code,
+        registeredAt: order.shipping_dispatch.registered_at?.toISOString() ?? null,
+        trackingSyncedAt: order.shipping_dispatch.tracking_synced_at?.toISOString() ?? null
+      } : null,
       items: order.items.map((item) => ({
         id: item.id,
         offerId: item.offer_id,
@@ -818,6 +836,27 @@ export class OrderService {
       createdAt: order.created_at.toISOString(),
       updatedAt: order.updated_at.toISOString()
     };
+  }
+
+  private mapShippingDispatch(dispatch: OrderRecord["shipping_dispatch"] & {}) {
+    return dispatch ? {
+      externalOrderId: dispatch.id,
+      provider: dispatch.provider,
+      status: dispatch.status,
+      providerOrderReference: dispatch.provider_order_reference ?? (dispatch.legacy_provider_order_id ? String(dispatch.legacy_provider_order_id) : null),
+      providerTrackingCode: dispatch.provider_tracking_code,
+      courierTrackingCode: dispatch.courier_tracking_code,
+      courierTitle: dispatch.courier_title,
+      errorCode: dispatch.last_error_code,
+      registeredAt: dispatch.registered_at?.toISOString() ?? null,
+      trackingSyncedAt: dispatch.tracking_synced_at?.toISOString() ?? null
+    } : null;
+  }
+
+  private numericReference(value: string | null) {
+    if (!value || !/^\d+$/.test(value)) return null;
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) ? parsed : null;
   }
 
   private mapForActor(order: OrderRecord, actor: AppUser) {

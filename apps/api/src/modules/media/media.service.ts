@@ -13,17 +13,27 @@ import sharp from "sharp";
 import { Prisma } from "../../prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import type { BlogActor } from "../blog/blog-manage.guard";
+import { MEDIA_BACKUP_LOCK } from "./media-backup-lock";
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const MAX_PIXELS = 24_000_000;
 const MAX_DIMENSION = 8_192;
-const ALLOWED_IMAGE_MIME_TYPES = new Set(["image/webp", "image/svg+xml"]);
-const ALLOWED_IMAGE_FORMATS = new Set(["webp", "svg"]);
+// Vector inputs are intentionally rejected. SVG decoders have a much broader
+// attack surface (external references, XML features, and resource expansion)
+// than the bounded raster formats accepted here.
+const ALLOWED_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const ALLOWED_IMAGE_FORMATS = new Set(["jpeg", "png", "webp"]);
+const IMAGE_FORMAT_MIME_TYPES: Readonly<Record<string, string>> = {
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp"
+};
 
 const PRODUCT_VARIANTS: VariantSpec[] = [
   { name: "thumb", width: 640, height: 640, fit: "cover" },
   { name: "large", width: 1400, height: 1400, fit: "cover" }
 ];
+const SELLER_PROFILE_SIZE = 640;
 
 type VariantSpec = {
   name: string;
@@ -204,7 +214,7 @@ export class MediaService {
 
       const checksum = createHash("sha256").update(buffer).digest("hex");
       await this.prisma.$transaction(async (tx) => {
-        await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "products" WHERE "id" = ${productId} FOR UPDATE`);
+        await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "products" WHERE "id" = ${productId}::uuid FOR UPDATE`);
         const ownedProduct = await tx.products.findFirst({
           where: { id: productId, ...(sellerId ? { created_by_seller_id: sellerId } : {}) },
           select: { id: true }
@@ -250,7 +260,7 @@ export class MediaService {
 
   async deleteProductImage(productId: string, sellerId: string | null, actorUserId: string) {
     await this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "products" WHERE "id" = ${productId} FOR UPDATE`);
+      await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "products" WHERE "id" = ${productId}::uuid FOR UPDATE`);
       const product = await tx.products.findFirst({
         where: { id: productId, ...(sellerId ? { created_by_seller_id: sellerId } : {}) },
         select: { id: true }
@@ -275,7 +285,120 @@ export class MediaService {
     return { deleted: true, recoverable: true };
   }
 
+  async uploadSellerProfilePicture(
+    sellerId: string,
+    actorUserId: string,
+    membershipRole: "admin" | "staff",
+    file: Express.Multer.File | undefined
+  ) {
+    if (membershipRole !== "admin") {
+      throw new ForbiddenException("Only a seller administrator can edit the public profile");
+    }
+    const seller = await this.prisma.sellers.findFirst({
+      where: { id: sellerId, invited: false, approved: true, suspended_at: null },
+      select: { id: true }
+    });
+    if (!seller) throw new NotFoundException("Seller was not found");
+
+    const { buffer, mimeType, originalFilename } = await this.validateImageUpload(file);
+    const id = randomUUID();
+    const relativePath = join("sellers", sellerId, "profile", `${id}.webp`).replaceAll("\\", "/");
+    const finalPath = this.safePath(relativePath);
+    const temporaryPath = `${finalPath}.${randomUUID()}.tmp`;
+    await mkdir(this.safePath(join("sellers", sellerId, "profile")), { recursive: true });
+    let oldPath: string | null = null;
+    try {
+      const output = await sharp(buffer, {
+        failOn: "error",
+        animated: false,
+        limitInputPixels: MAX_PIXELS
+      })
+        .rotate()
+        .resize({
+          width: SELLER_PROFILE_SIZE,
+          height: SELLER_PROFILE_SIZE,
+          fit: "cover",
+          position: "centre",
+          withoutEnlargement: false
+        })
+        .webp({ quality: 86, effort: 5 })
+        .toBuffer({ resolveWithObject: true });
+      await writeFile(temporaryPath, output.data, { flag: "wx" });
+      await rename(temporaryPath, finalPath);
+      const checksum = createHash("sha256").update(output.data).digest("hex");
+
+      await this.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock_shared(${MEDIA_BACKUP_LOCK})`);
+        await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "sellers" WHERE "id" = ${sellerId} FOR UPDATE`);
+        const editableSeller = await tx.sellers.findFirst({
+          where: { id: sellerId, invited: false, approved: true, suspended_at: null },
+          select: { id: true }
+        });
+        if (!editableSeller) throw new NotFoundException("Seller was not found");
+        const old = await tx.seller_profile_media_assets.findUnique({
+          where: { seller_id: sellerId },
+          select: { id: true, path: true }
+        });
+        oldPath = old?.path ?? null;
+        if (old) await tx.seller_profile_media_assets.delete({ where: { id: old.id } });
+        await tx.seller_profile_media_assets.create({
+          data: {
+            id,
+            seller_id: sellerId,
+            uploaded_by_user_id: actorUserId,
+            width: output.info.width,
+            height: output.info.height,
+            byte_size: output.info.size,
+            checksum,
+            path: relativePath,
+            original_filename: originalFilename,
+            original_mime_type: mimeType
+          }
+        });
+      });
+      if (oldPath && oldPath !== relativePath) {
+        await rm(this.safePath(oldPath), { force: true }).catch(() => undefined);
+      }
+      return this.sellerProfilePicture(id, output.info.width, output.info.height);
+    } catch (error) {
+      await Promise.all([
+        rm(finalPath, { force: true }),
+        rm(temporaryPath, { force: true })
+      ]);
+      throw error;
+    }
+  }
+
+  async deleteSellerProfilePicture(
+    sellerId: string,
+    membershipRole: "admin" | "staff"
+  ) {
+    if (membershipRole !== "admin") {
+      throw new ForbiddenException("Only a seller administrator can edit the public profile");
+    }
+    let path: string | null = null;
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock_shared(${MEDIA_BACKUP_LOCK})`);
+      await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "sellers" WHERE "id" = ${sellerId} FOR UPDATE`);
+      const seller = await tx.sellers.findFirst({
+        where: { id: sellerId, invited: false, approved: true, suspended_at: null },
+        select: { id: true }
+      });
+      if (!seller) throw new NotFoundException("Seller was not found");
+      const asset = await tx.seller_profile_media_assets.findUnique({
+        where: { seller_id: sellerId },
+        select: { id: true, path: true }
+      });
+      if (!asset) throw new NotFoundException("Profile picture was not found");
+      path = asset.path;
+      await tx.seller_profile_media_assets.delete({ where: { id: asset.id } });
+    });
+    if (path) await rm(this.safePath(path), { force: true }).catch(() => undefined);
+    return { deleted: true };
+  }
+
   async get(assetId: string, variantName: string, user?: AppUser) {
+    if (variantName === "profile") return this.getSellerProfilePicture(assetId, user);
     const asset = await this.prisma.blog_media_assets.findUnique({
       where: { id: assetId },
       select: {
@@ -288,7 +411,10 @@ export class MediaService {
       }
     });
     const variant = asset?.variants[0];
-    if (!asset || !variant) return this.getProductImage(assetId, variantName, user);
+    if (!asset || !variant) {
+      if (variantName.startsWith("story-")) return this.getHomepageStoryImage(assetId, variantName, user);
+      return this.getProductImage(assetId, variantName, user);
+    }
     const uploadsManager = user?.role === "platform-admin" || (
       user?.role === "platform-staff" && user.platformPermissions?.includes("uploads_manage")
     );
@@ -365,6 +491,55 @@ export class MediaService {
     }
   }
 
+  private async getHomepageStoryImage(assetId: string, variantName: string, user?: AppUser) {
+    const story = await this.prisma.homepage_stories.findUnique({
+      where: { id: assetId },
+      select: { enabled: true, image_checksum: true, image_path: true }
+    });
+    if (!story) throw new NotFoundException("Media asset was not found");
+    if (variantName !== `story-${story.image_checksum.slice(0, 12)}`) throw new NotFoundException("Media asset was not found");
+    const canPreview = user?.role === "platform-admin";
+    if (!story.enabled && !canPreview) throw new NotFoundException("Media asset was not found");
+    try {
+      return {
+        buffer: await readFile(this.safePath(story.image_path)),
+        etag: `"${createHash("sha256").update(`${story.image_checksum}:${variantName}`).digest("hex")}"`,
+        published: story.enabled
+      };
+    } catch {
+      throw new NotFoundException("Media asset file was not found");
+    }
+  }
+
+  private async getSellerProfilePicture(assetId: string, user?: AppUser) {
+    const asset = await this.prisma.seller_profile_media_assets.findUnique({
+      where: { id: assetId },
+      select: {
+        uploaded_by_user_id: true,
+        checksum: true,
+        path: true,
+        seller: { select: { invited: true, approved: true, suspended_at: true } }
+      }
+    });
+    if (!asset) throw new NotFoundException("Media asset was not found");
+    const published = !asset.seller.invited && asset.seller.approved && !asset.seller.suspended_at;
+    const platformCanRead = user?.role === "platform-admin" || (
+      user?.role === "platform-staff" && user.platformPermissions?.includes("vendors_manage")
+    );
+    if (!published && asset.uploaded_by_user_id !== user?.id && !platformCanRead) {
+      throw new ForbiddenException("Media asset is private");
+    }
+    try {
+      return {
+        buffer: await readFile(this.safePath(asset.path)),
+        etag: `"${asset.checksum}"`,
+        published
+      };
+    } catch {
+      throw new NotFoundException("Media asset file was not found");
+    }
+  }
+
   async removeStoredFiles(relativePaths: string[]) {
     await Promise.all(relativePaths.map((path) => rm(this.safePath(path), { force: true })));
   }
@@ -384,11 +559,11 @@ export class MediaService {
   }
 
   private async validateImageUpload(file: Express.Multer.File | undefined) {
-    if (!file?.buffer?.length) throw new BadRequestException("A WebP or SVG image is required");
+    if (!file?.buffer?.length) throw new BadRequestException("A JPEG, PNG, or WebP image is required");
     if (file.buffer.length > MAX_BYTES) throw new BadRequestException("Image exceeds the 8 MiB limit");
     const mimeType = file.mimetype.toLowerCase().split(";", 1)[0]?.trim();
     if (!mimeType || !ALLOWED_IMAGE_MIME_TYPES.has(mimeType)) {
-      throw new BadRequestException("Only WebP or SVG images are accepted");
+      throw new BadRequestException("Only JPEG, PNG, or WebP images are accepted");
     }
     let metadata: sharp.Metadata;
     try {
@@ -403,11 +578,12 @@ export class MediaService {
     if (
       !metadata.width || !metadata.height ||
       !ALLOWED_IMAGE_FORMATS.has(metadata.format ?? "") ||
+      IMAGE_FORMAT_MIME_TYPES[metadata.format ?? ""] !== mimeType ||
       metadata.pages && metadata.pages > 1 ||
       metadata.width > MAX_DIMENSION || metadata.height > MAX_DIMENSION ||
       metadata.width * metadata.height > MAX_PIXELS
     ) {
-      throw new BadRequestException("Only static WebP or SVG images within the dimension limit are accepted");
+      throw new BadRequestException("Only static JPEG, PNG, or WebP images within the dimension limit are accepted");
     }
     return { buffer: file.buffer, metadata, mimeType, originalFilename: normalizeOriginalFilename(file.originalname) };
   }
@@ -422,6 +598,10 @@ export class MediaService {
         height: variant.height
       }))
     };
+  }
+
+  private sellerProfilePicture(id: string, width: number, height: number) {
+    return { id, url: `/media/${id}/profile.webp`, width, height };
   }
 }
 

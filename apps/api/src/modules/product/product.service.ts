@@ -1,3 +1,5 @@
+import { categoryLabel, productCategorySelect, productCategoryUpdate, resolveProductCategory, type ProductCategoryRecord } from "./product-category";
+import type { ProductCategoriesQueryDto, UpdateProductCategoryDto } from "./dto/product-category.dto";
 import { legacySitemapRows } from "../seo/legacy-sitemap";
 import {
   BadRequestException,
@@ -57,7 +59,7 @@ const sellerListingSelect = {
       title: true,
       slug: true,
       description: true,
-      category: true,
+      category_record: { select: productCategorySelect },
       kind: true,
       type: true,
       status: true,
@@ -116,7 +118,7 @@ const adminProductSelect = {
   title: true,
   slug: true,
   description: true,
-  category: true,
+  category_record: { select: productCategorySelect },
   kind: true,
   type: true,
   status: true,
@@ -163,7 +165,7 @@ const productSnapshotSelect = {
   title: true,
   slug: true,
   description: true,
-  category: true,
+  category_record: { select: productCategorySelect },
   status: true
 } satisfies Prisma.productsSelect;
 
@@ -193,8 +195,11 @@ type ProductSnapshot = {
   slug?: string;
   description: string | null;
   category: string | null;
+  categoryId?: string | null;
   status: "draft" | "pending_review" | "active" | "archived";
 };
+
+type ProductSnapshotRecord = Omit<ProductSnapshot, "category"> & { category_record: ProductCategoryRecord | null };
 
 function searchVariants(term: string) {
   const canonical = term
@@ -264,6 +269,50 @@ type ProductPlan = {
 export class ProductService {
   constructor(private readonly prisma: PrismaService, private readonly config: ConfigService) {}
 
+  async listCategories(input: ProductCategoriesQueryDto) {
+    const rows = await this.prisma.product_categories.findMany({
+      where: input.search?.trim() ? { name: { startsWith: input.search.trim(), mode: "insensitive" } } : {},
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+      take: input.limit + 1,
+      select: productCategorySelect
+    });
+    const items = rows.slice(0,input.limit);
+    return { items, nextCursor: rows.length > input.limit ? items.at(-1)!.id : null };
+  }
+
+  async updateCategory(id: string, actorId: string, input: UpdateProductCategoryDto) {
+    const name = input.name?.trim().replace(/\s+/gu," ");
+    if (name === "" || (name === undefined && !input.translations?.length) || input.translations?.some((item) => !item.name.trim())) {
+      throw new BadRequestException("A nonempty category name or translation is required");
+    }
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM product_categories WHERE id=${id}::uuid FOR UPDATE`;
+        const before = await tx.product_categories.findUnique({ where: { id }, select: productCategorySelect });
+        if (!before) throw new NotFoundException("Product category was not found");
+        if (name !== undefined) await tx.$executeRaw`
+          UPDATE product_categories SET name=${name},normalized_name=normalize_product_category(${name}),updated_at=now() WHERE id=${id}::uuid
+        `;
+        for (const translation of input.translations ?? []) {
+          await tx.product_category_translations.upsert({
+            where: { category_id_locale: { category_id: id, locale: translation.locale } },
+            create: { category_id: id, locale: translation.locale, name: translation.name.trim() },
+            update: { name: translation.name.trim() }
+          });
+        }
+        const after = await tx.product_categories.update({ where: { id }, data: { updated_at: new Date() }, select: productCategorySelect });
+        await tx.product_category_events.create({ data: { category_id: id, actor_user_id: actorId, before_data: before, after_data: after } });
+        return after;
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2002" || (error.code === "P2010" && error.meta?.code === "23505"))) {
+        throw new ConflictException("A product category with this name already exists");
+      }
+      throw error;
+    }
+  }
+
   sitemapProjection() {
     return legacySitemapRows((cursor) => this.prisma.products.findMany({
       where: publicProductWhere(this.bridgeEnabled()),
@@ -287,12 +336,16 @@ export class ProductService {
     const rows = await this.prisma.products.findMany({
       where: {
         ...publicProductWhere(this.bridgeEnabled()),
+        ...(input.categoryId ? { category_id: input.categoryId } : {}),
         ...(input.type ? { type: input.type } : this.bridgeEnabled() ? {} : { type: { not: "bridge" as const } }),
         ...(terms.length ? { AND: terms.map((term) => ({
           OR: searchVariants(term).flatMap((variant) => [
             { title: { contains: variant, mode: "insensitive" as const } },
             { slug: { contains: variant, mode: "insensitive" as const } },
-            { category: { contains: variant, mode: "insensitive" as const } },
+            { category_record: { OR: [
+              { name: { contains: variant, mode: "insensitive" as const } },
+              { translations: { some: { locale: input.locale ?? "fa", name: { contains: variant, mode: "insensitive" as const } } } }
+            ] } },
             { translations: { some: { locale: input.locale ?? "fa", published_at: { not: null }, OR: [{ published_title: { contains: variant, mode: "insensitive" as const } }, { published_category: { contains: variant, mode: "insensitive" as const } }] } } }
           ])
         })) } : {})
@@ -305,7 +358,7 @@ export class ProductService {
         title: true,
         translations: { where: { published_at: { not: null } }, select: publishedTranslationSelect },
         slug: true,
-        category: true,
+        category_record: { select: productCategorySelect },
         kind: true,
         type: true,
         created_at: true,
@@ -326,7 +379,7 @@ export class ProductService {
       JOIN "seller_listings" l ON l."id" = o."listing_id"
       JOIN "sellers" s ON s."id" = l."seller_id"
       JOIN "product_variants" v ON v."id" = o."variant_id"
-      WHERE v."product_id" IN (${Prisma.join(products.map((product) => product.id))})
+      WHERE v."product_id" IN (${Prisma.join(products.map((product) => Prisma.sql`${product.id}::uuid`))})
         AND o."status" = 'active'::"listing_status"
         AND l."status" = 'active'::"listing_status"
         AND s."invited" = FALSE
@@ -353,7 +406,8 @@ export class ProductService {
         availableLocales: ["fa", ...product.translations.map((item) => item.locale)],
         title: translated?.published_title ?? product.title,
         slug: product.slug,
-        category: translated?.published_category ?? product.category,
+        category: categoryLabel(product.category_record, input.locale, translated?.published_category),
+        categoryId: product.category_record?.id ?? null,
         kind: product.kind,
         type: product.type,
         image: this.mapProductImage(product.media),
@@ -378,7 +432,7 @@ export class ProductService {
     const product = await this.prisma.products.findFirst({
       where: {
         ...publicProductWhere(this.bridgeEnabled()),
-        OR: [{ id: idOrSlug }, { slug: idOrSlug }, { slug_routes: { some: { slug: idOrSlug } } }]
+        OR: [...(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(idOrSlug) ? [{ id: idOrSlug }] : []), { slug: idOrSlug }, { slug_routes: { some: { slug: idOrSlug } } }]
       },
       select: {
         id: true,
@@ -386,7 +440,7 @@ export class ProductService {
         translations: { where: { published_at: { not: null } }, select: publishedTranslationSelect },
         slug: true,
         description: true,
-        category: true,
+        category_record: { select: productCategorySelect },
         kind: true,
         type: true,
         created_at: true,
@@ -456,7 +510,8 @@ export class ProductService {
       title: translated?.published_title ?? product.title,
       slug: product.slug,
       description: translated?.published_description ?? product.description,
-      category: translated?.published_category ?? product.category,
+      category: categoryLabel(product.category_record, locale, translated?.published_category),
+      categoryId: product.category_record?.id ?? null,
       kind: product.kind,
       type: product.type,
       image: this.mapProductImage(product.media),
@@ -530,8 +585,8 @@ export class ProductService {
       ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
       take: input.limit + 1,
       orderBy: input.sort?.startsWith("title_")
-        ? [{ product: { title: input.sort.endsWith("asc") ? "asc" : "desc" } }, { id: "desc" }]
-        : [{ [input.sort?.startsWith("created_") ? "created_at" : "updated_at"]: input.sort?.endsWith("asc") ? "asc" : "desc" }, { id: "desc" }],
+        ? [{ product: { title: input.sort.endsWith("asc") ? "asc" : "desc" } }, { id: input.sort?.endsWith("asc") ? "asc" : "desc" }]
+        : [{ [input.sort?.startsWith("created_") ? "created_at" : "updated_at"]: input.sort?.endsWith("asc") ? "asc" : "desc" }, { id: input.sort?.endsWith("asc") ? "asc" : "desc" }],
       select: sellerListingSelect
     });
     const hasMore = listings.length > input.limit;
@@ -549,8 +604,8 @@ export class ProductService {
       ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
       take: input.limit + 1,
       orderBy: input.sort?.startsWith("title_")
-        ? [{ title: input.sort.endsWith("asc") ? "asc" : "desc" }, { id: "desc" }]
-        : [{ [input.sort?.startsWith("created_") ? "created_at" : "updated_at"]: input.sort?.endsWith("asc") ? "asc" : "desc" }, { id: "desc" }],
+        ? [{ title: input.sort.endsWith("asc") ? "asc" : "desc" }, { id: input.sort?.endsWith("asc") ? "asc" : "desc" }]
+        : [{ [input.sort?.startsWith("created_") ? "created_at" : "updated_at"]: input.sort?.endsWith("asc") ? "asc" : "desc" }, { id: input.sort?.endsWith("asc") ? "asc" : "desc" }],
       select: adminProductSelect
     });
     const hasMore = products.length > input.limit;
@@ -569,11 +624,12 @@ export class ProductService {
       ...(input.type ? { type: input.type } : {}),
       ...(input.kind ? { kind: input.kind } : {}),
       ...(input.status ? { status: input.status } : {}),
-      ...(category ? { category: { contains: category, mode: "insensitive" as const } } : {}),
+      ...(input.categoryId ? { category_id: input.categoryId } : {}),
+      ...(category ? { category_record: { name: { contains: category, mode: "insensitive" as const } } } : {}),
       ...(search ? { OR: [
         { title: { contains: search, mode: "insensitive" as const } },
         { slug: { contains: search, mode: "insensitive" as const } },
-        { category: { contains: search, mode: "insensitive" as const } }
+        { category_record: { name: { contains: search, mode: "insensitive" as const } } }
       ] } : {})
     };
   }
@@ -691,7 +747,7 @@ export class ProductService {
       await tx.$queryRaw(Prisma.sql`
         SELECT "id"
         FROM "products"
-        WHERE "id" IN (${Prisma.join(productIds)})
+        WHERE "id" IN (${Prisma.join(productIds.map((id) => Prisma.sql`${id}::uuid`))})
         ORDER BY "id"
         FOR UPDATE
       `);
@@ -715,7 +771,7 @@ export class ProductService {
         }
         const previous = this.readProductSnapshot(event.before_snapshot);
         const expectedCurrent = this.readProductSnapshot(event.after_snapshot);
-        const data = this.productFieldsFromSnapshot(previous, event.changed_fields);
+        const data = await this.productFieldsFromSnapshot(tx, previous, event.changed_fields);
         if (!this.changedProductFieldsMatch(current, expectedCurrent, event.changed_fields)) {
           throw new ConflictException(
             "A newer excluded change modified the same product field; adjust the filters and preview again"
@@ -778,7 +834,7 @@ export class ProductService {
         const updated = await tx.products.update({
           where: { id: productId },
           data: {
-            ...this.productUpdateData(input),
+            ...await this.productUpdateData(tx,input),
             ...(input.slug === undefined ? {} : { slug: this.clean(input.slug) })
           },
           select: adminProductSelect
@@ -938,7 +994,7 @@ export class ProductService {
       }
       const updated = await tx.products.update({
         where: { id: productId },
-        data: target,
+        data: await this.productFieldsFromSnapshot(tx,target,productSnapshotFields.filter((field) => field !== "slug" || target.slug)),
         select: adminProductSelect
       });
       await this.recordProductChange(
@@ -983,7 +1039,7 @@ export class ProductService {
             title: this.clean(input.title),
             slug: plan.slug,
             description: this.cleanOptional(input.description),
-            category: this.cleanOptional(input.category),
+            category_id: await resolveProductCategory(transaction,input),
             kind: input.kind,
             type: input.type,
             status: productStatus
@@ -1113,7 +1169,7 @@ export class ProductService {
       const updated = await tx.products.update({
         where: { id: product.id },
         data: {
-          ...this.productUpdateData(input),
+          ...await this.productUpdateData(tx,input),
           ...(nextStatus === undefined ? {} : { status: nextStatus })
         },
         select: productSnapshotSelect
@@ -1619,7 +1675,8 @@ export class ProductService {
         title: listing.product.title,
         slug: listing.product.slug,
         description: listing.product.description,
-        category: listing.product.category,
+        category: categoryLabel(listing.product.category_record),
+        categoryId: listing.product.category_record?.id ?? null,
         kind: listing.product.kind,
         type: listing.product.type,
         status: listing.product.status,
@@ -1715,7 +1772,8 @@ export class ProductService {
       title: product.title,
       slug: product.slug,
       description: product.description,
-      category: product.category,
+      category: categoryLabel(product.category_record),
+      categoryId: product.category_record?.id ?? null,
       kind: product.kind,
       type: product.type,
       status: product.status,
@@ -1732,15 +1790,13 @@ export class ProductService {
     }
   }
 
-  private productUpdateData(input: UpdateProductDto): Prisma.productsUpdateInput {
+  private async productUpdateData(tx: Prisma.TransactionClient, input: UpdateProductDto): Promise<Prisma.productsUpdateInput> {
     return {
       ...(input.title === undefined ? {} : { title: this.clean(input.title) }),
       ...(input.description === undefined
         ? {}
         : { description: this.cleanOptional(input.description ?? undefined) }),
-      ...(input.category === undefined
-        ? {}
-        : { category: this.cleanOptional(input.category ?? undefined) }),
+      ...await productCategoryUpdate(tx,input),
       ...(input.status === undefined ? {} : { status: input.status })
     };
   }
@@ -1841,15 +1897,17 @@ export class ProductService {
     productId: string,
     actorUserId: string,
     action: "create" | "update" | "review" | "restore",
-    beforeRecord: ProductSnapshot | null,
-    afterRecord: ProductSnapshot,
+    beforeRecord: ProductSnapshot | ProductSnapshotRecord | null,
+    afterRecord: ProductSnapshot | ProductSnapshotRecord,
     restoredFromEventId?: string,
     bulkOperationId?: string
   ) {
     const before = beforeRecord ? this.productSnapshot(beforeRecord) : null;
     const after = this.productSnapshot(afterRecord);
     const changedFields = before
-      ? productSnapshotFields.filter((field) => before[field] !== after[field])
+      ? productSnapshotFields.filter((field) => field === "category" && before.categoryId !== undefined && after.categoryId !== undefined
+        ? before.categoryId !== after.categoryId
+        : before[field] !== after[field])
       : [...productSnapshotFields];
     await tx.product_change_events.create({
       data: {
@@ -1897,10 +1955,11 @@ export class ProductService {
     return { AND: required };
   }
 
-  private productFieldsFromSnapshot(
+  private async productFieldsFromSnapshot(
+    tx: Prisma.TransactionClient,
     snapshot: ProductSnapshot,
     changedFields: string[]
-  ): Prisma.productsUpdateInput {
+  ): Promise<Prisma.productsUpdateInput> {
     const selected = new Set(changedFields);
     const data: Prisma.productsUpdateInput = {};
     if (selected.has("title")) data.title = snapshot.title;
@@ -1911,7 +1970,7 @@ export class ProductService {
       data.slug = snapshot.slug;
     }
     if (selected.has("description")) data.description = snapshot.description;
-    if (selected.has("category")) data.category = snapshot.category;
+    if (selected.has("category")) Object.assign(data, await productCategoryUpdate(tx, snapshot.categoryId !== undefined ? { categoryId: snapshot.categoryId } : { category: snapshot.category }));
     if (selected.has("status")) data.status = snapshot.status;
     if (!Object.keys(data).length) {
       throw new ConflictException("A selected change has no restorable product fields");
@@ -1920,26 +1979,30 @@ export class ProductService {
   }
 
   private changedProductFieldsMatch(
-    current: ProductSnapshot,
+    currentRecord: ProductSnapshot | ProductSnapshotRecord,
     expected: ProductSnapshot,
     changedFields: string[]
   ) {
+    const current = this.productSnapshot(currentRecord);
     const selected = new Set(changedFields);
     return (
       (!selected.has("title") || current.title === expected.title) &&
       (!selected.has("slug") || current.slug === expected.slug) &&
       (!selected.has("description") || current.description === expected.description) &&
-      (!selected.has("category") || current.category === expected.category) &&
+      (!selected.has("category") || (expected.categoryId !== undefined
+        ? current.categoryId === expected.categoryId
+        : current.category === expected.category)) &&
       (!selected.has("status") || current.status === expected.status)
     );
   }
 
-  private productSnapshot(record: ProductSnapshot): ProductSnapshot {
+  private productSnapshot(record: ProductSnapshot | ProductSnapshotRecord): ProductSnapshot {
     return {
       title: record.title,
       ...(record.slug ? { slug: record.slug } : {}),
       description: record.description,
-      category: record.category,
+      category: "category_record" in record ? categoryLabel(record.category_record) : record.category,
+      ...("category_record" in record ? { categoryId: record.category_record?.id ?? null } : record.categoryId !== undefined ? { categoryId: record.categoryId } : {}),
       status: record.status
     };
   }
@@ -1968,6 +2031,7 @@ export class ProductService {
       ...(typeof value.slug === "string" ? { slug: value.slug } : {}),
       description: value.description as string | null,
       category: value.category as string | null,
+      ...(typeof value.categoryId === "string" || value.categoryId === null ? { categoryId: value.categoryId } : {}),
       status: status as ProductSnapshot["status"]
     };
   }

@@ -5,6 +5,7 @@ import type { AdminUserHistoryPage, AdminUserSummary } from "@topgsm/shared-type
 import { api } from "@/lib/api/client";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import type { Locale } from "@/lib/i18n";
+import { historyHelp, historyTerm } from "./user-history-copy";
 import styles from "./UsersWorkspace.module.css";
 
 const groups = {
@@ -16,13 +17,13 @@ type Section = (typeof groups)[keyof typeof groups][number];
 
 const copy = {
   en: { back: "Back to users", edit: "Edit profile", cancel: "Cancel", save: "Save changes", saving: "Saving…", saved: "Profile updated.", saveError: "Could not save. Check whether the email, username, or phone is already in use.", discard: "Discard your unsaved profile changes?", fullName: "Full name", username: "Username", email: "Email", phoneNumber: "Phone number", none: "Not provided", role: "Role", joined: "Joined", updated: "Last updated", ordersCount: "Orders", userId: "User ID", copyId: "Copy ID", copied: "ID copied", copyError: "Could not copy ID", history: "Account history", records: "records", refresh: "Refresh", loading: "Loading records…", historyError: "Records could not be loaded.", retry: "Try again", empty: "No records in this category.", details: "View details", hideDetails: "Hide details", recordId: "Record ID", previous: "Previous", next: "Next", current: "Current", page: "Page", of: "of", perPage: "Per page", groupCommerce: "Purchases", groupAccount: "Account activity", groupAdministration: "Administration", category: "History category", yes: "Yes", no: "No", orderAction: "Order action", flaggedComment: "Flagged comment", profileEdited: "Profile edited", session: "Session", smsDelivery: "SMS delivery", otpChallenge: "OTP challenge", digitalAccess: "Digital access", aiConversation: "AI conversation", sellerMembership: "Seller membership" },
-  fa: { back: "بازگشت به کاربران", edit: "ویرایش اطلاعات", cancel: "انصراف", save: "ذخیره تغییرات", saving: "در حال ذخیره…", saved: "اطلاعات کاربر به‌روز شد.", saveError: "ذخیره نشد. تکراری نبودن ایمیل، نام کاربری و شماره تماس را بررسی کنید.", discard: "تغییرات ذخیره‌نشده را کنار بگذارید؟", fullName: "نام و نام خانوادگی", username: "نام کاربری", email: "ایمیل", phoneNumber: "شماره تماس", none: "ثبت نشده", role: "نقش", joined: "تاریخ عضویت", updated: "آخرین به‌روزرسانی", ordersCount: "سفارش‌ها", userId: "شناسه کاربر", copyId: "کپی شناسه", copied: "شناسه کپی شد", copyError: "شناسه کپی نشد", history: "سوابق کاربر", records: "مورد", refresh: "بارگذاری دوباره", loading: "در حال بارگذاری سوابق…", historyError: "سوابق بارگذاری نشد. دوباره تلاش کنید.", retry: "تلاش دوباره", empty: "در این بخش سابقه‌ای ثبت نشده است.", details: "مشاهده جزئیات", hideDetails: "بستن جزئیات", recordId: "شناسه سابقه", previous: "قبلی", next: "بعدی", current: "فعلی", page: "صفحه", of: "از", perPage: "در هر صفحه", groupCommerce: "خریدها", groupAccount: "فعالیت حساب", groupAdministration: "مدیریت", category: "دسته سوابق", yes: "بله", no: "خیر", orderAction: "تغییر سفارش", flaggedComment: "دیدگاه گزارش‌شده", profileEdited: "ویرایش اطلاعات", session: "نشست", smsDelivery: "ارسال پیامک", otpChallenge: "درخواست رمز یک‌بارمصرف", digitalAccess: "دسترسی دیجیتال", aiConversation: "گفت‌وگوی هوش مصنوعی", sellerMembership: "عضویت فروشنده" },
+  fa: { back: "بازگشت به کاربران", edit: "ویرایش اطلاعات", cancel: "انصراف", save: "ذخیره تغییرات", saving: "در حال ذخیره…", saved: "اطلاعات کاربر به‌روز شد.", saveError: "ذخیره نشد. تکراری نبودن ایمیل، نام کاربری و شماره تماس را بررسی کنید.", discard: "تغییرات ذخیره‌نشده را کنار بگذارید؟", fullName: "نام و نام خانوادگی", username: "نام کاربری", email: "ایمیل", phoneNumber: "شماره تماس", none: "ثبت نشده", role: "نقش", joined: "تاریخ عضویت", updated: "آخرین به‌روزرسانی", ordersCount: "سفارش‌ها", userId: "شناسه کاربر", copyId: "کپی شناسه", copied: "شناسه کپی شد", copyError: "شناسه کپی نشد", history: "سوابق کاربر", records: "مورد", refresh: "بارگذاری دوباره", loading: "در حال بارگذاری سوابق…", historyError: "سوابق بارگذاری نشد. دوباره تلاش کنید.", retry: "تلاش دوباره", empty: "در این بخش سابقه‌ای ثبت نشده است.", details: "مشاهده جزئیات", hideDetails: "بستن جزئیات", recordId: "شناسه سابقه", previous: "قبلی", next: "بعدی", current: "فعلی", page: "صفحه", of: "از", perPage: "در هر صفحه", groupCommerce: "خریدها", groupAccount: "فعالیت حساب", groupAdministration: "مدیریت", category: "دسته سوابق", yes: "بله", no: "خیر", orderAction: "تغییر سفارش", flaggedComment: "دیدگاه گزارش‌شده", profileEdited: "ویرایش اطلاعات", session: "ورود به حساب", smsDelivery: "ارسال پیامک", otpChallenge: "درخواست رمز یک‌بارمصرف", digitalAccess: "دسترسی به فایل خریداری‌شده", aiConversation: "گفت‌وگوی هوش مصنوعی", sellerMembership: "عضویت فروشنده" },
   ar: { back: "العودة إلى المستخدمين", edit: "تعديل البيانات", cancel: "إلغاء", save: "حفظ التغييرات", saving: "جارٍ الحفظ…", saved: "تم تحديث بيانات المستخدم.", saveError: "تعذر الحفظ. تحقق من أن البريد واسم المستخدم والهاتف غير مستخدمة.", discard: "هل تريد تجاهل التغييرات غير المحفوظة؟", fullName: "الاسم الكامل", username: "اسم المستخدم", email: "البريد الإلكتروني", phoneNumber: "رقم الهاتف", none: "غير مسجل", role: "الدور", joined: "تاريخ الانضمام", updated: "آخر تحديث", ordersCount: "الطلبات", userId: "معرّف المستخدم", copyId: "نسخ المعرّف", copied: "تم نسخ المعرّف", copyError: "تعذر نسخ المعرّف", history: "سجل المستخدم", records: "سجل", refresh: "تحديث", loading: "جارٍ تحميل السجلات…", historyError: "تعذر تحميل السجلات. حاول مجدداً.", retry: "حاول مجدداً", empty: "لا توجد سجلات في هذا القسم.", details: "عرض التفاصيل", hideDetails: "إخفاء التفاصيل", recordId: "معرّف السجل", previous: "السابق", next: "التالي", current: "الحالي", page: "صفحة", of: "من", perPage: "في الصفحة", groupCommerce: "المشتريات", groupAccount: "نشاط الحساب", groupAdministration: "الإدارة", category: "فئة السجل", yes: "نعم", no: "لا", orderAction: "تغيير الطلب", flaggedComment: "تعليق مبلّغ عنه", profileEdited: "تعديل البيانات", session: "جلسة", smsDelivery: "إرسال رسالة", otpChallenge: "طلب رمز تحقق", digitalAccess: "وصول رقمي", aiConversation: "محادثة ذكاء اصطناعي", sellerMembership: "عضوية بائع" }
 } as const;
 
 const sectionNames: Record<Locale, Record<Section, string>> = {
-  en: { orders: "Orders", checkouts: "Checkouts", payments: "Payments", entitlements: "Digital access", comments: "Comments", communications: "SMS & OTP", sessions: "Sessions", ai: "AI conversations", seller: "Seller accounts", activity: "Actions", profile: "Profile changes", related: "Other records" },
-  fa: { orders: "سفارش‌ها", checkouts: "تسویه‌ها", payments: "پرداخت‌ها", entitlements: "دسترسی دیجیتال", comments: "دیدگاه‌ها", communications: "پیامک و رمز", sessions: "نشست‌ها", ai: "گفت‌وگوهای هوش مصنوعی", seller: "فروشندگی", activity: "اقدام‌ها", profile: "تغییرات اطلاعات", related: "سایر سوابق" },
+  en: { orders: "Orders", checkouts: "Purchase attempts", payments: "Payments", entitlements: "Purchased files", comments: "Comments", communications: "Messages & login codes", sessions: "Account logins", ai: "AI conversations", seller: "Seller accounts", activity: "Actions", profile: "Profile changes", related: "Other records" },
+  fa: { orders: "سفارش‌ها", checkouts: "مراحل خرید", payments: "پرداخت‌ها", entitlements: "فایل‌های خریداری‌شده", comments: "دیدگاه‌ها", communications: "پیامک و رمز", sessions: "ورودهای کاربر", ai: "گفت‌وگوهای هوش مصنوعی", seller: "فروشندگی", activity: "اقدام‌های کاربر", profile: "تغییرات اطلاعات", related: "سایر سوابق" },
   ar: { orders: "الطلبات", checkouts: "عمليات الدفع", payments: "المدفوعات", entitlements: "الوصول الرقمي", comments: "التعليقات", communications: "الرسائل والرموز", sessions: "الجلسات", ai: "محادثات الذكاء الاصطناعي", seller: "حسابات البائع", activity: "الإجراءات", profile: "تغييرات البيانات", related: "سجلات أخرى" }
 };
 const roleNames: Record<Locale, Record<string, string>> = {
@@ -37,9 +38,9 @@ const groupNames: Record<Locale, Record<keyof typeof groups, string>> = {
 };
 
 const fieldNames: Record<Locale, Record<string, string>> = {
-  en: { seller: "Seller", amount: "Amount", currency: "Currency", products: "Products", payments: "Payments", statusHistory: "Status history", destination: "Destination", orderId: "Order ID", provider: "Provider", verifiedAt: "Verified", refundedAt: "Refunded", failureCode: "Failure", refund: "Refund", expiresAt: "Expires", paymentGroups: "Payment groups", product: "Product", downloads: "Downloads", maximum: "Maximum downloads", lastAccessedAt: "Last accessed", status: "Status", body: "Comment", flaggedByUser: "Flagged by user", detail: "Detail", revokedAt: "Revoked", active: "Active", shop: "Shop", role: "Role", approved: "Approved", suspendedAt: "Suspended", title: "Title", capability: "Capability", messages: "Messages", runs: "Runs", deletedAt: "Deleted", reference: "Reference", action: "Action", actorId: "Edited by", eventType: "Event", permission: "Permission", enabled: "Enabled", name: "Name", from: "Previous status", to: "New status", fullName: "Full name", username: "Username", email: "Email", phoneNumber: "Phone" },
-  fa: { seller: "فروشنده", amount: "مبلغ", currency: "ارز", products: "محصولات", payments: "پرداخت‌ها", statusHistory: "تاریخچه وضعیت", destination: "مقصد", orderId: "شناسه سفارش", provider: "درگاه", verifiedAt: "تأیید", refundedAt: "بازپرداخت", failureCode: "خطا", refund: "بازپرداخت", expiresAt: "انقضا", paymentGroups: "گروه‌های پرداخت", product: "محصول", downloads: "دانلودها", maximum: "سقف دانلود", lastAccessedAt: "آخرین دسترسی", status: "وضعیت", body: "متن دیدگاه", flaggedByUser: "گزارش‌شده توسط کاربر", detail: "جزئیات", revokedAt: "لغو", active: "فعال", shop: "فروشگاه", role: "نقش", approved: "تأییدشده", suspendedAt: "تعلیق", title: "عنوان", capability: "قابلیت", messages: "پیام‌ها", runs: "اجراها", deletedAt: "حذف", reference: "ارجاع", action: "اقدام", actorId: "ویرایش‌کننده", eventType: "رویداد", permission: "دسترسی", enabled: "فعال", name: "نام", from: "وضعیت قبلی", to: "وضعیت جدید", fullName: "نام و نام خانوادگی", username: "نام کاربری", email: "ایمیل", phoneNumber: "شماره تماس" },
-  ar: { seller: "البائع", amount: "المبلغ", currency: "العملة", products: "المنتجات", payments: "المدفوعات", statusHistory: "سجل الحالة", destination: "الوجهة", orderId: "معرّف الطلب", provider: "المزود", verifiedAt: "التحقق", refundedAt: "رد المبلغ", failureCode: "الخطأ", refund: "الاسترداد", expiresAt: "الانتهاء", paymentGroups: "مجموعات الدفع", product: "المنتج", downloads: "التنزيلات", maximum: "حد التنزيل", lastAccessedAt: "آخر وصول", status: "الحالة", body: "التعليق", flaggedByUser: "أبلغ عنه المستخدم", detail: "التفاصيل", revokedAt: "الإلغاء", active: "نشط", shop: "المتجر", role: "الدور", approved: "معتمد", suspendedAt: "التعليق", title: "العنوان", capability: "القدرة", messages: "الرسائل", runs: "التشغيلات", deletedAt: "الحذف", reference: "المرجع", action: "الإجراء", actorId: "المحرر", eventType: "الحدث", permission: "الصلاحية", enabled: "مفعّل", name: "الاسم", from: "الحالة السابقة", to: "الحالة الجديدة", fullName: "الاسم الكامل", username: "اسم المستخدم", email: "البريد الإلكتروني", phoneNumber: "الهاتف" }
+  en: { target: "Related content", targetType: "Content type", seller: "Seller", amount: "Amount", currency: "Currency", products: "Products", payments: "Payments", statusHistory: "Status history", destination: "Destination", orderId: "Order ID", provider: "Provider", verifiedAt: "Verified", refundedAt: "Refunded", failureCode: "Failure", refund: "Refund", expiresAt: "Expires", paymentGroups: "Payment groups", product: "Product", downloads: "Downloads", maximum: "Maximum downloads", lastAccessedAt: "Last accessed", status: "Status", body: "Comment", flaggedByUser: "Flagged by user", detail: "Detail", revokedAt: "Revoked", active: "Active", shop: "Shop", role: "Role", approved: "Approved", suspendedAt: "Suspended", title: "Title", capability: "Capability", messages: "Messages", runs: "Runs", deletedAt: "Deleted", reference: "Reference", action: "Action", actorId: "Edited by", eventType: "Event", permission: "Permission", enabled: "Enabled", name: "Name", from: "Previous status", to: "New status", fullName: "Full name", username: "Username", email: "Email", phoneNumber: "Phone" },
+  fa: { target: "محتوای مربوط", targetType: "نوع محتوا", seller: "فروشنده", amount: "مبلغ", currency: "ارز", products: "محصولات", payments: "پرداخت‌ها", statusHistory: "تاریخچه وضعیت", destination: "مقصد", orderId: "شناسه سفارش", provider: "درگاه", verifiedAt: "تأیید", refundedAt: "بازپرداخت", failureCode: "خطا", refund: "بازپرداخت", expiresAt: "انقضا", paymentGroups: "گروه‌های پرداخت", product: "محصول", downloads: "دانلودها", maximum: "سقف دانلود", lastAccessedAt: "آخرین دسترسی", status: "وضعیت", body: "متن دیدگاه", flaggedByUser: "گزارش‌شده توسط کاربر", detail: "جزئیات", revokedAt: "لغو", active: "دسترسی معتبر است", shop: "فروشگاه", role: "نقش", approved: "تأییدشده", suspendedAt: "تعلیق", title: "عنوان", capability: "قابلیت", messages: "پیام‌ها", runs: "درخواست‌های پردازش", deletedAt: "حذف", reference: "ارجاع", action: "اقدام", actorId: "ویرایش‌کننده", eventType: "رویداد", permission: "دسترسی", enabled: "فعال", name: "نام", from: "وضعیت قبلی", to: "وضعیت جدید", fullName: "نام و نام خانوادگی", username: "نام کاربری", email: "ایمیل", phoneNumber: "شماره تماس" },
+  ar: { target: "المحتوى المرتبط", targetType: "نوع المحتوى", seller: "البائع", amount: "المبلغ", currency: "العملة", products: "المنتجات", payments: "المدفوعات", statusHistory: "سجل الحالة", destination: "الوجهة", orderId: "معرّف الطلب", provider: "المزود", verifiedAt: "التحقق", refundedAt: "رد المبلغ", failureCode: "الخطأ", refund: "الاسترداد", expiresAt: "الانتهاء", paymentGroups: "مجموعات الدفع", product: "المنتج", downloads: "التنزيلات", maximum: "حد التنزيل", lastAccessedAt: "آخر وصول", status: "الحالة", body: "التعليق", flaggedByUser: "أبلغ عنه المستخدم", detail: "التفاصيل", revokedAt: "الإلغاء", active: "نشط", shop: "المتجر", role: "الدور", approved: "معتمد", suspendedAt: "التعليق", title: "العنوان", capability: "القدرة", messages: "الرسائل", runs: "التشغيلات", deletedAt: "الحذف", reference: "المرجع", action: "الإجراء", actorId: "المحرر", eventType: "الحدث", permission: "الصلاحية", enabled: "مفعّل", name: "الاسم", from: "الحالة السابقة", to: "الحالة الجديدة", fullName: "الاسم الكامل", username: "اسم المستخدم", email: "البريد الإلكتروني", phoneNumber: "الهاتف" }
 };
 
 type HistoryEntry = AdminUserHistoryPage["items"][number];
@@ -48,12 +49,23 @@ const profileFields = ["fullName", "username", "email", "phoneNumber"] as const;
 const dateKey = /(?:At|Date)$/;
 const isIsoDate = (value: string) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value);
 const readableKey = (key: string, locale: Locale) => fieldNames[locale][key] ?? key.replace(/([a-z])([A-Z])/g, "$1 $2").replaceAll("_", " ");
-const readableValue = (value: DetailValue, key: string, locale: Locale) => {
+const readableValue = (value: DetailValue, key: string, locale: Locale, currency?: string): string => {
   if (value === null || value === "") return copy[locale].none;
   if (typeof value === "boolean" || value === "true" || value === "false") return (value === true || value === "true") ? copy[locale].yes : copy[locale].no;
   if (typeof value === "string" && dateKey.test(key) && isIsoDate(value)) return new Date(value).toLocaleString(locale);
-  if (/(?:amount|price|fee|cost|total|balance)$/i.test(key) && /^-?\d+(?:\.\d+)?$/.test(String(value))) return `${formatCurrencyAmount(String(value), "TOMAN", locale)} ${currencyLabel("TOMAN")}`;
-  if (typeof value === "string" && ["status", "action", "refund", "from", "to"].includes(key)) return value.replaceAll("_", " ");
+  if (/(?:amount|price|fee|cost|total|balance)$/i.test(key) && /^-?\d+(?:\.\d+)?$/.test(String(value))) return `${formatCurrencyAmount(String(value), currency ?? "", locale)}${currency ? ` ${currencyLabel(currency)}` : ""}`;
+  if (typeof value === "number") return value.toLocaleString(locale);
+  if (typeof value === "string" && key === "currency") return currencyLabel(value);
+  if (typeof value === "string" && key === "role") return roleNames[locale][value] ?? historyTerm(value, locale);
+  if (typeof value === "string" && ["status", "action", "refund", "from", "to", "targetType"].includes(key)) return historyTerm(value, locale);
+  if (typeof value === "string" && ["payments", "paymentGroups"].includes(key)) return value.split(", ").map((part) => {
+    const match = /^(.+): ([a-z_]+) \((-?\d+(?:\.\d+)?)\)$/.exec(part);
+    return match ? `${match[1]}: ${historyTerm(match[2], locale)} (${readableValue(match[3], "amount", locale, currency)})` : part;
+  }).join("\n");
+  if (typeof value === "string" && key === "statusHistory") return value.split(" · ").map((part) => {
+    const match = /^([a-z_]+) (\d{4}-\d{2}-\d{2}T\S+)$/.exec(part);
+    return match && !Number.isNaN(Date.parse(match[2])) ? `${historyTerm(match[1], locale)} · ${new Date(match[2]).toLocaleString(locale)}` : part;
+  }).join("\n");
   return String(value);
 };
 const initialForm = (user: AdminUserSummary) => ({ fullName: user.fullName, username: user.username ?? "", email: user.email ?? "", phoneNumber: user.phoneNumber ?? "" });
@@ -68,8 +80,10 @@ function displayTitle(entry: HistoryEntry, section: Section, locale: Locale) {
     "Seller membership": c.sellerMembership
   };
   if (known[entry.title]) return known[entry.title];
-  if (section === "related") return entry.title.replaceAll("_", " ");
-  if (entry.title.includes(" · ")) return `${sectionNames[locale][section]} · ${entry.title.split(" · ")[1].replaceAll("_", " ")}`;
+  if (historyTerm(entry.title, locale) !== entry.title) return historyTerm(entry.title, locale);
+  if (section === "related") return typeof entry.details.name === "string" ? entry.details.name : sectionNames[locale].related;
+  if (entry.title.includes(" · ")) return `${sectionNames[locale][section]} · ${historyTerm(entry.title.split(" · ")[1], locale)}`;
+  if (section === "activity") return entry.title;
   return sectionNames[locale][section];
 }
 
@@ -96,8 +110,17 @@ function ProfileChanges({ entry, locale }: { entry: HistoryEntry; locale: Locale
 
 function HistoryRecord({ entry, section, locale }: { entry: HistoryEntry; section: Section; locale: Locale }) {
   const c = copy[locale];
-  const fields = Object.entries(entry.details).filter(([key, value]) => value !== null && value !== "" && key !== "before" && key !== "after");
-  const preview = section === "profile" ? changedProfileFields(entry).map((field) => readableKey(field, locale)).join(" · ") : fields.filter(([key]) => key !== "actorId").slice(0, 2).map(([key, value]) => `${readableKey(key, locale)}: ${readableValue(value, key, locale)}`).join(" · ");
+  const help = historyHelp[locale];
+  const currency = typeof entry.details.currency === "string" ? entry.details.currency : undefined;
+  const technicalKeys = ["actorId", "orderId", "reference", "failureCode", "capability", "eventType", "permission"];
+  const fields = Object.entries(entry.details).filter(([key, value]) => value !== null && value !== "" && key !== "before" && key !== "after" && !technicalKeys.includes(key));
+  const label = (key: string) => key === "detail" && entry.title === "OTP challenge" ? help.attempts : key === "detail" && entry.title === "SMS delivery" ? help.template : readableKey(key, locale);
+  const valueText = (key: string, value: DetailValue) => readableValue(value, key, locale, currency);
+  const previewKeys = ["status", "active", "amount", "seller", "product", "shop", "title", "target", "body", "downloads", "action"];
+  const preview = section === "profile" ? changedProfileFields(entry).map((field) => readableKey(field, locale)).join(" · ") : previewKeys.flatMap((key) => {
+    const field = fields.find(([name]) => name === key);
+    return field ? [`${label(key)}: ${valueText(...field)}`] : [];
+  }).slice(0, 2).join(" · ");
   return <details className={styles.record}>
     <summary className={styles.recordSummary}>
       <span className={styles.recordMain}><strong>{displayTitle(entry, section, locale)}</strong><span className={styles.recordPreview}>{preview}</span></span>
@@ -105,8 +128,16 @@ function HistoryRecord({ entry, section, locale }: { entry: HistoryEntry; sectio
     </summary>
     <div className={styles.recordBody}>
       {section === "profile" ? <ProfileChanges entry={entry} locale={locale} /> : null}
-      {fields.length ? <dl className={styles.recordFields}>{fields.map(([key, value]) => <div key={key}><dt>{readableKey(key, locale)}</dt><dd dir="auto">{readableValue(value, key, locale)}</dd></div>)}</dl> : null}
-      <div className={styles.recordId}><span>{c.recordId}</span><code dir="ltr">{entry.id}</code></div>
+      {fields.length ? <dl className={styles.recordFields}>{fields.map(([key, value]) => <div key={key}><dt>{label(key)}</dt><dd dir="auto">{valueText(key, value)}</dd></div>)}</dl> : null}
+      <details className={styles.technicalDetails}>
+        <summary>{help.technical}</summary><p>{help.technicalHelp}</p>
+        <dl className={styles.recordFields}>
+          <div><dt>{c.recordId}</dt><dd><code dir="ltr">{entry.id}</code></dd></div>
+          <div><dt>{help.source}</dt><dd dir="auto">{entry.title}</dd></div>
+          {Object.entries(entry.details).filter(([key]) => technicalKeys.includes(key)).map(([key, value]) => <div key={key}><dt>{readableKey(key, locale)}</dt><dd dir="auto">{valueText(key, value)}</dd></div>)}
+        </dl>
+        <details className={styles.rawDetails}><summary>{help.raw}</summary><pre dir="ltr">{JSON.stringify(entry, null, 2)}</pre></details>
+      </details>
     </div>
   </details>;
 }
@@ -176,8 +207,8 @@ export function UserDetailWorkspace({ locale, user, onBack, onSaved }: { locale:
         <div><dt>{c.ordersCount}</dt><dd>{user.orderCount.toLocaleString(locale)}</dd></div>
         <div><dt>{c.joined}</dt><dd>{new Date(user.createdAt).toLocaleDateString(locale)}</dd></div>
         <div><dt>{c.updated}</dt><dd>{new Date(user.updatedAt).toLocaleDateString(locale)}</dd></div>
-        <div><dt>{c.userId}</dt><dd className={styles.idValue}><code dir="ltr">{user.id}</code><button type="button" onClick={() => void copyId()}>{c.copyId}</button></dd></div>
       </dl>
+      <details className={styles.accountTechnical}><summary>{historyHelp[locale].technical}</summary><p>{historyHelp[locale].technicalHelp}</p><div className={styles.idValue}><span>{c.userId}</span><code dir="ltr">{user.id}</code><button type="button" onClick={() => void copyId()}>{c.copyId}</button></div></details>
       {copyMessage ? <p className={styles.inlineStatus} role="status">{copyMessage}</p> : null}
     </section>
 
@@ -193,6 +224,7 @@ export function UserDetailWorkspace({ locale, user, onBack, onSaved }: { locale:
       <div className={styles.historyLayout}><nav className={styles.historyNav} aria-label={c.category}>{(Object.entries(groups) as [keyof typeof groups, readonly Section[]][]).map(([group, keys]) => <div className={styles.navGroup} key={group}><h4>{groupNames[locale][group]}</h4>{keys.map((key) => <button key={key} type="button" aria-pressed={section === key} onClick={() => selectSection(key)}>{sectionNames[locale][key]}</button>)}</div>)}</nav>
         <div className={styles.mobileCategory}><label htmlFor="user-history-category">{c.category}</label><select id="user-history-category" value={section} onChange={(event) => selectSection(event.target.value as Section)}>{(Object.entries(groups) as [keyof typeof groups, readonly Section[]][]).map(([group, keys]) => <optgroup key={group} label={groupNames[locale][group]}>{keys.map((key) => <option value={key} key={key}>{sectionNames[locale][key]}</option>)}</optgroup>)}</select></div>
         <div className={styles.historyContent} aria-busy={loading}>
+          <div className={styles.categoryIntro}><h4>{sectionNames[locale][section]}</h4><p>{historyHelp[locale][section]}</p></div>
           {loading ? <p className={styles.state} role="status">{c.loading}</p> : null}
           {historyError ? <div className={styles.errorState} role="alert"><p>{c.historyError}</p><button className={styles.secondaryButton} type="button" onClick={() => setRevision((current) => current + 1)}>{c.retry}</button></div> : null}
           {!loading && !historyError && history?.items.length === 0 ? <p className={styles.state}>{c.empty}</p> : null}

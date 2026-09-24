@@ -27,14 +27,15 @@ import { BLOG_EDITOR_COPY } from "./BlogEditorCopy";
 import styles from "./BlogEditor.module.css";
 import { ContentAiPanel } from "@/components/ai/ContentAiPanel";
 import { applyBlogAiTranslation, articleText, taxonomyMatch } from "@/components/ai/blog-ai-draft";
+import { safeExternalHref } from "@/lib/safe-navigation";
 
 const LABELS: Record<BlogLocale, string> = { fa: "فارسی", en: "English", ar: "العربية" };
 const AUTHORING_LOCALE: BlogLocale = "fa";
 const EMPTY: RichTextDocument = { type: "doc", content: [] };
 const COPY = {
   ...BLOG_EDITOR_COPY[AUTHORING_LOCALE],
-  format: "WebP یا SVG · حداکثر ۸ مگابایت",
-  uploadError: "بارگذاری انجام نشد. از تصویر ثابت WebP یا SVG با حجم کمتر از ۸ مگابایت و ابعاد کمتر از ۲۴ مگاپیکسل استفاده کنید.",
+  format: "JPEG، PNG یا WebP · حداکثر ۸ مگابایت",
+  uploadError: "بارگذاری انجام نشد. از تصویر ثابت JPEG، PNG یا WebP با حجم کمتر از ۸ مگابایت و ابعاد کمتر از ۲۴ مگاپیکسل استفاده کنید.",
   visual: "دیداری",
   html: "HTML",
   htmlHint: "از HTML مقاله مانند پاراگراف، تیترهای H2 و H3، فهرست، نقل‌قول، پیوند، کد و تصاویر بارگذاری‌شده استفاده کنید. اسکریپت، embed، style، رویدادها و نشانی‌های ناامن ذخیره نمی‌شوند.",
@@ -49,8 +50,7 @@ const COPY = {
   linkPrompt: "پیوند http، https، mailto یا tel را وارد کنید"
 };
 
-const SAFE_LINK = /^(https?:|mailto:|tel:)/i;
-const SAFE_INLINE_IMAGE = /^\/media\/[0-9a-f-]{36}\/[a-z0-9-]+\.webp$/i;
+const SAFE_INLINE_IMAGE = /^\/media\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/[a-z0-9-]{1,80}\.webp$/i;
 
 function sanitizeHtmlNode(node: RichTextNode): RichTextNode | null {
   if (node.type === "image") {
@@ -60,8 +60,8 @@ function sanitizeHtmlNode(node: RichTextNode): RichTextNode | null {
   }
   const marks = node.marks?.flatMap((mark) => {
     if (mark.type !== "link") return [mark];
-    const href = typeof mark.attrs?.href === "string" ? mark.attrs.href : "";
-    return SAFE_LINK.test(href) ? [{ type: "link", attrs: { href } }] : [];
+    const href = safeExternalHref(mark.attrs?.href);
+    return href ? [{ type: "link", attrs: { href } }] : [];
   });
   const content = node.content?.flatMap((child) => {
     const sanitized = sanitizeHtmlNode(child);
@@ -238,13 +238,14 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
       editor.chain().focus().extendMarkRange("link").unsetLink().run();
       return;
     }
-    if (!SAFE_LINK.test(href.trim())) {
+    const safeHref = safeExternalHref(href.trim());
+    if (!safeHref) {
       setError(true);
       setMessage("این نوع نشانی برای پیوند مجاز نیست.");
       return;
     }
     setError(false);
-    editor.chain().focus().extendMarkRange("link").setLink({ href: href.trim() }).run();
+    editor.chain().focus().extendMarkRange("link").setLink({ href: safeHref }).run();
   }
 
   async function save() {
@@ -398,7 +399,7 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
                 <button type="button" aria-pressed={formatting?.codeBlock} title={COPY.codeBlock} onClick={() => editor?.chain().focus().toggleCodeBlock().run()}>{"{ }"}</button>
                 <button type="button" aria-label={COPY.rule} title={COPY.rule} onClick={() => editor?.chain().focus().setHorizontalRule().run()}>—</button>
                 <button type="button" aria-pressed={formatting?.link} title={COPY.link} onClick={editLink}>↗ {COPY.link}</button>
-                <label className={styles.inlineUpload}><DesignIcon name="layers" />{copy.image}<input aria-label={copy.image} type="file" accept="image/webp,image/svg+xml" onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file, "inline"); event.currentTarget.value = ""; }} /></label>
+                <label className={styles.inlineUpload}><DesignIcon name="layers" />{copy.image}<input aria-label={copy.image} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file, "inline"); event.currentTarget.value = ""; }} /></label>
               </div>
               <div className={styles.editor} dir={active === "en" ? "ltr" : "rtl"} lang={active}><EditorContent editor={editor} /></div>
             </> : <div className={styles.htmlEditor}>
@@ -422,7 +423,7 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
             <label className={styles.coverUpload}>
               {coverVariant ? <NextImage unoptimized src={coverVariant.url} alt={current.coverAltText} width={coverVariant.width} height={coverVariant.height} sizes="(max-width: 900px) 100vw, 320px" /> : <span className={styles.coverPlaceholder}><DesignIcon name="layers" /><strong>{copy.upload}</strong><small>{copy.format}</small></span>}
               {coverVariant ? <span className={styles.replaceLabel}>{copy.replace}</span> : null}
-              <input aria-label={coverVariant ? copy.replace : copy.upload} type="file" accept="image/webp,image/svg+xml" onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file, "cover"); event.currentTarget.value = ""; }} />
+              <input aria-label={coverVariant ? copy.replace : copy.upload} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file, "cover"); event.currentTarget.value = ""; }} />
             </label>
             <label className={styles.field}><span>{copy.alt}</span><input dir={active === "en" ? "ltr" : "rtl"} value={current.coverAltText} maxLength={300} onChange={(event) => updateTranslation("coverAltText", event.target.value)} /><small>{copy.altHint}</small></label>
           </section>

@@ -8,7 +8,7 @@ export class CreateCommentDto {
   @IsOptional() @IsString() @MinLength(1) @MaxLength(100)
   guestName?: string;
 
-  @IsOptional() @IsString() @Matches(/^[0-9a-f-]{36}\.[0-9]{1,10}$/i)
+  @IsOptional() @IsString() @Matches(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.[0-9]{1,10}$/i)
   captchaToken?: string;
 }
 

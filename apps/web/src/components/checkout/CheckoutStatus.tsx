@@ -8,6 +8,7 @@ import { API_BASE, api } from "@/lib/api/client";
 import { removePurchasedOffers } from "@/lib/cart";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import type { Locale } from "@/lib/i18n";
+import { safePaymentHref } from "@/lib/safe-navigation";
 import styles from "./CheckoutStatus.module.css";
 
 /* Hallmark · pre-emit critique: P4 H5 E4 S5 R5 V4 */
@@ -41,7 +42,11 @@ export function CheckoutStatus({ locale, checkoutId }: { locale: Locale; checkou
     setBusy(groupId); setError("");
     try {
       const response = await api.post<{ paymentUrl?: string }>(`/checkouts/${checkoutId}/payment-groups/${groupId}/initiate`, {}, { headers: { "Idempotency-Key": crypto.randomUUID() } });
-      if (response.data.paymentUrl) window.location.assign(response.data.paymentUrl.startsWith("/pay/local/") ? `/${locale}${response.data.paymentUrl}` : response.data.paymentUrl);
+      if (response.data.paymentUrl) {
+        const destination = safePaymentHref(response.data.paymentUrl, locale);
+        if (!destination) throw new Error("Payment provider returned an invalid redirect URL");
+        window.location.assign(destination);
+      }
       else { await load(); setBusy(""); }
     } catch { setError(c.actionError); setBusy(""); }
   }
