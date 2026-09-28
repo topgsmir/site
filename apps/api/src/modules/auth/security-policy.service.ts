@@ -9,6 +9,7 @@ function policy(ipLimit: number, subjectLimit: number, ipWindowSeconds = 900, su
 
 /** Defaults match the limits enforced before admin policy controls existed. */
 export const SECURITY_DEFAULTS = {
+  seo_configuration: policy(30, 10),
   login: policy(40, 8), register: policy(10, 3, 3600, 86400), otp: policy(20, 5, 3600),
   profile: policy(30, 10), admin_user: policy(120, 30),
   captcha_challenge: policy(30, 30), checkout_quote: policy(120, 30),

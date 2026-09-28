@@ -24,7 +24,7 @@ import { BridgeProductBindingDto } from "../../bridge/dto/bridge.dto";
 
 export const productKinds = ["simple", "variable"] as const;
 export const productTypes = ["digital", "physical", "service", "bridge"] as const;
-export const productStatuses = ["draft", "pending_review", "active", "archived"] as const;
+export const productStatuses = ["draft", "pending_review", "active", "archived", "trashed"] as const;
 export const listingStatuses = ["draft", "active", "archived"] as const;
 
 type ProductKind = (typeof productKinds)[number];
@@ -393,6 +393,25 @@ export class UpdateProductDto {
   @IsOptional()
   @IsIn(productStatuses)
   status?: ProductStatus;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  @Matches(SLUG_PATTERN)
+  slug?: string;
+}
+
+export class ProductSlugAvailabilityQueryDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  @Matches(SLUG_PATTERN)
+  slug!: string;
+
+  @IsOptional()
+  @IsUUID("4")
+  currentProductId?: string;
 }
 
 export class ManageProductsQueryDto extends ListProductsQueryDto {
@@ -410,6 +429,27 @@ export class ManageProductsQueryDto extends ListProductsQueryDto {
   category?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  seller?: string;
+
+  @IsOptional()
+  @IsIn(["in_stock", "out_of_stock"])
+  stock?: "in_stock" | "out_of_stock";
+
+  @IsOptional()
+  @IsIn(["created", "updated"])
+  dateField?: "created" | "updated";
+
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  dateFrom?: string;
+
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  dateTo?: string;
+
+  @IsOptional()
   @IsIn(["updated_desc", "updated_asc", "created_desc", "created_asc", "title_asc", "title_desc"])
   sort?: "updated_desc" | "updated_asc" | "created_desc" | "created_asc" | "title_asc" | "title_desc";
 }
@@ -420,13 +460,54 @@ export class SellerProductsQueryDto extends ManageProductsQueryDto {
   listingStatus?: ListingStatus;
 }
 
-export class UpdateAdminProductDto extends UpdateProductDto {
-  @IsOptional()
-  @IsString()
-  @MinLength(1)
-  @MaxLength(200)
-  @Matches(SLUG_PATTERN)
-  slug?: string;
+export class UpdateAdminProductDto extends UpdateProductDto {}
+
+export const productBulkActions = ["status", "category", "seller", "stock", "price", "price_percent", "tags_add", "tags_remove", "trash"] as const;
+
+export class PreviewProductBulkEditDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(50)
+  @ArrayUnique()
+  @IsUUID("4", { each: true })
+  productIds!: string[];
+
+  @IsIn(productBulkActions)
+  action!: (typeof productBulkActions)[number];
+
+  @IsOptional() @IsIn(productStatuses)
+  status?: ProductStatus;
+
+  @IsOptional() @IsUUID("4")
+  categoryId?: string | null;
+
+  @IsOptional() @IsUUID("4")
+  sellerId?: string;
+
+  @IsOptional() @IsInt() @Min(0) @Max(2_147_483_647)
+  stock?: number;
+
+  @IsOptional() @IsString() @Matches(MONEY_PATTERN)
+  price?: string;
+
+  @IsOptional() @IsString() @Matches(/^-?(?:0|[1-9]\d{0,2})(?:\.\d{1,2})?$/)
+  percent?: string;
+
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(50)
+  tag?: string;
+}
+
+export class ApplyProductBulkEditDto extends PreviewProductBulkEditDto {
+  @IsUUID("4")
+  operationId!: string;
+
+  @IsString() @Matches(/^[a-f0-9]{64}$/)
+  revision!: string;
+}
+
+export class TransferProductSellerDto {
+  @IsUUID("4")
+  sellerId!: string;
 }
 
 export class UpdateAdminListingDto {

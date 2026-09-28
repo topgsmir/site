@@ -25,7 +25,7 @@ const work = resolve(api, "tmp/seo");
 mkdirSync(work, { recursive: true });
 writeFileSync(resolve(work, "tsconfig.json"), JSON.stringify({
   extends: "../../tsconfig.json", compilerOptions: { outDir: "../seo-dist", incremental: false },
-  include: ["../../src/modules/product/seo.integration.spec.ts", "../../src/modules/product/product.service.spec.ts", "../../src/modules/blog/blog.service.spec.ts"],
+  include: ["../../src/modules/seo/seo-settings.integration.spec.ts", "../../src/modules/product/seo.integration.spec.ts", "../../src/modules/product/product.service.spec.ts", "../../src/modules/blog/blog.service.spec.ts"],
   exclude: ["../../node_modules", "../../dist"]
 }, null, 2));
 await client.connect();
@@ -35,7 +35,7 @@ try {
   console.log(`Created disposable SEO test database ${name}`);
   run(["exec", "prisma", "migrate", "deploy"]);
   run(["exec", "tsc", "-p", "tmp/seo/tsconfig.json"]);
-  run(["exec", "node", "--test", "--test-concurrency=1", "tmp/seo-dist/modules/product/seo.integration.spec.js", "tmp/seo-dist/modules/product/product.service.spec.js", "tmp/seo-dist/modules/blog/blog.service.spec.js"]);
+  run(["exec", "node", "--test", "--test-concurrency=1", "tmp/seo-dist/modules/seo/seo-settings.integration.spec.js", "tmp/seo-dist/modules/product/seo.integration.spec.js", "tmp/seo-dist/modules/product/product.service.spec.js", "tmp/seo-dist/modules/blog/blog.service.spec.js"]);
 } finally {
   if (created) {
     await client.query(`DROP DATABASE "${name}" WITH (FORCE)`);

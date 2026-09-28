@@ -1,5 +1,7 @@
 "use client";
 import { ProductAiPanel } from "@/components/ai/ProductAiPanel";
+import { ProductDescriptionEditor } from "@/components/product/ProductDescriptionEditor";
+import { mergeProductAiDescription, productDescriptionText } from "@/lib/product-description";
 import { splitDownloadUrls, validDownloadUrls } from "../../lib/download-urls";
 
 import axios from "axios";
@@ -27,11 +29,14 @@ import { api } from "@/lib/api/client";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { ProductPublicUrl } from "@/components/product/ProductPublicUrl";
+import { ProductSlugEditor, normalizeProductSlug } from "@/components/product/ProductSlugEditor";
 import { SellerBridgeWorkspace } from "@/components/bridge/SellerBridgeWorkspace";
 import { SellerOrders } from "@/components/seller/SellerOrders";
+import { SellerCustomers } from "@/components/seller/SellerCustomers";
 import { SellerShippingProfileWorkspace } from "@/components/seller/SellerShippingProfileWorkspace";
 import { SellerExpertProfileWorkspace } from "@/components/seller/SellerExpertProfileWorkspace";
 import { SellerCoupons } from "./SellerCoupons";
+import { SellerUploads } from "./SellerUploads";
 import { SellerBlogPanel } from "./SellerBlogPanel";
 import { DesignIcon } from "@/components/DesignIcon";
 import { PRODUCT_CREATION_COPY } from "./ProductCreationCopy";
@@ -44,7 +49,7 @@ import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
 import { useNewOrderCount } from "@/components/dashboard/useNewOrderCount";
 import { DashboardMobileNavigation } from "@/components/dashboard/DashboardMobileNavigation";
 
-type DashboardSection = "overview" | "statistics" | "products" | "profile" | "blog" | "coupons" | "orders" | "shipping" | "payouts" | "bridge";
+type DashboardSection = "overview" | "statistics" | "products" | "uploads" | "profile" | "blog" | "coupons" | "orders" | "customers" | "shipping" | "payouts" | "bridge";
 type RequestState = "idle" | "loading" | "error" | "success";
 
 const FILTER_COPY = {
@@ -57,6 +62,7 @@ type SellerDashboardProps = {
   locale: Locale;
   user: Pick<AppUser, "fullName" | "email" | "permissions" | "role">;
   initialSection?: DashboardSection;
+  initialCustomerId?: string;
   initialEditProductId?: string;
   initialProductSearch?: string;
 };
@@ -93,6 +99,7 @@ type OfferDraft = {
 
 type ProductDraft = {
   title: string;
+  slug: string;
   category: string;
   description: string;
   kind: ProductKind;
@@ -108,11 +115,14 @@ type DashboardCopy = {
   workspace: string;
   overview: string;
   statistics: string;
+  productService: string;
   sellService: string;
   products: string;
+  uploads: string;
   blog: string;
   coupons: string;
   orders: string;
+  customers: string;
   newOrders: string;
   shipping: string;
   profile: string;
@@ -135,6 +145,7 @@ type DashboardCopy = {
   draft: string;
   active: string;
   archived: string;
+  trashed: string;
   pending_review: string;
   product: string;
   productUrl: string;
@@ -223,11 +234,14 @@ const COPY: Record<Locale, DashboardCopy> = {
     workspace: "Seller workspace",
     overview: "Overview",
     statistics: "Statistics",
-    sellService: "Sell service",
+    productService: "Products service",
+    sellService: "Sales service",
     products: "Products",
+    uploads: "Uploads",
     blog: "Blog",
     coupons: "Coupons",
     orders: "Orders",
+    customers: "Customer lookup",
     newOrders: "new orders",
     shipping: "Shipping profile",
     profile: "Expert profile",
@@ -250,6 +264,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     draft: "Draft",
     active: "Active",
     archived: "Archived",
+    trashed: "Trash",
     pending_review: "Pending review",
     product: "Product",
     productUrl: "Product URL",
@@ -329,11 +344,14 @@ const COPY: Record<Locale, DashboardCopy> = {
     workspace: "فضای کاری فروشنده",
     overview: "نمای کلی",
     statistics: "آمار",
-    sellService: "خدمات فروش",
+    productService: "سرویس محصولات",
+    sellService: "سرویس فروش",
     products: "محصولات",
+    uploads: "بارگذاری‌ها",
     blog: "وبلاگ",
     coupons: "کدهای تخفیف",
     orders: "سفارش‌ها",
+    customers: "جستجوی مشتری",
     newOrders: "سفارش جدید",
     shipping: "پروفایل ارسال",
     profile: "پروفایل کارشناس",
@@ -356,6 +374,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     draft: "پیش‌نویس",
     active: "فعال",
     archived: "بایگانی‌شده",
+    trashed: "زباله‌دان",
     pending_review: "در انتظار بررسی",
     product: "محصول",
     productUrl: "نشانی محصول",
@@ -435,11 +454,14 @@ const COPY: Record<Locale, DashboardCopy> = {
     workspace: "مساحة عمل البائع",
     overview: "نظرة عامة",
     statistics: "الإحصاءات",
-    sellService: "خدمات البيع",
+    productService: "خدمة المنتجات",
+    sellService: "خدمة المبيعات",
     products: "المنتجات",
+    uploads: "الملفات المرفوعة",
     blog: "المدونة",
     coupons: "القسائم",
     orders: "الطلبات",
+    customers: "البحث عن عميل",
     newOrders: "طلبات جديدة",
     shipping: "ملف الشحن",
     profile: "ملف الخبير",
@@ -462,6 +484,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     draft: "مسودة",
     active: "نشط",
     archived: "مؤرشف",
+    trashed: "المهملات",
     pending_review: "بانتظار المراجعة",
     product: "المنتج",
     productUrl: "رابط المنتج",
@@ -542,9 +565,9 @@ const MONEY_PATTERN = /^(?:0|[1-9]\d{0,15})(?:\.\d{1,4})?$/;
 const CURRENCY_PATTERN = /^(?:TOMAN|USD)$/;
 
 const PRODUCT_IMAGE_COPY = {
-  en: { title: "Product image", hint: "JPEG, PNG, or WebP · up to 8 MiB", choose: "Choose image", replace: "Replace image", remove: "Remove image", error: "The product image could not be updated." },
-  fa: { title: "تصویر محصول", hint: "JPEG، PNG یا WebP · حداکثر ۸ مگابایت", choose: "انتخاب تصویر", replace: "تغییر تصویر", remove: "حذف تصویر", error: "به‌روزرسانی تصویر محصول انجام نشد." },
-  ar: { title: "صورة المنتج", hint: "JPEG أو PNG أو WebP · حتى 8 ميغابايت", choose: "اختيار صورة", replace: "تغيير الصورة", remove: "حذف الصورة", error: "تعذر تحديث صورة المنتج." }
+  en: { title: "Product image", hint: "JPEG, PNG, or WebP · up to 8 MiB", choose: "Choose image", replace: "Replace image", remove: "Request removal", removeDraft: "Remove selected image", requested: "Removal requested. The image stays until admin approval.", error: "The product image could not be updated." },
+  fa: { title: "تصویر محصول", hint: "JPEG، PNG یا WebP · حداکثر ۸ مگابایت", choose: "انتخاب تصویر", replace: "تغییر تصویر", remove: "درخواست حذف", removeDraft: "برداشتن تصویر انتخاب‌شده", requested: "درخواست ثبت شد. تصویر تا تأیید مدیر باقی می‌ماند.", error: "به‌روزرسانی تصویر محصول انجام نشد." },
+  ar: { title: "صورة المنتج", hint: "JPEG أو PNG أو WebP · حتى 8 ميغابايت", choose: "اختيار صورة", replace: "تغيير الصورة", remove: "طلب الإزالة", removeDraft: "إزالة الصورة المختارة", requested: "أُرسل الطلب. تبقى الصورة حتى موافقة الإدارة.", error: "تعذر تحديث صورة المنتج." }
 } as const;
 
 function makeOffer(id: string): OfferDraft {
@@ -568,6 +591,7 @@ function makeOffer(id: string): OfferDraft {
 function makeDraft(physicalGranted: boolean): ProductDraft {
   return {
     title: "",
+    slug: "",
     category: "",
     description: "",
     kind: "simple",
@@ -579,14 +603,17 @@ function makeDraft(physicalGranted: boolean): ProductDraft {
   };
 }
 
-function Icon({ name }: { name: DashboardSection | "plus" | "search" | "close" | "box" }) {
+function Icon({ name }: { name: DashboardSection | "sales" | "plus" | "search" | "close" | "box" }) {
   const paths = {
     overview: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
     statistics: <><path d="M4 20V11M10 20V5M16 20v-8M22 20V8"/><path d="M2 20h20"/></>,
     products: <><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/></>,
+    sales: <><path d="M5 8h14l1 12H4L5 8Z"/><path d="M9 9V7a3 3 0 0 1 6 0v2M8 14h8"/></>,
     blog: <><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></>,
+    uploads: <><path d="M12 16V3m0 0-4 4m4-4 4 4"/><path d="M4 16v4h16v-4"/></>,
     coupons: <><path d="M4 7a3 3 0 0 0 3-3h13v6a2 2 0 0 0 0 4v6H7a3 3 0 0 0-3-3z"/><path d="M12 7v2M12 11v2M12 15v2"/></>,
     orders: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></>,
+    customers: <><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 8a3 3 0 0 1 0 6M18 16a4 4 0 0 1 3 4"/></>,
     shipping: <><path d="M3 6h11v10H3z"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></>,
     profile: <><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></>,
     payouts: <><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 15h2"/></>,
@@ -613,6 +640,7 @@ function statusLabel(status: ProductStatus, copy: DashboardCopy) {
 
 function validateDraft(draft: ProductDraft) {
   if (draft.title.trim().length < 2) return false;
+  if (!draft.slug || normalizeProductSlug(draft.slug) !== draft.slug) return false;
   if (!CURRENCY_PATTERN.test(draft.currency.trim())) return false;
   if (draft.kind === "variable" && !draft.optionName.trim()) return false;
   if (draft.kind === "variable" && draft.offers.length < 1) return false;
@@ -804,7 +832,7 @@ function OfferFields({
   );
 }
 
-export function SellerDashboard({ locale, user, initialSection = "overview", initialEditProductId, initialProductSearch = "" }: SellerDashboardProps) {
+export function SellerDashboard({ locale, user, initialSection = "overview", initialCustomerId, initialEditProductId, initialProductSearch = "" }: SellerDashboardProps) {
   const router = useRouter();
   const copy = COPY[locale];
   const imageCopy = PRODUCT_IMAGE_COPY[locale];
@@ -825,9 +853,11 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
   const [listingStatusFilter, setListingStatusFilter] = useState<"all" | "draft" | "active" | "archived">("all");
   const [sort, setSort] = useState("updated_desc");
   const [editingProduct, setEditingProduct] = useState<SellerListing | null>(null);
-  const [editDraft, setEditDraft] = useState({ title: "", category: "", description: "", status: "draft" as ProductStatus });
+  const [editDraft, setEditDraft] = useState({ title: "", slug: "", category: "", description: "", status: "draft" as ProductStatus });
   const [editState, setEditState] = useState<RequestState>("idle");
+  const [imageRemovalRequested, setImageRemovalRequested] = useState(false);
   const [editError, setEditError] = useState("");
+  const [productServiceOpen, setProductServiceOpen] = useState(false);
   const [sellServiceOpen, setSellServiceOpen] = useState(false);
   const productEditorRef = useRef<HTMLElement>(null);
   const editProductTarget = useRef(initialEditProductId);
@@ -912,6 +942,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
   const activeListings = listings.filter((listing) => listing.status === "active").length;
   const offersShown = listings.reduce((total, listing) => total + listing.offers.length, 0);
   const activeProductFilterCount = [search.trim(), categoryFilter.trim(), statusFilter !== "all", typeFilter !== "all", kindFilter !== "all", listingStatusFilter !== "all", sort !== "updated_desc"].filter(Boolean).length;
+  const activeAdvancedProductFilterCount = activeProductFilterCount - Number(Boolean(search.trim()));
 
   function clearProductFilters() {
     setSearch("");
@@ -924,6 +955,10 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
   }
 
   function selectSection(next: DashboardSection) {
+    if (initialCustomerId) {
+      router.push(`/${locale}/seller-dashboard${next === "overview" ? "" : `?section=${next}`}` as Route);
+      return;
+    }
     setSection(next);
     const url = new URL(window.location.href);
     if (next === "overview") url.searchParams.delete("section");
@@ -940,11 +975,12 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
     setEditingProduct(listing);
     setEditDraft({
       title: listing.product.title,
+      slug: listing.product.slug,
       category: listing.product.category ?? "",
       description: listing.product.description ?? "",
       status: listing.product.status
     });
-    setEditState("idle"); setEditError("");
+    setEditState("idle"); setEditError(""); setImageRemovalRequested(false);
   }
 
   async function updateProduct(event: FormEvent<HTMLFormElement>) {
@@ -954,6 +990,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
     try {
       const response = await api.patch<SellerListing>(`/products/${editingProduct.product.id}`, {
         title: editDraft.title.trim(),
+        slug: editDraft.slug.trim(),
         category: editDraft.category.trim() || null,
         description: editDraft.description.trim() || null,
         status: editDraft.status
@@ -977,6 +1014,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
         : listing;
       setListings((current) => current.map(update));
       setEditingProduct((current) => current ? update(current) : current);
+      setImageRemovalRequested(false);
       setEditState("success");
     } catch (error) {
       setEditState("error"); setEditError(requestError(error, imageCopy.error));
@@ -988,11 +1026,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
     setEditState("loading"); setEditError("");
     try {
       await api.delete(`/products/${editingProduct.product.id}/image`);
-      const update = (listing: SellerListing): SellerListing => listing.product.id === editingProduct.product.id
-        ? { ...listing, product: { ...listing.product, image: null } }
-        : listing;
-      setListings((current) => current.map(update));
-      setEditingProduct((current) => current ? update(current) : current);
+      setImageRemovalRequested(true);
       setEditState("success");
     } catch (error) {
       setEditState("error"); setEditError(requestError(error, imageCopy.error));
@@ -1000,12 +1034,14 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
   }
 
   const sellServiceNavigation: Array<{ id: DashboardSection; label: string }> = [
-    { id: "products", label: copy.products },
+    ...(hasAnalytics
+      ? [{ id: "statistics" as const, label: copy.statistics }]
+      : []),
     ...(user.permissions?.includes("coupons_manage")
       ? [{ id: "coupons" as const, label: copy.coupons }]
       : []),
     ...(canManageOrders
-      ? [{ id: "orders" as const, label: copy.orders }]
+      ? [{ id: "orders" as const, label: copy.orders }, { id: "customers" as const, label: copy.customers }]
       : []),
     ...(user.permissions?.includes("physical_products_manage")
       ? [{ id: "shipping" as const, label: copy.shipping }]
@@ -1014,7 +1050,9 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
       ? [{ id: "bridge" as const, label: copy.bridge }]
       : [])
   ];
+  const productServiceExpanded = section === "products" || productServiceOpen;
   const secondaryNavigation: Array<{ id: DashboardSection; label: string }> = [
+    { id: "uploads", label: copy.uploads },
     ...(user.role === "seller-admin"
       ? [{ id: "profile" as const, label: copy.profile }]
       : []),
@@ -1051,11 +1089,30 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
             <Icon name="overview" />
             <span>{copy.overview}</span>
           </button>
-          {hasAnalytics ? <button className={navigationStyles.item} type="button" aria-current={section === "statistics" ? "page" : undefined} onClick={() => selectSection("statistics")} data-state="default">
-            <Icon name="statistics" />
-            <span>{copy.statistics}</span>
-          </button> : null}
           <div
+            className={navigationStyles.group}
+            data-active={section === "products"}
+            data-open={productServiceExpanded}
+          >
+            <button
+              className={navigationStyles.groupTrigger}
+              type="button"
+              aria-expanded={productServiceExpanded}
+              aria-controls="product-service-navigation"
+              onClick={() => setProductServiceOpen((current) => !current)}
+            >
+              <Icon name="products" />
+              <span>{copy.productService}</span>
+              <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
+            </button>
+            <div className={navigationStyles.subNavigation} id="product-service-navigation">
+              <button className={navigationStyles.item} type="button" aria-current={section === "products" ? "page" : undefined} onClick={() => selectSection("products")} data-state="default">
+                <Icon name="products" />
+                <span>{copy.products}</span>
+              </button>
+            </div>
+          </div>
+          {sellServiceNavigation.length > 0 ? <div
             className={navigationStyles.group}
             data-active={isSellServiceSection}
             data-open={sellServiceExpanded}
@@ -1067,7 +1124,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
               aria-controls="sell-service-navigation"
               onClick={() => setSellServiceOpen((current) => !current)}
             >
-              <Icon name="products" />
+              <Icon name="sales" />
               <span>{copy.sellService}</span>
               <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
             </button>
@@ -1095,7 +1152,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
                 </button>
               ))}
             </div>
-          </div>
+          </div> : null}
           {secondaryNavigation.map((item) => (
             <button
               className={navigationStyles.item}
@@ -1125,10 +1182,10 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
       </DashboardMobileNavigation>
 
       <main className={styles.main} tabIndex={-1}>
-        {section !== "overview" ? <header className={styles.pageHeader}>
+        {(["products", "bridge", "payouts"] as DashboardSection[]).includes(section) ? <header className={styles.pageHeader}>
           <div>
-            <p>{copy.workspace}</p>
-            <h1>{copy[section]}</h1>
+            <h1 id={section === "products" ? "products-title" : undefined}>{copy[section]}</h1>
+            {section === "products" ? <p>{copy.productsDescription}</p> : null}
           </div>
           {section === "products" ? (
             <button className={styles.primaryButton} type="button" onClick={openProductPage} data-state="default">
@@ -1178,16 +1235,11 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
 
           {section === "products" ? (
             <section aria-labelledby="products-title">
-              <div className={styles.introRow}>
-                <div>
-                  <h2 id="products-title" className={styles.sectionTitle}>{copy.products}</h2>
-                  <p>{copy.productsDescription}</p>
-                </div>
-              </div>
-              <CollapsibleFilters className={styles.filterPanel} locale={locale} title={FILTER_COPY[locale].filters} description={FILTER_COPY[locale].filtersHint} activeCount={activeProductFilterCount}>
+              <div className={styles.productTools}>
+                <label className={`${styles.filterControl} ${styles.searchControl}`}><span>{copy.searchProducts}</span><span className={styles.searchField}><Icon name="search" /><input type="search" value={search} placeholder={copy.searchProducts} onChange={(event) => setSearch(event.target.value)} /></span></label>
+                <CollapsibleFilters className={styles.filterPanel} locale={locale} title={FILTER_COPY[locale].filters} activeCount={activeAdvancedProductFilterCount} defaultOpen={false}>
                 {activeProductFilterCount > 0 ? <div className={styles.filterActions}><button type="button" onClick={clearProductFilters}><Icon name="close" />{FILTER_COPY[locale].clear}</button></div> : null}
                 <div className={styles.filters}>
-                  <label className={`${styles.filterControl} ${styles.searchControl}`}><span>{copy.searchProducts}</span><span className={styles.searchField}><Icon name="search" /><input type="search" value={search} placeholder={copy.searchProducts} onChange={(event) => setSearch(event.target.value)} /></span></label>
                   <label className={styles.filterControl}><span>{FILTER_COPY[locale].category}</span><span className={styles.filterField}><input value={categoryFilter} maxLength={100} placeholder={FILTER_COPY[locale].category} onChange={(event) => setCategoryFilter(event.target.value)} /></span></label>
                   <label className={styles.filterControl}><span>{FILTER_COPY[locale].productStatus}</span><span className={styles.filterField}><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ProductStatus | "all")}><option value="all">{copy.allStatuses}</option><option value="draft">{copy.draft}</option><option value="pending_review">{copy.pending_review}</option><option value="active">{copy.active}</option><option value="archived">{copy.archived}</option></select></span></label>
                   <label className={styles.filterControl}><span>{FILTER_COPY[locale].productType}</span><span className={styles.filterField}><select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as ProductType | "all")}><option value="all">{FILTER_COPY[locale].allTypes}</option><option value="digital">{copy.digital}</option><option value="physical">{copy.physical}</option><option value="service">{copy.service}</option><option value="bridge">{copy.bridge}</option></select></span></label>
@@ -1195,7 +1247,8 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
                   <label className={styles.filterControl}><span>{FILTER_COPY[locale].listingStatus}</span><span className={styles.filterField}><select value={listingStatusFilter} onChange={(event) => setListingStatusFilter(event.target.value as typeof listingStatusFilter)}><option value="all">{FILTER_COPY[locale].allListingStatuses}</option><option value="draft">{copy.draft}</option><option value="active">{copy.active}</option><option value="archived">{copy.archived}</option></select></span></label>
                   <label className={styles.filterControl}><span>{FILTER_COPY[locale].sort}</span><span className={styles.filterField}><select value={sort} onChange={(event) => setSort(event.target.value)}><option value="updated_desc">{FILTER_COPY[locale].updatedDesc}</option><option value="updated_asc">{FILTER_COPY[locale].updatedAsc}</option><option value="created_desc">{FILTER_COPY[locale].createdDesc}</option><option value="created_asc">{FILTER_COPY[locale].createdAsc}</option><option value="title_asc">{FILTER_COPY[locale].titleAsc}</option><option value="title_desc">{FILTER_COPY[locale].titleDesc}</option></select></span></label>
                 </div>
-              </CollapsibleFilters>
+                </CollapsibleFilters>
+              </div>
               <ProductList
                 copy={copy}
                 locale={locale}
@@ -1218,10 +1271,13 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
           {section === "coupons" ? <SellerCoupons locale={locale} /> : null}
 
           {section === "blog" ? <SellerBlogPanel locale={locale} /> : null}
+          {section === "uploads" ? <SellerUploads locale={locale} /> : null}
 
           {section === "bridge" ? <SellerBridgeWorkspace locale={locale} /> : null}
 
           {section === "orders" ? <SellerOrders locale={locale} onOrderUpdated={refreshNewOrderCount} /> : null}
+
+          {section === "customers" ? <SellerCustomers locale={locale} initialCustomerId={initialCustomerId} /> : null}
 
           {section === "shipping" ? <SellerShippingProfileWorkspace locale={locale} /> : null}
 
@@ -1251,7 +1307,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
           <section ref={productEditorRef} className={styles.productEditor} role="dialog" aria-modal="true" aria-labelledby="product-editor-title">
             <header><div><h2 id="product-editor-title">{copy.editProduct}</h2><p>{copy.editProductDescription}</p></div><button className={styles.textButton} type="button" onClick={() => setEditingProduct(null)}>{copy.cancel}</button></header>
             <form onSubmit={updateProduct} aria-busy={editState === "loading"}>
-              <ProductAiPanel key={editingProduct.product.id} locale={locale} disabled={editState === "loading"} value={{ title: editDraft.title, description: editDraft.description, category: editDraft.category }} onChange={(value) => setEditDraft((current) => ({ ...current, ...value }))} />
+              <ProductAiPanel key={editingProduct.product.id} locale={locale} disabled={editState === "loading"} value={{ title: editDraft.title, description: productDescriptionText(editDraft.description), category: editDraft.category }} onChange={(value) => setEditDraft((current) => mergeProductAiDescription(current, value))} />
               <section className={styles.productImageEditor}>
                 <div>
                   {editingProduct.product.image ? (() => {
@@ -1261,11 +1317,13 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
                 </div>
                 <p><strong>{imageCopy.title}</strong><small>{imageCopy.hint}</small></p>
                 <label className={styles.secondaryButton}>{editingProduct.product.image ? imageCopy.replace : imageCopy.choose}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={editState === "loading"} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadProductImage(file); event.currentTarget.value = ""; }} /></label>
-                {editingProduct.product.image ? <button className={styles.textButton} type="button" disabled={editState === "loading"} onClick={() => void removeProductImage()}>{imageCopy.remove}</button> : null}
+                {editingProduct.product.image ? <button className={styles.textButton} type="button" disabled={editState === "loading" || imageRemovalRequested} onClick={() => void removeProductImage()}>{imageCopy.remove}</button> : null}
+                {imageRemovalRequested ? <span role="status">{imageCopy.requested}</span> : null}
               </section>
-              <label className={styles.field}><span>{copy.title}</span><input autoFocus required minLength={2} maxLength={200} value={editDraft.title} onChange={(event) => setEditDraft((current) => ({ ...current, title: event.target.value }))} /></label>
+              <label className={`${styles.field} ${styles.productTitleField}`}><span>{copy.title}</span><input autoFocus required minLength={2} maxLength={200} value={editDraft.title} onChange={(event) => setEditDraft((current) => ({ ...current, title: event.target.value }))} /></label>
+              <ProductSlugEditor locale={locale} mode="seller" currentProductId={editingProduct.product.id} slug={editDraft.slug} onChange={(slug) => setEditDraft((current) => ({ ...current, slug }))} />
               <label className={styles.field}><span>{copy.category}</span><input maxLength={100} value={editDraft.category} onChange={(event) => setEditDraft((current) => ({ ...current, category: event.target.value }))} /></label>
-              <label className={styles.field}><span>{copy.description}</span><textarea maxLength={10000} value={editDraft.description} onChange={(event) => setEditDraft((current) => ({ ...current, description: event.target.value }))} /></label>
+              <div className={styles.field}><span>{copy.description}</span><ProductDescriptionEditor key={editingProduct.product.id} locale={locale} label={copy.description} value={editDraft.description} disabled={editState === "loading"} onChange={(description) => setEditDraft((current) => ({ ...current, description }))} /></div>
               <label className={styles.field}><span>{copy.publishState}</span><select value={editDraft.status} onChange={(event) => setEditDraft((current) => ({ ...current, status: event.target.value as ProductStatus }))}><option value="draft">{copy.draft}</option><option value="active">{copy.active}</option><option value="pending_review">{copy.pending_review}</option><option value="archived">{copy.archived}</option></select></label>
               {editError ? <p className={styles.inlineError} role="alert">{editError}</p> : null}
               <footer><button className={styles.secondaryButton} type="button" onClick={() => setEditingProduct(null)}>{copy.cancel}</button><button className={styles.primaryButton} type="submit" disabled={editState === "loading"}>{editState === "loading" ? copy.savingChanges : copy.saveChanges}</button></footer>
@@ -1285,6 +1343,7 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
   const imageCopy = PRODUCT_IMAGE_COPY[locale];
   const physicalGranted = Boolean(user.permissions?.includes("physical_products_manage"));
   const [draft, setDraft] = useState<ProductDraft>(() => makeDraft(physicalGranted));
+  const [slugTouched, setSlugTouched] = useState(false);
   const [submitState, setSubmitState] = useState<RequestState>("idle");
   const [formError, setFormError] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -1310,7 +1369,7 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
   }
 
   function updateDraft<K extends keyof ProductDraft>(key: K, value: ProductDraft[K]) {
-    setDraft((current) => ({ ...current, [key]: value }));
+    setDraft((current) => ({ ...current, [key]: value, ...(key === "title" && !slugTouched ? { slug: normalizeProductSlug(value as string) } : {}) }));
     if (formError) setFormError("");
   }
 
@@ -1412,6 +1471,7 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
     }));
     const payload = {
       title: draft.title.trim(),
+      slug: draft.slug,
       ...(draft.category.trim() ? { category: draft.category.trim() } : {}),
       ...(draft.description.trim() ? { description: draft.description.trim() } : {}),
       kind: draft.kind,
@@ -1463,15 +1523,16 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
         <header className={creation.heading}><div><h1>{copy.newProduct}</h1><p>{formCopy.intro}</p></div><span className={creation.draftBadge}>{copy[draft.status]}</span></header>
         <form className={creation.layout} onSubmit={createProduct} onInvalidCapture={() => setFormError(copy.formIncomplete)} aria-busy={submitState === "loading"}>
           <div className={creation.formBody}>
-            <ProductAiPanel locale={locale} disabled={submitState === "loading"} value={{ title: draft.title, description: draft.description, category: draft.category }} onChange={(value) => setDraft((current) => ({ ...current, ...value }))} />
+            <ProductAiPanel locale={locale} disabled={submitState === "loading"} value={{ title: draft.title, description: productDescriptionText(draft.description), category: draft.category }} onChange={(value) => setDraft((current) => ({ ...mergeProductAiDescription(current, value), ...(!slugTouched && value.title !== undefined ? { slug: normalizeProductSlug(value.title) } : {}) }))} />
             <section className={creation.card} aria-labelledby="product-basics">
               <header className={creation.sectionHeading}><span><DesignIcon name="file" /></span><div><h2 id="product-basics">{formCopy.details}</h2><p>{formCopy.detailsHint}</p></div></header>
               <label className={`${styles.field} ${creation.titleField}`}><span>{copy.title}</span><input required minLength={2} maxLength={200} placeholder={formCopy.titlePlaceholder} value={draft.title} onChange={(event) => updateDraft("title", event.target.value)} /></label>
-              <label className={styles.field}><span>{copy.description}<small>{formCopy.optional}</small></span><textarea maxLength={10000} placeholder={formCopy.descriptionPlaceholder} value={draft.description} onChange={(event) => updateDraft("description", event.target.value)} /></label>
+              <ProductSlugEditor className={creation.slugField} locale={locale} mode="seller" slug={draft.slug} onChange={(slug) => { if (slug !== draft.slug) setSlugTouched(true); updateDraft("slug", slug); }} />
+              <div className={styles.field}><span>{copy.description}<small>{formCopy.optional}</small></span><ProductDescriptionEditor locale={locale} label={copy.description} value={draft.description} disabled={submitState === "loading"} onChange={(description) => updateDraft("description", description)} /></div>
               <label className={styles.field}><span>{copy.category}<small>{formCopy.optional}</small></span><input maxLength={100} value={draft.category} onChange={(event) => updateDraft("category", event.target.value)} /></label>
               <div className={creation.imageField}>
                 <div className={creation.imagePreview}>{imagePreview ? <Image unoptimized src={imagePreview} alt="" width={120} height={120} /> : <DesignIcon name="layers" />}</div>
-                <div><strong>{imageCopy.title}</strong><small>{imageCopy.hint}</small><label className={creation.imagePicker}>{imageFile ? imageCopy.replace : imageCopy.choose}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={submitState === "loading"} onChange={(event) => { selectImage(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>{imageFile ? <button className={creation.imageRemove} type="button" disabled={submitState === "loading"} onClick={() => setImageFile(null)}>{imageCopy.remove}</button> : null}</div>
+                <div><strong>{imageCopy.title}</strong><small>{imageCopy.hint}</small><label className={creation.imagePicker}>{imageFile ? imageCopy.replace : imageCopy.choose}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={submitState === "loading"} onChange={(event) => { selectImage(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>{imageFile ? <button className={creation.imageRemove} type="button" disabled={submitState === "loading"} onClick={() => setImageFile(null)}>{imageCopy.removeDraft}</button> : null}</div>
               </div>
             </section>
             <fieldset className={creation.deliveryCard}>
@@ -1485,6 +1546,7 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
                 <label className={styles.currencyField}><span>{copy.currency}</span><select required value={draft.currency} onChange={(event) => updateDraft("currency", event.target.value)}><option value="USD">USD</option><option value="TOMAN">تومان</option></select></label>
                 {draft.kind === "variable" ? <label className={styles.field}><span>{copy.optionName}</span><input required maxLength={50} value={draft.optionName} onChange={(event) => updateDraft("optionName", event.target.value)} aria-describedby="option-name-hint" /><small id="option-name-hint">{copy.optionNameHint}</small></label> : null}
               </div>
+              <p className={creation.pricingHint}>{locale === "fa" ? "همه قیمت‌های این محصول با همین ارز ثبت می‌شوند. قیمت دلاری هنگام پرداخت با نرخ فعلی سامانه به تومان تبدیل می‌شود." : locale === "ar" ? "تُسجّل جميع أسعار هذا المنتج بهذه العملة. يُحوّل السعر بالدولار إلى التومان عند الدفع بسعر النظام الحالي." : "All offers for this product use this currency. USD prices convert to toman at the platform's current rate during checkout."}</p>
               <div className={creation.offers}>{draft.offers.map((offer, index) => <OfferFields key={offer.id} copy={copy} draft={draft} offer={offer} index={index} canRemove={draft.kind === "variable" && draft.offers.length > 1} update={updateOffer} remove={removeVariant} addServiceInput={addServiceInput} updateServiceInput={updateServiceInput} removeServiceInput={removeServiceInput} />)}</div>
               {draft.kind === "variable" && draft.offers.length < 100 ? <button className={styles.addVariantButton} type="button" onClick={addVariant}><Icon name="plus" />{copy.addVariant}</button> : null}
             </section>

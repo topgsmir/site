@@ -1,4 +1,5 @@
 "use client";
+import { JalaliDatePicker } from "@/components/dashboard/JalaliDatePicker";
 
 import type { AnalyticsMetric, AnalyticsOverview as AnalyticsOverviewData } from "@topgsm/shared-types";
 import type { Route } from "next";
@@ -133,7 +134,7 @@ export function AnalyticsOverview({ locale, audience, compact = false }: { local
 
   const statisticsHref = audience === "admin" ? `/${locale}/admin/statistics` : `/${locale}/seller-dashboard?section=statistics`;
 
-  return <section className={styles.workspace} data-compact={compact} aria-labelledby="analytics-title">
+  return <section className={styles.workspace} data-compact={compact} data-audience={audience} aria-labelledby="analytics-title">
     <header className={styles.header}>
       <div>{compact && audience === "seller" ? <h2 id="analytics-title">{copy.summaryTitle}</h2> : <h1 id="analytics-title">{compact ? copy.summaryTitle : copy.title}</h1>}<p>{compact ? copy.summaryIntro : copy.intro}</p></div>
       {compact ? <Link className={styles.refresh} href={statisticsHref as Route}>{copy.viewStatistics}</Link> : <button className={styles.refresh} type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading}>{copy.refresh}</button>}
@@ -145,8 +146,8 @@ export function AnalyticsOverview({ locale, audience, compact = false }: { local
         <button type="button" aria-pressed={preset === "custom"} onClick={() => setPreset("custom")}>{copy.custom}</button>
       </div>
       {preset === "custom" ? <form className={styles.customRange} onSubmit={(event) => { event.preventDefault(); if (draft.from <= draft.to) setRange(draft); }}>
-        <label><span>{copy.from}</span><input type="date" value={draft.from} max={draft.to} onChange={(event) => setDraft((current) => ({ ...current, from: event.target.value }))}/></label>
-        <label><span>{copy.to}</span><input type="date" value={draft.to} min={draft.from} max={dateInTehran()} onChange={(event) => setDraft((current) => ({ ...current, to: event.target.value }))}/></label>
+        <label><span>{copy.from}</span><JalaliDatePicker locale={locale} value={draft.from} max={draft.to} onChange={(value) => setDraft((current) => ({ ...current, from: value }))}/></label>
+        <label><span>{copy.to}</span><JalaliDatePicker locale={locale} value={draft.to} min={draft.from} max={dateInTehran()} onChange={(value) => setDraft((current) => ({ ...current, to: value }))}/></label>
         <button type="submit" disabled={!draft.from || !draft.to || draft.from > draft.to}>{copy.apply}</button>
       </form> : null}
     </CollapsibleFilters> : null}

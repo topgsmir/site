@@ -1,0 +1,3 @@
+{
+  "/[locale]/blog/feed.xml/route": "app/[locale]/blog/feed.xml/route.js"
+}

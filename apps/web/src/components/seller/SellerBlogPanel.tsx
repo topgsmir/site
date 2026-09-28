@@ -99,7 +99,7 @@ export function SellerBlogPanel({ locale, editBase = "seller-dashboard/blog", ca
   const format = (value: string) => new Intl.DateTimeFormat(locale === "fa" ? "fa-IR" : locale, { dateStyle: "medium" }).format(new Date(value));
   return <section className={styles.panel} aria-labelledby="blog-title">
     <header className={styles.heading}>
-      <div><h2 id="blog-title">{copy.title}</h2><p>{copy.description}</p><Link className={styles.journal} href={`/${locale}/blog` as Route}>{c.journal} ↗</Link></div>
+      <div><h1 id="blog-title">{copy.title}</h1><p>{copy.description}</p><Link className={styles.journal} href={`/${locale}/blog` as Route}>{c.journal} ↗</Link></div>
       <button className={styles.primary} type="button" onClick={() => void create()} disabled={creating}>{creating ? c.creating : `+ ${copy.newPost}`}</button>
     </header>
     {createError ? <p className={styles.error} role="alert">{c.createError}</p> : null}

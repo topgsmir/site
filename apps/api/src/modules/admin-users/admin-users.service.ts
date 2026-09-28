@@ -2,12 +2,14 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import type { AdminUserHistoryPage, AdminUsersPage } from "@topgsm/shared-types";
 import { Prisma } from "../../prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { resolveUserId } from "../../common/user-reference";
+import { AuthService } from "../auth/auth.service";
 import { normalizeIranianPhone } from "../sms/phone-number";
-import type { AdminUserHistoryQueryDto, ListAdminUsersQueryDto, UpdateAdminUserDto } from "./dto/admin-users.dto";
+import type { AdminUserHistoryQueryDto, CreateAdminUserDto, ListAdminUsersQueryDto, UpdateAdminUserDto } from "./dto/admin-users.dto";
 
 const userSelect = {
-  id: true, full_name: true, username: true, email: true, phone_number: true,
-  role: true, created_at: true, updated_at: true,
+  id: true, support_code: true, full_name: true, username: true, email: true, phone_number: true,
+  role: true, account_status: true, blocked_at: true, deleted_at: true, created_at: true, updated_at: true,
   _count: { select: { orders: true } }
 } satisfies Prisma.usersSelect;
 
@@ -17,12 +19,14 @@ const item = (id: string, at: Date, title: string, details: HistoryItem["details
 
 @Injectable()
 export class AdminUsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly auth: AuthService) {}
 
   private mapUser(user: Prisma.usersGetPayload<{ select: typeof userSelect }>) {
     return {
-      id: user.id, fullName: user.full_name, username: user.username,
+      id: user.id, supportCode: user.support_code, fullName: user.full_name, username: user.username,
       email: user.email, phoneNumber: user.phone_number, role: user.role,
+      accountStatus: user.account_status as AdminUsersPage["items"][number]["accountStatus"],
+      blockedAt: user.blocked_at?.toISOString() ?? null, deletedAt: user.deleted_at?.toISOString() ?? null,
       orderCount: user._count.orders, createdAt: user.created_at.toISOString(),
       updatedAt: user.updated_at.toISOString()
     };
@@ -30,6 +34,10 @@ export class AdminUsersService {
 
   async list(input: ListAdminUsersQueryDto): Promise<AdminUsersPage> {
     const search = input.search?.trim();
+    const supportCode = search?.toUpperCase();
+    const exactCodeUser = supportCode && /^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{5}$/.test(supportCode)
+      ? await this.prisma.users.findUnique({ where: { support_code: supportCode }, select: { id: true } })
+      : null;
     const from = input.joinedFrom ? new Date(`${input.joinedFrom}T00:00:00.000Z`) : undefined;
     const to = input.joinedTo ? new Date(`${input.joinedTo}T00:00:00.000Z`) : undefined;
     if ((from && (Number.isNaN(from.getTime()) || from.toISOString().slice(0, 10) !== input.joinedFrom))
@@ -38,8 +46,9 @@ export class AdminUsersService {
       throw new BadRequestException("Invalid joined date range");
     }
     const where: Prisma.usersWhereInput = {
+      ...(input.status && input.status !== "all" ? { account_status: input.status } : {}),
       ...(input.role !== "all" ? { role: input.role } : {}),
-      ...(search ? { OR: [
+      ...(exactCodeUser ? { id: exactCodeUser.id } : search ? { OR: [
         { full_name: { contains: search, mode: "insensitive" } },
         { username: { contains: search, mode: "insensitive" } },
         { email: { contains: search, mode: "insensitive" } },
@@ -63,12 +72,43 @@ export class AdminUsersService {
   }
 
   async detail(id: string) {
+    id = await resolveUserId(this.prisma, id);
     const user = await this.prisma.users.findUnique({ where: { id }, select: userSelect });
     if (!user) throw new NotFoundException("User not found");
     return this.mapUser(user);
   }
 
+  async create(actorId: string, input: CreateAdminUserDto) {
+    const fullName = input.fullName.trim();
+    if (fullName.length < 2) throw new BadRequestException("Name is too short");
+    const email = input.email.trim().toLowerCase();
+    const username = input.username?.trim().toLowerCase() || null;
+    const phoneNumber = input.phoneNumber ? normalizeIranianPhone(input.phoneNumber) : null;
+    const passwordHash = await this.auth.createPasswordHash(input.password);
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const user = await tx.users.create({
+          data: { full_name: fullName, email, username, phone_number: phoneNumber, password_hash: passwordHash, role: "buyer" },
+          select: userSelect
+        });
+        await tx.admin_user_profile_changes.create({ data: {
+          user_id: user.id,
+          actor_user_id: actorId,
+          before_data: {},
+          after_data: { accountCreated: true, fullName: user.full_name, username: user.username, email: user.email, phoneNumber: user.phone_number, role: user.role }
+        } });
+        return this.mapUser(user);
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        throw new ConflictException("Email, username, or phone number is already in use");
+      }
+      throw error;
+    }
+  }
+
   async update(id: string, actorId: string, input: UpdateAdminUserDto) {
+    id = await resolveUserId(this.prisma, id);
     if (input.fullName === null || input.email === null) throw new BadRequestException("Name and email cannot be null");
     const data = {
       ...(input.fullName !== undefined ? { full_name: input.fullName.trim() } : {}),
@@ -83,6 +123,7 @@ export class AdminUsersService {
         await tx.$queryRaw`SELECT id FROM users WHERE id = ${id} FOR UPDATE`;
         const before = await tx.users.findUnique({ where: { id }, select: userSelect });
         if (!before) throw new NotFoundException("User not found");
+        if (["deleted", "deletion_pending"].includes(before.account_status)) throw new ConflictException("Account cannot be edited");
         const after = await tx.users.update({ where: { id }, data, select: userSelect });
         await tx.admin_user_profile_changes.create({ data: {
           user_id: id, actor_user_id: actorId,
@@ -99,7 +140,33 @@ export class AdminUsersService {
     }
   }
 
+  async changePassword(id: string, actorId: string, newPassword: string) {
+    id = await resolveUserId(this.prisma, id);
+    const passwordHash = await this.auth.createPasswordHash(newPassword);
+    const changedAt = new Date();
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${id} FOR UPDATE`;
+      const user = await tx.users.findUnique({ where: { id }, select: { id: true, password_hash: true, account_status: true } });
+      if (!user) throw new NotFoundException("User not found");
+      if (["deletion_pending", "deleted"].includes(user.account_status)) throw new ConflictException("Account cannot be edited");
+
+      await tx.users.update({ where: { id }, data: { password_hash: passwordHash }, select: { id: true } });
+      const revoked = await tx.auth_sessions.updateMany({
+        where: { user_id: id, revoked_at: null, expires_at: { gt: changedAt } },
+        data: { revoked_at: changedAt }
+      });
+      await tx.admin_user_profile_changes.create({ data: {
+        user_id: id,
+        actor_user_id: actorId,
+        before_data: { passwordChanged: false, sessionsRevoked: 0, passwordPreviouslyConfigured: Boolean(user.password_hash) },
+        after_data: { passwordChanged: true, sessionsRevoked: revoked.count, passwordPreviouslyConfigured: Boolean(user.password_hash) }
+      } });
+      return { sessionsRevoked: revoked.count };
+    });
+  }
+
   async history(id: string, input: AdminUserHistoryQueryDto): Promise<AdminUserHistoryPage> {
+    id = await resolveUserId(this.prisma, id);
     await this.detail(id);
     const skip = (input.page - 1) * input.limit;
     const take = input.limit;
@@ -255,7 +322,10 @@ export class AdminUsersService {
           this.prisma.admin_user_profile_changes.findMany({ where, skip, take, orderBy: [{ created_at: "desc" }, { id: "desc" }], select: { id: true, created_at: true, actor_user_id: true, before_data: true, after_data: true } })
         ]);
         total = count;
-        items = rows.map((row) => item(row.id, row.created_at, "Profile edited", { actorId: row.actor_user_id, before: JSON.stringify(row.before_data), after: JSON.stringify(row.after_data) }));
+        items = rows.map((row) => {
+          const after = row.after_data && typeof row.after_data === "object" && !Array.isArray(row.after_data) ? row.after_data as Record<string, unknown> : {};
+          return item(row.id, row.created_at, Object.hasOwn(after, "accountCreated") ? "Account created" : Object.hasOwn(after, "passwordChanged") ? "Password changed" : "Profile edited", { actorId: row.actor_user_id, before: JSON.stringify(row.before_data), after: JSON.stringify(row.after_data) });
+        });
         break;
       }
       case "related": {

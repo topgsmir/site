@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Ip, Param, ParseUUIDPipe, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Ip, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { AuthenticatedGuard } from "../auth/authenticated.guard";
 import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
 import type { AuthenticatedRequest } from "../auth/platform-admin.guard";
@@ -7,7 +7,7 @@ import { BridgeService } from "./bridge.service";
 import { BridgeFeatureGuard } from "./bridge-feature.guard";
 import { BridgeFulfillmentService } from "./bridge-fulfillment.service";
 import { SellerBridgeGuard } from "./seller-bridge.guard";
-import { CompleteBridgeOrderDto, CreateBridgeConnectionDto, GrantBridgeServiceDto, RequestBridgeRefundDto, RevokeBridgeGrantDto, RotateBridgeConnectionDto } from "./dto/bridge.dto";
+import { CompleteBridgeOrderDto, CreateBridgeConnectionDto, GrantBridgeServiceDto, ListBridgeRefundRequestsDto, RequestBridgeRefundDto, RevokeBridgeGrantDto, RotateBridgeConnectionDto } from "./dto/bridge.dto";
 
 @Controller("bridge")
 @UseGuards(BridgeFeatureGuard)
@@ -111,5 +111,5 @@ export class BridgeController {
   }
 
   @Get("admin/refund-requests") @UseGuards(PlatformAdminGuard)
-  refundRequests() { return this.fulfillments.listRefundRequests(); }
+  refundRequests(@Query() query: ListBridgeRefundRequestsDto) { return this.fulfillments.listRefundRequests(query); }
 }

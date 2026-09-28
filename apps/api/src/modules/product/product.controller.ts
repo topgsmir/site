@@ -26,31 +26,55 @@ import { PlatformPermissionGuard } from "../auth/platform-permission.guard";
 import { RequirePlatformPermission } from "../auth/platform-permission.decorator";
 import {
   AddSellerOffersDto,
+  ApplyProductBulkEditDto,
   BulkUndoProductChangesDto,
   CreateProductDto,
   ListProductsQueryDto,
   ManageProductsQueryDto,
   SellerProductsQueryDto,
   PreviewBulkUndoProductChangesDto,
+  PreviewProductBulkEditDto,
+  ProductSlugAvailabilityQueryDto,
   ReviewProductDto,
   RestoreProductChangeDto,
   UpdateAdminListingDto,
   UpdateAdminProductDto,
+  TransferProductSellerDto,
   UpdateProductDto,
   UpdateSellerOfferDto
 } from "./dto/product.dto";
 import { ProductService } from "./product.service";
+import { ProductBulkService } from "./product-bulk.service";
 import { SellerProductsGuard } from "./seller-products.guard";
 import { MediaService } from "../media/media.service";
+import { AdminUploadsService } from "../media/admin-uploads.service";
 
 @Controller("products")
 export class ProductController {
   constructor(
     private readonly productService: ProductService,
+    private readonly bulkProducts: ProductBulkService,
     private readonly rateLimits: AuthRateLimitService,
     private readonly translations: ProductTranslationsService,
-    private readonly media: MediaService
+    private readonly media: MediaService,
+    private readonly uploads: AdminUploadsService
   ) {}
+
+  @Post("admin/bulk-edit/preview")
+  @BrowserSessionMutation()
+  @UseGuards(PlatformAdminGuard)
+  async previewBulkEdit(@Body() body: PreviewProductBulkEditDto, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
+    return this.bulkProducts.preview(body);
+  }
+
+  @Post("admin/bulk-edit")
+  @BrowserSessionMutation()
+  @UseGuards(PlatformAdminGuard)
+  async applyBulkEdit(@Body() body: ApplyProductBulkEditDto, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
+    return this.bulkProducts.apply(body, request.authenticatedUser!.id);
+  }
 
   @Get()
   list(@Query() query: ListProductsQueryDto) {
@@ -182,6 +206,18 @@ export class ProductController {
     );
   }
 
+  @Get("admin/slug-availability")
+  @UseGuards(PlatformAdminGuard)
+  adminSlugAvailability(@Query() query: ProductSlugAvailabilityQueryDto) {
+    return this.productService.productSlugAvailability(query.slug, query.currentProductId);
+  }
+
+  @Get("mine/slug-availability")
+  @UseGuards(SellerProductsGuard)
+  sellerSlugAvailability(@Query() query: ProductSlugAvailabilityQueryDto, @Req() request: AuthenticatedRequest) {
+    return this.productService.productSlugAvailability(query.slug, query.currentProductId, request.sellerContext!.sellerId);
+  }
+
   @Get("admin/:productId")
   @UseGuards(PlatformAdminGuard)
   getForAdmin(
@@ -227,6 +263,19 @@ export class ProductController {
     );
   }
 
+  @Post("admin/:productId/transfer")
+  @BrowserSessionMutation()
+  @UseGuards(PlatformAdminGuard)
+  async transferForAdmin(
+    @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
+    @Body() body: TransferProductSellerDto,
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
+  ) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
+    return this.productService.transferProductSeller(productId, request.authenticatedUser!.id, body.sellerId);
+  }
+
   @Post("admin/:productId/image")
   @UseGuards(PlatformAdminGuard)
   @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 8 * 1024 * 1024, files: 1, fields: 0, parts: 1 } }))
@@ -269,15 +318,16 @@ export class ProductController {
     );
   }
 
-  @Delete(":productId/image")
-  @UseGuards(SellerProductsGuard)
+    @Delete(":productId/image")
+    @BrowserSessionMutation()
+    @UseGuards(SellerProductsGuard)
   async deleteImage(
     @Param("productId", new ParseUUIDPipe({ version: "4" })) productId: string,
     @Req() request: AuthenticatedRequest,
     @Ip() clientIp: string
   ) {
     await this.rateLimits.consumeMediaUpload(request.authenticatedUser!.id, clientIp);
-    return this.media.deleteProductImage(productId, request.sellerContext!.sellerId, request.authenticatedUser!.id);
+    return this.uploads.requestProductImageDeletion(productId, request.sellerContext!.sellerId, request.authenticatedUser!.id);
   }
 
   @Patch("admin/listings/:listingId")

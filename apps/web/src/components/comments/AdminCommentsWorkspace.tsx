@@ -2,7 +2,7 @@
 
 import type { Route } from "next";
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import type { AdminComment, CommentPage, CommentPublicationPolicy, CommentSettings, CommentStatus, CommentPostingPolicy, CommentTargetType } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
@@ -15,8 +15,15 @@ const copy = {
   ar: { title: "التعليقات", intro: "اضبط قواعد التعليقات وراجعها واحسم بلاغات الرسائل المزعجة.", lock: "إلزام البائعين بالرد", lockHint: "تعليقات المنتجات غير المجابة فقط تقيد البائع؛ تعليقات المقالات لا تفعل ذلك.", posting: "من يمكنه التعليق", purchasers: "المشترون المؤكدون", buyers: "المشترون المسجلون", guests: "الضيوف أيضًا", publication: "نشر تعليقات المسجلين", approval: "بعد موافقة المدير", immediate: "فورًا", guestHint: "تعليقات الضيوف تحتاج دائمًا إلى الموافقة.", blogPolicy: "في المقالات يسمح وضعا المشتري المؤكد والمشتري المسجل لأي مشترٍ مسجل بالتعليق.", risk: "النشر الفوري قد يتيح لمشترٍ مسجل تقييد بائعي المنتجات. اختر موافقة المدير أو المشترين المؤكدين إذا كان ذلك غير مقبول.", save: "حفظ الإعدادات", saved: "حُفظت الإعدادات.", all: "كل التعليقات", product: "المنتجات", blog: "المقالات", spamQueue: "مراجعة الرسائل المزعجة", search: "ابحث في التعليق أو المحتوى أو الكاتب", searchButton: "بحث", allStatuses: "كل الحالات", pending: "قيد الانتظار", approved: "منشور", rejected: "مرفوض", spam_review: "مراجعة الإزعاج", spam: "مزعج", approve: "موافقة", reject: "رفض / إخفاء", confirmSpam: "تأكيد الإزعاج", restore: "استعادة", reply: "إرسال الرد", replying: "جار الإرسال…", flag: "الإبلاغ كرسالة مزعجة", answer: "رد هيئة التحرير", viewTarget: "عرض المحتوى", previous: "السابق", next: "التالي", page: "الصفحة", empty: "لا توجد تعليقات مطابقة.", error: "تعذر تحميل التعليقات.", actionError: "تعذر إكمال الإجراء. حاول مجددًا.", loading: "جار التحميل…" }
 } as const;
 
-export function AdminCommentsWorkspace({ locale }: { locale: Locale }) {
+const reviewFeedback = {
+  en: { retry: "Retry", reviewed: "Comment updated." },
+  fa: { retry: "تلاش دوباره", reviewed: "دیدگاه به‌روزرسانی شد." },
+  ar: { retry: "إعادة المحاولة", reviewed: "تم تحديث التعليق." }
+} as const;
+
+export function AdminCommentsWorkspace({ locale, view = "settings", onReviewed, refreshKey = 0 }: { locale: Locale; view?: "settings" | "pending"; onReviewed?: () => void; refreshKey?: number }) {
   const c = copy[locale];
+  const feedback = reviewFeedback[locale];
   const [settings, setSettings] = useState<CommentSettings | null>(null);
   const [lock, setLock] = useState(false);
   const [posting, setPosting] = useState<CommentPostingPolicy>("purchasers");
@@ -25,7 +32,7 @@ export function AdminCommentsWorkspace({ locale }: { locale: Locale }) {
   const [cursor, setCursor] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [pageCursors, setPageCursors] = useState<Array<string | undefined>>([undefined]);
-  const [filter, setFilter] = useState<CommentStatus | "">("");
+  const [filter, setFilter] = useState<CommentStatus | "">(view === "pending" ? "pending" : "");
   const [target, setTarget] = useState<CommentTargetType | "">("");
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
@@ -35,19 +42,29 @@ export function AdminCommentsWorkspace({ locale }: { locale: Locale }) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const loadRequest = useRef(0);
+  const lastRefresh = useRef(refreshKey);
 
   const load = useCallback(async (pageCursor?: string) => {
+    const request = ++loadRequest.current;
     setLoading(true); setError("");
     try {
       const response = await api.get<CommentPage<AdminComment>>("/admin/settings/comments", { params: { limit: 10, locale, ...(filter ? { status: filter } : {}), ...(target ? { target } : {}), ...(appliedSearch ? { search: appliedSearch } : {}), ...(pageCursor ? { cursor: pageCursor } : {}) } });
+      if (request !== loadRequest.current) return null;
       setItems(response.data.items);
       setCursor(response.data.nextCursor);
-    } catch { setError(c.error); }
-    finally { setLoading(false); }
+      return response.data.items;
+    } catch { if (request === loadRequest.current) setError(c.error); return null; }
+    finally { if (request === loadRequest.current) setLoading(false); }
   }, [filter, target, appliedSearch, locale, c.error]);
 
   useEffect(() => { setPage(1); setPageCursors([undefined]); void load(); }, [load]);
-  useEffect(() => { void api.get<CommentSettings>("/admin/settings/comments/settings").then(({ data }) => { setSettings(data); setLock(data.sellerLockEnabled); setPosting(data.postingPolicy); setPublication(data.publicationPolicy); }).catch(() => setError(c.error)); }, [c.error]);
+  useEffect(() => {
+    if (lastRefresh.current === refreshKey) return;
+    lastRefresh.current = refreshKey;
+    void load(pageCursors[page - 1]);
+  }, [refreshKey, load, page, pageCursors]);
+  useEffect(() => { if (view !== "settings") return; void api.get<CommentSettings>("/admin/settings/comments/settings").then(({ data }) => { setSettings(data); setLock(data.sellerLockEnabled); setPosting(data.postingPolicy); setPublication(data.publicationPolicy); }).catch(() => setError(c.error)); }, [c.error, view]);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setSaving(true); setError(""); setMessage("");
@@ -59,10 +76,16 @@ export function AdminCommentsWorkspace({ locale }: { locale: Locale }) {
   }
 
   async function act(id: string, action: "approve" | "reject" | "spam" | "restore" | "reply" | "flag") {
-    setBusy(id); setError("");
+    setBusy(id); setError(""); setMessage("");
     try {
       await api.post(`/admin/settings/comments/${id}/${action}`, action === "reply" ? { body: drafts[id]?.trim() } : undefined);
-      await load(pageCursors[page - 1]);
+      const refreshed = await load(pageCursors[page - 1]);
+      if (refreshed && refreshed.length === 0 && page > 1) {
+        setPage(page - 1);
+        await load(pageCursors[page - 2]);
+      }
+      setMessage(feedback.reviewed);
+      if (view === "pending") onReviewed?.();
     } catch { setError(c.actionError); }
     finally { setBusy(null); }
   }
@@ -82,20 +105,22 @@ export function AdminCommentsWorkspace({ locale }: { locale: Locale }) {
     void load(pageCursors[previousPage - 1]);
   }
 
-  return <main className={styles.section} dir={locale === "en" ? "ltr" : "rtl"}>
-    <header className={styles.header}><h1>{c.title}</h1><p>{c.intro}</p></header>
-    {error ? <p className={styles.error} role="alert">{error}</p> : null}{message ? <p className={styles.success} role="status">{message}</p> : null}
-    {settings ? <form className={styles.settings} onSubmit={save}>
+  return <section className={styles.section} data-view={view} dir={locale === "en" ? "ltr" : "rtl"}>
+    <header className={styles.header}>{view === "settings" ? <h1>{c.title}</h1> : <h2>{locale === "fa" ? "دیدگاه‌های منتظر تأیید" : locale === "ar" ? "التعليقات بانتظار الموافقة" : "Comments awaiting approval"}</h2>}{view === "settings" ? <p>{c.intro}</p> : null}</header>
+    {error ? <p className={styles.error} role="alert">{error} {view === "pending" ? <button type="button" disabled={loading} onClick={() => void load(pageCursors[page - 1])}>{feedback.retry}</button> : null}</p> : null}{message ? <p className={styles.success} role="status">{message}</p> : null}
+    {view === "settings" ? settings ? <form className={styles.settings} onSubmit={save}>
       <div className={styles.settingRow}><div><strong>{c.lock}</strong><small>{c.lockHint}</small></div><label className={styles.toggle}><span className={styles.visuallyHidden}>{c.lock}</span><input type="checkbox" checked={lock} disabled={saving} onChange={(event) => setLock(event.target.checked)} /><span aria-hidden="true"><i /></span></label></div>
       <div className={styles.selectGrid}><label>{c.posting}<select value={posting} disabled={saving} onChange={(event) => setPosting(event.target.value as CommentPostingPolicy)}><option value="purchasers">{c.purchasers}</option><option value="buyers">{c.buyers}</option><option value="guests">{c.guests}</option></select><small>{c.blogPolicy}</small></label>
       <label>{c.publication}<select value={publication} disabled={saving} onChange={(event) => setPublication(event.target.value as CommentPublicationPolicy)}><option value="approval">{c.approval}</option><option value="immediate">{c.immediate}</option></select><small>{c.guestHint}</small></label></div>
       {lock && posting !== "purchasers" && publication === "immediate" ? <p className={styles.notice} role="status">{c.risk}</p> : null}
       <div className={styles.settingsActions}><button className={styles.primary} type="submit" disabled={saving}>{c.save}</button></div>
-    </form> : <p className={styles.loading}>{c.loading}</p>}
+    </form> : <p className={styles.loading}>{c.loading}</p> : null}
+    {view === "settings" ? <>
     <CollapsibleFilters locale={locale} title={c.search} activeCount={[filter, target, appliedSearch].filter(Boolean).length}>
       <div className={styles.tabs}><button type="button" aria-pressed={target === ""} onClick={() => setTarget("")}>{c.all}</button><button type="button" aria-pressed={target === "product"} onClick={() => setTarget("product")}>{c.product}</button><button type="button" aria-pressed={target === "blog"} onClick={() => setTarget("blog")}>{c.blog}</button><button type="button" aria-pressed={filter === "spam_review"} onClick={() => setFilter("spam_review")}>{c.spamQueue}</button></div>
       <form className={styles.toolbar} onSubmit={(event) => { event.preventDefault(); setAppliedSearch(search.trim()); }}><input type="search" aria-label={c.search} placeholder={c.search} value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} /><button type="submit">{c.searchButton}</button><select aria-label={c.allStatuses} value={filter} onChange={(event) => setFilter(event.target.value as CommentStatus | "")}><option value="">{c.allStatuses}</option>{(["pending", "approved", "rejected", "spam_review", "spam"] as const).map((value) => <option key={value} value={value}>{c[value]}</option>)}</select></form>
     </CollapsibleFilters>
+    </> : null}
     {loading && !items.length ? <p className={styles.loading} role="status">{c.loading}</p> : null}{!loading && !items.length && !error ? <p className={styles.empty}>{c.empty}</p> : null}
     <div className={styles.list}>{items.map((item) => <article className={styles.card} key={item.id}>
       <header className={styles.cardHeader}>
@@ -111,10 +136,10 @@ export function AdminCommentsWorkspace({ locale }: { locale: Locale }) {
       </header>
       <p className={styles.body}>{item.body}</p>
       {item.replies.map((reply, index) => reply.body ? <div className={styles.reply} key={index}><strong>{reply.authorName}</strong><p>{reply.body}</p></div> : null)}
-      {item.canReply ? <form onSubmit={(event) => { event.preventDefault(); void act(item.id, "reply"); }}><label htmlFor={`editorial-reply-${item.id}`}>{c.answer}</label><textarea id={`editorial-reply-${item.id}`} maxLength={2000} required value={drafts[item.id] ?? ""} onChange={(event) => setDrafts((current) => ({ ...current, [item.id]: event.target.value }))} /><button className={styles.primary} type="submit" disabled={busy === item.id || !drafts[item.id]?.trim()}>{busy === item.id ? c.replying : c.reply}</button></form> : null}
+      {view === "settings" && item.canReply ? <form onSubmit={(event) => { event.preventDefault(); void act(item.id, "reply"); }}><label htmlFor={`editorial-reply-${item.id}`}>{c.answer}</label><textarea id={`editorial-reply-${item.id}`} maxLength={2000} required value={drafts[item.id] ?? ""} onChange={(event) => setDrafts((current) => ({ ...current, [item.id]: event.target.value }))} /><button className={styles.primary} type="submit" disabled={busy === item.id || !drafts[item.id]?.trim()}>{busy === item.id ? c.replying : c.reply}</button></form> : null}
       <div className={styles.actions}>{item.status === "pending" ? <><button type="button" disabled={busy === item.id} onClick={() => void act(item.id, "approve")}>{c.approve}</button><button className={styles.danger} type="button" disabled={busy === item.id} onClick={() => void act(item.id, "reject")}>{c.reject}</button></> : null}
-      {item.status === "approved" ? <><button className={styles.danger} type="button" disabled={busy === item.id} onClick={() => void act(item.id, "reject")}>{c.reject}</button>{item.canFlag ? <button className={styles.danger} type="button" disabled={busy === item.id} onClick={() => void act(item.id, "flag")}>{c.flag}</button> : null}</> : null}
-      {item.status === "spam_review" ? <><button className={styles.danger} type="button" disabled={busy === item.id} onClick={() => void act(item.id, "spam")}>{c.confirmSpam}</button><button type="button" disabled={busy === item.id} onClick={() => void act(item.id, "restore")}>{c.restore}</button></> : null}</div>
+      {view === "settings" && item.status === "approved" ? <><button className={styles.danger} type="button" disabled={busy === item.id} onClick={() => void act(item.id, "reject")}>{c.reject}</button>{item.canFlag ? <button className={styles.danger} type="button" disabled={busy === item.id} onClick={() => void act(item.id, "flag")}>{c.flag}</button> : null}</> : null}
+      {view === "settings" && item.status === "spam_review" ? <><button className={styles.danger} type="button" disabled={busy === item.id} onClick={() => void act(item.id, "spam")}>{c.confirmSpam}</button><button type="button" disabled={busy === item.id} onClick={() => void act(item.id, "restore")}>{c.restore}</button></> : null}</div>
     </article>)}</div>
     {items.length || page > 1 ? <nav className={styles.pagination} aria-label={c.page}>
       <button type="button" disabled={page === 1 || loading} onClick={previousPage}>
@@ -127,5 +152,5 @@ export function AdminCommentsWorkspace({ locale }: { locale: Locale }) {
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
       </button>
     </nav> : null}
-  </main>;
+  </section>;
 }

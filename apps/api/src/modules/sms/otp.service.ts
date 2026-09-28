@@ -45,6 +45,7 @@ export class OtpService {
       const byPhone = await transaction.users.findUnique({ where: { phone_number: phone } });
       const email = input.email?.trim().toLowerCase();
       if (byPhone) {
+        if (byPhone.account_status !== "active") throw new UnauthorizedException("Account unavailable");
         if (byPhone.role !== "buyer") throw new ConflictException("This phone number cannot be used for buyer checkout");
         if (email && email !== byPhone.email) {
           const owner = await transaction.users.findUnique({ where: { email } });

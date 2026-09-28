@@ -39,6 +39,8 @@ The default Design flow always picks a theme. By default it picks one of the **2
 
 **TopGSM brand lock.** TopGSM's primary brand and interaction colour is blue. When working in the TopGSM repository, load [`references/topgsm-brand.md`](references/topgsm-brand.md) before any design or UI change. Its palette overrides catalog and custom theme colours. Preserve its semantic role mapping and derive any additional colour from those five brand primitives through named tokens.
 
+**TopGSM compact layout override.** For every TopGSM UI design, implementation, audit, or redesign, also load [`references/topgsm-compact-ui.md`](references/topgsm-compact-ui.md). It overrides generic spacing, display typography, hero, macrostructure, diversification, and overflow-clipping advice in this skill and its references. Ordinary feature pages use the existing application shell, compact task controls, and useful content in the first laptop viewport; skip landing-page macrostructure selection, hero enrichment, and layout rotation for these pages. Keep the existing font stack and token source. Apply the reference's density and accessibility checks before handoff. Marketing pages also default to compact composition unless the brief calls for a spacious treatment.
+
 ---
 
 ## Disciplines that hold across every verb

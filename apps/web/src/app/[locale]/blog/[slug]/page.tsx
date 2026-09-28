@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { managedSeoMetadata } from "@/lib/seo-settings-server";
 import type { Route } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { BlogArticle } from "@/components/blog/BlogArticle";
@@ -20,7 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   if ("redirectTo" in result) return { robots: { index: false, follow: true } };
   const canonical = `${SITE_URL}/${locale}/blog/${result.slug}`;
   const images = result.cover?.variants.map((item) => ({ url: `${SITE_URL}${item.url}`, width: item.width, height: item.height, alt: result.coverAltText }));
-  return {
+  return managedSeoMetadata(locale, `/${locale}/blog/${encodeURIComponent(result.slug)}`, {
     title: result.seoTitle,
     description: result.seoDescription,
     alternates: {
@@ -29,7 +30,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
     },
     openGraph: { type: "article", url: canonical, title: result.seoTitle, description: result.seoDescription, publishedTime: result.publishedAt ?? undefined, modifiedTime: result.updatedAt, authors: [result.author.name], images },
     twitter: { card: "summary_large_image", title: result.seoTitle, description: result.seoDescription, images: images?.map((item) => item.url) }
-  };
+  });
 }
 
 export default async function BlogArticlePage({ params }: { params: Promise<{ locale: string; slug: string }> }) {

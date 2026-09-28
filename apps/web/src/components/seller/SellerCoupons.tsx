@@ -1,4 +1,5 @@
 "use client";
+import { JalaliDatePicker } from "@/components/dashboard/JalaliDatePicker";
 
 import axios from "axios";
 import type {
@@ -211,7 +212,7 @@ export function SellerCoupons({ locale }: { locale: Locale }) {
   return (
     <section className={styles.layout} aria-labelledby="coupons-title">
       <div className={styles.heading}>
-        <h2 id="coupons-title">{c.title}</h2>
+        <h1 id="coupons-title">{c.title}</h1>
         <p>{c.description}</p>
       </div>
 
@@ -223,8 +224,8 @@ export function SellerCoupons({ locale }: { locale: Locale }) {
           <label><span>{c.currency}</span><strong>تومان</strong></label>
           <label><span>{c.minimum}</span><input inputMode="decimal" pattern="(?:0|[1-9][0-9]*)(?:\.[0-9]{1,4})?" value={draft.minimumOrderAmount} onChange={(event) => update("minimumOrderAmount", event.target.value)} /></label>
           <label><span>{c.maximum}</span><input type="number" min="1" max="1000000000" value={draft.maximumRedemptions} onChange={(event) => update("maximumRedemptions", event.target.value)} /></label>
-          <label><span>{c.starts}</span><input type="datetime-local" value={draft.startsAt} onChange={(event) => update("startsAt", event.target.value)} /></label>
-          <label><span>{c.expires}</span><input type="datetime-local" value={draft.expiresAt} onChange={(event) => update("expiresAt", event.target.value)} /></label>
+          <label><span>{c.starts}</span><JalaliDatePicker locale={locale} dateTime value={draft.startsAt} onChange={(value) => update("startsAt", value)} /></label>
+          <label><span>{c.expires}</span><JalaliDatePicker locale={locale} dateTime value={draft.expiresAt} onChange={(value) => update("expiresAt", value)} /></label>
         </div>
         <label className={styles.checkbox}><input type="checkbox" checked={draft.active} onChange={(event) => update("active", event.target.checked)} /><span>{c.active}</span></label>
         <div className={styles.actions}>

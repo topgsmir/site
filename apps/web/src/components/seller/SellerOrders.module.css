@@ -1,13 +1,13 @@
 /* Seller order ledger mirrors the admin order directory while keeping fulfillment actions in context. */
-.workspace { --surface: var(--color-dashboard-surface); --raised: var(--color-dashboard-surface-raised); --ink: var(--color-dashboard-ink); --muted: var(--color-dashboard-muted); --rule: var(--color-dashboard-rule); --accent: var(--color-dashboard-accent-strong); display: grid; min-width: 0; gap: var(--space-dashboard-lg); padding-block: var(--space-dashboard-xl) var(--space-dashboard-3xl); color: var(--ink); font-family: var(--font-dashboard-body); }
-.header { display: flex; align-items: end; justify-content: space-between; gap: var(--space-dashboard-lg); padding-block-end: var(--space-dashboard-lg); border-block-end: 1px solid var(--rule); }
+.workspace { --surface: var(--color-dashboard-surface); --raised: var(--color-dashboard-surface-raised); --ink: var(--color-dashboard-ink); --muted: var(--color-dashboard-muted); --rule: var(--color-dashboard-rule); --accent: var(--color-dashboard-accent-strong); display: grid; min-width: 0; gap: var(--space-dashboard-sm); padding-block: 0 var(--space-dashboard-xl); color: var(--ink); font-family: var(--font-dashboard-body); }
+.header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-dashboard-sm); padding-block-end: var(--space-dashboard-xs); border-block-end: 1px solid var(--rule); }
 .eyebrow { margin-block-end: var(--space-dashboard-xs); color: var(--accent); font-size: var(--text-dashboard-xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.header h1 { font-family: var(--font-dashboard-display); font-size: clamp(var(--text-dashboard-xl), 3vw, var(--text-dashboard-2xl)); font-weight: 650; letter-spacing: -.035em; line-height: 1.25; }
-.header p:last-child { max-width: 64ch; margin-block-start: var(--space-dashboard-sm); color: var(--muted); line-height: 1.6; }
-.controls { display: grid; gap: 0; padding: 0; border: 1px solid var(--rule); border-radius: var(--radius-dashboard-control); background: var(--surface); }
+.header h1 { font-family: var(--font-dashboard-display); font-size: var(--text-dashboard-lg); font-weight: 650; line-height: 1.35; }
+.header p:last-child { max-width: 64ch; margin-block-start: var(--space-dashboard-2xs); color: var(--muted); line-height: 1.6; font-size: var(--text-dashboard-sm); }
+.searchTools { display: grid; gap: var(--space-dashboard-xs); }
+.controls { --size-dashboard-filter-trigger: 3rem; --size-dashboard-filter-icon: 1.75rem; display: grid; gap: 0; padding: 0; border: 1px solid var(--rule); border-radius: var(--radius-dashboard-control); background: var(--surface); }
 .searchField, .filterGrid label, .actionForm label { display: grid; min-width: 0; gap: var(--space-dashboard-xs); color: var(--muted); font-size: var(--text-dashboard-xs); font-weight: 650; }
-.controls input, .controls select, .actions input, .actionForm textarea { width: 100%; min-width: 0; min-height: 44px; padding-inline: var(--space-dashboard-md); border: 1px solid var(--rule); border-radius: var(--radius-dashboard-control); color: var(--ink); background: var(--raised); font: inherit; font-size: var(--text-dashboard-sm); }
-.searchField input { height: 50px; }
+.searchField input, .controls input, .controls select, .actions input, .actionForm textarea { width: 100%; min-width: 0; min-height: 40px; padding-inline: var(--space-dashboard-md); border: 1px solid var(--rule); border-radius: var(--radius-dashboard-control); color: var(--ink); background: var(--raised); font: inherit; font-size: var(--text-dashboard-sm); }
 .controls input::placeholder, .actions input::placeholder { color: var(--muted); opacity: .8; }
 .filterGrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-dashboard-sm); }
 .filterFooter, .pagination, .pagination div, .actions, .fulfilment header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-dashboard-sm); }
@@ -24,7 +24,7 @@
 .workspace :is(button, input, select, textarea):disabled { opacity: .45; cursor: not-allowed; }
 .tableWrap { min-width: 0; overflow-x: auto; border: 1px solid var(--rule); border-radius: var(--radius-dashboard-control); background: var(--surface); }
 .tableWrap table { width: 100%; border-collapse: collapse; text-align: start; }
-.tableWrap th, .tableWrap td { padding: var(--space-dashboard-md); border-block-end: 1px solid var(--rule); text-align: start; vertical-align: middle; }
+.tableWrap th, .tableWrap td { padding: var(--space-dashboard-xs) var(--space-dashboard-sm); border-block-end: 1px solid var(--rule); text-align: start; vertical-align: middle; }
 .tableWrap th { color: var(--muted); background: var(--raised); font-size: var(--text-dashboard-xs); font-weight: 650; white-space: nowrap; }
 .tableWrap td { font-size: var(--text-dashboard-sm); line-height: 1.5; }
 .orderRow:hover { background: var(--color-dashboard-accent-soft); }
@@ -69,5 +69,6 @@
 .pagination { color: var(--muted); font-size: var(--text-dashboard-sm); }
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 @media (max-width: 80rem) { .filterGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .tableWrap table { min-width: 820px; } .detailGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 48rem) { .workspace { gap: var(--space-dashboard-md); } .header { align-items: start; } .controls, .detailPanel { padding: var(--space-dashboard-md); } .filterGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .filterGrid label:last-child { grid-column: 1 / -1; } .detailGrid { grid-template-columns: 1fr; } }
+@media (min-width: 48rem) { .searchTools { grid-template-columns: minmax(14rem, 1fr) minmax(15rem, .55fr); align-items: end; } }
+@media (max-width: 48rem) { .header { align-items: start; } .detailPanel { padding: var(--space-dashboard-md); } .filterGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .filterGrid label:last-child { grid-column: 1 / -1; } .detailGrid { grid-template-columns: 1fr; } }
 @media (max-width: 32rem) { .header { flex-direction: column; } .filterGrid { grid-template-columns: 1fr; } .filterGrid label:last-child { grid-column: auto; } .pagination { align-items: stretch; flex-direction: column; } .pagination div { width: 100%; } .pagination button { flex: 1; } .bridgeFields { grid-template-columns: 1fr; } }

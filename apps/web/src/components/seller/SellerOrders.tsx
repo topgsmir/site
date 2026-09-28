@@ -1,4 +1,5 @@
 "use client";
+import { JalaliDatePicker } from "@/components/dashboard/JalaliDatePicker";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
@@ -120,20 +121,23 @@ export function SellerOrders({ locale, onOrderUpdated }: { locale: Locale; onOrd
   const invalidRange = Boolean(draft.dateFrom && draft.dateTo && draft.dateFrom > draft.dateTo);
   const shortSearch = draft.search.trim().length > 0 && draft.search.trim().length < 3;
   const activeCount = [filters.search, filters.status, filters.productType, filters.dateFrom, filters.dateTo].filter(Boolean).length;
+  const advancedCount = activeCount - Number(Boolean(filters.search));
 
   return <section className={styles.workspace} aria-labelledby="seller-orders-title">
-    <header className={styles.header}><div><p className={styles.eyebrow}>TopGSM / {c.title}</p><h1 id="seller-orders-title">{c.title}</h1><p>{c.intro}</p></div><button type="button" className={styles.secondary} onClick={() => void reloadPage()} disabled={loading}>{c.refresh}</button></header>
-    <CollapsibleFilters className={styles.controls} surface={false} locale={locale} title={c.search} description={c.searchHint} activeCount={activeCount}>
+    <header className={styles.header}><div><h1 id="seller-orders-title">{c.title}</h1><p>{c.intro}</p></div><button type="button" className={styles.secondary} onClick={() => void reloadPage()} disabled={loading}>{c.refresh}</button></header>
+    <div className={styles.searchTools}>
       <label className={styles.searchField}><span>{c.search}</span><input type="search" value={draft.search} onChange={(event) => setFilter("search", event.target.value)} placeholder={c.searchHint} maxLength={100} /></label>
+      <CollapsibleFilters className={styles.controls} surface={false} locale={locale} title={c.filters} activeCount={advancedCount} defaultOpen={false}>
       <div className={styles.filterGrid}>
         <label><span>{c.status}</span><select value={draft.status} onChange={(event) => setFilter("status", event.target.value)}><option value="">{c.all}</option>{statusKeys.map((key) => <option value={key} key={key}>{c[key]}</option>)}</select></label>
         <label><span>{c.type}</span><select value={draft.productType} onChange={(event) => setFilter("productType", event.target.value)}><option value="">{c.all}</option>{typeKeys.map((key) => <option value={key} key={key}>{c[key]}</option>)}</select></label>
-        <label><span>{c.from}</span><input type="date" value={draft.dateFrom} onChange={(event) => setFilter("dateFrom", event.target.value)} /></label>
-        <label><span>{c.to}</span><input type="date" min={draft.dateFrom || undefined} value={draft.dateTo} onChange={(event) => setFilter("dateTo", event.target.value)} /></label>
+        <label><span>{c.from}</span><JalaliDatePicker locale={locale} value={draft.dateFrom} onChange={(value) => setFilter("dateFrom", value)} /></label>
+        <label><span>{c.to}</span><JalaliDatePicker locale={locale} min={draft.dateFrom || undefined} value={draft.dateTo} onChange={(value) => setFilter("dateTo", value)} /></label>
         <label><span>{c.sort}</span><select value={draft.sort} onChange={(event) => setFilter("sort", event.target.value)}><option value="newest">{c.newest}</option><option value="oldest">{c.oldest}</option></select></label>
       </div>
       <div className={styles.filterFooter}><span>{activeCount ? `${activeCount.toLocaleString(locale)} ${c.filters}` : c.all} · {c.showing} {orders.length.toLocaleString(locale)} {c.of}</span><button type="button" className={styles.clear} disabled={!activeCount && draft.sort === "newest"} onClick={() => setDraft(initialFilters)}>{c.clear}</button></div>
-    </CollapsibleFilters>
+      </CollapsibleFilters>
+    </div>
     {invalidRange ? <p className={styles.notice} role="alert">{c.from} ≤ {c.to}</p> : null}
     {shortSearch ? <p className={styles.notice} role="status">{c.shortSearch}</p> : null}
     {error ? <p className={styles.notice} role="alert">{error} <button type="button" onClick={() => void reloadPage()}>{c.refresh}</button></p> : null}

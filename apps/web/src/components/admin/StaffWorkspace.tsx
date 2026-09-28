@@ -4,6 +4,8 @@ import type { PlatformPermission } from "@topgsm/shared-types";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
 import type { Locale } from "@/lib/i18n";
+import { UserLifecyclePanel } from "./UserLifecyclePanel";
+import { lifecycleCopy } from "./user-lifecycle-copy";
 import styles from "./StaffWorkspace.module.css";
 
 const PERMISSIONS: PlatformPermission[] = ["vendors_manage", "catalog_view", "orders_manage", "payouts_manage", "blog_manage", "uploads_manage"];
@@ -29,9 +31,10 @@ export function StaffWorkspace({ locale }: { locale: Locale }) {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [permissions, setPermissions] = useState<PlatformPermission[]>(["blog_manage"]);
+  const [permissions, setPermissions] = useState<PlatformPermission[]>([]);
   const [message, setMessage] = useState<string>(c.loading);
   const [setupUrl, setSetupUrl] = useState("");
+  const [managedUserId, setManagedUserId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -70,9 +73,10 @@ export function StaffWorkspace({ locale }: { locale: Locale }) {
 
   return <section className={styles.workspace} aria-labelledby="platform-staff-title">
     <header className={styles.header}><div><h1 id="platform-staff-title">{c.title}</h1><p>{c.intro}</p></div></header>
+    {managedUserId ? <><button className={styles.button} type="button" onClick={() => setManagedUserId(null)}>{lifecycleCopy[locale].cancel}</button><UserLifecyclePanel key={managedUserId} userId={managedUserId} locale={locale} onSaved={() => { void load(); }} /></> : null}
     <div className={styles.grid}>
       <section className={styles.panel}><h2>{c.invite}</h2><form className={styles.form} onSubmit={invite}><label className={styles.field}><span>{c.fullName}</span><input required minLength={2} maxLength={200} value={fullName} onChange={(event) => setFullName(event.target.value)} /></label><label className={styles.field}><span>{c.email}</span><input required type="email" maxLength={320} value={email} onChange={(event) => setEmail(event.target.value)} /></label><fieldset className={styles.permissions}><legend className={styles.legend}>{c.permissions}</legend>{PERMISSIONS.map((permission) => <label key={permission}><input type="checkbox" checked={permissions.includes(permission)} onChange={(event) => setPermissions((current) => event.target.checked ? [...current, permission] : current.filter((item) => item !== permission))} />{permissionCopy[permission]}</label>)}</fieldset><button className={`${styles.button} ${styles.primary}`} type="submit">{c.create}</button></form>{setupUrl ? <p className={styles.setup} dir="ltr">{setupUrl}</p> : null}<p className={styles.message} role="status">{message}</p></section>
-      <section className={styles.panel}><h2>{c.current}</h2><div className={styles.list}>{staff.map((user) => <article className={styles.card} key={user.id}><header><div><strong>{user.fullName}</strong><p>{user.email}</p></div></header><fieldset className={styles.permissions}><legend className={styles.legend}>{c.livePermissions}</legend>{PERMISSIONS.map((permission) => <label key={permission}><input type="checkbox" checked={user.permissions.includes(permission)} onChange={() => void toggleStaff(user, permission)} />{permissionCopy[permission]}</label>)}</fieldset><footer><button className={`${styles.button} ${styles.danger}`} type="button" onClick={() => void revoke(user.id)}>{c.revokeStaff}</button></footer></article>)}{!staff.length ? <p className={styles.message}>{c.empty}</p> : null}</div><h2>{c.pending}</h2><div className={styles.list}>{invitations.map((invitation) => <article className={styles.card} key={invitation.id}><header><div><strong>{invitation.fullName}</strong><p>{invitation.email}</p></div><time>{new Date(invitation.expiresAt).toLocaleString(locale)}</time></header><p>{invitation.permissions.map((permission) => permissionCopy[permission]).join(" · ")}</p><footer><button className={`${styles.button} ${styles.danger}`} type="button" onClick={() => void revoke(invitation.id)}>{c.revokeInvite}</button></footer></article>)}</div></section>
+      <section className={styles.panel}><h2>{c.current}</h2><div className={styles.list}>{staff.map((user) => <article className={styles.card} key={user.id} data-admin-box-key={`staff:${user.id}`}><header><div><strong>{user.fullName}</strong><p>{user.email}</p></div></header><fieldset className={styles.permissions}><legend className={styles.legend}>{c.livePermissions}</legend>{PERMISSIONS.map((permission) => <label key={permission}><input type="checkbox" checked={user.permissions.includes(permission)} onChange={() => void toggleStaff(user, permission)} />{permissionCopy[permission]}</label>)}</fieldset><footer><button className={`${styles.button} ${styles.danger}`} type="button" onClick={() => setManagedUserId(user.id)}>{lifecycleCopy[locale].changeRole}</button></footer></article>)}{!staff.length ? <p className={styles.message}>{c.empty}</p> : null}</div><h2>{c.pending}</h2><div className={styles.list}>{invitations.map((invitation) => <article className={styles.card} key={invitation.id} data-admin-box-key={`invitation:${invitation.id}`}><header><div><strong>{invitation.fullName}</strong><p>{invitation.email}</p></div><time>{new Date(invitation.expiresAt).toLocaleString(locale)}</time></header><p>{invitation.permissions.map((permission) => permissionCopy[permission]).join(" · ")}</p><footer><button className={`${styles.button} ${styles.danger}`} type="button" onClick={() => void revoke(invitation.id)}>{c.revokeInvite}</button></footer></article>)}</div></section>
     </div>
   </section>;
 }

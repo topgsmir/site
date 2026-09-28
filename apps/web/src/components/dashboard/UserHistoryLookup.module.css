@@ -1,0 +1,18 @@
+.lookup { position: relative; display: grid; gap: .375rem; inline-size: min(100%, 17rem); min-width: 0; padding: .5rem .625rem; border: 1px solid var(--color-dashboard-rule); border-radius: .625rem; background: var(--color-dashboard-surface); color: var(--color-dashboard-ink); }
+.heading { min-width: 0; }
+.heading h2 { margin: 0; font-size: .875rem; font-weight: 650; line-height: 1.45; }
+.lookup form { display: flex; min-width: 0; gap: .375rem; }
+.lookup input { flex: 1; min-width: 0; min-height: 2.25rem; padding: .375rem .625rem; border: 1px solid var(--color-dashboard-rule-strong); border-radius: .45rem; background: var(--color-dashboard-surface-raised); color: var(--color-dashboard-ink); font: inherit; font-size: .8125rem; }
+.lookup button { min-height: 2.25rem; padding: .375rem .75rem; border: 1px solid var(--color-dashboard-accent-strong); border-radius: .45rem; background: var(--color-dashboard-accent-strong); color: var(--color-dashboard-surface-raised); font: inherit; font-size: .8125rem; font-weight: 600; cursor: pointer; }
+.lookup button:disabled { opacity: .5; cursor: default; }
+.lookup :is(input, button):focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
+.matches, .error, .lookup > .state { position: absolute; z-index: 5; inset-inline: 0; inset-block-start: calc(100% + .375rem); padding: .5rem; border: 1px solid var(--color-dashboard-rule); border-radius: .625rem; background: var(--color-dashboard-surface); }
+.matches { display: grid; gap: .375rem; max-block-size: min(24rem, 60vh); overflow-y: auto; }
+.state { margin: 0; color: var(--color-dashboard-muted); font-size: .75rem; line-height: 1.55; }
+.matches ul { display: grid; gap: .25rem; margin: 0; padding: 0; list-style: none; }
+.matches li button { display: flex; width: 100%; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .25rem .75rem; border-color: var(--color-dashboard-rule); background: var(--color-dashboard-surface-raised); color: var(--color-dashboard-ink); text-align: start; }
+.matches li button:hover { border-color: var(--color-dashboard-accent-strong); }
+.matches span, .matches small { color: var(--color-dashboard-muted); font-size: .75rem; }
+.error { margin: 0; color: var(--color-dashboard-error); font-size: .8125rem; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 700px) { .lookup :is(input, button) { min-height: 2.75rem; } }

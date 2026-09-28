@@ -1,3 +1,59 @@
+model user_account_events {
+  id            String @id @default(uuid()) @db.Uuid
+  user_id       String
+  actor_user_id String
+  action        String
+  reason        String
+  before_data   Json @default("{}")
+  after_data    Json @default("{}")
+  created_at    DateTime @default(now()) @db.Timestamptz
+  user          users @relation("account_subject", fields: [user_id], references: [id], onDelete: Restrict)
+  actor         users @relation("account_actor", fields: [actor_user_id], references: [id], onDelete: Restrict)
+  @@index([user_id, created_at(sort: Desc), id(sort: Desc)])
+  @@index([actor_user_id])
+}
+
+model user_deletion_jobs {
+  id                  String @id @default(uuid()) @db.Uuid
+  user_id             String
+  actor_user_id       String
+  replacement_user_id String?
+  source_seller_id    String?
+  destination_seller_id String?
+  mode                String
+  status              String @default("queued")
+  phase               Int @default(0)
+  cursor              String?
+  expected            Json @default("{}")
+  progress            Json @default("{}")
+  conflict_report     Json @default("{}")
+  seller_previous     Json @default("{}")
+  reason              String
+  attempts            Int @default(0)
+  error_code          String?
+  next_attempt_at     DateTime @default(now()) @db.Timestamptz
+  created_at          DateTime @default(now()) @db.Timestamptz
+  updated_at          DateTime @default(now()) @updatedAt @db.Timestamptz
+  completed_at        DateTime? @db.Timestamptz
+  user                users @relation("deletion_subject", fields: [user_id], references: [id], onDelete: Restrict)
+  actor               users @relation("deletion_actor", fields: [actor_user_id], references: [id], onDelete: Restrict)
+  replacement         users? @relation("deletion_recipient", fields: [replacement_user_id], references: [id], onDelete: Restrict)
+  locks               user_lifecycle_locks[]
+  @@index([status, next_attempt_at, created_at])
+  @@index([user_id, created_at(sort: Desc)])
+  @@index([replacement_user_id])
+  @@index([actor_user_id])
+}
+
+model user_lifecycle_locks {
+  entity_type String
+  entity_id   String
+  job_id      String @db.Uuid
+  job         user_deletion_jobs @relation(fields: [job_id], references: [id], onDelete: Restrict)
+  @@id([entity_type, entity_id])
+  @@index([job_id])
+}
+
 generator client {
   provider     = "prisma-client"
   output       = "../../generated/prisma"
@@ -107,6 +163,7 @@ enum product_status {
   pending_review
   active
   archived
+  trashed
 }
 
 enum listing_status {
@@ -359,6 +416,16 @@ enum staff_invitation_status {
 }
 
 model users {
+  support_code                 String                         @unique @default(dbgenerated("allocate_user_support_code()"))
+  account_status               String                         @default("active")
+  blocked_at                   DateTime?                      @db.Timestamptz
+  deletion_requested_at        DateTime?                      @db.Timestamptz
+  deleted_at                   DateTime?                      @db.Timestamptz
+  account_events               user_account_events[]          @relation("account_subject")
+  performed_account_events     user_account_events[]          @relation("account_actor")
+  deletion_jobs                user_deletion_jobs[]           @relation("deletion_subject")
+  requested_deletion_jobs      user_deletion_jobs[]           @relation("deletion_actor")
+  received_deletion_jobs       user_deletion_jobs[]           @relation("deletion_recipient")
   product_category_events product_category_events[]
   id                           String                         @id @default(uuid()) @map("id")
   full_name                    String                         @map("full_name")
@@ -392,11 +459,14 @@ model users {
   trashed_blog_media           blog_media_assets[]            @relation("blog_media_trasher")
   trashed_product_media        product_media_assets[]         @relation("product_media_trasher")
   media_admin_events           media_admin_events[]           @relation("media_admin_actor")
+  requested_media_deletions    media_deletion_requests[]      @relation("media_deletion_requester")
+  reviewed_media_deletions     media_deletion_requests[]      @relation("media_deletion_reviewer")
   created_seller_agents        seller_agents[]                @relation("seller_agent_creator")
   created_seller_invites       seller_invitations[]           @relation("seller_invitation_creator")
   granted_bridge_services      bridge_service_grants[]        @relation("bridge_granter")
   reviewed_products            product_review_events[]        @relation("product_reviewer")
   product_change_events        product_change_events[]        @relation("product_change_actor")
+  product_bulk_operations      product_bulk_operations[]
   blog_change_events           blog_change_events[]           @relation("blog_change_actor")
   bridge_data_accesses         bridge_data_access_audits[]
   created_ai_profiles          ai_model_profiles[]            @relation("ai_profile_creator")
@@ -421,6 +491,8 @@ model users {
   comment_moderation_events    comment_events[]
   admin_profile_changes        admin_user_profile_changes[] @relation("profile_subject")
   performed_profile_changes    admin_user_profile_changes[] @relation("profile_editor")
+  received_admin_notes         admin_user_notes[]           @relation("admin_note_subject")
+  authored_admin_notes         admin_user_notes[]           @relation("admin_note_author")
   backup_runs                  backup_runs[]                 @relation("backup_run_actor")
   backup_setting_events        backup_setting_events[]       @relation("backup_setting_actor")
   backup_destination_events    backup_destination_events[]   @relation("backup_destination_actor")
@@ -433,8 +505,13 @@ model users {
   edited_blog_sidebars         blog_sidebar_settings[]        @relation("blog_sidebar_editor")
 
   @@index([role, created_at(sort: Desc), id(sort: Desc)])
+  @@index([account_status, created_at(sort: Desc), id(sort: Desc)], map: "users_account_status_created_at_idx")
   @@index([username(ops: raw("gin_trgm_ops"))], type: Gin, map: "users_username_trgm_idx")
   @@map("users")
+}
+
+model user_support_code_reservations {
+  code String @id
 }
 
 model admin_user_profile_changes {
@@ -448,6 +525,21 @@ model admin_user_profile_changes {
   actor         users    @relation("profile_editor", fields: [actor_user_id], references: [id], onDelete: Restrict)
 
   @@index([user_id, created_at(sort: Desc), id(sort: Desc)])
+}
+
+model admin_user_notes {
+  id             String   @id @default(uuid()) @db.Uuid
+  user_id        String
+  actor_user_id  String
+  body           String
+  seller_visible Boolean  @default(false)
+  created_at     DateTime @default(now()) @db.Timestamptz(3)
+  user           users    @relation("admin_note_subject", fields: [user_id], references: [id], onDelete: Restrict)
+  actor          users    @relation("admin_note_author", fields: [actor_user_id], references: [id], onDelete: Restrict)
+
+  @@index([user_id, created_at(sort: Desc), id(sort: Desc)], map: "admin_user_notes_user_created_idx")
+  @@index([user_id, seller_visible, created_at(sort: Desc), id(sort: Desc)], map: "admin_user_notes_seller_visible_idx")
+  @@index([actor_user_id], map: "admin_user_notes_actor_idx")
 }
 
 model ai_model_profiles {
@@ -724,6 +816,11 @@ model captcha_challenges {
 }
 
 model sellers {
+  merged_into_seller_id String?
+  merged_at            DateTime? @db.Timestamptz
+  merged_into          sellers? @relation("seller_merge", fields: [merged_into_seller_id], references: [id], onDelete: Restrict)
+  merged_sources       sellers[] @relation("seller_merge")
+  @@index([merged_into_seller_id])
   id                   String                        @id @default(uuid()) @map("id")
   user_id              String                        @unique @map("user_id")
   shop_name            String                        @map("shop_name")
@@ -748,6 +845,7 @@ model sellers {
   permissions          seller_permissions[]
   blog_posts           blog_posts[]
   blog_media           blog_media_assets[]
+  media_deletion_requests media_deletion_requests[]
   profile_media        seller_profile_media_assets?
   coupons              coupons[]
   memberships          seller_memberships[]
@@ -848,6 +946,7 @@ model coupons {
   @@index([updated_at(sort: Desc), id(sort: Desc)])
   @@index([seller_id, updated_at, id])
   @@index([seller_id, active, starts_at, expires_at])
+  @@index([seller_id, id], map: "lifecycle_coupons_cursor")
   @@map("coupons")
 }
 
@@ -886,6 +985,8 @@ model blog_posts {
   @@index([status, published_at, id], map: "blog_posts_status_published_at_id_idx")
   @@index([archived_at, published_at, id])
   @@index([featured_rank, published_at])
+  @@index([creator_user_id, id], map: "lifecycle_posts_creator_cursor")
+  @@index([seller_id, id], map: "lifecycle_posts_seller_cursor")
   @@map("blog_posts")
 }
 
@@ -1103,6 +1204,8 @@ model blog_media_assets {
   @@index([published_at, created_at])
   @@index([trashed_at, created_at(sort: Desc), id(sort: Desc)])
   @@index([purge_after, purging_at])
+  @@index([owner_user_id, id], map: "lifecycle_media_owner_cursor")
+  @@index([seller_id, id], map: "lifecycle_media_seller_cursor")
   @@map("blog_media_assets")
 }
 
@@ -1171,9 +1274,11 @@ model product_category_events {
 model products {
   id                   String                   @id @default(uuid()) @map("id") @db.Uuid
   created_by_seller_id String                   @map("created_by_seller_id")
+  price_currency       String                   @default("TOMAN") @db.VarChar(5)
   title                String                   @map("title") @db.VarChar(200)
   slug                 String                   @unique @map("slug") @db.VarChar(200)
   description          String?                  @map("description")
+  tags                 String[]                 @default([])
   category_id          String?                  @db.Uuid
   category_record      product_categories?      @relation(fields: [category_id], references: [id], onDelete: Restrict)
   kind                 product_kind             @default(simple) @map("kind")
@@ -1205,7 +1310,23 @@ model products {
   @@index([updated_at(sort: Desc), id(sort: Desc)])
   @@index([created_at(sort: Desc), id(sort: Desc)])
   @@index([title, id])
+  @@index([created_by_seller_id, id], map: "lifecycle_products_cursor")
   @@map("products")
+}
+
+model product_bulk_operations {
+  id            String   @id @db.Uuid
+  actor_user_id String
+  action        String
+  request_hash  String   @db.Char(64)
+  product_count Int
+  offer_count   Int
+  before_state  Json
+  after_state   Json
+  created_at    DateTime @default(now()) @db.Timestamptz(3)
+  actor         users    @relation(fields: [actor_user_id], references: [id], onDelete: Restrict)
+
+  @@index([actor_user_id, created_at(sort: Desc)])
 }
 
 model product_slug_routes {
@@ -1278,6 +1399,30 @@ model media_admin_events {
   @@index([source, asset_id, created_at(sort: Desc), id(sort: Desc)])
   @@index([actor_user_id, created_at(sort: Desc), id(sort: Desc)])
   @@map("media_admin_events")
+}
+
+model media_deletion_requests {
+  id                String             @id @default(uuid()) @db.Uuid
+  source            media_asset_source
+  asset_id          String             @db.Uuid
+  seller_id         String
+  requested_by_id   String?
+  reason            String             @db.VarChar(500)
+  status            String             @default("pending") @db.VarChar(16)
+  requested_at      DateTime           @default(now()) @db.Timestamptz(3)
+  reviewed_by_id    String?
+  reviewed_at       DateTime?          @db.Timestamptz(3)
+  review_reason     String?            @db.VarChar(500)
+  seller            sellers            @relation(fields: [seller_id], references: [id], onDelete: Restrict)
+  requested_by      users?             @relation("media_deletion_requester", fields: [requested_by_id], references: [id], onDelete: SetNull)
+  reviewed_by       users?             @relation("media_deletion_reviewer", fields: [reviewed_by_id], references: [id], onDelete: SetNull)
+
+  @@index([seller_id, requested_at(sort: Desc), id(sort: Desc)])
+  @@index([seller_id, source, asset_id, requested_at(sort: Desc)], map: "media_deletion_seller_asset_latest_idx")
+  @@index([status, requested_at, id])
+  @@index([requested_by_id])
+  @@index([reviewed_by_id])
+  @@map("media_deletion_requests")
 }
 
 model product_media_variants {
@@ -1408,6 +1553,7 @@ model seller_listings {
   @@index([seller_id, updated_at(sort: Desc), id(sort: Desc)])
   @@index([seller_id, created_at(sort: Desc), id(sort: Desc)])
   @@index([product_id, status])
+  @@index([seller_id, id], map: "lifecycle_listings_cursor")
   @@map("seller_listings")
 }
 
@@ -1506,6 +1652,7 @@ model orders {
   @@unique([id, seller_id])
   @@index([buyer_id, created_at, id])
   @@index([seller_id, created_at, id])
+  @@index([seller_id, buyer_id, created_at(sort: Desc), id(sort: Desc)], map: "orders_seller_buyer_created_idx")
   @@index([checkout_id, created_at, id])
   @@index([created_at, id])
   @@index([status, created_at, id])
@@ -1603,6 +1750,7 @@ model payout_ledger {
   events            payout_events[]
 
   @@index([seller_id, created_at, id])
+  @@index([status, created_at(sort: Desc), id(sort: Desc)])
   @@map("payout_ledger")
 }
 
@@ -1764,6 +1912,7 @@ model bridge_fulfillments {
   data_accesses            bridge_data_access_audits[]
 
   @@index([status, next_attempt_at, locked_at])
+  @@index([status, created_at, id])
   @@index([grant_id, created_at, id])
   @@map("bridge_fulfillments")
 }
@@ -2319,6 +2468,7 @@ model comments {
   @@index([author_user_id])
   @@index([flagged_by_user_id])
   @@index([body(ops: raw("gin_trgm_ops"))], type: Gin, map: "comments_body_trgm_idx")
+  @@index([author_user_id, id], map: "lifecycle_comments_cursor")
   @@map("comments")
 }
 
@@ -2530,4 +2680,17 @@ model backup_restore_jobs {
   @@index([status, updated_at(sort: Desc), id(sort: Desc)])
   @@index([actor_user_id, requested_at(sort: Desc), id(sort: Desc)])
   @@map("backup_restore_jobs")
+}
+model seo_settings {
+  id            Int      @id @default(1)
+  version       Int
+  configuration Json     @db.JsonB
+  updated_at    DateTime @updatedAt @db.Timestamptz(6)
+}
+
+model seo_setting_events {
+  version       Int      @id
+  actor_user_id String   @db.Uuid
+  configuration Json     @db.JsonB
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
 }

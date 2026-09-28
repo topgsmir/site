@@ -29,6 +29,7 @@ import { PlatformNoticeModule } from "./modules/platform-notice/platform-notice.
 import { BackupModule } from "./modules/backup/backup.module";
 import { HomepageStoriesModule } from "./modules/homepage-stories/homepage-stories.module";
 import { HomepageModule } from "./modules/homepage/homepage.module";
+import { AdminNotificationsModule } from "./modules/notifications/admin-notifications.module";
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { HomepageModule } from "./modules/homepage/homepage.module";
     PrismaModule,
     AuthModule,
     AdminUsersModule,
+    AdminNotificationsModule,
     AiModule,
     ContentAiModule,
     DataAssistantModule,

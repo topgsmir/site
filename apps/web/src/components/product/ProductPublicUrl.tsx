@@ -11,6 +11,10 @@ export function productPublicPath(locale: Locale, slug: string) {
   return `/${locale}/products/${encodeURIComponent(slug)}`;
 }
 
+export function productPublicUrl(locale: Locale, slug: string) {
+  return `${SITE_URL}${productPublicPath(locale, slug)}`;
+}
+
 export function ProductPublicUrl({
   locale,
   slug,
@@ -23,7 +27,7 @@ export function ProductPublicUrl({
   className?: string;
 }) {
   const path = productPublicPath(locale, slug);
-  const url = `${SITE_URL}${path}`;
+  const url = productPublicUrl(locale, slug);
 
   return (
     <Link

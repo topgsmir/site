@@ -1,4 +1,5 @@
 "use client";
+import { JalaliDatePicker } from "@/components/dashboard/JalaliDatePicker";
 
 import type {
   AdminUploadBulkResult,
@@ -189,8 +190,8 @@ export function UploadsWorkspace({ locale }: { locale: Locale }) {
         <Filter label={c.state} value={draft.state} onChange={(state) => setDraft({ ...draft, state: state as Filters["state"] })} options={[["all", c.all], ["active", c.active], ["trashed", c.trashed]]} />
         <Filter label={c.link} value={draft.linked} onChange={(linked) => setDraft({ ...draft, linked: linked as Filters["linked"] })} options={[["all", c.all], ["linked", c.linked], ["unlinked", c.unlinkedState]]} />
         <Filter label={c.sort} value={draft.sort} onChange={(sort) => setDraft({ ...draft, sort: sort as Filters["sort"] })} options={[["newest", c.newest], ["oldest", c.oldest], ["size", c.largest]]} />
-        <label><span>{c.from}</span><input type="date" value={draft.from} onChange={(event) => setDraft({ ...draft, from: event.target.value })} /></label>
-        <label><span>{c.to}</span><input type="date" min={draft.from || undefined} value={draft.to} onChange={(event) => setDraft({ ...draft, to: event.target.value })} /></label>
+        <label><span>{c.from}</span><JalaliDatePicker locale={locale} value={draft.from} onChange={(value) => setDraft({ ...draft, from: value })} /></label>
+        <label><span>{c.to}</span><JalaliDatePicker locale={locale} min={draft.from || undefined} value={draft.to} onChange={(value) => setDraft({ ...draft, to: value })} /></label>
         <div className={styles.filterActions}><button className={styles.primaryButton} type="submit">{c.apply}</button><button className={styles.secondaryButton} type="button" onClick={() => { setDraft(initialFilters); setFilters(initialFilters); }}>{c.clear}</button></div>
       </form>
 

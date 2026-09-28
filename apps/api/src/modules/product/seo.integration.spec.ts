@@ -73,7 +73,7 @@ before(async () => {
   const module = await Test.createTestingModule({ controllers: [ProductController], providers: [
     { provide: PrismaService, useValue: prisma }, { provide: ConfigService, useValue: config },
     { provide: ProductService, useValue: products }, { provide: ProductTranslationsService, useValue: translations },
-    { provide: AuthRateLimitService, useValue: {} }, { provide: MediaService, useValue: {} },
+    { provide: AuthRateLimitService, useValue: { consumeProductMutation: async () => {} } }, { provide: MediaService, useValue: {} },
     { provide: RequestAuthenticationService, useValue: { authenticate: async (request: AuthenticatedRequest) => {
       const identity = request.headers.authorization;
       if (!identity) throw new UnauthorizedException();

@@ -8,6 +8,7 @@ import {
 } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import { PublicHttpException } from "./public-http.exception";
+import { Prisma } from "../../prisma/client";
 
 type RequestContext = {
   method?: string;
@@ -42,9 +43,11 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const request = http.getRequest<RequestContext>();
     const response = http.getResponse<ResponseContext>();
     const requestId = request.requestId ?? randomUUID();
+    const writeConflict = exception instanceof Prisma.PrismaClientKnownRequestError &&
+      (exception.code === "P2034" || (exception.code === "P2010" && exception.meta?.code === "55000"));
     const status = exception instanceof HttpException
       ? exception.getStatus()
-      : HttpStatus.INTERNAL_SERVER_ERROR;
+      : writeConflict ? HttpStatus.CONFLICT : HttpStatus.INTERNAL_SERVER_ERROR;
     const source = exception instanceof HttpException ? exception.getResponse() : null;
     const sourceBody = source && typeof source === "object" && !Array.isArray(source)
       ? source as Record<string, unknown>

@@ -12,6 +12,7 @@ import { TrafficSourceCapture } from "@/components/TrafficSourceCapture";
 import { PlatformNotice } from "@/components/PlatformNotice";
 import { MaintenanceGate } from "@/components/MaintenanceGate";
 import { SITE_URL } from "@/lib/seo";
+import { getSeoConfiguration } from "@/lib/seo-settings-server";
 
 type LocaleLayoutProps = Readonly<{
   children: React.ReactNode;
@@ -24,17 +25,24 @@ export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
 }
 
-export const metadata: Metadata = {
+export async function generateMetadata({ params }: LocaleLayoutProps): Promise<Metadata> {
+  const { locale } = await params;
+  const settings = await getSeoConfiguration();
+  const defaults = settings.locales.find((item) => item.locale === locale) ?? settings.locales[0]!;
+  return {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Top GSM",
-    template: "%s | Top GSM"
+    default: defaults.siteName,
+    template: defaults.titleTemplate
   },
   applicationName: "Top GSM",
+  description: defaults.description || undefined,
+  verification: { google: settings.googleVerification || undefined, other: settings.bingVerification ? { "msvalidate.01": settings.bingVerification } : undefined },
   formatDetection: {
     telephone: false
   }
-};
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",

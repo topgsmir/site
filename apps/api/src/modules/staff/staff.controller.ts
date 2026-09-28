@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, Ip, Param, ParseUUIDPipe, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Ip, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import { ParseConstrainedStringPipe } from "../../common/http/parse-constrained-string.pipe";
+import { USER_REFERENCE_PATTERN } from "../../common/user-reference";
 import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
 import { PlatformAdminGuard, type AuthenticatedRequest } from "../auth/platform-admin.guard";
 import {
@@ -36,7 +37,7 @@ export class StaffController {
   @Patch(":id")
   @UseGuards(PlatformAdminGuard)
   async update(
-    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
+    @Param("id", new ParseConstrainedStringPipe({ label: "User reference", maxLength: 36, pattern: USER_REFERENCE_PATTERN })) id: string,
     @Body() body: UpdateStaffDto,
     @Req() request: AuthenticatedRequest,
     @Ip() clientIp: string
@@ -47,7 +48,7 @@ export class StaffController {
 
   @Delete(":id")
   @UseGuards(PlatformAdminGuard)
-  async revoke(@Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+  async revoke(@Param("id", new ParseConstrainedStringPipe({ label: "Staff or invitation reference", maxLength: 36, pattern: USER_REFERENCE_PATTERN })) id: string, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
     await this.rateLimits.consumeStaffAdmin(request.authenticatedUser!.id, clientIp);
     return this.staff.revoke(id);
   }

@@ -1,4 +1,5 @@
 import type { Metadata, Route } from "next";
+import { managedSeoMetadata } from "@/lib/seo-settings-server";
 import type { PublicExpertSummary } from "@topgsm/shared-types";
 import Link from "next/link";
 import Image from "next/image";
@@ -42,11 +43,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const c = contactCopy[locale];
-  return {
+  return managedSeoMetadata(locale, `/${locale}/contact-us`, {
     title: c.title, description: c.description,
     alternates: { canonical: `/${locale}/contact-us`, languages: { fa: "/fa/contact-us", en: "/en/contact-us", ar: "/ar/contact-us", "x-default": "/fa/contact-us" } },
     openGraph: { title: `${c.title} | Top GSM`, description: c.description, url: `/${locale}/contact-us`, type: "website" }
-  };
+  });
 }
 
 export default async function ContactPage({ params }: Props) {

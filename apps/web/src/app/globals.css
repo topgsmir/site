@@ -295,7 +295,11 @@ html[data-theme="dark"] .theme-icon-moon { opacity: 1; transform: rotate(0); }
 .admin-product-catalog > header h2 { font-size: clamp(1.65rem, 2.4vw, 2.65rem); line-height: 1; letter-spacing: -0.04em; }
 .admin-product-catalog > header p { max-width: 54ch; margin-top: 10px; color: var(--muted); font-size: 0.78rem; line-height: 1.6; }
 .admin-product-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 24px 0; }
-.admin-product-filters label { display: grid; gap: 6px; color: var(--muted); font-size: 0.75rem; }
+.admin-product-filters label { display: grid; gap: 6px; color: var(--muted); font-size: .875rem; }
+.admin-product-date-field { display: grid; min-width: 0; gap: 6px; color: var(--muted); font-size: .875rem; }
+.admin-product-date-field > div > button { background: var(--card-surface); color: var(--ink); }
+.admin-product-clear { justify-self: start; border: 0; padding: 4px 0; background: transparent; color: var(--color-dashboard-accent-strong); font: inherit; font-size: .875rem; font-weight: 600; cursor: pointer; }
+.admin-product-clear:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 3px; }
 .admin-product-filters input, .admin-product-filters select { width: 100%; min-height: 42px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card-surface); color: var(--ink); font: inherit; }
 .admin-product-filter-panel { margin: 24px 0; }
 .admin-product-filter-panel .admin-product-filters { margin: 0; }
@@ -689,16 +693,23 @@ html[data-theme="dark"] .theme-icon-moon { opacity: 1; transform: rotate(0); }
   .admin-hero h1 { font-size: clamp(1.25rem, 2vw, 1.5rem); }
   .admin-hero-copy { margin-top: .75rem; font-size: .8125rem; }
   .admin-primary-button, .admin-secondary-button { min-height: 2.25rem; padding-inline: .875rem; font-size: .75rem; }
-  .admin-product-catalog { padding-top: clamp(2rem, 4vw, 3rem); }
+  .admin-product-catalog { padding-top: 1rem; }
   .admin-product-catalog > header { gap: 1.25rem; margin-bottom: 1rem; }
   .admin-product-catalog > header h2 { font-size: 1.3125rem; }
   .admin-product-catalog > header p { margin-top: .5rem; }
   .admin-product-filter-panel { margin-block: 1.25rem; }
   .admin-product-filters { grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr)); gap: .625rem; }
   .admin-product-filters label { min-width: 0; gap: .3125rem; }
+  .admin-product-date-field { gap: .3125rem; }
   .admin-product-filters input, .admin-product-filters select { min-width: 0; min-height: 2.25rem; padding: .375rem .5rem; }
-  .admin-product-list { border-radius: .875rem; }
-  .admin-product-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto auto; min-height: 3.375rem; gap: 1rem; padding: .5rem .75rem; }
+.admin-product-list { border-radius: .875rem; }
+.admin-product-selection { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-block: .625rem; font-size: .8125rem; }
+.admin-product-selection label { display: inline-flex; align-items: center; gap: .5rem; cursor: pointer; }
+.admin-product-selection input, .admin-product-select input { width: 1.125rem; height: 1.125rem; accent-color: var(--signal-dark); cursor: pointer; }
+.admin-product-select { display: flex; align-items: center; justify-content: center; min-width: 2.5rem; min-height: 2.5rem; }
+.admin-product-tags { display: block; margin-top: .2rem; color: var(--muted); font-size: .75rem; line-height: 1.4; overflow-wrap: anywhere; }
+.admin-product-row h3 { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.admin-product-row { grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.4fr) auto auto; min-height: 3.375rem; gap: 1rem; padding: .5rem .75rem; }
   .admin-product-row > div { min-width: 0; }
   .admin-product-row h3 { font-size: .8125rem; }
   .admin-product-row > div > span { margin-top: .25rem; }
@@ -706,9 +717,59 @@ html[data-theme="dark"] .theme-icon-moon { opacity: 1; transform: rotate(0); }
   .admin-product-pagination { gap: .875rem; margin-top: 1rem; font-size: .875rem; }
 }
 
+.admin-product-catalog { padding-top: .75rem; }
+.admin-product-statuses { display: flex; flex-wrap: wrap; gap: .5rem; margin-block: .875rem; }
+.admin-product-status { display: inline-flex; align-items: center; justify-content: space-between; gap: .75rem; min-height: 2.375rem; padding: .375rem .75rem; border: 1px solid var(--line); border-radius: .625rem; background: var(--card-surface); color: var(--ink); font: inherit; font-size: .8125rem; line-height: 1.5; cursor: pointer; }
+.admin-product-status bdi { color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 650; }
+.admin-product-status:hover { border-color: var(--signal); }
+.admin-product-status:focus-visible { outline: 2px solid var(--signal-dark); outline-offset: 2px; }
+.admin-product-status[aria-pressed="true"] { border-color: var(--signal); background: var(--signal-soft); color: var(--signal-dark); }
+.admin-product-status[aria-pressed="true"] bdi { color: inherit; }
+.admin-product-catalog .admin-product-filter-panel { margin-block: .875rem; }
+
+@media (max-width: 50rem) {
+  .admin-product-row { grid-template-columns: auto minmax(0, 1fr); }
+  .admin-product-row .admin-product-url, .admin-product-row dl, .admin-product-row .admin-product-edit { grid-column: 2; }
+  .admin-product-select { grid-row: 1 / span 4; align-self: start; }
+}
+
+@media (max-width: 40rem) {
+  .admin-product-statuses { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-product-status { min-height: 2.75rem; }
+}
+
 @media (min-width: 60rem) and (pointer: coarse) {
   .admin-primary-button,
   .admin-secondary-button,
   .admin-product-filters input,
   .admin-product-filters select { min-height: 2.75rem; }
+}
+
+/* Hallmark · compact vendor directory · TopGSM tokens · P5 H5 E4 S5 R5 V4 */
+.vendor-workspace { gap: .875rem; padding-top: .75rem; }
+.vendor-workspace-intro { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; align-items: center; }
+.vendor-workspace-heading { min-width: 0; }
+.vendor-workspace-heading h1 { margin: 0; font-size: clamp(1.25rem, 2vw, 1.5rem); font-weight: 650; line-height: 1.35; }
+.vendor-workspace-heading p { margin: .25rem 0 0; color: var(--muted); font-size: .8125rem; line-height: 1.5; }
+.vendor-workspace-intro .vendor-search { grid-column: auto; grid-row: auto; width: 100%; max-width: none; min-height: 2.375rem; margin: 0; }
+.vendor-workspace-intro > .admin-primary-button { grid-column: auto; grid-row: auto; justify-self: start; margin: 0; }
+.vendor-list { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr); gap: .5rem; }
+.vendor-list .vendor-card { margin: 0; }
+.vendor-card-main .vendor-disclosure { grid-column: 1 / -1; width: 100%; }
+
+@media (min-width: 60rem) {
+  .vendor-workspace-intro { grid-template-columns: minmax(0, 1fr) minmax(14rem, 19rem) auto; }
+  .vendor-card-main { grid-template-columns: 2.75rem minmax(0, 1fr) auto auto auto; min-height: 3.75rem; padding: .625rem .75rem; }
+  .vendor-stats { grid-column: auto; gap: .5rem; padding: 0; border-radius: 0; background: transparent; }
+  .vendor-stats div { min-width: 4.75rem; padding-inline: .5rem; border-inline-start: 1px solid var(--line); }
+  .vendor-stats dt { font-size: .6875rem; }
+  .vendor-stats dd { font-size: .875rem; }
+  .vendor-manage-button { grid-column: auto; min-height: 2.25rem; padding-inline: .75rem; border: 1px solid var(--line); border-radius: .5rem; background: transparent; color: var(--ink); font-size: .75rem; }
+  .vendor-card-main .vendor-disclosure { grid-column: auto; grid-template-columns: auto 1rem; width: auto; min-height: 2.25rem; gap: .375rem; padding-inline: .75rem; border: 1px solid var(--line); border-radius: .5rem; background: transparent; font-size: .75rem; }
+  .vendor-card-main .vendor-disclosure span:first-child { display: none; }
+}
+
+@media (max-width: 59.999rem) {
+  .vendor-workspace-intro > .admin-primary-button { grid-row: 2; }
+  .vendor-workspace-intro .vendor-search { grid-row: 3; }
 }

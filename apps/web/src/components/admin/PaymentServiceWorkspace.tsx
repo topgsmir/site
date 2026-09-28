@@ -1,4 +1,5 @@
 "use client";
+import { JalaliDatePicker } from "@/components/dashboard/JalaliDatePicker";
 
 import { useCallback, useEffect, useState } from "react";
 import type {
@@ -623,7 +624,7 @@ export function PaymentServiceWorkspace({
               ))}
             </nav>
 
-            <article className={styles.methodEditor} aria-labelledby={`method-${method.code}-title`}>
+            <article className={styles.methodEditor} data-admin-box-key={`method:${method.code}`} aria-labelledby={`method-${method.code}-title`}>
               <header className={styles.editorHeader}>
                 <div>
                   <h3 id={`method-${method.code}-title`}>{method.name}</h3>
@@ -920,11 +921,11 @@ export function PaymentServiceWorkspace({
               </label>
               <label>
                 <span>{c.filterFrom}</span>
-                <input type="date" value={draftFilters.from} max={draftFilters.to || undefined} onChange={(event) => setDraftFilters((current) => ({ ...current, from: event.currentTarget.value }))} />
+                <JalaliDatePicker locale={locale} value={draftFilters.from} max={draftFilters.to || undefined} onChange={(value) => setDraftFilters((current) => ({ ...current, from: value }))} />
               </label>
               <label>
                 <span>{c.filterTo}</span>
-                <input type="date" value={draftFilters.to} min={draftFilters.from || undefined} onChange={(event) => setDraftFilters((current) => ({ ...current, to: event.currentTarget.value }))} />
+                <JalaliDatePicker locale={locale} value={draftFilters.to} min={draftFilters.from || undefined} onChange={(value) => setDraftFilters((current) => ({ ...current, to: value }))} />
               </label>
             </div>
           </details>

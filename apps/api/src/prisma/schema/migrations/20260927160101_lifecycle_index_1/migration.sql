@@ -1,0 +1,1 @@
+CREATE INDEX CONCURRENTLY sellers_merged_into_seller_id_idx ON sellers(merged_into_seller_id);

@@ -6,6 +6,9 @@ import type { ProductTranslation } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
 import styles from "./ProductTranslations.module.css";
+import { ProductDescriptionEditor } from "@/components/product/ProductDescriptionEditor";
+import { ProductDescription } from "@/components/product/ProductDescription";
+import { mergeProductAiDescription, productDescriptionText } from "@/lib/product-description";
 
 const copy = {
   fa: { heading: "ترجمه محصول", intro: "عنوان و توضیحات انگلیسی یا عربی را بنویسید و منتشر کنید. تغییرات پیش‌نویس تا زمان انتشار در صفحه محصول دیده نمی‌شوند.", title: "عنوان", description: "توضیحات", category: "دسته‌بندی", save: "ذخیره پیش‌نویس", publish: "ذخیره و انتشار", unpublish: "لغو انتشار ترجمه", preview: "پیش‌نمایش پیش‌نویس", published: "منتشرشده", draft: "منتشر نشده", error: "ترجمه ذخیره نشد. دوباره تلاش کنید.", loadError: "ترجمه‌ها بارگذاری نشدند.", retry: "تلاش دوباره", saved: "تغییرات ذخیره شد.", loading: "در حال بارگذاری…" },
@@ -53,12 +56,12 @@ function TranslationEditor({ productId, language, locale, initial }: { productId
   return <form className={styles.editor} onSubmit={(event) => { event.preventDefault(); void save("draft"); }} aria-busy={busy}>
     <header><h3 lang={language}>{language === "en" ? "English" : "العربية"}</h3><span>{published ? c.published : c.draft}</span></header>
     <fieldset disabled={busy}>
-      <ProductAiPanel locale={locale} language={language} disabled={busy} value={{ title: draft.title, description: draft.description, category: draft.category ?? "" }} onChange={(value) => { setDraft(value); setSaved(false); }} />
+      <ProductAiPanel locale={locale} language={language} disabled={busy} value={{ title: draft.title, description: productDescriptionText(draft.description), category: draft.category ?? "" }} onChange={(value) => { setDraft((current) => mergeProductAiDescription(current, value)); setSaved(false); }} />
       <label>{c.title}<input lang={language} dir={language === "ar" ? "rtl" : "ltr"} maxLength={200} value={draft.title} onChange={(event) => { setDraft({ ...draft, title: event.target.value }); setSaved(false); }} /></label>
       <label>{c.category}<input lang={language} dir={language === "ar" ? "rtl" : "ltr"} maxLength={100} value={draft.category ?? ""} onChange={(event) => { setDraft({ ...draft, category: event.target.value }); setSaved(false); }} /></label>
-      <label>{c.description}<textarea lang={language} dir={language === "ar" ? "rtl" : "ltr"} maxLength={10000} rows={6} value={draft.description} onChange={(event) => { setDraft({ ...draft, description: event.target.value }); setSaved(false); }} /></label>
-      <details><summary>{c.preview}</summary><article dir={language === "ar" ? "rtl" : "ltr"} lang={language}><h4>{draft.title}</h4><p>{draft.category}</p><p className={styles.preview}>{draft.description}</p></article></details>
-      <footer><button type="submit">{c.save}</button><button type="button" disabled={draft.title.trim().length < 2 || !draft.description.trim()} onClick={() => void save("publish")}>{c.publish}</button>{published && <button type="button" onClick={() => void save("unpublish")}>{c.unpublish}</button>}</footer>
+      <div className={styles.wide}><span>{c.description}</span><ProductDescriptionEditor locale={locale} language={language} label={c.description} disabled={busy} value={draft.description} onChange={(description) => { setDraft((current) => ({ ...current, description })); setSaved(false); }} /></div>
+      <details><summary>{c.preview}</summary><article dir={language === "ar" ? "rtl" : "ltr"} lang={language}><h4>{draft.title}</h4><p>{draft.category}</p><div className={styles.preview}><ProductDescription description={draft.description} fallback="" /></div></article></details>
+      <footer><button type="submit">{c.save}</button><button type="button" disabled={draft.title.trim().length < 2 || !productDescriptionText(draft.description).trim()} onClick={() => void save("publish")}>{c.publish}</button>{published && <button type="button" onClick={() => void save("unpublish")}>{c.unpublish}</button>}</footer>
     </fieldset>
     {error && <p role="alert">{c.error}</p>}{saved && <p role="status">{c.saved}</p>}
   </form>;

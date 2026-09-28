@@ -1,4 +1,5 @@
 "use client";
+import { JalaliDatePicker } from "@/components/dashboard/JalaliDatePicker";
 
 import type {
   AdminProductSummary,
@@ -180,7 +181,7 @@ export function ProductChangesWorkspace({
   }
 
   const actionLabel = (action: ProductChangeEvent["action"]) => action === "create" ? c.create : action === "update" ? c.update : action === "review" ? c.review : c.restoreAction;
-  const fieldLabel = (field: string) => ({ title: locale === "fa" ? "عنوان" : locale === "ar" ? "العنوان" : "title", slug: locale === "fa" ? "نامک" : locale === "ar" ? "المعرّف" : "slug", description: locale === "fa" ? "توضیحات" : locale === "ar" ? "الوصف" : "description", category: locale === "fa" ? "دسته‌بندی" : locale === "ar" ? "الفئة" : "category", status: locale === "fa" ? "وضعیت" : locale === "ar" ? "الحالة" : "status" }[field] ?? field);
+  const fieldLabel = (field: string) => ({ title: locale === "fa" ? "عنوان" : locale === "ar" ? "العنوان" : "title", slug: locale === "fa" ? "نامک" : locale === "ar" ? "المعرّف" : "slug", description: locale === "fa" ? "توضیحات" : locale === "ar" ? "الوصف" : "description", category: locale === "fa" ? "دسته‌بندی" : locale === "ar" ? "الفئة" : "category", status: locale === "fa" ? "وضعیت" : locale === "ar" ? "الحالة" : "status", seller: locale === "fa" ? "فروشنده" : locale === "ar" ? "البائع" : "seller" }[field] ?? field);
 
   return (
     <section className={styles.workspace} data-compact={compact || undefined} aria-labelledby={compact ? undefined : "product-changes-title"}>
@@ -189,7 +190,7 @@ export function ProductChangesWorkspace({
         <div className={styles.bulkGrid}>
           <label><span>{bulkCopy.last}</span><select value={bulkMode} onChange={(event) => { setBulkMode(event.target.value as "last" | "after_time"); clearBulkPreview(); }}><option value="last">{bulkCopy.last}</option><option value="after_time">{bulkCopy.afterTime}</option></select></label>
           <label><span>{bulkCopy.count}</span><input type="number" min={1} max={100} value={bulkCount} onChange={(event) => { setBulkCount(Math.max(1, Math.min(100, Number(event.target.value) || 1))); clearBulkPreview(); }} /></label>
-          {bulkMode === "after_time" ? <label><span>{bulkCopy.time}</span><input type="datetime-local" required value={bulkAfter} onChange={(event) => { setBulkAfter(event.target.value); clearBulkPreview(); }} /></label> : null}
+          {bulkMode === "after_time" ? <label><span>{bulkCopy.time}</span><JalaliDatePicker locale={locale} dateTime value={bulkAfter} onChange={(value) => { setBulkAfter(value); clearBulkPreview(); }} /></label> : null}
           <label><span>{bulkCopy.action}</span><select value={bulkAction} onChange={(event) => { setBulkAction(event.target.value as typeof bulkAction); clearBulkPreview(); }}><option value="">{bulkCopy.any}</option><option value="update">{bulkCopy.update}</option><option value="review">{bulkCopy.review}</option><option value="restore">{bulkCopy.restore}</option></select></label>
           <label><span>{bulkCopy.productType}</span><select value={bulkProductType} onChange={(event) => { setBulkProductType(event.target.value as typeof bulkProductType); clearBulkPreview(); }}><option value="">{bulkCopy.any}</option><option value="digital">Digital</option><option value="physical">Physical</option><option value="service">Service</option><option value="bridge">Bridge</option></select></label>
           <label><span>{bulkCopy.seller}</span><select value={bulkSellerId} onChange={(event) => { setBulkSellerId(event.target.value); clearBulkPreview(); }}><option value="">{bulkCopy.any}</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.shopName}</option>)}</select></label>
@@ -219,17 +220,18 @@ export function ProductChangesWorkspace({
                 <time dateTime={event.createdAt}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.createdAt))}</time>
               </div>
               <p>{c.fields}: {event.changedFields.length ? event.changedFields.map(fieldLabel).join("، ") : "—"}</p>
+              {event.changedFields.includes("seller") ? <p>{event.before?.seller?.shopName ?? "—"} → {event.after.seller?.shopName ?? "—"}</p> : null}
               <small>
                 {c.by} {event.actor.name} · {event.product.seller?.shopName ?? "—"} · {event.product.type ?? "—"}
               </small>
-              <div className={styles.restoreActions}>
+              {!event.changedFields.includes("seller") ? <div className={styles.restoreActions}>
                 <button type="button" disabled={Boolean(restoringKey)} onClick={() => void restore(event, "after")}>
                   {restoringKey === `${event.id}:after` ? c.restoring : confirmKey === `${event.id}:after` ? c.confirm : c.restore}
                 </button>
                 {event.before ? <button type="button" disabled={Boolean(restoringKey)} onClick={() => void restore(event, "before")}>
                   {restoringKey === `${event.id}:before` ? c.restoring : confirmKey === `${event.id}:before` ? c.confirm : c.undo}
                 </button> : null}
-              </div>
+              </div> : null}
             </div>
           </li>
         ))}

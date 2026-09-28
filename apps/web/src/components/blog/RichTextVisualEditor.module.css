@@ -1,0 +1,32 @@
+.surface { min-width: 0; }
+.toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 3px; padding: 8px 28px; border-block: 1px solid var(--color-dashboard-rule); background: var(--color-dashboard-paper); }
+.toolbar button, .upload { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 40px; min-height: 40px; padding: 8px 10px; border: 0; border-radius: 8px; color: var(--color-dashboard-ink-soft); background: transparent; cursor: pointer; font-size: .8rem; }
+.toolbar button[aria-pressed="true"] { color: var(--color-dashboard-accent); background: var(--color-dashboard-accent-soft); }
+.toolbar svg { width: 17px; height: 17px; }
+.divider { height: 18px; width: 1px; margin-inline: 8px; background: var(--color-dashboard-rule); }
+.upload { margin-inline-start: auto; }
+.upload input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
+.editor { min-height: 430px; padding: 30px 40px 44px; }
+.editor :global(.tiptap) { min-height: 360px; outline: 0; line-height: 2; color: var(--color-dashboard-ink-soft); overflow-wrap: anywhere; }
+.editor :global(.tiptap > * + *) { margin-top: 1em; }
+.editor :global(.tiptap ul) { list-style: disc; padding-inline-start: 24px; }
+.editor :global(.tiptap ol) { list-style: decimal; padding-inline-start: 24px; }
+.editor :global(.tiptap h2) { font-size: 1.5rem; line-height: 1.6; }
+.editor :global(.tiptap h3) { font-size: 1.2rem; line-height: 1.7; }
+.editor :global(.tiptap blockquote) { padding-inline-start: 18px; border-inline-start: 3px solid var(--color-dashboard-accent); color: var(--color-dashboard-muted); }
+.editor :global(.tiptap pre) { overflow-x: auto; padding: 18px; border-radius: 12px; direction: ltr; text-align: left; background: var(--color-dashboard-paper); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; line-height: 1.7; }
+.editor :global(.tiptap code) { padding: .12em .35em; border-radius: 5px; background: var(--color-dashboard-paper); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.editor :global(.tiptap pre code) { padding: 0; background: transparent; }
+.editor :global(.tiptap a) { color: var(--color-dashboard-accent); text-decoration: underline; text-underline-offset: 3px; }
+.editor :global(.tiptap hr) { margin-block: 2em; border: 0; border-top: 1px solid var(--color-dashboard-rule-strong); }
+.editor :global(.tiptap img) { max-width: 100%; height: auto; border-radius: 12px; }
+.editor :global(.tiptap p.is-editor-empty:first-child::before) { content: attr(data-placeholder); float: inline-start; color: var(--color-dashboard-muted); pointer-events: none; height: 0; }
+.surface :is(button):focus-visible, .upload:focus-within, .editor:focus-within { outline: 2px solid var(--color-dashboard-focus); outline-offset: 3px; }
+@media (hover: hover) and (pointer: fine) { .toolbar button:hover, .toolbar .upload:hover { background: var(--color-dashboard-surface-raised); } }
+.surface[data-compact="true"] { border: 1px solid var(--color-dashboard-rule); border-radius: 10px; overflow: hidden; }
+.surface[data-compact="true"] .toolbar { padding: 5px 8px; border-top: 0; }
+.surface[data-compact="true"] .editor { min-height: 160px; padding: 12px 16px; background: var(--color-dashboard-surface); }
+.surface[data-compact="true"] .editor :global(.tiptap) { min-height: 130px; }
+@media (max-width: 1080px) { .editor { padding-inline: 26px; } }
+@media (max-width: 520px) { .toolbar { padding-inline: 12px; } .editor { padding-inline: 20px; } }
+@media (min-width: 1081px) { .editor { min-height: 350px; padding: 24px 30px 32px; } .editor :global(.tiptap) { min-height: 300px; } }

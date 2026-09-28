@@ -1,0 +1,15 @@
+.root { position: relative; min-width: 0; }
+.trigger { width: 100%; min-height: 42px; padding: 9px 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--surface, #fff); border: 1px solid #c9ced5; border-radius: 8px; color: inherit; font: inherit; cursor: pointer; }
+.trigger:focus-visible, .popover button:focus-visible { outline: 2px solid #3468a4; outline-offset: 2px; }
+.popover { position: absolute; z-index: 100; inset-block-start: calc(100% + 6px); inset-inline-start: 0; width: min(320px, 90vw); padding: 12px; border: 1px solid #c9ced5; border-radius: 10px; background: var(--surface, #fff); color: inherit; box-shadow: 0 12px 30px #0002; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.header button, .grid button, .clear { border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.header button { padding: 5px 10px; font-size: 20px; }
+.grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; text-align: center; }
+.weekDay { padding: 6px 0; opacity: .65; }
+.grid button { aspect-ratio: 1; }
+.grid button:hover, .header button:hover, .clear:hover { background: #e8edf3; }
+.grid button[aria-pressed="true"] { background: #286b9d; color: white; }
+.grid button:disabled { opacity: .35; cursor: not-allowed; }
+.clear { margin-top: 10px; padding: 7px; width: 100%; }
+.time { margin-top: 6px; width: 100%; min-height: 38px; }

@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { PrismaService } from "../../prisma/prisma.service";
 import type { ProductTranslationDraftDto } from "./dto/product-seo.dto";
 import type { ProductTranslation } from "@topgsm/shared-types";
+import { normalizeProductDescription } from "./product-description";
 
 @Injectable()
 export class ProductTranslationsService {
@@ -29,7 +30,7 @@ export class ProductTranslationsService {
       if (!locked.length) throw new NotFoundException("Product was not found");
       const where = { product_id_locale: { product_id: productId, locale } };
       if (action === "draft" && draft) {
-        const data = { draft_title: draft.title.trim(), draft_description: draft.description.trim(), draft_category: draft.category?.trim() || null, updated_by: actorId };
+        const data = { draft_title: draft.title.trim(), draft_description: normalizeProductDescription(draft.description) ?? "", draft_category: draft.category?.trim() || null, updated_by: actorId };
         await tx.product_translations.upsert({ where, create: { product_id: productId, locale, ...data }, update: data });
       } else {
         const row = await tx.product_translations.findUnique({ where });

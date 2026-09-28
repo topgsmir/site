@@ -32,6 +32,7 @@ const DUMMY_HASH = `scrypt$${SCRYPT_COST}$${SCRYPT_BLOCK_SIZE}$${SCRYPT_PARALLEL
 
 type StoredUser = {
   id: string;
+  support_code: string;
   full_name: string;
   username?: string | null;
   email: string | null;
@@ -108,18 +109,19 @@ export class AuthService {
             seller_memberships: { include: { seller: { include: { permissions: true } } } }
           }
         });
+    const authenticatedPasswordHash = user?.password_hash;
     const passwordMatches = await this.verifyPassword(
       input.password,
-      user?.password_hash ?? DUMMY_HASH
+      authenticatedPasswordHash ?? DUMMY_HASH
     );
 
-    if (!user || !user.password_hash || !passwordMatches) {
+    if (!user || user.account_status !== "active" || !authenticatedPasswordHash || !passwordMatches) {
       throw new UnauthorizedException(
         "Email, username, or password is incorrect"
       );
     }
 
-    return this.createSession(this.prisma, user);
+    return this.createPasswordAuthenticatedSession(user, authenticatedPasswordHash);
   }
 
   async getUserFromToken(token: string | undefined): Promise<AppUser> {
@@ -128,12 +130,14 @@ export class AuthService {
       where: {
         token_hash: tokenHash,
         revoked_at: null,
-        expires_at: { gt: new Date() }
+        expires_at: { gt: new Date() },
+        user: { account_status: "active" }
       },
       select: {
         user: {
           select: {
             id: true,
+            support_code: true,
             full_name: true,
             username: true,
             email: true,
@@ -207,11 +211,12 @@ export class AuthService {
   }
 
   async verifyCurrentPassword(userId: string, password: string) {
-    const user = await this.prisma.users.findUnique({ where: { id: userId }, select: { password_hash: true, role: true } });
+    const user = await this.prisma.users.findUnique({ where: { id: userId }, select: { password_hash: true, role: true, account_status: true } });
     const matches = await this.verifyPassword(password, user?.password_hash ?? DUMMY_HASH);
-    if (!user || user.role !== "platform_admin" || !user.password_hash || !matches) {
+    if (!user || user.account_status !== "active" || user.role !== "platform_admin" || !user.password_hash || !matches) {
       throw new UnauthorizedException("Password confirmation failed");
     }
+    return user.password_hash;
   }
 
   get sessionTtlSeconds() {
@@ -234,7 +239,26 @@ export class AuthService {
       }
     });
     if (!user) throw new UnauthorizedException("Account was not found");
-    return this.createSession(this.prisma, user);
+    return this.prisma.$transaction(async (transaction) => {
+      await transaction.$queryRaw`SELECT id FROM users WHERE id = ${user.id} FOR UPDATE`;
+      const current = await transaction.users.findUnique({ where: { id: user.id }, select: { account_status: true } });
+      if (current?.account_status !== "active") throw new UnauthorizedException("Account unavailable");
+      return this.createSession(transaction, user);
+    });
+  }
+
+  private async createPasswordAuthenticatedSession(user: StoredUser, authenticatedPasswordHash: string) {
+    return this.prisma.$transaction(async (transaction) => {
+      await transaction.$queryRaw`SELECT id FROM users WHERE id = ${user.id} FOR UPDATE`;
+      const current = await transaction.users.findUnique({
+        where: { id: user.id },
+        select: { password_hash: true, account_status: true }
+      });
+      if (current?.account_status !== "active" || !current?.password_hash || current.password_hash !== authenticatedPasswordHash) {
+        throw new UnauthorizedException("Email, username, or password is incorrect");
+      }
+      return this.createSession(transaction, user);
+    });
   }
 
   private async createSession(
@@ -276,6 +300,7 @@ export class AuthService {
   private toPublicUser(user: StoredUser): AppUser {
     const publicUser: AppUser = {
       id: user.id,
+      supportCode: user.support_code,
       fullName: user.full_name,
       username: user.username ?? null,
       email: user.email,

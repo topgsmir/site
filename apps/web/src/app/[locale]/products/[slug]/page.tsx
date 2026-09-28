@@ -10,6 +10,8 @@ import { ProductPage } from "./ProductPage";
 import { getPublicProduct, type PublicProduct } from "./product.server";
 import { productPageCopy } from "./product-copy";
 import { schemaPrice } from "@/lib/product-seo";
+import { managedSeoMetadata } from "@/lib/seo-settings-server";
+import { productDescriptionText } from "@/lib/product-description";
 
 type ProductRouteProps = {
   params: Promise<{ locale: string; slug: string }>;
@@ -32,7 +34,7 @@ function canonicalProductUrl(slug: string, locale: Locale = "fa") {
 
 function compactDescription(product: PublicProduct, locale: Locale) {
   const copy = getDictionary(locale).product;
-  const source = product.description?.replace(/\s+/g, " ").trim();
+  const source = productDescriptionText(product.description).replace(/\s+/g, " ").trim();
   if (source) {
     return source.length > 158 ? `${source.slice(0, 155).trimEnd()}…` : source;
   }
@@ -58,7 +60,7 @@ export async function generateMetadata({ params }: ProductRouteProps): Promise<M
   const image = product.image?.variants.find((variant) => variant.name === "large") ?? product.image?.variants[0];
   const images = image ? [{ url: new URL(image.url, SITE_URL).href, width: image.width, height: image.height, alt: product.title }] : undefined;
 
-  return {
+  return managedSeoMetadata(localeParam, `/${localeParam}/products/${encodeURIComponent(product.slug)}`, {
     title: product.title,
     description,
     keywords: [
@@ -94,7 +96,7 @@ export async function generateMetadata({ params }: ProductRouteProps): Promise<M
         "max-video-preview": -1
       }
     }
-  };
+  });
 }
 
 function productJsonLd(product: PublicProduct, locale: Locale) {

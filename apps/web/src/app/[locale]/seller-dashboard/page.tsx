@@ -34,10 +34,11 @@ export default async function SellerDashboardPage({ params, searchParams }: Sell
 
   const user = await requireUser(locale, ["seller-admin", "seller-staff"]);
   const requestedSection = query?.section;
-  const initialSection = requestedSection === "products" ||
+  const initialSection = requestedSection === "products" || requestedSection === "uploads" ||
     (requestedSection === "profile" && user.role === "seller-admin") ||
     (requestedSection === "statistics" && user.permissions?.includes("analytics_view")) ||
     (requestedSection === "orders" && user.permissions?.includes("orders_manage")) ||
+    (requestedSection === "customers" && user.permissions?.includes("orders_manage")) ||
     (requestedSection === "shipping" && user.permissions?.includes("physical_products_manage")) ||
     (requestedSection === "bridge" && process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true") ||
     (requestedSection === "coupons" && user.permissions?.includes("coupons_manage")) ||

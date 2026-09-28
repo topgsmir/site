@@ -1,0 +1,107 @@
+/* Hallmark · compact admin review workspace · restrained · blue accent
+ * Structural fingerprint: queue rail + single review surface
+ * Pre-emit critique: P4 H4 E4 S4 R5 V3
+ */
+.workspace {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1rem clamp(.75rem, 2vw, 1.5rem) 1.5rem;
+  color: var(--color-dashboard-ink);
+  background: var(--color-dashboard-paper);
+  font-family: var(--font-dashboard-body);
+}
+.header { display: flex; align-items: baseline; flex-wrap: wrap; gap: .25rem 1rem; }
+.header h1 { margin: 0; font-family: var(--font-dashboard-display); font-size: 1.5rem; line-height: 1.35; }
+.header p { margin: 0; color: var(--color-dashboard-muted); font-size: .875rem; line-height: 1.6; }
+.refresh { margin-inline-start: auto; min-height: 2.25rem; padding: .35rem .65rem; border: 1px solid var(--color-dashboard-rule-strong); border-radius: .4rem; color: var(--color-dashboard-ink); background: var(--color-dashboard-surface); font: inherit; font-size: .8125rem; cursor: pointer; }
+.layout { display: grid; grid-template-columns: 13rem minmax(0, 1fr); align-items: start; gap: .75rem; min-width: 0; }
+.queueNav { min-width: 0; padding: .375rem; border: 1px solid var(--color-dashboard-rule); border-radius: .75rem; background: var(--color-dashboard-surface); }
+.tabs { display: grid; gap: .125rem; }
+.tabs button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  width: 100%;
+  min-height: 2.625rem;
+  padding: .5rem .625rem;
+  border: 1px solid transparent;
+  border-radius: .45rem;
+  color: var(--color-dashboard-ink-soft);
+  background: transparent;
+  font: inherit;
+  font-size: .8125rem;
+  font-weight: 650;
+  line-height: 1.4;
+  text-align: start;
+  cursor: pointer;
+}
+.tabs button[aria-selected="true"] { border-color: var(--color-dashboard-accent); color: var(--color-dashboard-accent); background: var(--color-dashboard-accent-soft); }
+.tabLabel { min-width: 0; }
+.countBadge { display: inline-grid; place-items: center; flex: 0 0 auto; min-width: 1.75rem; height: 1.5rem; padding-inline: .25rem; border-radius: .4rem; color: var(--color-dashboard-ink-soft); background: var(--color-dashboard-surface-raised); font-size: .75rem; font-weight: 750; font-variant-numeric: tabular-nums; }
+.tabs button[aria-selected="true"] .countBadge { color: var(--color-dashboard-accent-ink); background: var(--color-dashboard-accent); }
+.countBadge[data-empty="true"] { color: var(--color-dashboard-muted); background: var(--color-dashboard-paper); }
+.countsError { margin: .4rem .25rem .15rem; color: var(--color-dashboard-error); font-size: .75rem; line-height: 1.5; }
+.countsError button { padding: 0; border: 0; color: inherit; background: transparent; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.mobilePicker { display: none; }
+.panels { min-width: 0; }
+.panel { min-width: 0; padding: .875rem 1rem; border: 1px solid var(--color-dashboard-rule); border-radius: .75rem; background: var(--color-dashboard-surface); scroll-margin-top: 1rem; }
+.panel[hidden] { display: none; }
+.panel > section { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.queue h2 { margin: 0 0 .5rem; font-size: 1rem; line-height: 1.5; }
+.rows { display: grid; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: .5rem 1rem; padding: .625rem 0; border-block-start: 1px solid var(--color-dashboard-rule); }
+.row > div:first-child { display: grid; gap: .2rem; min-width: 0; }
+.row strong { font-size: .875rem; line-height: 1.5; overflow-wrap: anywhere; }
+.row small { color: var(--color-dashboard-muted); font-size: .75rem; line-height: 1.5; }
+.row a { display: inline-flex; align-items: center; min-height: 2.25rem; color: var(--color-dashboard-accent); font-size: .8125rem; font-weight: 650; white-space: nowrap; }
+.actions { display: flex; gap: .375rem; flex-wrap: wrap; }
+.queue button { min-height: 2.25rem; padding: .35rem .65rem; border: 1px solid var(--color-dashboard-rule-strong); border-radius: .4rem; color: var(--color-dashboard-ink); background: var(--color-dashboard-surface); font: inherit; font-size: .8125rem; cursor: pointer; }
+.actions button:first-child, .reason button[type="submit"] { border-color: var(--color-dashboard-accent); color: var(--color-dashboard-accent); background: var(--color-dashboard-accent-soft); }
+.queue button:disabled { opacity: .55; cursor: not-allowed; }
+.reason { grid-column: 1 / -1; display: flex; align-items: end; flex-wrap: wrap; gap: .5rem; }
+.reason label { display: grid; gap: .25rem; flex: 1 1 16rem; font-size: .8125rem; }
+.reason textarea { min-height: 3rem; padding: .5rem; border: 1px solid var(--color-dashboard-rule-strong); border-radius: .4rem; background: var(--color-dashboard-paper); color: inherit; font: inherit; }
+.empty, .message, .error { margin: .4rem 0; font-size: .8125rem; line-height: 1.6; }
+.error { color: var(--color-dashboard-error); }
+.more { width: 100%; margin-top: .5rem; }
+.workspace :is(a, button, textarea, select):focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
+.decisionDialog { width: min(30rem, calc(100% - 2rem)); max-height: 80dvh; margin: auto; padding: 1rem; border: 1px solid var(--color-dashboard-rule-strong); border-radius: .75rem; color: var(--color-dashboard-ink); background: var(--color-dashboard-surface); font-family: var(--font-dashboard-body); }
+.decisionDialog[open] { display: grid; gap: .75rem; }
+.decisionDialog::backdrop { background: color-mix(in srgb, var(--color-dashboard-scrim) 70%, transparent); }
+.decisionDialog h2, .decisionDialog p { margin: 0; }
+.decisionDialog h2 { font-size: 1.125rem; }
+.decisionDialog p { font-size: .875rem; line-height: 1.6; }
+.decisionFacts { display: grid; gap: .35rem; margin: 0; padding: .75rem; border-radius: .5rem; background: var(--color-dashboard-surface-raised); }
+.decisionFacts div { display: grid; grid-template-columns: 5rem minmax(0, 1fr); gap: .5rem; font-size: .875rem; }
+.decisionFacts dt { color: var(--color-dashboard-muted); }
+.decisionFacts dd { margin: 0; overflow-wrap: anywhere; }
+.decisionDialog a { width: fit-content; color: var(--color-dashboard-accent); font-size: .875rem; font-weight: 650; }
+.decisionActions { display: flex; justify-content: flex-end; gap: .5rem; }
+.decisionActions button { min-height: 2.5rem; padding: .4rem .75rem; border: 1px solid var(--color-dashboard-rule-strong); border-radius: .4rem; color: var(--color-dashboard-ink); background: var(--color-dashboard-surface); font: inherit; cursor: pointer; }
+.decisionActions button:last-child { border-color: var(--color-dashboard-accent); color: var(--color-dashboard-accent-ink); background: var(--color-dashboard-accent); }
+.decisionActions button:disabled { opacity: .55; cursor: not-allowed; }
+.decisionDialog :is(a, button):focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  .tabs button:hover:not([aria-selected="true"]), .queue button:hover:not(:disabled) { background: var(--color-dashboard-surface-raised); }
+}
+@media (max-width: 55rem) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .queueNav { padding: 0; border: 0; background: transparent; }
+  .tabs { display: none; }
+  .mobilePicker { display: grid; gap: .375rem; font-size: .8125rem; font-weight: 650; }
+  .mobilePicker select { width: 100%; min-height: 2.75rem; padding: .5rem .75rem; border: 1px solid var(--color-dashboard-rule-strong); border-radius: .5rem; color: var(--color-dashboard-ink); background: var(--color-dashboard-surface); font: inherit; }
+  .row { grid-template-columns: minmax(0, 1fr) auto; }
+  .actions { grid-column: 1 / -1; }
+}
+@media (max-width: 35rem) {
+  .workspace { gap: .75rem; }
+  .header { display: grid; gap: .125rem; }
+  .header p { font-size: .8125rem; }
+  .refresh { margin-inline-start: 0; justify-self: start; min-height: 2.75rem; }
+  .panel { padding: .75rem; }
+  .row { grid-template-columns: minmax(0, 1fr); }
+  .row a, .actions { grid-column: 1; }
+  .queue button { min-height: 2.75rem; }
+}

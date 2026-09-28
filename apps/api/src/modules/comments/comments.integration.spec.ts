@@ -36,7 +36,7 @@ before(async () => {
     await prisma.seller_memberships.create({ data: { seller_id: seller.id, user_id: actor.id, role: "admin" } });
   }
   await prisma.seller_permissions.create({ data: { seller_id: sellerIds[0], permission: "blog_manage" } });
-  const product = await prisma.products.create({ data: { created_by_seller_id: sellerIds[0], title: "Comment test product", slug: `comment-test-${suffix}`, type: "digital", status: "active" } });
+  const product = await prisma.products.create({ data: { created_by_seller_id: sellerIds[0], title: "Comment test product", slug: `comment-test-${suffix}`, type: "digital", status: "active", price_currency: "USD" } });
   productId = product.id;
   const variant = await prisma.product_variants.create({ data: { product_id: productId, option_signature: "0".repeat(64) } });
   for (const sellerId of sellerIds) {

@@ -194,15 +194,35 @@ describe("media boundary", () => {
     );
   });
 
+  it("rejects PNG profile pictures even when labeled as WebP", async () => {
+    const image = await sharp({ create: { width: 32, height: 32, channels: 4, background: "#2457ff" } })
+      .png()
+      .toBuffer();
+    const prisma = { sellers: { findFirst: async () => ({ id: actor.sellerId }) } } as unknown as PrismaService;
+    const service = new MediaService(new ConfigService({ MEDIA_ROOT: "var/test-media" }), prisma);
+    for (const mimetype of ["image/png", "image/webp"]) {
+      await assert.rejects(
+        service.uploadSellerProfilePicture(actor.sellerId, actor.user.id, "admin", {
+          buffer: image,
+          mimetype,
+          originalname: "portrait.webp"
+        } as Express.Multer.File),
+        BadRequestException
+      );
+    }
+  });
+
   it("stores seller profile pictures below the authenticated seller path", async () => {
     const base = join(process.cwd(), "var");
     await mkdir(base, { recursive: true });
     const root = await mkdtemp(join(base, "seller-profile-media-"));
     const image = await sharp({ create: { width: 80, height: 60, channels: 4, background: "#2457ff" } })
-      .png()
+      .webp()
       .toBuffer();
     let created: Record<string, unknown> | undefined;
+    let acquiredBackupLock = false;
     const tx = {
+      $executeRaw: async () => { acquiredBackupLock = true; return 1; },
       $queryRaw: async () => [],
       sellers: { findFirst: async () => ({ id: actor.sellerId }) },
       seller_profile_media_assets: {
@@ -218,16 +238,35 @@ describe("media boundary", () => {
     try {
       const result = await service.uploadSellerProfilePicture(actor.sellerId, actor.user.id, "admin", {
         buffer: image,
-        mimetype: "image/png",
-        originalname: "portrait.png"
+        mimetype: "image/webp",
+        originalname: "portrait.webp"
       } as Express.Multer.File);
       assert.match(String(created?.path), new RegExp(`^sellers/${actor.sellerId}/profile/[0-9a-f-]+\\.webp$`));
       assert.equal(created?.seller_id, actor.sellerId);
+      assert.equal(acquiredBackupLock, true);
       assert.equal(result.url, `/media/${result.id}/profile.webp`);
       assert.equal(result.width, 640);
       assert.equal(result.height, 640);
     } finally {
       await rm(root, { force: true, recursive: true });
     }
+  });
+
+  it("acquires the backup lock before deleting a seller profile picture", async () => {
+    let acquiredBackupLock = false;
+    let deleted = false;
+    const tx = {
+      $executeRaw: async () => { acquiredBackupLock = true; return 1; },
+      $queryRaw: async () => [],
+      sellers: { findFirst: async () => ({ id: actor.sellerId }) },
+      seller_profile_media_assets: {
+        findUnique: async () => ({ id: "00000000-0000-4000-8000-000000000003", path: `sellers/${actor.sellerId}/profile/00000000-0000-4000-8000-000000000003.webp` }),
+        delete: async () => { deleted = acquiredBackupLock; }
+      }
+    };
+    const prisma = { $transaction: async (callback: (client: typeof tx) => Promise<void>) => callback(tx) } as unknown as PrismaService;
+    const service = new MediaService(new ConfigService({ MEDIA_ROOT: "var/test-media" }), prisma);
+    assert.deepEqual(await service.deleteSellerProfilePicture(actor.sellerId, "admin"), { deleted: true });
+    assert.equal(deleted, true);
   });
 });

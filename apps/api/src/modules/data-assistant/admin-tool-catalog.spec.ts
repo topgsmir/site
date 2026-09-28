@@ -89,6 +89,10 @@ test("bounds tool input and rejects direct credential-shaped storage fields", ()
   assert.throws(() => catalog.prepare("admin_ai_profile_create", { body: { apiKey: "nope" } }), BadRequestException);
   assert.throws(() => catalog.prepare("site_products_search", { query: { accessToken: "nope" } }), BadRequestException);
   assert.deepEqual(catalog.prepare("admin_ai_profile_create", { body: { apiKey: { $secureInput: "AI API key" } } }).body, { apiKey: { $secureInput: "AI API key" } });
+  assert.deepEqual(catalog.prepare("admin_user_create", { body: { fullName: "Buyer", email: "buyer@example.com", password: { $secureInput: "Initial password" } } }).body, { fullName: "Buyer", email: "buyer@example.com", password: { $secureInput: "Initial password" } });
+  assert.throws(() => catalog.prepare("admin_user_create", { body: { fullName: "Buyer", email: "buyer@example.com", password: "plain-text-secret" } }), BadRequestException);
+  assert.deepEqual(catalog.prepare("admin_user_password_change", { path: { id: "user" }, body: { currentPassword: { $secureInput: "Owner password" }, newPassword: { $secureInput: "New user password" } } }).body, { currentPassword: { $secureInput: "Owner password" }, newPassword: { $secureInput: "New user password" } });
+  assert.throws(() => catalog.prepare("admin_user_password_change", { path: { id: "user" }, body: { currentPassword: "owner-password", newPassword: "new-password" } }), BadRequestException);
   assert.deepEqual(catalog.prepare("admin_product_image_upload", { path: { productId: "product" }, body: { file: { $fileInput: { label: "Product image", accept: "image/png", maxBytes: 1024 } } } }).body, { file: { $fileInput: { label: "Product image", accept: "image/png", maxBytes: 1024 } } });
   assert.throws(() => catalog.prepare("admin_product_image_upload", { path: { productId: "product" }, body: { file: { $fileInput: { label: "x", accept: "image/png", maxBytes: 0 } } } }), BadRequestException);
   assert.throws(() => catalog.prepare("admin_user_update", { path: { id: "user" }, body: { value: Number.POSITIVE_INFINITY } }), BadRequestException);

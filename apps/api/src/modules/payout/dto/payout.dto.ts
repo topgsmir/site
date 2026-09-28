@@ -3,6 +3,10 @@ import { IsIn, IsInt, IsOptional, IsUUID, Max, Min } from "class-validator";
 
 export class ListPayoutsQueryDto {
   @IsOptional()
+  @IsIn(["requested"])
+  status?: "requested";
+
+  @IsOptional()
   @IsUUID("4")
   cursor?: string;
 

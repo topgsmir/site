@@ -1,0 +1,35 @@
+.queue { margin: .75rem 0 1rem; padding: .65rem; border: 1px solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-panel); background: var(--color-dashboard-surface); }
+.queue > h2 { margin: 0 0 .45rem; font-size: 1rem; font-weight: 700; }
+.list { display: grid; }
+.row { display: grid; grid-template-columns: minmax(10rem, 1fr) minmax(10rem, 1.3fr) auto auto; align-items: center; gap: .75rem; padding: .45rem 0; border-top: 1px solid var(--color-dashboard-rule); font-size: .875rem; }
+.row > div:first-child { min-width: 0; }
+.row strong, .row span { display: block; overflow-wrap: anywhere; }
+.row span, .row time { color: var(--color-dashboard-muted); font-size: .75rem; }
+.contentLink { display: block; width: fit-content; max-width: 100%; color: var(--color-dashboard-accent); font-size: .875rem; font-weight: 650; overflow-wrap: anywhere; }
+.unlinked { display: block; }
+.assetDetails { margin-top: .2rem; color: var(--color-dashboard-muted); font-size: .75rem; }
+.assetDetails summary { width: fit-content; cursor: pointer; }
+.assetDetails span { display: block; overflow-wrap: anywhere; }
+.row p { margin: 0; overflow-wrap: anywhere; }
+.actions { display: flex; gap: .35rem; }
+.preview { grid-column: 1 / -1; display: flex; align-items: center; gap: .75rem; padding: .5rem; background: var(--color-dashboard-surface-raised); }
+.preview img { width: 11.25rem; height: 7.5rem; object-fit: contain; }
+.preview img[data-loading="true"] { visibility: hidden; }
+.imageFrame { position: relative; width: 11.25rem; height: 7.5rem; display: grid; place-items: center; }
+.imageFrame > span { position: absolute; inset: 0; display: grid; place-items: center; padding: .5rem; text-align: center; }
+.queue button { min-height: 2.25rem; padding: .3rem .55rem; border: 1px solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-control); background: var(--color-dashboard-surface); color: inherit; cursor: pointer; font: inherit; }
+.queue :is(button, textarea, a, summary):focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
+.queue button:disabled { opacity: .55; cursor: not-allowed; }
+.empty, .message { margin: .35rem 0; font-size: .875rem; }
+.error { margin: .35rem 0; color: var(--color-dashboard-error); font-size: .875rem; }
+.more { width: 100%; margin-top: .5rem; }
+.dialog { width: min(30rem, calc(100% - 2rem)); max-height: 80dvh; margin: auto; padding: 1rem; background: var(--color-dashboard-surface); color: var(--color-dashboard-ink); border: 1px solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-panel); }
+.dialog[open] { display: grid; gap: .7rem; }
+.dialog::backdrop { background: color-mix(in srgb, var(--color-dashboard-scrim) 70%, transparent); }
+.dialog h3 { margin: 0; }
+.dialogContext { margin: 0; color: var(--color-dashboard-ink-soft); font-size: .875rem; line-height: 1.6; overflow-wrap: anywhere; }
+.dialog label { display: grid; gap: .3rem; }
+.dialog textarea { width: 100%; min-height: 6rem; padding: .5rem; color: inherit; background: var(--color-dashboard-paper); border: 1px solid var(--color-dashboard-rule-strong); font: inherit; }
+.dialog footer { display: flex; justify-content: end; gap: .5rem; }
+@media (max-width: 55rem) { .row { grid-template-columns: minmax(0, 1fr) auto; } .row p, .actions { grid-column: 1 / -1; } }
+@media (max-width: 35rem) { .actions { flex-wrap: wrap; } .queue button { min-height: 2.75rem; } }

@@ -5,6 +5,26 @@ import type { PrismaService } from "../../prisma/prisma.service";
 import type { MediaService } from "./media.service";
 import { AdminUploadsService, decodeUploadCursor, encodeUploadCursor } from "./admin-uploads.service";
 
+describe("seller deletion queue", () => {
+  it("includes linked content for each request without per-row lookups", async () => {
+    const requestedAt = new Date("2026-09-28T10:00:00.000Z");
+    const prisma = {
+      media_deletion_requests: { findMany: async () => [
+        { id: "request-product", source: "product", asset_id: "asset-product", reason: "Remove it", requested_at: requestedAt, seller: { shop_name: "Seller" }, requested_by: { full_name: "Member" } },
+        { id: "request-blog", source: "blog", asset_id: "asset-blog", reason: "Remove it", requested_at: requestedAt, seller: { shop_name: "Seller" }, requested_by: null }
+      ] },
+      product_media_assets: { findMany: async () => [{ id: "asset-product", product: { id: "product-1", title: "Phone case" }, restore_product: null }] },
+      blog_media_assets: { findMany: async () => [{ id: "asset-blog", post: { id: "post-1", title: "Old title", working_revision: { translations: [{ title: "Current title" }] } } }] }
+    } as unknown as PrismaService;
+    const page = await new AdminUploadsService(prisma, {} as MediaService).pendingDeletions();
+    assert.deepEqual(page.items.map((item) => item.linkedContent), [
+      { id: "product-1", title: "Phone case", type: "product" },
+      { id: "post-1", title: "Current title", type: "post" }
+    ]);
+    assert.equal(page.nextCursor, null);
+  });
+});
+
 describe("admin uploads cursors", () => {
   const cursor = {
     v: 1 as const,
@@ -45,7 +65,8 @@ describe("admin uploads lifecycle", () => {
         findUnique: async () => ({ trashed_at: null, product_id: "00000000-0000-4000-8000-000000000010" }),
         update: async (args: unknown) => { updates.push(args); }
       },
-      media_admin_events: { create: async (args: unknown) => { events.push(args); } }
+      media_admin_events: { create: async (args: unknown) => { events.push(args); } },
+      media_deletion_requests: { updateMany: async () => ({ count: 0 }) }
     };
     const prisma = { $transaction: async (work: (client: typeof tx) => unknown) => work(tx) } as unknown as PrismaService;
     const service = new AdminUploadsService(prisma, {} as MediaService);
@@ -77,7 +98,8 @@ describe("admin uploads lifecycle", () => {
         findUnique: async ({ where }: { where: { id: string } }) => where.id === foundId ? { trashed_at: null, revision_references: [] } : null,
         update: async () => undefined
       },
-      media_admin_events: { create: async () => undefined }
+      media_admin_events: { create: async () => undefined },
+      media_deletion_requests: { updateMany: async () => ({ count: 0 }) }
     };
     const prisma = { $transaction: async (work: (client: typeof tx) => unknown) => work(tx) } as unknown as PrismaService;
     const service = new AdminUploadsService(prisma, {} as MediaService);
@@ -99,7 +121,7 @@ describe("admin uploads lifecycle", () => {
       blog_media_assets: { findMany: async () => [] },
       product_media_assets: productModel,
       media_admin_events: { create: async (args: unknown) => { events.push(args); } },
-      $transaction: async (work: (client: { $queryRaw: () => Promise<unknown[]> }) => unknown) => work({ $queryRaw: async () => [] })
+      $transaction: async (work: (client: { $executeRaw: () => Promise<number> }) => unknown) => work({ $executeRaw: async () => 1 })
     } as unknown as PrismaService;
     const media = { removeStoredFiles: async () => { removalAttempted = true; const error = new Error("private absolute path"); (error as NodeJS.ErrnoException).code = "EACCES"; throw error; } } as unknown as MediaService;
     const service = new AdminUploadsService(prisma, media);

@@ -81,6 +81,11 @@
   --color-dashboard-info-soft: color-mix(in srgb, var(--color-role-info) 7%, var(--color-brand-off-white));
   --color-dashboard-neutral: var(--color-dashboard-ink-soft);
   --color-dashboard-neutral-soft: var(--color-dashboard-surface-raised);
+  --color-user-role-buyer: color-mix(in srgb, var(--color-brand-blue) 50%, var(--color-brand-navy));
+  --color-user-role-seller-admin: color-mix(in srgb, var(--color-brand-teal) 48%, var(--color-brand-navy));
+  --color-user-role-seller-staff: color-mix(in srgb, var(--color-status-amber) 55%, var(--color-brand-navy));
+  --color-user-role-platform-staff: color-mix(in srgb, color-mix(in srgb, var(--color-brand-blue) 50%, var(--color-brand-pink)) 60%, var(--color-brand-navy));
+  --color-user-role-platform-admin: color-mix(in srgb, var(--color-brand-pink) 60%, var(--color-brand-navy));
   --color-bridge-accent: var(--color-dashboard-info);
   --color-bridge-accent-strong: color-mix(in srgb, var(--color-role-info) 58%, var(--color-brand-navy));
   --color-bridge-accent-soft: var(--color-dashboard-info-soft);
@@ -287,6 +292,11 @@ html[data-theme="dark"] {
   --color-dashboard-warning-soft: color-mix(in srgb, var(--color-brand-navy) 88%, var(--color-role-warning));
   --color-dashboard-info: var(--color-role-info);
   --color-dashboard-info-soft: color-mix(in srgb, var(--color-brand-navy) 88%, var(--color-role-info));
+  --color-user-role-buyer: color-mix(in srgb, var(--color-brand-blue) 72%, var(--color-brand-off-white));
+  --color-user-role-seller-admin: color-mix(in srgb, var(--color-brand-teal) 70%, var(--color-brand-off-white));
+  --color-user-role-seller-staff: color-mix(in srgb, var(--color-status-amber) 72%, var(--color-brand-off-white));
+  --color-user-role-platform-staff: color-mix(in srgb, color-mix(in srgb, var(--color-brand-blue) 50%, var(--color-brand-pink)) 72%, var(--color-brand-off-white));
+  --color-user-role-platform-admin: color-mix(in srgb, var(--color-brand-pink) 75%, var(--color-brand-off-white));
   --color-bridge-accent: var(--color-dashboard-info);
   --color-bridge-accent-strong: color-mix(in srgb, var(--color-role-info) 82%, var(--color-brand-off-white));
   --color-bridge-accent-soft: var(--color-dashboard-info-soft);

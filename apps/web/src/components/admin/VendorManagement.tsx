@@ -32,6 +32,7 @@ import { AdminOrdersWorkspace } from "@/components/admin/AdminOrdersWorkspace";
 import { AdminOrderDetails } from "@/components/admin/AdminOrderDetails";
 import { PaymentServiceWorkspace } from "@/components/admin/PaymentServiceWorkspace";
 import { ProductChangesWorkspace } from "@/components/admin/ProductChangesWorkspace";
+import { ProductBulkEdit } from "@/components/admin/ProductBulkEdit";
 import { AiWorkspace } from "@/components/admin/AiWorkspace";
 import { CouponWorkspace } from "@/components/admin/CouponWorkspace";
 import { SmsSettingsWorkspace } from "@/components/admin/SmsSettingsWorkspace";
@@ -41,6 +42,7 @@ import { SecuritySettingsWorkspace } from "@/components/admin/SecuritySettingsWo
 import { ShippingSettingsWorkspace } from "@/components/admin/ShippingSettingsWorkspace";
 import { UsdSettingsWorkspace } from "@/components/admin/UsdSettingsWorkspace";
 import { NoticeSettingsWorkspace } from "@/components/admin/NoticeSettingsWorkspace";
+import { SeoSettingsWorkspace } from "@/components/admin/SeoSettingsWorkspace";
 import { HomepageStoriesWorkspace } from "@/components/admin/HomepageStoriesWorkspace";
 import { HomepageContentWorkspace } from "@/components/admin/HomepageContentWorkspace";
 import { BlogSidebarWorkspace } from "@/components/admin/BlogSidebarWorkspace";
@@ -50,10 +52,13 @@ import navigationStyles from "@/components/dashboard/DashboardNavigation.module.
 import { AnalyticsOverview } from "@/components/analytics/AnalyticsOverview";
 import { PanelOverview } from "@/components/dashboard/PanelOverview";
 import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
+import { JalaliDatePicker } from "@/components/dashboard/JalaliDatePicker";
 import { useNewOrderCount } from "@/components/dashboard/useNewOrderCount";
 import { DashboardMobileNavigation } from "@/components/dashboard/DashboardMobileNavigation";
 import { UploadsWorkspace } from "@/components/admin/UploadsWorkspace";
+import { AdminNotificationsWorkspace } from "@/components/admin/AdminNotificationsWorkspace";
 import { BackupRestoreWorkspace } from "@/components/admin/BackupRestoreWorkspace";
+import { useAdminBoxDisclosures } from "@/components/admin/useAdminBoxDisclosures";
 
 
 
@@ -76,9 +81,11 @@ const copy = {
     admin: "Platform admin",
     navigation: "Admin navigation",
     overview: "Overview",
+    notifications: "Notifications",
     statistics: "Statistics",
     users: "Users",
     vendors: "Vendors",
+    productService: "Products service",
     sellService: "Sales service",
     paymentService: "Payment service",
     paymentTransactions: "Transactions",
@@ -185,12 +192,24 @@ const copy = {
     catalogLoadError: "Products could not be loaded. Refresh and try again.",
     productSearch: "Search title, URL, or category",
     allStatuses: "All statuses",
+    productStatus: "Product status",
     allTypes: "All types",
     allKinds: "All structures",
     productType: "Product type",
     productKind: "Product structure",
     digital: "Digital", physical: "Physical", service: "Service", bridge: "Bridge", simple: "Simple", variable: "Variable",
     categoryFilter: "Filter category",
+    sellerFilter: "Seller shop name",
+    stockFilter: "Physical stock",
+    allStock: "Any stock",
+    inStock: "In stock",
+    outOfStock: "Out of stock",
+    dateField: "Date to filter",
+    createdDate: "Created date",
+    updatedDate: "Last updated date",
+    dateFrom: "From date",
+    dateTo: "To date",
+    clearProductFilters: "Clear filters",
     sortBy: "Sort by",
     newestUpdated: "Recently updated",
     oldestUpdated: "Least recently updated",
@@ -220,9 +239,11 @@ const copy = {
     admin: "مدیر پلتفرم",
     navigation: "ناوبری مدیریت",
     overview: "نمای کلی",
+    notifications: "اعلان‌ها",
     statistics: "آمار",
     users: "کاربران",
     vendors: "فروشنده‌ها",
+    productService: "سرویس محصولات",
     sellService: "سرویس فروش",
     paymentService: "سرویس پرداخت",
     paymentTransactions: "تراکنش‌ها",
@@ -329,12 +350,24 @@ const copy = {
     catalogLoadError: "محصولات بارگذاری نشدند. صفحه را تازه کنید.",
     productSearch: "جست‌وجوی عنوان، نشانی یا دسته‌بندی",
     allStatuses: "همه وضعیت‌ها",
+    productStatus: "وضعیت محصول",
     allTypes: "همه نوع‌ها",
     allKinds: "همه ساختارها",
     productType: "نوع محصول",
     productKind: "ساختار محصول",
     digital: "دیجیتال", physical: "فیزیکی", service: "خدمات", bridge: "بریج", simple: "ساده", variable: "متغیر",
     categoryFilter: "فیلتر دسته‌بندی",
+    sellerFilter: "نام فروشگاه فروشنده",
+    stockFilter: "موجودی محصول فیزیکی",
+    allStock: "همه وضعیت‌های موجودی",
+    inStock: "موجود",
+    outOfStock: "ناموجود",
+    dateField: "تاریخ موردنظر",
+    createdDate: "تاریخ ایجاد",
+    updatedDate: "تاریخ آخرین ویرایش",
+    dateFrom: "از تاریخ",
+    dateTo: "تا تاریخ",
+    clearProductFilters: "پاک کردن فیلترها",
     sortBy: "مرتب‌سازی",
     newestUpdated: "تازه‌ترین ویرایش",
     oldestUpdated: "قدیمی‌ترین ویرایش",
@@ -364,9 +397,11 @@ const copy = {
     admin: "مدير المنصة",
     navigation: "تنقل الإدارة",
     overview: "نظرة عامة",
+    notifications: "الإشعارات",
     statistics: "الإحصاءات",
     users: "المستخدمون",
     vendors: "البائعون",
+    productService: "خدمة المنتجات",
     sellService: "خدمة المبيعات",
     paymentService: "خدمة الدفع",
     paymentTransactions: "المعاملات",
@@ -473,12 +508,24 @@ const copy = {
     catalogLoadError: "تعذر تحميل المنتجات. حدّث الصفحة وحاول مجدداً.",
     productSearch: "ابحث بالعنوان أو الرابط أو الفئة",
     allStatuses: "كل الحالات",
+    productStatus: "حالة المنتج",
     allTypes: "كل الأنواع",
     allKinds: "كل البنى",
     productType: "نوع المنتج",
     productKind: "بنية المنتج",
     digital: "رقمي", physical: "مادي", service: "خدمة", bridge: "جسر", simple: "بسيط", variable: "متغير",
     categoryFilter: "تصفية الفئة",
+    sellerFilter: "اسم متجر البائع",
+    stockFilter: "مخزون المنتج المادي",
+    allStock: "كل حالات المخزون",
+    inStock: "متوفر",
+    outOfStock: "غير متوفر",
+    dateField: "التاريخ المطلوب",
+    createdDate: "تاريخ الإنشاء",
+    updatedDate: "تاريخ آخر تحديث",
+    dateFrom: "من تاريخ",
+    dateTo: "إلى تاريخ",
+    clearProductFilters: "مسح المرشحات",
     sortBy: "ترتيب حسب",
     newestUpdated: "آخر تحديث",
     oldestUpdated: "أقدم تحديث",
@@ -584,23 +631,33 @@ function requestMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function localProductDayBoundary(day: string, nextDay = false) {
+  const [year, month, date] = day.split("-").map(Number);
+  return new Date(year, month - 1, date + Number(nextDay)).toISOString();
+}
+
 export function VendorManagement({
   locale,
   adminName,
+  adminUserId,
   section,
   orderId,
+  userId,
   ownerNavigation,
   platformPermissions
 }: {
   locale: Locale;
   adminName: string;
+  adminUserId: string;
   section: AdminSection;
   orderId?: string;
+  userId?: string;
   ownerNavigation: boolean;
   platformPermissions: PlatformPermission[];
 }) {
   const c = copy[locale];
   const root = useRef<HTMLElement>(null);
+  useAdminBoxDisclosures(root, adminUserId, section, orderId ?? userId, locale);
   const panel = useRef<HTMLElement>(null);
   const panelTrigger = useRef<HTMLButtonElement | null>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -614,6 +671,9 @@ export function VendorManagement({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [products, setProducts] = useState<AdminProductSummary[]>([]);
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [productBulkNotice, setProductBulkNotice] = useState("");
+  const [productStatusCounts, setProductStatusCounts] = useState<AdminProductsPage["statusCounts"] | null>(null);
   const [productsCursor, setProductsCursor] = useState<string | null>(null);
   const [productPageCursors, setProductPageCursors] = useState<Array<string | null>>([null]);
   const [productPage, setProductPage] = useState(0);
@@ -621,14 +681,21 @@ export function VendorManagement({
   const [debouncedProductSearch, setDebouncedProductSearch] = useState("");
   const [productCategory, setProductCategory] = useState("");
   const [debouncedProductCategory, setDebouncedProductCategory] = useState("");
+  const [productSeller, setProductSeller] = useState("");
+  const [debouncedProductSeller, setDebouncedProductSeller] = useState("");
   const [productStatus, setProductStatus] = useState<ProductStatus | "">("");
   const [productType, setProductType] = useState<ProductType | "">("");
   const [productKind, setProductKind] = useState<ProductKind | "">("");
+  const [productStock, setProductStock] = useState<"" | "in_stock" | "out_of_stock">("");
+  const [productDateField, setProductDateField] = useState<"created" | "updated">("updated");
+  const [productDateFrom, setProductDateFrom] = useState("");
+  const [productDateTo, setProductDateTo] = useState("");
   const [productSort, setProductSort] = useState("updated_desc");
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState("");
   const productRequestId = useRef(0);
   const [usersOpen, setUsersOpen] = useState(false);
+  const [productServiceOpen, setProductServiceOpen] = useState(false);
   const [salesServiceOpen, setSalesServiceOpen] = useState(false);
   const [paymentServiceOpen, setPaymentServiceOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -647,13 +714,15 @@ export function VendorManagement({
   const canManageUploads = ownerNavigation || platformPermissions.includes("uploads_manage");
   const isUsersSection = section === "vendors" || section === "staff" || section === "users";
   const usersExpanded = isUsersSection || usersOpen;
-  const isSalesServiceSection = section === "products" || section === "product-changes" || section === "coupons" || section === "orders" || section === "order-detail";
+  const isProductServiceSection = section === "products" || section === "product-changes";
+  const productServiceExpanded = isProductServiceSection || productServiceOpen;
+  const isSalesServiceSection = section === "statistics" || section === "coupons" || section === "orders" || section === "order-detail";
   const salesServiceExpanded = isSalesServiceSection || salesServiceOpen;
   const isPaymentServiceSection = section === "payment-transactions" || section === "payment-methods" || section === "settings-usd";
   const paymentServiceExpanded = isPaymentServiceSection || paymentServiceOpen;
   const isAiSection = section === "ai-models" || section === "ai-assistant";
   const aiExpanded = isAiSection || aiOpen;
-  const isWebsiteSection = section === "settings-homepage" || section === "settings-notice" || section === "settings-stories" || section === "settings-blog-sidebar";
+  const isWebsiteSection = section === "settings-seo" || section === "settings-homepage" || section === "settings-notice" || section === "settings-stories" || section === "settings-blog-sidebar";
   const websiteExpanded = isWebsiteSection || websiteOpen;
   const isContentSection = section === "uploads" || section === "editorial" || section === "settings-comments";
   const contentExpanded = isContentSection || contentOpen;
@@ -663,6 +732,7 @@ export function VendorManagement({
   const securityExpanded = isSecuritySection || securityOpen;
   const currentSectionLabel = ({
     overview: c.overview,
+    notifications: c.notifications,
     statistics: c.statistics,
     vendors: c.vendors,
     users: c.users,
@@ -689,6 +759,7 @@ export function VendorManagement({
     "settings-stories": locale === "fa" ? "استوری‌ها" : locale === "ar" ? "القصص" : "Stories",
     "settings-blog-sidebar": locale === "fa" ? "تبلیغ کنار مقاله" : locale === "ar" ? "إعلان جانب المقال" : "Article sidebar",
     "settings-homepage": locale === "fa" ? "صفحه اصلی" : locale === "ar" ? "الصفحة الرئيسية" : "Homepage",
+    "settings-seo": locale === "fa" ? "سئو" : locale === "ar" ? "تحسين البحث" : "SEO",
     "settings-backup": c.backupRestore,
     editorial: c.editorial,
     uploads: c.uploads
@@ -730,25 +801,34 @@ export function VendorManagement({
     const timer = window.setTimeout(() => {
       setDebouncedProductSearch(productSearch.trim());
       setDebouncedProductCategory(productCategory.trim());
+      setDebouncedProductSeller(productSeller.trim());
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [productSearch, productCategory]);
+  }, [productSearch, productCategory, productSeller]);
 
   const loadProducts = useCallback(async (cursor: string | null = null, page = 0) => {
     const requestId = ++productRequestId.current;
     setProductsLoading(true);
     setProductsError("");
+    setProductStatusCounts(null);
     try {
       const response = await api.get<AdminProductsPage>("/products/admin", {
         params: { limit: 20, ...(cursor ? { cursor } : {}),
           ...(debouncedProductSearch ? { search: debouncedProductSearch } : {}),
           ...(debouncedProductCategory ? { category: debouncedProductCategory } : {}),
+          ...(debouncedProductSeller ? { seller: debouncedProductSeller } : {}),
           ...(productStatus ? { status: productStatus } : {}),
           ...(productType ? { type: productType } : {}),
-          ...(productKind ? { kind: productKind } : {}), sort: productSort }
+          ...(productKind ? { kind: productKind } : {}),
+          ...(productStock ? { stock: productStock } : {}),
+          ...(productDateFrom ? { dateFrom: localProductDayBoundary(productDateFrom) } : {}),
+          ...(productDateTo ? { dateTo: localProductDayBoundary(productDateTo, true) } : {}),
+          ...(productDateFrom || productDateTo ? { dateField: productDateField } : {}),
+          sort: productSort }
       });
       if (requestId !== productRequestId.current) return;
       setProducts(response.data.items);
+      setProductStatusCounts(response.data.statusCounts);
       setProductsCursor(response.data.nextCursor);
       setProductPage(page);
       setProductPageCursors((current) => page === 0 ? [null] : current.slice(0, page + 1));
@@ -758,7 +838,7 @@ export function VendorManagement({
     } finally {
       if (requestId === productRequestId.current) setProductsLoading(false);
     }
-  }, [c.catalogLoadError, debouncedProductSearch, debouncedProductCategory, productStatus, productType, productKind, productSort]);
+  }, [c.catalogLoadError, debouncedProductSearch, debouncedProductCategory, debouncedProductSeller, productStatus, productType, productKind, productStock, productDateField, productDateFrom, productDateTo, productSort]);
 
   const closePanel = useCallback(() => {
     setPanelMode(null);
@@ -825,7 +905,28 @@ export function VendorManagement({
       )
     );
   }, [locale, query, vendors]);
-  const activeProductFilterCount = [productSearch.trim(), productCategory.trim(), productStatus, productType, productKind, productSort !== "updated_desc"].filter(Boolean).length;
+  const activeProductFilterCount = [productSearch.trim(), productCategory.trim(), productSeller.trim(), productStatus, productType, productKind, productStock, productDateFrom, productDateTo, productSort !== "updated_desc"].filter(Boolean).length;
+  function clearProductFilters() {
+    setProductSearch("");
+    setProductCategory("");
+    setProductSeller("");
+    setProductStatus("");
+    setProductType("");
+    setProductKind("");
+    setProductStock("");
+    setProductDateField("updated");
+    setProductDateFrom("");
+    setProductDateTo("");
+    setProductSort("updated_desc");
+  }
+  const productStatusOptions = [
+    { value: "" as const, label: c.allStatuses, count: productStatusCounts ? Object.values(productStatusCounts).reduce((total, count) => total + count, 0) : null },
+    { value: "draft" as const, label: c.statusDraft, count: productStatusCounts?.draft ?? null },
+    { value: "pending_review" as const, label: c.statusPendingReview, count: productStatusCounts?.pending_review ?? null },
+    { value: "active" as const, label: c.statusPublished, count: productStatusCounts?.active ?? null },
+    { value: "archived" as const, label: c.statusArchived, count: productStatusCounts?.archived ?? null },
+    { value: "trashed" as const, label: locale === "fa" ? "زباله‌دان" : locale === "ar" ? "المهملات" : "Trash", count: productStatusCounts?.trashed ?? null }
+  ];
 
   function openCreate(trigger: HTMLButtonElement) {
     panelTrigger.current = trigger;
@@ -910,8 +1011,8 @@ export function VendorManagement({
       <a className="skip-link" href="#admin-content">{c.skip}</a>
       <DashboardMobileNavigation locale={locale} title={ownerNavigation ? c.admin : c.staff} currentLabel={currentSectionLabel} shortcuts={ownerNavigation ? [
         { label: c.overview, icon: <OverviewIcon />, active: section === "overview", href: `/${locale}/admin` as Route },
-        { label: c.orders, icon: <OrdersIcon />, active: section === "orders" || section === "order-detail", count: newOrderCount, href: `/${locale}/admin/orders` as Route },
-        { label: c.products, icon: <ProductsIcon />, active: section === "products", href: `/${locale}/admin/products` as Route }
+        { label: c.notifications, icon: <NotificationsIcon />, active: section === "notifications", href: `/${locale}/admin/notifications` as Route },
+        { label: c.orders, icon: <OrdersIcon />, active: section === "orders" || section === "order-detail", count: newOrderCount, href: `/${locale}/admin/orders` as Route }
       ] : [
         ...(canManageUploads ? [{ label: c.uploads, icon: <UploadsIcon />, active: section === "uploads", href: `/${locale}/admin/uploads` as Route }] : []),
         ...(canManageBlog ? [{ label: c.editorial, icon: <EditorialIcon />, active: section === "editorial", href: `/${locale}/admin/blog` as Route }] : [])
@@ -931,9 +1032,8 @@ export function VendorManagement({
             <OverviewIcon />
             <span>{c.overview}</span>
           </Link>
-          <Link className={navigationStyles.item} href={`/${locale}/admin/statistics` as Route} aria-current={section === "statistics" ? "page" : undefined}>
-            <StatisticsIcon />
-            <span>{c.statistics}</span>
+          <Link className={navigationStyles.item} href={`/${locale}/admin/notifications` as Route} aria-current={section === "notifications" ? "page" : undefined}>
+            <NotificationsIcon /><span>{c.notifications}</span>
           </Link>
           <div
             className={navigationStyles.group}
@@ -980,21 +1080,21 @@ export function VendorManagement({
           </div>
           <div
             className={navigationStyles.group}
-            data-active={isSalesServiceSection}
-            data-open={salesServiceExpanded}
+            data-active={isProductServiceSection}
+            data-open={productServiceExpanded}
           >
             <button
               className={navigationStyles.groupTrigger}
               type="button"
-              aria-expanded={salesServiceExpanded}
-              aria-controls="admin-sales-service-navigation"
-              onClick={() => setSalesServiceOpen((current) => !current)}
+              aria-expanded={productServiceExpanded}
+              aria-controls="admin-product-service-navigation"
+              onClick={() => setProductServiceOpen((current) => !current)}
             >
-              <SalesServiceIcon />
-              <span>{c.sellService}</span>
+              <ProductsIcon />
+              <span>{c.productService}</span>
               <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
             </button>
-            <div className={navigationStyles.subNavigation} id="admin-sales-service-navigation">
+            <div className={navigationStyles.subNavigation} id="admin-product-service-navigation">
               <Link
                 className={navigationStyles.item}
                 href={`/${locale}/admin/products` as Route}
@@ -1010,6 +1110,29 @@ export function VendorManagement({
               >
                 <ProductChangesIcon />
                 <span>{c.productChanges}</span>
+              </Link>
+            </div>
+          </div>
+          <div
+            className={navigationStyles.group}
+            data-active={isSalesServiceSection}
+            data-open={salesServiceExpanded}
+          >
+            <button
+              className={navigationStyles.groupTrigger}
+              type="button"
+              aria-expanded={salesServiceExpanded}
+              aria-controls="admin-sales-service-navigation"
+              onClick={() => setSalesServiceOpen((current) => !current)}
+            >
+              <SalesServiceIcon />
+              <span>{c.sellService}</span>
+              <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
+            </button>
+            <div className={navigationStyles.subNavigation} id="admin-sales-service-navigation">
+              <Link className={navigationStyles.item} href={`/${locale}/admin/statistics` as Route} aria-current={section === "statistics" ? "page" : undefined}>
+                <StatisticsIcon />
+                <span>{c.statistics}</span>
               </Link>
               <Link
                 className={navigationStyles.item}
@@ -1133,6 +1256,9 @@ export function VendorManagement({
               <EditorialIcon /><span>{c.website}</span><span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
             </button>
             <div className={navigationStyles.subNavigation} id="admin-website-navigation">
+              <Link className={navigationStyles.item} href={`/${locale}/admin/settings/seo` as Route} aria-current={section === "settings-seo" ? "page" : undefined}>
+                <EditorialIcon /><span>{locale === "fa" ? "سئو" : locale === "ar" ? "تحسين البحث" : "SEO"}</span>
+              </Link>
               <Link className={navigationStyles.item} href={`/${locale}/admin/settings/homepage` as Route} aria-current={section === "settings-homepage" ? "page" : undefined}>
                 <EditorialIcon /><span>{locale === "fa" ? "صفحه اصلی" : locale === "ar" ? "الصفحة الرئيسية" : "Homepage"}</span>
               </Link>
@@ -1210,20 +1336,18 @@ export function VendorManagement({
       <main className="admin-shell" id="admin-content" ref={root}>
 
       {section === "overview" ? <PanelOverview locale={locale} audience="admin" analytics={ownerNavigation} canManageOrders={ownerNavigation} canManageProducts={ownerNavigation} newOrderCount={newOrderCount} /> : null}
+      {section === "notifications" ? <AdminNotificationsWorkspace locale={locale} /> : null}
       {section === "statistics" ? <AnalyticsOverview locale={locale} audience="admin" /> : null}
 
       {section === "vendors" ? <section className="vendor-workspace grid-flow-dense" data-vendor-workspace>
-        <aside className="vendor-workspace-intro" data-admin-summary>
-          <h2>{c.workspace}</h2>
-          <p>{c.workspaceHint}</p>
+        <header className="vendor-workspace-intro" data-admin-summary>
+          <div className="vendor-workspace-heading"><h1>{c.workspace}</h1><p>{c.workspaceHint}</p></div>
+          <label className="vendor-search"><SearchIcon /><span className="sr-only">{c.search}</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={c.search} name="vendorSearch" autoComplete="off" spellCheck={false} /></label>
           <button className="admin-primary-button" type="button" onClick={(event) => openCreate(event.currentTarget)}>
             <PlusIcon />
             {c.create}
           </button>
-          <CollapsibleFilters className="vendor-filter-disclosure" surface={false} locale={locale} title={c.search} activeCount={query.trim() ? 1 : 0}>
-            <label className="vendor-search"><SearchIcon /><span className="sr-only">{c.search}</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={c.search} name="vendorSearch" autoComplete="off" spellCheck={false} /></label>
-          </CollapsibleFilters>
-        </aside>
+        </header>
 
         <div className="vendor-list" aria-busy={loading}>
           {error && !panelMode ? <p className="admin-notice is-error" role="alert">{error}</p> : null}
@@ -1238,7 +1362,7 @@ export function VendorManagement({
           {filteredVendors.map((vendor) => {
             const expanded = expandedId === vendor.id;
             return (
-              <article className="vendor-card" key={vendor.id} data-vendor-card>
+              <article className="vendor-card" key={vendor.id} data-vendor-card data-admin-box-key={`vendor:${vendor.id}`}>
                 <div className="vendor-card-main">
                   <div className="vendor-avatar" aria-hidden="true">
                     {vendor.shopName.trim().slice(0, 2).toLocaleUpperCase(locale)}
@@ -1260,18 +1384,18 @@ export function VendorManagement({
                   <button className="vendor-manage-button" type="button" onClick={(event) => openEdit(vendor, event.currentTarget)}>
                     {c.manage}<ArrowIcon />
                   </button>
+                  <button
+                    className="vendor-disclosure"
+                    type="button"
+                    aria-expanded={expanded}
+                    aria-controls={`vendor-access-${vendor.id}`}
+                    onClick={() => setExpandedId(expanded ? null : vendor.id)}
+                  >
+                    <span>{vendor.permissions.length === permissionOrder.length ? c.allAccess : c.limitedAccess}</span>
+                    <span>{expanded ? c.hideAccess : c.showAccess}</span>
+                    <ChevronIcon />
+                  </button>
                 </div>
-                <button
-                  className="vendor-disclosure"
-                  type="button"
-                  aria-expanded={expanded}
-                  aria-controls={`vendor-access-${vendor.id}`}
-                  onClick={() => setExpandedId(expanded ? null : vendor.id)}
-                >
-                  <span>{vendor.permissions.length === permissionOrder.length ? c.allAccess : c.limitedAccess}</span>
-                  <span>{expanded ? c.hideAccess : c.showAccess}</span>
-                  <ChevronIcon />
-                </button>
                 <div
                   className="vendor-access-accordion"
                   id={`vendor-access-${vendor.id}`}
@@ -1303,23 +1427,39 @@ export function VendorManagement({
             <p>{c.catalogHint}</p>
           </div>
         </header>
-        <CollapsibleFilters className="admin-product-filter-panel" locale={locale} title={c.productSearch} activeCount={activeProductFilterCount}><div className="admin-product-filters">
+        <div className="admin-product-statuses" role="group" aria-label={c.productStatus} aria-busy={productsLoading}>
+          {productStatusOptions.map(({ value, label, count }) => (
+            <button key={value} type="button" className="admin-product-status" aria-pressed={productStatus === value} onClick={() => setProductStatus(value)}>
+              <span>{label}</span><bdi>{count === null ? "—" : count.toLocaleString(locale)}</bdi>
+            </button>
+          ))}
+        </div>
+        <CollapsibleFilters className="admin-product-filter-panel" locale={locale} activeCount={activeProductFilterCount}><div className="admin-product-filters">
           <label><span>{c.productSearch}</span><input type="search" maxLength={100} value={productSearch} onChange={(event) => setProductSearch(event.target.value)} /></label>
           <label><span>{c.categoryFilter}</span><input maxLength={100} value={productCategory} onChange={(event) => setProductCategory(event.target.value)} /></label>
-          <label><span>{c.status}</span><select value={productStatus} onChange={(event) => setProductStatus(event.target.value as ProductStatus | "")}><option value="">{c.allStatuses}</option><option value="draft">{c.statusDraft}</option><option value="pending_review">{c.statusPendingReview}</option><option value="active">{c.statusPublished}</option><option value="archived">{c.statusArchived}</option></select></label>
-          <label><span>{c.productType}</span><select value={productType} onChange={(event) => setProductType(event.target.value as ProductType | "")}><option value="">{c.allTypes}</option><option value="digital">{c.digital}</option><option value="physical">{c.physical}</option><option value="service">{c.service}</option><option value="bridge">{c.bridge}</option></select></label>
+          <label><span>{c.sellerFilter}</span><input type="search" maxLength={100} value={productSeller} onChange={(event) => setProductSeller(event.target.value)} /></label>
+          <label><span>{c.productType}</span><select value={productType} onChange={(event) => { const next = event.target.value as ProductType | ""; setProductType(next); if (next && next !== "physical") setProductStock(""); }}><option value="">{c.allTypes}</option><option value="digital">{c.digital}</option><option value="physical">{c.physical}</option><option value="service">{c.service}</option><option value="bridge">{c.bridge}</option></select></label>
           <label><span>{c.productKind}</span><select value={productKind} onChange={(event) => setProductKind(event.target.value as ProductKind | "")}><option value="">{c.allKinds}</option><option value="simple">{c.simple}</option><option value="variable">{c.variable}</option></select></label>
+          <label><span>{c.stockFilter}</span><select value={productStock} onChange={(event) => { const next = event.target.value as "" | "in_stock" | "out_of_stock"; setProductStock(next); if (next) setProductType("physical"); }}><option value="">{c.allStock}</option><option value="in_stock">{c.inStock}</option><option value="out_of_stock">{c.outOfStock}</option></select></label>
+          <label><span>{c.dateField}</span><select value={productDateField} onChange={(event) => setProductDateField(event.target.value as "created" | "updated")}><option value="updated">{c.updatedDate}</option><option value="created">{c.createdDate}</option></select></label>
+          <div className="admin-product-date-field"><span>{c.dateFrom}</span><JalaliDatePicker locale={locale} value={productDateFrom} max={productDateTo || undefined} label={c.dateFrom} onChange={setProductDateFrom} /></div>
+          <div className="admin-product-date-field"><span>{c.dateTo}</span><JalaliDatePicker locale={locale} value={productDateTo} min={productDateFrom || undefined} label={c.dateTo} onChange={setProductDateTo} /></div>
           <label><span>{c.sortBy}</span><select value={productSort} onChange={(event) => setProductSort(event.target.value)}><option value="updated_desc">{c.newestUpdated}</option><option value="updated_asc">{c.oldestUpdated}</option><option value="created_desc">{c.newestCreated}</option><option value="created_asc">{c.oldestCreated}</option><option value="title_asc">{c.titleAscending}</option><option value="title_desc">{c.titleDescending}</option></select></label>
-        </div></CollapsibleFilters>
+        </div>{activeProductFilterCount ? <button className="admin-product-clear" type="button" onClick={clearProductFilters}>{c.clearProductFilters}</button> : null}</CollapsibleFilters>
         {productsError ? <p className="admin-notice is-error" role="alert">{productsError}</p> : null}
-        {!productsLoading && !products.length ? <p className="vendor-empty">{productSearch || productCategory || productStatus || productType || productKind ? c.noMatchingProducts : c.catalogEmpty}</p> : null}
+        {productBulkNotice ? <p className="admin-notice" role="status">{productBulkNotice}</p> : null}
+        {products.length ? <div className="admin-product-selection"><label><input type="checkbox" checked={products.length > 0 && products.every((product) => selectedProductIds.includes(product.id))} onChange={(event) => { setProductBulkNotice(""); setSelectedProductIds((current) => event.target.checked ? [...new Set([...current, ...products.map((product) => product.id)])] : current.filter((id) => !products.some((product) => product.id === id))); }} disabled={selectedProductIds.length + products.filter((product) => !selectedProductIds.includes(product.id)).length > 50 && !products.every((product) => selectedProductIds.includes(product.id))} /><span>{locale === "fa" ? "انتخاب همه محصولات این صفحه" : locale === "ar" ? "تحديد منتجات هذه الصفحة" : "Select this page"}</span></label><span>{selectedProductIds.length.toLocaleString(locale)} / 50</span></div> : null}
+        {selectedProductIds.length ? <ProductBulkEdit locale={locale} selectedIds={selectedProductIds} onClear={() => setSelectedProductIds([])} onDone={() => { setProductBulkNotice(locale === "fa" ? "ویرایش گروهی انجام شد." : locale === "ar" ? "اكتمل التعديل الجماعي." : "Bulk edit completed."); void loadProducts(productPageCursors[productPage], productPage); }} /> : null}
+        {!productsLoading && !products.length ? <p className="vendor-empty">{activeProductFilterCount ? c.noMatchingProducts : c.catalogEmpty}</p> : null}
         {products.length ? (
           <div className="admin-product-list">
             {products.map((product) => (
-              <article className="admin-product-row" key={product.id}>
+              <article className="admin-product-row" key={product.id} data-admin-box-key={`product:${product.id}`}>
+                <label className="admin-product-select"><input type="checkbox" checked={selectedProductIds.includes(product.id)} disabled={!selectedProductIds.includes(product.id) && selectedProductIds.length >= 50} onChange={(event) => { setProductBulkNotice(""); setSelectedProductIds((current) => event.target.checked ? [...current, product.id] : current.filter((id) => id !== product.id)); }} /><span className="sr-only">{locale === "fa" ? "انتخاب" : locale === "ar" ? "تحديد" : "Select"} {product.title}</span></label>
                 <div>
                   <h3>{product.title}</h3>
-                  <span>{product.category ?? product.type}</span>
+                  <span>{product.category ?? c[product.type]} · {product.seller.shopName}</span>
+                  {product.tags?.length ? <small className="admin-product-tags">{product.tags.join(" · ")}</small> : null}
                 </div>
                 <ProductPublicUrl
                   className="admin-product-url"
@@ -1329,7 +1469,7 @@ export function VendorManagement({
                 />
                 <dl>
                   <div><dt>{c.listings}</dt><dd>{product.listingCount}</dd></div>
-                  <div><dt>{c.status}</dt><dd>{product.status}</dd></div>
+                  <div><dt>{c.productStatus}</dt><dd>{productStatusOptions.find((option) => option.value === product.status)?.label}</dd></div>
                 </dl>
                 <Link
                   className="admin-secondary-button admin-product-edit"
@@ -1361,7 +1501,7 @@ export function VendorManagement({
 
       {section === "staff" ? <StaffWorkspace locale={locale} /> : null}
 
-      {section === "users" ? <UsersWorkspace locale={locale} /> : null}
+      {section === "users" ? <UsersWorkspace locale={locale} initialUserId={userId} /> : null}
 
       {section === "bridge" ? <AdminBridgeWorkspace locale={locale} /> : null}
 
@@ -1381,6 +1521,7 @@ export function VendorManagement({
       {section === "settings-stories" ? <HomepageStoriesWorkspace locale={locale} /> : null}
       {section === "settings-blog-sidebar" ? <BlogSidebarWorkspace locale={locale} /> : null}
       {section === "settings-homepage" ? <HomepageContentWorkspace locale={locale} /> : null}
+      {section === "settings-seo" ? <SeoSettingsWorkspace locale={locale} /> : null}
       {section === "settings-backup" ? <BackupRestoreWorkspace locale={locale} /> : null}
 
       {panelMode ? (
@@ -1545,6 +1686,10 @@ function PlusIcon() {
 
 function OverviewIcon() {
   return <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="5" height="5" rx="1" /><rect x="12" y="3" width="5" height="5" rx="1" /><rect x="3" y="12" width="5" height="5" rx="1" /><rect x="12" y="12" width="5" height="5" rx="1" /></svg>;
+}
+
+function NotificationsIcon() {
+  return <NavIcon><path d="M4 7h16v10H4zM4 10l8 5 8-5M7 4h10" /></NavIcon>;
 }
 
 function StatisticsIcon() {

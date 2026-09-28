@@ -5,6 +5,7 @@ import { VendorManagement } from "@/components/admin/VendorManagement";
 
 export type AdminSection =
   | "overview"
+  | "notifications"
   | "statistics"
   | "vendors"
   | "users"
@@ -31,6 +32,7 @@ export type AdminSection =
   | "settings-stories"
   | "settings-blog-sidebar"
   | "settings-homepage"
+  | "settings-seo"
   | "settings-backup"
   | "editorial"
   | "uploads";
@@ -41,9 +43,10 @@ export type AdminPanelRouteProps = {
   }>;
   section: AdminSection;
   orderId?: string;
+  userId?: string;
 };
 
-export async function AdminPanelRoute({ params, section, orderId }: AdminPanelRouteProps) {
+export async function AdminPanelRoute({ params, section, orderId, userId }: AdminPanelRouteProps) {
   const { locale } = await params;
 
   if (!isLocale(locale)) {
@@ -67,8 +70,10 @@ export async function AdminPanelRoute({ params, section, orderId }: AdminPanelRo
     <VendorManagement
       locale={locale}
       adminName={user.fullName}
+      adminUserId={user.id}
       section={section}
       orderId={orderId}
+      userId={userId}
       ownerNavigation={user.role === "platform-admin"}
       platformPermissions={user.platformPermissions ?? []}
     />

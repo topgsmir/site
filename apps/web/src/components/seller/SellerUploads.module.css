@@ -1,0 +1,45 @@
+.workspace { min-width: 0; color: var(--color-dashboard-ink); }
+.header { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: .75rem; margin-bottom: 1rem; }
+.header h1 { margin: 0; font-size: 1.5rem; }
+.header p { margin: .2rem 0 0; color: var(--color-dashboard-muted); }
+.metrics { display: flex; flex-wrap: wrap; gap: 1rem; margin: 0 0 .75rem; padding: .6rem 0; border-block: 1px solid var(--color-dashboard-rule); }
+.metrics div { min-width: 6rem; }
+.metrics dt { color: var(--color-dashboard-muted); font-size: .75rem; }
+.metrics dd { margin: .1rem 0 0; font-weight: 700; }
+.filters { display: grid; grid-template-columns: minmax(12rem, 1fr) auto repeat(4, minmax(7rem, 10rem)); gap: .6rem; align-items: end; margin-bottom: .75rem; }
+.filters label, .dialog label { display: grid; gap: .25rem; font-size: .875rem; }
+.filters input, .filters select, .dialog textarea { width: 100%; min-height: 2.5rem; padding: .4rem .6rem; color: inherit; background: var(--color-dashboard-surface); border: 1px solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-control); font: inherit; }
+.advanced { margin: -.25rem 0 .75rem; font-size: .875rem; }
+.advanced summary { cursor: pointer; }
+.advanced > div { display: flex; flex-wrap: wrap; gap: .6rem; padding-top: .5rem; }
+.advanced label { display: grid; gap: .25rem; min-width: 11rem; }
+.dialog textarea { min-height: 6rem; resize: vertical; }
+.workspace button { min-height: 2.5rem; padding: .4rem .75rem; border: 1px solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-control); background: var(--color-dashboard-surface); color: inherit; cursor: pointer; font: inherit; }
+.workspace button:focus-visible, .workspace input:focus-visible, .workspace select:focus-visible, .workspace textarea:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
+.workspace button:disabled { opacity: .55; cursor: not-allowed; }
+.notice { margin: .5rem 0; padding: .55rem .7rem; background: var(--color-dashboard-info-soft); }
+.list { border: 1px solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-control); overflow: hidden; }
+.row { display: grid; grid-template-columns: 3rem minmax(10rem, 1fr) minmax(9rem, auto) minmax(9rem, auto); align-items: center; gap: .75rem; padding: .55rem .7rem; border-bottom: 1px solid var(--color-dashboard-rule); background: var(--color-dashboard-surface); }
+.row:last-child { border-bottom: 0; }
+.preview { width: 3rem; height: 3rem; border: 1px solid var(--color-dashboard-rule); background: var(--color-dashboard-surface-raised); }
+.preview img { width: 100%; height: 100%; object-fit: cover; }
+.identity { min-width: 0; }
+.identity strong, .identity span, .meta span, .meta time { display: block; overflow-wrap: anywhere; }
+.identity span, .meta { color: var(--color-dashboard-muted); font-size: .8125rem; }
+.action { justify-self: end; }
+.action span { display: block; max-width: 18rem; overflow-wrap: anywhere; }
+.rowDetails { grid-column: 1 / -1; font-size: .8125rem; }
+.rowDetails summary { cursor: pointer; }
+.rowDetails dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .4rem; margin: .5rem 0; }
+.rowDetails dt { color: var(--color-dashboard-muted); }
+.rowDetails dd { margin: 0; overflow-wrap: anywhere; }
+.pending { color: var(--color-dashboard-warning); font-size: .8125rem; }
+.empty { margin: 0; padding: 1rem; }
+.more { width: 100%; margin-top: .6rem; }
+.dialog { width: min(32rem, calc(100% - 2rem)); max-height: 80dvh; margin: auto; padding: 1rem; background: var(--color-dashboard-surface); color: var(--color-dashboard-ink); border: 1px solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-panel); }
+.dialog[open] { display: grid; gap: .7rem; }
+.dialog::backdrop { background: color-mix(in srgb, var(--color-dashboard-scrim) 70%, transparent); }
+.dialog h2, .dialog p { margin: 0; }
+.dialog footer { display: flex; justify-content: end; gap: .5rem; }
+@media (max-width: 60rem) { .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .filters label:first-child { grid-column: 1 / -1; } }
+@media (max-width: 48rem) { .row { grid-template-columns: 3rem minmax(0, 1fr); } .meta, .action { grid-column: 2; justify-self: start; } }

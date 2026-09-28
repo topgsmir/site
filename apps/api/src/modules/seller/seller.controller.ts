@@ -103,7 +103,8 @@ export class SellerController {
 
   @Post("profile/picture")
   @UseGuards(SellerProfileGuard)
-  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 8 * 1024 * 1024, files: 1, fields: 0, parts: 1 } }))
+  // Busboy counts the closing multipart boundary; files/fields enforce the payload count.
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 8 * 1024 * 1024, files: 1, fields: 0, parts: 2 } }))
   async uploadProfilePicture(
     @UploadedFile() file: Express.Multer.File | undefined,
     @Req() request: AuthenticatedRequest,

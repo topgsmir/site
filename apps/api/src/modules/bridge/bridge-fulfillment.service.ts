@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { PrismaService } from "../../prisma/prisma.service";
 import { CredentialCryptoService } from "./credential-crypto.service";
 import { BridgeProviderService } from "./bridge-provider.service";
+import type { ListBridgeRefundRequestsDto } from "./dto/bridge.dto";
 
 @Injectable()
 export class BridgeFulfillmentService {
@@ -107,9 +108,11 @@ export class BridgeFulfillmentService {
     return { requested: true };
   }
 
-  async listRefundRequests() {
-    return this.prisma.bridge_fulfillments.findMany({
+  async listRefundRequests(query: ListBridgeRefundRequestsDto) {
+    const rows = await this.prisma.bridge_fulfillments.findMany({
       where: { status: "refund_requested" },
+      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+      take: query.limit + 1,
       select: {
         id: true,
         last_error_code: true,
@@ -122,14 +125,16 @@ export class BridgeFulfillmentService {
                 total_amount: true,
                 currency: true,
                 seller: { select: { id: true, shop_name: true } },
-                payment_attempts: { where: { status: "succeeded" }, select: { id: true, authority: true, provider_ref_id: true }, take: 1 }
+                payment_attempts: { where: { status: "succeeded" }, orderBy: [{ created_at: "desc" }, { id: "desc" }], select: { id: true, authority: true, provider_ref_id: true }, take: 1 }
               }
             }
           }
         }
       },
-      orderBy: { created_at: "asc" }
+      orderBy: [{ created_at: "asc" }, { id: "asc" }]
     });
+    const items = rows.slice(0, query.limit);
+    return { items, nextCursor: rows.length > query.limit ? items.at(-1)?.id ?? null : null };
   }
 
   private async owned(sellerId: string, id: string) {

@@ -6,6 +6,7 @@ import { RequirePlatformPermission } from "../auth/platform-permission.decorator
 import { PlatformPermissionGuard } from "../auth/platform-permission.guard";
 import { AdminUploadsService } from "./admin-uploads.service";
 import { AdminUploadsQueryDto, RestoreAdminUploadsDto, TrashAdminUploadsDto } from "./dto/admin-uploads.dto";
+import { DeletionQueueQueryDto, RejectUploadDeletionDto } from "./dto/seller-uploads.dto";
 
 @Controller("admin/uploads")
 @UseGuards(PlatformPermissionGuard)
@@ -14,10 +15,30 @@ export class AdminUploadsController {
   constructor(private readonly uploads: AdminUploadsService, private readonly rateLimits: AuthRateLimitService) {}
 
   @Get()
-  async list(@Query() query: AdminUploadsQueryDto, @Ip() clientIp: string, @Req() request: AuthenticatedRequest) { await this.rateLimits.consumeMediaAdmin(request.authenticatedUser!.id, clientIp); return this.uploads.list(query); }
+  async list(@Query() query: AdminUploadsQueryDto, @Ip() clientIp: string, @Req() request: AuthenticatedRequest) { await this.rateLimits.consumeMediaUpload(request.authenticatedUser!.id, clientIp); return this.uploads.list(query); }
 
   @Get("summary")
-  async summary(@Ip() clientIp: string, @Req() request: AuthenticatedRequest) { await this.rateLimits.consumeMediaAdmin(request.authenticatedUser!.id, clientIp); return this.uploads.summary(); }
+  async summary(@Ip() clientIp: string, @Req() request: AuthenticatedRequest) { await this.rateLimits.consumeMediaUpload(request.authenticatedUser!.id, clientIp); return this.uploads.summary(); }
+
+  @Get("deletion-requests")
+  async pendingDeletions(@Query() query: DeletionQueueQueryDto, @Ip() ip: string, @Req() request: AuthenticatedRequest) {
+    await this.rateLimits.consumeMediaUpload(request.authenticatedUser!.id, ip);
+    return this.uploads.pendingDeletions(query.cursor);
+  }
+
+  @Post("deletion-requests/:id/approve")
+  @BrowserSessionMutation()
+  async approveDeletion(@Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Ip() ip: string, @Req() request: AuthenticatedRequest) {
+    await this.rateLimits.consumeMediaAdmin(request.authenticatedUser!.id, ip);
+    return this.uploads.approveDeletion(id, request.authenticatedUser!.id);
+  }
+
+  @Post("deletion-requests/:id/reject")
+  @BrowserSessionMutation()
+  async rejectDeletion(@Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Body() body: RejectUploadDeletionDto, @Ip() ip: string, @Req() request: AuthenticatedRequest) {
+    await this.rateLimits.consumeMediaAdmin(request.authenticatedUser!.id, ip);
+    return this.uploads.rejectDeletion(id, request.authenticatedUser!.id, body.reason);
+  }
 
   @Get(":source/:id")
   async detail(
@@ -26,7 +47,7 @@ export class AdminUploadsController {
     @Ip() clientIp: string,
     @Req() request: AuthenticatedRequest
   ) {
-    await this.rateLimits.consumeMediaAdmin(request.authenticatedUser!.id, clientIp);
+    await this.rateLimits.consumeMediaUpload(request.authenticatedUser!.id, clientIp);
     return this.uploads.detail(source, id);
   }
 

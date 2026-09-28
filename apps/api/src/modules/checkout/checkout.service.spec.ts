@@ -21,6 +21,7 @@ function offer(input: { id: string; sellerId: string; type: "digital" | "physica
         id: `product-${input.id}`,
         title: `Product ${input.id}`,
         type: input.type,
+        price_currency: "TOMAN",
         media: { id: `media-${input.id}`, variants: [{ variant: "thumb", width: 320, height: 240 }] }
       }
     }
@@ -151,10 +152,21 @@ describe("CheckoutService quotes", () => {
   it("converts USD offers to integer toman using the current sell rate", async () => {
     const usdOffer = offer({ id: "00000000-0000-4000-8000-000000000106", sellerId: "seller-a", type: "physical", price: "12.50" });
     usdOffer.currency = "USD";
+    usdOffer.listing.product.price_currency = "USD";
     const result = await service([usdOffer]).quote({ items: [{ offerId: usdOffer.id, quantity: 2 }] });
     assert.equal(result.currency, "TOMAN");
     assert.equal(result.groups[0]!.items[0]!.unitPrice, "2909375");
     assert.equal(result.totalAmount, "5818750");
+    assert.equal(result.usdToTomanRate, "232750");
+  });
+
+  it("rejects a legacy toman offer when its product uses USD", async () => {
+    const staleOffer = offer({ id: "00000000-0000-4000-8000-000000000107", sellerId: "seller-a", type: "physical", price: "1000" });
+    staleOffer.listing.product.price_currency = "USD";
+    await assert.rejects(
+      () => service([staleOffer]).quote({ items: [{ offerId: staleOffer.id, quantity: 1 }] }),
+      /unavailable/i
+    );
   });
 });
 

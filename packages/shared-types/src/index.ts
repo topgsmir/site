@@ -1,7 +1,8 @@
 export type { HomepageLocale, HomepageLink, HomepageCard, HomepageSection, HomepageContent, HomepageDocument } from "./homepage";
+export const PRODUCT_RICH_TEXT_PREFIX = "topgsm:richtext:v1:";
 export type ProductType = "digital" | "physical" | "service" | "bridge";
 export type ProductKind = "simple" | "variable";
-export type ProductStatus = "draft" | "pending_review" | "active" | "archived";
+export type ProductStatus = "draft" | "pending_review" | "active" | "archived" | "trashed";
 export type SellerListingStatus = "draft" | "active" | "archived";
 
 export interface HomepageStory {
@@ -68,7 +69,7 @@ export interface PublicProductSummary {
   type: ProductType;
   image: ProductImage | null;
   price?: string;
-  currency?: string;
+  currency: "TOMAN" | "USD";
   startingPrices: ProductStartingPrice[];
   createdAt: string;
 }
@@ -101,6 +102,7 @@ export interface PublicProduct {
   category: string | null;
   kind: ProductKind;
   type: ProductType;
+  currency: "TOMAN" | "USD";
   image: ProductImage | null;
   bridge?: PublicBridgeProduct;
   options: Array<{
@@ -155,6 +157,7 @@ export interface SellerListing {
     category: string | null;
     kind: ProductKind;
     type: ProductType;
+    currency: "TOMAN" | "USD";
     status: ProductStatus;
     image: ProductImage | null;
     canEdit: boolean;
@@ -359,12 +362,15 @@ export interface AdminProductSummary {
   title: string;
   slug: string;
   description: string | null;
+  tags: string[];
   category: string | null;
   kind: ProductKind;
   type: ProductType;
+  currency: "TOMAN" | "USD";
   status: ProductStatus;
   image: ProductImage | null;
   listingCount: number;
+  seller: { id: string; shopName: string };
   createdAt: string;
   updatedAt: string;
 }
@@ -372,6 +378,7 @@ export interface AdminProductSummary {
 export interface AdminProductsPage {
   items: AdminProductSummary[];
   nextCursor: string | null;
+  statusCounts: Record<ProductStatus, number>;
 }
 
 export interface AdminProductDetails extends AdminProductSummary {
@@ -405,6 +412,7 @@ export interface ProductChangeSnapshot {
   description: string | null;
   category: string | null;
   status: ProductStatus;
+  seller?: { id: string; shopName: string };
 }
 
 export interface ContentChangeActor {
@@ -475,7 +483,13 @@ export interface BlogChangesPage {
   nextCursor: string | null;
 }
 
+export type * from "./user-lifecycle";
+
 export interface AdminUserSummary {
+  supportCode: string;
+  accountStatus?: "active" | "blocked" | "deletion_pending" | "deleted";
+  blockedAt?: string | null;
+  deletedAt?: string | null;
   id: string;
   fullName: string;
   username: string | null;
@@ -550,6 +564,48 @@ export interface AdminShippingSettings {
   apiKeyHint: string | null;
   credentialSource: "database" | "environment" | "none";
   updatedAt: string | null;
+}
+
+export interface AdminUserNote {
+  id: string;
+  body: string;
+  authorName: string;
+  sellerVisible: boolean;
+  createdAt: string;
+}
+
+export interface AdminUserNotesPage {
+  items: AdminUserNote[];
+  nextCursor: string | null;
+}
+
+export interface SellerCustomer {
+  id: string;
+  fullName: string;
+  email: string | null;
+  phoneNumber: string | null;
+  orderCount: number;
+}
+
+export interface SellerCustomersPage {
+  items: SellerCustomer[];
+  nextCursor: string | null;
+}
+
+export interface SellerCustomerOrder {
+  id: string;
+  status: OrderStatus;
+  totalAmount: string;
+  currency: string;
+  createdAt: string;
+  shopName: string;
+  items: { title: string; quantity: number }[];
+}
+
+export interface SellerCustomerDetail {
+  customer: SellerCustomer;
+  notes: { items: Pick<AdminUserNote, "id" | "body" | "createdAt">[]; nextCursor: string | null };
+  orders: { items: SellerCustomerOrder[]; nextCursor: string | null };
 }
 
 export interface SellerShippingProfile {
@@ -759,6 +815,7 @@ export interface CheckoutQuoteGroup {
 export interface CheckoutQuote {
   currency: "TOMAN";
   totalAmount: string;
+  usdToTomanRate: string | null;
   groups: CheckoutQuoteGroup[];
   commonPaymentMethods: CheckoutPaymentMethod[];
   requiresShippingAddress: boolean;
@@ -817,6 +874,7 @@ export type Role =
 
 export interface AppUser {
   id: string;
+  supportCode?: string;
   sellerId?: string;
   fullName: string;
   username?: string | null;
@@ -1291,6 +1349,20 @@ export interface ProductTranslation {
   updatedAt: string;
 }
 
+export type SellerUploadListItem = Omit<AdminUploadListItem, "owner"> & { pendingDeletionId: string | null; lastDeletionStatus: "pending" | "approved" | "rejected" | null; lastRejectionReason: string | null };
+export interface SellerUploadPage { items: SellerUploadListItem[]; nextCursor: string | null }
+export interface UploadDeletionRequest {
+  id: string;
+  source: AdminUploadSource;
+  assetId: string;
+  sellerName: string;
+  requesterName: string | null;
+  linkedContent: AdminUploadListItem["linkedContent"];
+  reason: string;
+  requestedAt: string;
+}
+export interface UploadDeletionRequestPage { items: UploadDeletionRequest[]; nextCursor: string | null }
+
 export interface ContentAiDraft {
   title: string;
   slug: string;
@@ -1321,3 +1393,4 @@ export interface ContentAiResult {
   status: "ready";
   draft: ContentAiDraft;
 }
+export type { SeoLocale, SeoLocaleDefaults, SeoPageOverride, SeoRedirect, SeoConfiguration, AdminSeoSettings, SeoHistoryEntry } from "./seo";

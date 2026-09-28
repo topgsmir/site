@@ -1,10 +1,6 @@
 "use client";
 
-import TiptapImage from "@tiptap/extension-image";
-import Link from "@tiptap/extension-link";
-import Placeholder from "@tiptap/extension-placeholder";
-import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
+import { useEditor } from "@tiptap/react";
 import type {
   BlogLocale,
   BlogChangeEvent,
@@ -28,6 +24,7 @@ import styles from "./BlogEditor.module.css";
 import { ContentAiPanel } from "@/components/ai/ContentAiPanel";
 import { applyBlogAiTranslation, articleText, taxonomyMatch } from "@/components/ai/blog-ai-draft";
 import { safeExternalHref } from "@/lib/safe-navigation";
+import { RichTextVisualEditor, richTextExtensions } from "./RichTextVisualEditor";
 
 const LABELS: Record<BlogLocale, string> = { fa: "فارسی", en: "English", ar: "العربية" };
 const AUTHORING_LOCALE: BlogLocale = "fa";
@@ -108,12 +105,7 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
   const editor = useEditor({
     immediatelyRender: false,
     editorProps: { attributes: { role: "textbox", "aria-label": copy.body, "aria-multiline": "true" } },
-    extensions: [
-      StarterKit.configure({ heading: { levels: [2, 3] }, link: false }),
-      Link.configure({ openOnClick: false, protocols: ["http", "https", "mailto", "tel"] }),
-      TiptapImage.configure({ allowBase64: false }),
-      Placeholder.configure({ placeholder: copy.bodyPlaceholder })
-    ],
+    extensions: richTextExtensions(copy.bodyPlaceholder),
     content: EMPTY,
     onUpdate: ({ editor: currentEditor }) => {
       const localeCode = activeRef.current;
@@ -123,19 +115,6 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
       setMessage(copy.unsaved);
     }
   });
-  const formatting = useEditorState({ editor, selector: ({ editor: currentEditor }) => ({
-    bold: currentEditor?.isActive("bold") ?? false,
-    italic: currentEditor?.isActive("italic") ?? false,
-    strike: currentEditor?.isActive("strike") ?? false,
-    code: currentEditor?.isActive("code") ?? false,
-    heading: currentEditor?.isActive("heading", { level: 2 }) ?? false,
-    subheading: currentEditor?.isActive("heading", { level: 3 }) ?? false,
-    list: currentEditor?.isActive("bulletList") ?? false,
-    orderedList: currentEditor?.isActive("orderedList") ?? false,
-    quote: currentEditor?.isActive("blockquote") ?? false,
-    codeBlock: currentEditor?.isActive("codeBlock") ?? false,
-    link: currentEditor?.isActive("link") ?? false
-  }) });
 
   const load = useCallback(async () => {
     try {
@@ -227,25 +206,6 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
     if (editorMode === "html") applyHtmlSource();
     setEditorMode("visual");
     setActive(locale);
-  }
-
-  function editLink() {
-    if (!editor) return;
-    const existing = editor.getAttributes("link").href as string | undefined;
-    const href = window.prompt(COPY.linkPrompt, existing ?? "https://");
-    if (href === null) return;
-    if (!href.trim()) {
-      editor.chain().focus().extendMarkRange("link").unsetLink().run();
-      return;
-    }
-    const safeHref = safeExternalHref(href.trim());
-    if (!safeHref) {
-      setError(true);
-      setMessage("این نوع نشانی برای پیوند مجاز نیست.");
-      return;
-    }
-    setError(false);
-    editor.chain().focus().extendMarkRange("link").setLink({ href: safeHref }).run();
   }
 
   async function save() {
@@ -384,25 +344,11 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
               <button type="button" aria-pressed={editorMode === "visual"} onClick={() => setMode("visual")}>{COPY.visual}</button>
               <button type="button" aria-pressed={editorMode === "html"} onClick={() => setMode("html")}>{COPY.html}</button>
             </div>
-            {editorMode === "visual" ? <>
-              <div className={styles.toolbar} role="group" aria-label={copy.body}>
-                <button type="button" aria-pressed={formatting?.bold} aria-label={copy.bold} title={copy.bold} onClick={() => editor?.chain().focus().toggleBold().run()}><strong>B</strong></button>
-                <button type="button" aria-pressed={formatting?.italic} aria-label={copy.italic} title={copy.italic} onClick={() => editor?.chain().focus().toggleItalic().run()}><em>I</em></button>
-                <button type="button" aria-pressed={formatting?.strike} aria-label={COPY.strike} title={COPY.strike} onClick={() => editor?.chain().focus().toggleStrike().run()}><s>S</s></button>
-                <button type="button" aria-pressed={formatting?.code} aria-label={COPY.inlineCode} title={COPY.inlineCode} onClick={() => editor?.chain().focus().toggleCode().run()}>&lt;/&gt;</button>
-                <span className={styles.toolDivider} />
-                <button type="button" aria-pressed={formatting?.heading} aria-label={copy.heading} title={copy.heading} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}>H2</button>
-                <button type="button" aria-pressed={formatting?.subheading} aria-label={COPY.subheading} title={COPY.subheading} onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}>H3</button>
-                <button type="button" aria-pressed={formatting?.list} title={copy.list} onClick={() => editor?.chain().focus().toggleBulletList().run()}>• {copy.list}</button>
-                <button type="button" aria-pressed={formatting?.orderedList} title={COPY.orderedList} onClick={() => editor?.chain().focus().toggleOrderedList().run()}>1. {COPY.orderedList}</button>
-                <button type="button" aria-pressed={formatting?.quote} title={COPY.quote} onClick={() => editor?.chain().focus().toggleBlockquote().run()}>“ ”</button>
-                <button type="button" aria-pressed={formatting?.codeBlock} title={COPY.codeBlock} onClick={() => editor?.chain().focus().toggleCodeBlock().run()}>{"{ }"}</button>
-                <button type="button" aria-label={COPY.rule} title={COPY.rule} onClick={() => editor?.chain().focus().setHorizontalRule().run()}>—</button>
-                <button type="button" aria-pressed={formatting?.link} title={COPY.link} onClick={editLink}>↗ {COPY.link}</button>
-                <label className={styles.inlineUpload}><DesignIcon name="layers" />{copy.image}<input aria-label={copy.image} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file, "inline"); event.currentTarget.value = ""; }} /></label>
-              </div>
-              <div className={styles.editor} dir={active === "en" ? "ltr" : "rtl"} lang={active}><EditorContent editor={editor} /></div>
-            </> : <div className={styles.htmlEditor}>
+            {editorMode === "visual" ? <RichTextVisualEditor editor={editor} language={active} labels={{
+              body: copy.body, bold: copy.bold, italic: copy.italic, strike: COPY.strike, inlineCode: COPY.inlineCode,
+              heading: copy.heading, subheading: COPY.subheading, list: copy.list, orderedList: COPY.orderedList,
+              quote: COPY.quote, codeBlock: COPY.codeBlock, rule: COPY.rule, link: COPY.link, linkPrompt: COPY.linkPrompt, image: copy.image
+            }} onInvalidLink={() => { setError(true); setMessage("این نوع نشانی برای پیوند مجاز نیست."); }} onUpload={(file) => void upload(file, "inline")} /> : <div className={styles.htmlEditor}>
               <textarea dir="ltr" lang="en" spellCheck={false} aria-label={`${copy.body} HTML`} value={htmlSource} onChange={(event) => { setHtmlSource(event.target.value); setMessage(copy.unsaved); }} />
               <p>{COPY.htmlHint}</p>
             </div>}

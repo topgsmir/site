@@ -1,0 +1,33 @@
+SET lock_timeout = '10s';
+CREATE TABLE "seo_settings" (
+  "id" INTEGER PRIMARY KEY DEFAULT 1 CHECK ("id" = 1),
+  "version" INTEGER NOT NULL CHECK ("version" > 0),
+  "configuration" JSONB NOT NULL CHECK (jsonb_typeof("configuration") = 'object' AND octet_length("configuration"::text) <= 524288),
+  "updated_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE "seo_setting_events" (
+  "version" INTEGER PRIMARY KEY CHECK ("version" > 0),
+  "actor_user_id" UUID NOT NULL,
+  "configuration" JSONB NOT NULL CHECK (jsonb_typeof("configuration") = 'object' AND octet_length("configuration"::text) <= 524288),
+  "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+-- Actor IDs are retained as immutable audit attribution, even after account removal.
+SET statement_timeout = '30s';
+
+ALTER TABLE "auth_rate_limits" ADD CONSTRAINT "auth_rate_limits_action_seo_check" CHECK (
+  "action" IN ('login','register','order','shipping','shipping_configuration','payout','media','media_admin','otp','payment','payment_callback','payment_refund','payment_configuration','sms_configuration','staff_setup','bridge','signed_ticket','ai_profile','ai_profile_test','ai_run','product_bulk_undo','checkout_quote','analytics','auth_configuration','captcha_challenge','comment_submit','comment_reply','comment_admin','profile','goghdi_configuration','backup_admin','backup_restore','admin_user','blog','coupon','digital_download','notice_configuration','seo_configuration','product','seller','staff_admin','usd_configuration')
+) NOT VALID;
+ALTER TABLE "auth_rate_limits" VALIDATE CONSTRAINT "auth_rate_limits_action_seo_check";
+ALTER TABLE "auth_rate_limits" DROP CONSTRAINT "auth_rate_limits_action_check";
+ALTER TABLE "auth_rate_limits" RENAME CONSTRAINT "auth_rate_limits_action_seo_check" TO "auth_rate_limits_action_check";
+
+ALTER TABLE "security_policies" ADD CONSTRAINT "security_policies_action_seo_check" CHECK (
+  "action" IN ('login','register','otp','profile','admin_user','captcha_challenge','checkout_quote','comment_submit_guest','comment_submit','comment_reply','comment_admin','blog','coupon','product','order','digital_download','shipping','shipping_configuration','payout','media','media_admin','payment','payment_callback','payment_refund','payment_configuration','sms_configuration','goghdi_configuration','auth_configuration','notice_configuration','seo_configuration','usd_configuration','staff_admin','staff_setup','seller','bridge','signed_ticket','ai_profile','ai_profile_test','ai_run','product_bulk_undo','analytics','backup_admin','backup_restore')
+) NOT VALID;
+ALTER TABLE "security_policies" VALIDATE CONSTRAINT "security_policies_action_seo_check";
+ALTER TABLE "security_policies" DROP CONSTRAINT "security_policies_action_check";
+ALTER TABLE "security_policies" RENAME CONSTRAINT "security_policies_action_seo_check" TO "security_policies_action_check";
+
+RESET statement_timeout;
+RESET lock_timeout;
+

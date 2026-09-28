@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { managedSeoMetadata } from "@/lib/seo-settings-server";
 import { notFound } from "next/navigation";
 import { isLocale, locales } from "@/lib/i18n";
 import { getProductsPage } from "@/lib/public-data";
@@ -21,12 +22,12 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const copy = catalogCopy[locale];
   const title = query.search ? copy.search + ": " + query.search : copy[query.type as "all" | "digital" | "physical" | "service" | "bridge"];
   const canonical = SITE_URL + listingHref("/" + locale + "/products", query);
-  return {
+  return managedSeoMetadata(locale, `/${locale}/products`, {
     title, description: title + ". " + copy.description,
     alternates: { canonical, ...(!query.cursor && !query.search ? { languages: Object.fromEntries([...locales.map((code) => [code, SITE_URL + listingHref("/" + code + "/products", { type: query.type })]), ["x-default", SITE_URL + listingHref("/fa/products", { type: query.type })]]) } : {}) },
     robots: { index: !query.search, follow: true },
     openGraph: { title, description: copy.description, url: canonical, type: "website" }
-  };
+  });
 }
 
 export default async function ProductsPage(props: Props) {

@@ -1,6 +1,9 @@
 import { Controller, Get, Header, Module, Query } from "@nestjs/common";
 import { SeoService } from "./seo.service";
 import { SitemapFeedDto } from "./seo.dto";
+import { AuthModule } from "../auth/auth.module";
+import { SeoSettingsService } from "./seo-settings.service";
+import { AdminSeoSettingsController, PublicSeoSettingsController } from "./seo-settings.controller";
 
 @Controller("seo/sitemap")
 export class SeoController {
@@ -15,5 +18,5 @@ export class SeoController {
   feed(@Query() query: SitemapFeedDto) { return this.seo.feed(query); }
 }
 
-@Module({ controllers: [SeoController], providers: [SeoService] })
+@Module({ imports: [AuthModule], controllers: [SeoController, AdminSeoSettingsController, PublicSeoSettingsController], providers: [SeoService, SeoSettingsService] })
 export class SeoModule {}

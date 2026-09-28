@@ -17,6 +17,7 @@ import { PublicHeader } from "@/components/PublicHeader";
 import { productPageCopy } from "./product-copy";
 import { DigitalProductHeading, DigitalProductPreview, DigitalDownloadGuide, DigitalDownloadQuestions } from "@/components/product/DigitalProductDetails";
 import { digitalProductCopy, downloadAllowance } from "@/components/product/digital-product-copy";
+import { ProductDescription } from "@/components/product/ProductDescription";
 
 type ProductCopy = ReturnType<typeof getDictionary>["product"];
 type ButtonState = "idle" | "loading" | "success" | "error";
@@ -288,9 +289,7 @@ export function ProductPage({
         <section className={styles.details} aria-labelledby={isDigital ? "download-details-title" : "overview-title"}>
           {isDigital ? <DigitalDownloadGuide locale={locale} /> : <article className={styles.description}>
             <h2 id="overview-title">{isService ? c.overview : copy.overview}</h2>
-            {(product.description?.trim() || copy.noDescription).split(/\n{2,}/).map((paragraph, index) => (
-              <p key={`${paragraph.slice(0, 24)}-${index}`}>{paragraph}</p>
-            ))}
+            <ProductDescription description={product.description} fallback={copy.noDescription} />
           </article>}
 
           <div className={styles.specification}>

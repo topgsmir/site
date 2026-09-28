@@ -5,8 +5,8 @@ import { safeExternalHref } from "@/lib/safe-navigation";
 
 const SAFE_IMAGE = /^\/media\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/[a-z0-9-]{1,80}\.webp$/i;
 
-export function RichText({ document, headingAnchors = false }: { document: RichTextDocument; headingAnchors?: boolean }) {
-  return <div className="article-prose">{renderNodes(document.content ?? [], "", headingAnchors)}</div>;
+export function RichText({ document, headingAnchors = false, className = "article-prose" }: { document: RichTextDocument; headingAnchors?: boolean; className?: string }) {
+  return <div className={className}>{renderNodes(document.content ?? [], "", headingAnchors)}</div>;
 }
 
 function renderNodes(nodes: RichTextNode[], path = "", headingAnchors = false): ReactNode {

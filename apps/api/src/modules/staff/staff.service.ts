@@ -7,7 +7,9 @@ import {
 import { Prisma } from "../../prisma/client";
 import { createHash, randomBytes } from "node:crypto";
 import { PrismaService } from "../../prisma/prisma.service";
+import { resolveUserId, userReferenceWhere } from "../../common/user-reference";
 import { AuthService } from "../auth/auth.service";
+import { assertMutable, lockAdministration, lockEntity } from "../admin-users/user-lifecycle.policy";
 import type {
   CompleteStaffSetupDto,
   CreateStaffInvitationDto,
@@ -110,12 +112,13 @@ export class StaffService {
   }
 
   async update(userId: string, input: UpdateStaffDto, ownerId: string) {
-    const staff = await this.prisma.users.findFirst({
-      where: { id: userId, role: "platform_staff" },
-      select: { id: true }
-    });
-    if (!staff) throw new NotFoundException("Platform staff member was not found");
+    userId = await resolveUserId(this.prisma, userId);
     await this.prisma.$transaction(async (tx) => {
+      await lockAdministration(tx, ownerId);
+      await lockEntity(tx, "user", userId);
+      const staff = await tx.users.findFirst({ where: { id: userId, role: "platform_staff" }, select: { account_status: true, platform_permissions: { select: { permission: true } } } });
+      if (!staff) throw new NotFoundException("Platform staff member was not found");
+      assertMutable(staff);
       if (input.fullName !== undefined) {
         await tx.users.update({
           where: { id: userId },
@@ -138,31 +141,26 @@ export class StaffService {
         where: { user_id: userId, revoked_at: null },
         data: { revoked_at: new Date() }
       });
-    });
+      await tx.user_account_events.create({ data: { user_id: userId, actor_user_id: ownerId, action: "staff_updated", reason: "Staff settings updated", before_data: { permissions: staff.platform_permissions.map(p => p.permission) }, after_data: { permissions: input.permissions ?? staff.platform_permissions.map(p => p.permission) } } });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     return this.list();
   }
 
   async revoke(id: string) {
-    const invitation = await this.prisma.platform_staff_invitations.updateMany({
-      where: { id, status: "pending" },
-      data: { status: "revoked", revoked_at: new Date() }
-    });
-    if (invitation.count) return { revoked: true };
+    if (id.includes("-")) {
+      const invitation = await this.prisma.platform_staff_invitations.updateMany({
+        where: { id: id.toLowerCase(), status: "pending" },
+        data: { status: "revoked", revoked_at: new Date() }
+      });
+      if (invitation.count) return { revoked: true };
+    }
 
     const staff = await this.prisma.users.findFirst({
-      where: { id, role: "platform_staff" },
+      where: { ...userReferenceWhere(id), role: "platform_staff" },
       select: { id: true }
     });
     if (!staff) throw new NotFoundException("Staff member or invitation was not found");
-    await this.prisma.$transaction([
-      this.prisma.platform_staff_permissions.deleteMany({ where: { user_id: id } }),
-      this.prisma.auth_sessions.updateMany({
-        where: { user_id: id, revoked_at: null },
-        data: { revoked_at: new Date() }
-      }),
-      this.prisma.users.update({ where: { id }, data: { role: "buyer" } })
-    ]);
-    return { revoked: true };
+    throw new ConflictException("Use the user's role-change workflow to revoke an existing staff role with a reason");
   }
 
   async completeSetup(token: string, input: CompleteStaffSetupDto) {

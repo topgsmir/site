@@ -113,6 +113,10 @@ export class AuthRateLimitService {
     await this.consumeSensitiveMutation("notice_configuration", userId, clientIp);
   }
 
+  async consumeSeoConfiguration(userId: string, clientIp: string) {
+    await this.consumeSensitiveMutation("seo_configuration", userId, clientIp);
+  }
+
   async consumeProductMutation(userId: string, clientIp: string) {
     await this.consumeSensitiveMutation("product", userId, clientIp);
   }

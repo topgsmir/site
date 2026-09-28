@@ -162,11 +162,12 @@ export class BlogSidebarService {
     };
   }
 
-  private startingPrices(product: { variants: Array<{ offers: Array<{ price: Prisma.Decimal; currency: string }> }> }): ProductStartingPrice[] {
+  private startingPrices(product: { price_currency: string; variants: Array<{ offers: Array<{ price: Prisma.Decimal; currency: string }> }> }): ProductStartingPrice[] {
     const minimum = new Map<string, Prisma.Decimal>();
     for (const variant of product.variants) {
       for (const offer of variant.offers) {
         const currency = offer.currency.trim();
+        if (currency !== product.price_currency) continue;
         const current = minimum.get(currency);
         if (!current || offer.price.lessThan(current)) minimum.set(currency, offer.price);
       }

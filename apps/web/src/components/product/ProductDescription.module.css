@@ -1,0 +1,14 @@
+.prose { min-width: 0; color: var(--color-product-ink-soft); font-size: var(--text-product-base); line-height: 2; overflow-wrap: anywhere; }
+.prose > * + * { margin-block-start: .75em; }
+.prose :is(h2, h3) { margin-block: 1.2em .4em; color: var(--color-product-ink); line-height: 1.6; }
+.prose h2 { font-size: 1.2em; }
+.prose h3 { font-size: 1.08em; }
+.prose :is(ul, ol) { padding-inline-start: 1.5em; }
+.prose ul { list-style: disc; }
+.prose ol { list-style: decimal; }
+.prose blockquote { margin-inline: 0; padding-inline-start: 1em; border-inline-start: 3px solid var(--color-product-accent); }
+.prose a { color: var(--color-product-accent); text-decoration: underline; text-underline-offset: 3px; }
+.prose pre { direction: ltr; text-align: left; overflow-x: auto; padding: .75em; border-radius: 8px; background: var(--color-product-surface-raised); }
+.prose code { overflow-wrap: anywhere; }
+.prose hr { border: 0; border-block-start: 1px solid var(--color-product-rule); }
+.prose img { max-width: 100%; height: auto; }

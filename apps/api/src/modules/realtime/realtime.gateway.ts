@@ -73,18 +73,15 @@ export class RealtimeGateway implements OnGatewayConnection {
   }
 
   emitOrderCreated(audience: OrderAudience, payload: Payload) {
-    this.emitToOrderAudience(audience, "order.created", payload);
+    return this.emitToOrderAudience(audience, "order.created", payload);
   }
 
   emitOrderStatusChanged(audience: OrderAudience, payload: Payload) {
-    this.emitToOrderAudience(audience, "order.status.updated", payload);
+    return this.emitToOrderAudience(audience, "order.status.updated", payload);
   }
 
   emitPayoutStatusChanged(sellerId: string, payload: Payload) {
-    this.server
-      .to(`seller:${sellerId}:payouts`)
-      .emit("payout.status.updated", payload);
-    this.server.to("platform:payouts").emit("payout.status.updated", payload);
+    return this.emitAuthorized([`seller:${sellerId}:payouts`, "platform:payouts"], "payout.status.updated", payload);
   }
 
   private emitToOrderAudience(
@@ -92,8 +89,20 @@ export class RealtimeGateway implements OnGatewayConnection {
     event: string,
     payload: Payload
   ) {
-    this.server.to(`user:${audience.buyerId}`).emit(event, payload);
-    this.server.to(`seller:${audience.sellerId}:orders`).emit(event, payload);
-    this.server.to("platform:orders").emit(event, payload);
+    return this.emitAuthorized([`user:${audience.buyerId}`, `seller:${audience.sellerId}:orders`, "platform:orders"], event, payload);
+  }
+
+  private async emitAuthorized(rooms: string[], event: string, payload: Payload) {
+    // Room membership is not a cached authorization decision. Recheck before
+    // each private delivery, including sockets connected to another replica.
+    try {
+      const sockets = await this.server.in(rooms).fetchSockets();
+      for (const socket of sockets) {
+        try {
+          await this.auth.getUserFromToken(readSessionToken(socket.handshake.headers.cookie, socket.handshake.headers.authorization));
+          socket.emit(event, payload);
+        } catch { socket.disconnect(true); }
+      }
+    } catch { /* Fail closed when the adapter/database is unavailable. */ }
   }
 }

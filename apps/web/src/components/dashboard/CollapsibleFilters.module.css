@@ -1,6 +1,6 @@
 .disclosure {
   min-width: 0;
-  overflow: clip;
+  overflow: visible;
   border-block: var(--rule-dashboard-thin) solid var(--color-dashboard-rule);
 }
 

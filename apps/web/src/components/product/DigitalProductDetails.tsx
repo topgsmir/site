@@ -3,6 +3,7 @@ import { DesignIcon } from "@/components/DesignIcon";
 import type { PublicProduct } from "@/app/[locale]/products/[slug]/product.server";
 import type { Locale } from "@/lib/i18n";
 import { digitalProductCopy } from "./digital-product-copy";
+import { ProductDescription } from "./ProductDescription";
 import styles from "./DigitalProductDetails.module.css";
 
 export function DigitalProductHeading({ product, locale }: { product: PublicProduct; locale: Locale }) {
@@ -34,7 +35,7 @@ export function DigitalProductPreview({ product, locale }: { product: PublicProd
 function DigitalProductDescription({ description, locale }: { description: string | null; locale: Locale }) {
   const c = digitalProductCopy[locale];
   return <div id="download-description" className={styles.description} aria-label={c.description}>
-    {(description?.trim() || c.noDescription).split(/\n{2,}/).map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+    <ProductDescription description={description} fallback={c.noDescription} />
   </div>;
 }
 

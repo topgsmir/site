@@ -35,7 +35,7 @@ export function CollapsibleFilters({
   const contentId = useId();
   const c = copy[locale];
 
-  return <div className={`${styles.disclosure}${className ? ` ${className}` : ""}`} data-open={open} data-surface={surface || undefined}>
+  return <div className={`${styles.disclosure}${className ? ` ${className}` : ""}`} data-admin-filter-disclosure data-open={open} data-surface={surface || undefined}>
     <button className={styles.trigger} type="button" aria-expanded={open} aria-controls={contentId} onClick={() => setOpen((current) => !current)}>
       <span className={styles.icon} aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4M4 5h4M16 5h4M7 5v4M17 15v4M4 17h10M10 3v4M14 15v4"/></svg></span>
       <span className={styles.copy}><strong>{title ?? c.title}</strong>{description ? <small>{description}</small> : null}</span>

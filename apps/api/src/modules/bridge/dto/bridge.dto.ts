@@ -3,6 +3,11 @@ import { ArrayMaxSize, IsArray, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, 
 
 export const bridgeProviders = ["dhru_legacy", "dhru_new", "webx"] as const;
 
+export class ListBridgeRefundRequestsDto {
+  @IsOptional() @IsUUID("4") cursor?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(50) limit = 20;
+}
+
 export class CreateBridgeConnectionDto {
   @IsString() @MinLength(1) @MaxLength(100) name!: string;
   @IsIn(bridgeProviders) provider!: (typeof bridgeProviders)[number];

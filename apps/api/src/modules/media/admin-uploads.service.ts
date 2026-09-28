@@ -58,7 +58,7 @@ export class AdminUploadsService implements OnModuleInit, OnModuleDestroy {
 
   onModuleDestroy() { if (this.timer) clearInterval(this.timer); }
 
-  async summary(): Promise<AdminUploadSummary> {
+  async summary(sellerId?: string): Promise<AdminUploadSummary> {
     const rows = await this.prisma.$queryRaw<Array<{
       asset_count: bigint; generated_storage_bytes: bigint; unlinked_count: bigint; trash_count: bigint; upcoming_purge_count: bigint;
     }>>(Prisma.sql`
@@ -67,10 +67,12 @@ export class AdminUploadsService implements OnModuleInit, OnModuleDestroy {
           EXISTS (SELECT 1 FROM blog_revision_media r WHERE r.asset_id = a.id) AS linked,
           COALESCE((SELECT SUM(v.byte_size) FROM blog_media_variants v WHERE v.asset_id = a.id), 0) AS generated_bytes
         FROM blog_media_assets a
+        ${sellerId ? Prisma.sql`WHERE a.seller_id = ${sellerId}` : Prisma.empty}
         UNION ALL
         SELECT a.id, a.trashed_at, a.purge_after, (a.product_id IS NOT NULL) AS linked,
           COALESCE((SELECT SUM(v.byte_size) FROM product_media_variants v WHERE v.asset_id = a.id), 0) AS generated_bytes
         FROM product_media_assets a
+        ${sellerId ? Prisma.sql`JOIN products p ON p.id = COALESCE(a.product_id, a.restore_product_id) WHERE p.created_by_seller_id = ${sellerId}` : Prisma.empty}
       )
       SELECT COUNT(*) AS asset_count, COALESCE(SUM(generated_bytes), 0) AS generated_storage_bytes,
         COUNT(*) FILTER (WHERE NOT linked AND trashed_at IS NULL) AS unlinked_count,
@@ -85,7 +87,7 @@ export class AdminUploadsService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  async list(query: AdminUploadsQueryDto): Promise<AdminUploadPage> {
+  async list(query: AdminUploadsQueryDto, sellerId?: string): Promise<AdminUploadPage> {
     const cursor = query.cursor ? decodeUploadCursor(query.cursor, query.sort) : null;
     const search = query.search?.trim() ? `%${query.search.trim()}%` : null;
     const from = query.from ? new Date(query.from) : null;
@@ -120,6 +122,7 @@ export class AdminUploadsService implements OnModuleInit, OnModuleDestroy {
           p.id AS linked_id, (SELECT t.title FROM blog_revision_translations t WHERE t.revision_id = p.working_revision_id AND t.title IS NOT NULL ORDER BY t.locale LIMIT 1) AS linked_title,
           CASE WHEN p.id IS NULL THEN NULL ELSE 'post' END AS linked_type
         FROM blog_media_assets a JOIN users u ON u.id = a.owner_user_id LEFT JOIN blog_posts p ON p.id = a.post_id
+        ${sellerId ? Prisma.sql`WHERE a.seller_id = ${sellerId}` : Prisma.empty}
         UNION ALL
         SELECT 'product'::media_asset_source, a.id, 'product'::text,
           CASE WHEN a.purging_at IS NOT NULL THEN 'purging' WHEN a.trashed_at IS NOT NULL THEN 'trashed' ELSE 'active' END,
@@ -130,6 +133,7 @@ export class AdminUploadsService implements OnModuleInit, OnModuleDestroy {
           (SELECT v.variant FROM product_media_variants v WHERE v.asset_id = a.id ORDER BY v.byte_size ASC LIMIT 1),
           u.id, u.full_name, u.email, p.id::text, p.title, CASE WHEN p.id IS NULL THEN NULL ELSE 'product' END
         FROM product_media_assets a JOIN users u ON u.id = a.uploaded_by_user_id LEFT JOIN products p ON p.id = COALESCE(a.product_id, a.restore_product_id)
+        ${sellerId ? Prisma.sql`WHERE p.created_by_seller_id = ${sellerId}` : Prisma.empty}
       ), ranked AS (SELECT *, ${sortExpression} AS sort_value FROM unified)
       SELECT source, id, kind, state, link_state, original_filename, original_mime_type, width, height,
         source_bytes, generated_bytes, checksum, created_at, trashed_at, purge_after, preview_variant,
@@ -148,6 +152,23 @@ export class AdminUploadsService implements OnModuleInit, OnModuleDestroy {
         v: 1, sort: query.sort, value: query.sort === "size" ? String(last.generated_bytes) : last.created_at.toISOString(), id: last.id, source: last.source
       }) : null
     };
+  }
+
+  async listSeller(query: AdminUploadsQueryDto, sellerId: string) {
+    const page = await this.list(query, sellerId);
+    const latest = page.items.length ? await this.prisma.$queryRaw<Array<{ id: string; source: AdminUploadSource; asset_id: string; status: string; review_reason: string | null }>>(Prisma.sql`
+      SELECT DISTINCT ON (source, asset_id) id, source, asset_id, status, review_reason
+      FROM media_deletion_requests
+      WHERE seller_id = ${sellerId} AND (source, asset_id) IN (${Prisma.join(page.items.map((item) => Prisma.sql`(${item.source}::media_asset_source, ${item.id}::uuid)`))})
+      ORDER BY source, asset_id, requested_at DESC, id DESC
+    `) : [];
+    const latestByAsset = new Map(latest.map((request) => [`${request.source}:${request.asset_id}`, request]));
+    return { nextCursor: page.nextCursor, items: page.items.map(({ owner: _owner, ...item }) => ({
+      ...item, previewUrl: item.state === "active" ? item.previewUrl : null,
+      pendingDeletionId: latestByAsset.get(`${item.source}:${item.id}`)?.status === "pending" ? latestByAsset.get(`${item.source}:${item.id}`)!.id : null,
+      lastDeletionStatus: latestByAsset.get(`${item.source}:${item.id}`)?.status ?? null,
+      lastRejectionReason: latestByAsset.get(`${item.source}:${item.id}`)?.status === "rejected" ? latestByAsset.get(`${item.source}:${item.id}`)?.review_reason ?? null : null
+    })) };
   }
 
   async detail(source: AdminUploadSource, id: string): Promise<AdminUploadDetail> {
@@ -229,24 +250,113 @@ export class AdminUploadsService implements OnModuleInit, OnModuleDestroy {
 
   private async trashOne(item: AdminUploadRefDto, reason: string, actorUserId: string | null, automatic = false) {
     const now = new Date(); const purgeAfter = new Date(now.getTime() + TRASH_DAYS * 86400_000);
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => this.trashWithinTransaction(tx, item, reason, actorUserId, automatic, now, purgeAfter));
+    return { purgeAfter: purgeAfter.toISOString() };
+  }
+
+  private async trashWithinTransaction(tx: Prisma.TransactionClient, item: AdminUploadRefDto, reason: string, actorUserId: string | null, automatic: boolean, now: Date, purgeAfter: Date, expectedSellerId?: string) {
       if (item.source === "blog") {
         await tx.$queryRaw(Prisma.sql`SELECT id FROM blog_media_assets WHERE id = ${item.id} FOR UPDATE`);
-        const asset = await tx.blog_media_assets.findUnique({ where: { id: item.id }, select: { trashed_at: true, revision_references: { select: { revision_id: true }, take: 1 } } });
+        if (automatic) {
+          const pending = await tx.media_deletion_requests.findFirst({ where: { source: "blog", asset_id: item.id, status: "pending" }, select: { id: true } });
+          if (pending) return;
+        }
+        const asset = await tx.blog_media_assets.findUnique({ where: { id: item.id }, select: { seller_id: true, trashed_at: true, revision_references: { select: { revision_id: true }, take: 1 } } });
         if (!asset) throw new NotFoundException("Upload was not found");
+        if (expectedSellerId && asset.seller_id !== expectedSellerId) throw new ConflictException("Upload ownership has changed");
+        if (expectedSellerId && asset.trashed_at) throw new ConflictException("Upload is already in trash");
         if (asset.trashed_at) return;
         if (asset.revision_references.length) throw new ConflictException("Referenced blog media cannot be moved to trash");
         await tx.blog_media_assets.update({ where: { id: item.id }, data: { trashed_at: now, purge_after: purgeAfter, trashed_by_user_id: actorUserId, purging_at: null } });
       } else {
         await tx.$queryRaw(Prisma.sql`SELECT id FROM product_media_assets WHERE id = ${item.id} FOR UPDATE`);
-        const asset = await tx.product_media_assets.findUnique({ where: { id: item.id }, select: { trashed_at: true, product_id: true } });
+        const asset = await tx.product_media_assets.findUnique({ where: { id: item.id }, select: { trashed_at: true, product_id: true, product: { select: { created_by_seller_id: true } } } });
         if (!asset) throw new NotFoundException("Upload was not found");
+        if (expectedSellerId && asset.product?.created_by_seller_id !== expectedSellerId) throw new ConflictException("Upload ownership has changed");
+        if (expectedSellerId && asset.trashed_at) throw new ConflictException("Upload is already in trash");
         if (asset.trashed_at) return;
         await tx.product_media_assets.update({ where: { id: item.id }, data: { restore_product_id: asset.product_id, product_id: null, trashed_at: now, purge_after: purgeAfter, trashed_by_user_id: actorUserId, purging_at: null } });
       }
       await tx.media_admin_events.create({ data: { id: randomUUID(), source: item.source, asset_id: item.id, actor_user_id: actorUserId, action: automatic ? "auto_trashed" : "trashed", reason } });
+      if (!automatic && !expectedSellerId && actorUserId) {
+        await tx.media_deletion_requests.updateMany({ where: { source: item.source, asset_id: item.id, status: "pending" }, data: { status: "approved", reviewed_by_id: actorUserId, reviewed_at: now, review_reason: "Approved by direct admin trash action" } });
+      }
+  }
+
+  async approveDeletion(requestId: string, actorUserId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(Prisma.sql`SELECT id FROM media_deletion_requests WHERE id = ${requestId}::uuid FOR UPDATE`);
+      const request = await tx.media_deletion_requests.findUnique({ where: { id: requestId }, select: { id: true, source: true, asset_id: true, seller_id: true, reason: true, status: true } });
+      if (!request) throw new NotFoundException("Deletion request was not found");
+      if (request.status !== "pending") throw new ConflictException("Deletion request has already been reviewed");
+      const now = new Date();
+      const purgeAfter = new Date(now.getTime() + TRASH_DAYS * 86400_000);
+      await this.trashWithinTransaction(tx, { source: request.source, id: request.asset_id }, request.reason, actorUserId, false, now, purgeAfter, request.seller_id);
+      await tx.media_deletion_requests.update({ where: { id: requestId }, data: { status: "approved", reviewed_by_id: actorUserId, reviewed_at: now } });
+      return { id: requestId, status: "approved", purgeAfter: purgeAfter.toISOString() };
     });
-    return { purgeAfter: purgeAfter.toISOString() };
+  }
+
+  async requestDeletion(item: AdminUploadRefDto, sellerId: string, actorUserId: string, reason: string) {
+    const normalizedReason = reason.trim();
+    if (normalizedReason.length < 3) throw new BadRequestException("A deletion reason of at least three characters is required");
+    return this.prisma.$transaction(async (tx) => {
+      if (item.source === "blog") {
+        await tx.$queryRaw(Prisma.sql`SELECT id FROM blog_media_assets WHERE id = ${item.id} FOR UPDATE`);
+        const asset = await tx.blog_media_assets.findFirst({ where: { id: item.id, seller_id: sellerId, trashed_at: null }, select: { id: true, revision_references: { select: { revision_id: true }, take: 1 } } });
+        if (!asset) throw new NotFoundException("Upload was not found");
+        if (asset.revision_references.length) throw new ConflictException("Remove this image from blog content before requesting deletion");
+      } else {
+        await tx.$queryRaw(Prisma.sql`SELECT id FROM product_media_assets WHERE id = ${item.id} FOR UPDATE`);
+        const asset = await tx.product_media_assets.findFirst({ where: { id: item.id, trashed_at: null, product: { created_by_seller_id: sellerId } }, select: { id: true } });
+        if (!asset) throw new NotFoundException("Upload was not found");
+      }
+      const pending = await tx.media_deletion_requests.findFirst({ where: { source: item.source, asset_id: item.id, status: "pending" }, select: { id: true } });
+      if (pending) return { id: pending.id, status: "pending" as const };
+      const created = await tx.media_deletion_requests.create({ data: { id: randomUUID(), source: item.source, asset_id: item.id, seller_id: sellerId, requested_by_id: actorUserId, reason: normalizedReason }, select: { id: true } });
+      return { id: created.id, status: "pending" as const };
+    });
+  }
+
+  async requestProductImageDeletion(productId: string, sellerId: string, actorUserId: string) {
+    const asset = await this.prisma.product_media_assets.findFirst({ where: { product_id: productId, product: { created_by_seller_id: sellerId } }, select: { id: true } });
+    if (!asset) throw new NotFoundException("Product image was not found");
+    return this.requestDeletion({ source: "product", id: asset.id }, sellerId, actorUserId, "Seller requested removal from product editor");
+  }
+
+  async pendingDeletions(cursor?: string) {
+    const rows = await this.prisma.media_deletion_requests.findMany({
+      where: { status: "pending" }, orderBy: [{ requested_at: "asc" }, { id: "asc" }], take: 26,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      select: { id: true, source: true, asset_id: true, reason: true, requested_at: true,
+        seller: { select: { shop_name: true } }, requested_by: { select: { full_name: true } } }
+    });
+    const pageRows = rows.slice(0, 25);
+    const productIds = pageRows.filter((row) => row.source === "product").map((row) => row.asset_id);
+    const blogIds = pageRows.filter((row) => row.source === "blog").map((row) => row.asset_id);
+    const [productAssets, blogAssets] = await Promise.all([
+      productIds.length ? this.prisma.product_media_assets.findMany({ where: { id: { in: productIds } }, select: { id: true, product: { select: { id: true, title: true } }, restore_product: { select: { id: true, title: true } } } }) : [],
+      blogIds.length ? this.prisma.blog_media_assets.findMany({ where: { id: { in: blogIds } }, select: { id: true, post: { select: { id: true, title: true, working_revision: { select: { translations: { select: { title: true }, orderBy: { locale: "asc" }, take: 1 } } } } } } }) : []
+    ]);
+    const linkedByAsset = new Map<string, { id: string; title: string; type: "post" | "product" }>();
+    for (const asset of productAssets) {
+      const product = asset.product ?? asset.restore_product;
+      if (product) linkedByAsset.set(`product:${asset.id}`, { id: product.id, title: product.title, type: "product" });
+    }
+    for (const asset of blogAssets) {
+      const post = asset.post;
+      const title = post?.working_revision?.translations[0]?.title ?? post?.title;
+      if (post && title) linkedByAsset.set(`blog:${asset.id}`, { id: post.id, title, type: "post" });
+    }
+    return { items: pageRows.map((row) => ({ id: row.id, source: row.source, assetId: row.asset_id, reason: row.reason, requestedAt: row.requested_at.toISOString(), sellerName: row.seller.shop_name, requesterName: row.requested_by?.full_name ?? null, linkedContent: linkedByAsset.get(`${row.source}:${row.asset_id}`) ?? null })), nextCursor: rows.length > 25 ? rows[24]!.id : null };
+  }
+
+  async rejectDeletion(requestId: string, actorUserId: string, reason: string) {
+    const normalizedReason = reason.trim();
+    if (normalizedReason.length < 3) throw new BadRequestException("A rejection reason of at least three characters is required");
+    const result = await this.prisma.media_deletion_requests.updateMany({ where: { id: requestId, status: "pending" }, data: { status: "rejected", reviewed_by_id: actorUserId, reviewed_at: new Date(), review_reason: normalizedReason } });
+    if (!result.count) throw new ConflictException("Deletion request was not found or has already been reviewed");
+    return { id: requestId, status: "rejected" as const };
   }
 
   private async restoreOne(item: AdminUploadRefDto, actorUserId: string) {
@@ -285,7 +395,7 @@ export class AdminUploadsService implements OnModuleInit, OnModuleDestroy {
       await this.prisma.$transaction(async (tx) => {
         // Backups hold the matching exclusive advisory lock while reading the
         // exported database snapshot and its referenced files.
-        await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock_shared(${8204211947})`);
+        await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock_shared(${8204211947})`);
         await this.media.removeStoredFiles(asset?.variants.map((variant: { path: string }) => variant.path) ?? []);
         if (item.source === "blog") await tx.blog_media_assets.delete({ where: { id: item.id } });
         else await tx.product_media_assets.delete({ where: { id: item.id } });

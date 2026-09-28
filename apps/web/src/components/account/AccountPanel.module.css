@@ -47,6 +47,7 @@
 .profile dl > div { display: grid; gap: 5px; }
 .profile dt { color: var(--color-dashboard-muted); font-size: .7rem; }
 .profile dd { font-size: .83rem; overflow-wrap: anywhere; }
+.supportCode { font-family: var(--font-outfit), sans-serif; font-size: 1rem; font-weight: 650; letter-spacing: .12em; unicode-bidi: isolate; }
 .profile > p { margin-top: 20px; color: var(--color-dashboard-muted); font-size: .75rem; line-height: 1.8; }
 .editLink, .profileNote { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 44px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--color-dashboard-rule); color: var(--color-dashboard-accent); font-size: .8rem; font-weight: 550; }
 .profileNote { justify-content: start; color: var(--color-dashboard-muted); }

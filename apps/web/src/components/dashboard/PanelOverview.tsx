@@ -9,6 +9,8 @@ import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import type { Locale } from "@/lib/i18n";
 import { overviewRange, overviewDailySales, type OverviewPeriod } from "./overview-period";
 import { OVERVIEW_COPY } from "./overview-copy";
+import { AdminReviewPreview } from "./AdminReviewPreview";
+import { UserHistoryLookup } from "./UserHistoryLookup";
 import styles from "./PanelOverview.module.css";
 
 type Destination = "orders" | "products" | "payouts" | "statistics";
@@ -100,9 +102,14 @@ export function PanelOverview({ locale, audience, analytics = true, canManageOrd
 
   return <section className={styles.overview} aria-labelledby="panel-overview-title">
     <header className={styles.heading}>
-      <div><p className={styles.eyebrow}>TOPGSM <span aria-hidden="true">/</span> {c.workspace}</p><h1 id="panel-overview-title">{seller ? c.seller : c.admin}</h1><p>{seller ? c.sellerIntro : c.adminIntro}</p></div>
-      {seller && canManageProducts ? <Link className={styles.primary} href={`/${locale}/seller-dashboard/products/new` as Route}><span aria-hidden="true">＋</span>{c.add}</Link> : analytics ? destination("statistics", c.report, styles.primary) : null}
+      <div><h1 id="panel-overview-title">{seller ? c.seller : c.admin}</h1><p>{seller ? c.sellerIntro : c.adminIntro}</p></div>
+      <div className={styles.headingActions}>
+        {canManageOrders ? <UserHistoryLookup locale={locale} audience={audience} /> : null}
+        {seller && canManageProducts ? <Link className={styles.primary} href={`/${locale}/seller-dashboard/products/new` as Route}><span aria-hidden="true">＋</span>{c.add}</Link> : analytics ? destination("statistics", c.report, styles.primary) : null}
+      </div>
     </header>
+
+    {!seller ? <AdminReviewPreview locale={locale} /> : null}
 
     {analytics ? <div className={styles.toolbar}>
       <div className={styles.periods} role="group" aria-label={c.period}>{((seller ? ["month", "week"] : ["month", "week", "90d"]) as OverviewPeriod[]).map((value) => <button type="button" key={value} aria-pressed={period === value} onClick={() => setPeriod(value)}>{value === "week" ? c.thisWeek : value === "month" ? c.thisMonth : c.days90}</button>)}</div>
@@ -138,7 +145,7 @@ export function PanelOverview({ locale, audience, analytics = true, canManageOrd
         <div className={styles.actions}>{actions.map((action) => <div className={styles.action} key={action.key}><span className={styles.actionIcon} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">{action.icon === "orders" ? <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Zm3 5h6m-6 4h6" /> : action.icon === "products" ? <path d="m12 3 9 5v9l-9 5-9-5V8l9-5Zm0 10 9-5m-9 5L3 8m9 5v9M7 6l9 5" /> : <><rect x="3" y="5" width="18" height="15" rx="2" /><path d="M3 9h18m-6 6h3" /></>}</svg></span><div>{destination(action.key, action.label)}<p>{action.hint}</p>{action.key === "orders" && newOrderCount > 0 ? <span className={styles.orderBadge}>{number(newOrderCount)} {c.newOrders}</span> : null}</div></div>)}
           {!seller && analytics ? <div className={styles.action}><span className={styles.actionIcon} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="7" r="4" /><path d="M4 21v-3a8 8 0 0 1 16 0v3" /></svg></span><div><Link className={styles.textLink} href={`/${locale}/admin/vendors` as Route}>{c.vendors}<Arrow /></Link><p>{c.vendorsHint}</p></div></div> : null}
         </div>
-        {analytics && data ? <section className={styles.settlement}><h2>{c.finances}</h2><p>{c.liability}</p><strong>{money(data.summary.outstandingLiability)} <small>{unit}</small></strong><span>{c.liabilityHint}</span><dl><div><dt>{c.settled}</dt><dd>{money(data.summary.settledPayouts.value)} <small>{unit}</small></dd></div><div><dt>{c.refunds}</dt><dd>{money(data.summary.refunds.value)} <small>{unit}</small></dd></div></dl></section> : null}
+        {analytics && data ? <section className={styles.settlement}><h2>{c.finances}</h2><p>{c.liability}</p><strong>{money(data.summary.outstandingLiability)} <small>{unit}</small></strong><details className={styles.settlementDetails}><summary>{c.settled} · {c.refunds}</summary><span>{c.liabilityHint}</span><dl><div><dt>{c.settled}</dt><dd>{money(data.summary.settledPayouts.value)} <small>{unit}</small></dd></div><div><dt>{c.refunds}</dt><dd>{money(data.summary.refunds.value)} <small>{unit}</small></dd></div></dl></details></section> : null}
       </aside>
     </div>
 

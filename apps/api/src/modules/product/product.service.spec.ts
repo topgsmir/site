@@ -5,6 +5,7 @@ import type { ConfigService } from "@nestjs/config";
 import type { PrismaService } from "../../prisma/prisma.service";
 import { ProductService } from "./product.service";
 import { productCategorySelect } from "./product-category";
+import { publicProductWhere } from "./product-visibility";
 
 const PRODUCT_ID = "00000000-0000-4000-8000-000000000001";
 const ACTOR_ID = "00000000-0000-4000-8000-000000000002";
@@ -16,6 +17,64 @@ function serviceWith(prisma: unknown) {
     { get: () => undefined } as unknown as ConfigService
   );
 }
+
+describe("product currency", () => {
+  it("requires a matching active offer currency for public visibility", () => {
+    const branches = publicProductWhere(false).OR as Array<{
+      price_currency: string;
+      variants: { some: { offers: { some: { currency: string } } } };
+    }>;
+    assert.deepEqual(branches.map((branch) => [branch.price_currency, branch.variants.some.offers.some.currency]), [
+      ["TOMAN", "TOMAN"], ["USD", "USD"]
+    ]);
+  });
+
+  it("rejects mixed currencies before creating a variable product", async () => {
+    const service = serviceWith({});
+    const input: Parameters<ProductService["createProduct"]>[2] = {
+      title: "Currency test product",
+      kind: "variable",
+      type: "digital",
+      variants: [
+        { key: "first", options: [{ name: "Plan", value: "First" }] },
+        { key: "second", options: [{ name: "Plan", value: "Second" }] }
+      ],
+      offers: [
+        { variantKey: "first", price: "10", currency: "USD", digital: { fileReference: "https://example.com/first", maxDownloads: 1 } },
+        { variantKey: "second", price: "1000", currency: "TOMAN", digital: { fileReference: "https://example.com/second", maxDownloads: 1 } }
+      ]
+    };
+    await assert.rejects(() => service.createProduct("seller", ACTOR_ID, input), /same currency/i);
+  });
+});
+
+describe("product slug availability", () => {
+  it("treats reserved current or former slugs as unavailable to another product", async () => {
+    const service = serviceWith({ product_slug_routes: { findUnique: async () => ({ product_id: PRODUCT_ID }) } });
+    assert.deepEqual(await service.productSlugAvailability("used-slug"), { available: false });
+    assert.deepEqual(await service.productSlugAvailability("used-slug", ACTOR_ID), { available: false });
+    assert.deepEqual(await service.productSlugAvailability("used-slug", PRODUCT_ID), { available: true });
+  });
+
+  it("accepts the current slug for its seller owner only", async () => {
+    let ownerId: string | undefined;
+    const service = serviceWith({
+      product_slug_routes: { findUnique: async () => ({ product_id: PRODUCT_ID }) },
+      products: { findFirst: async (query: { where: { created_by_seller_id: string } }) => {
+        ownerId = query.where.created_by_seller_id;
+        return ownerId === "owner" ? { id: PRODUCT_ID } : null;
+      } }
+    });
+    assert.deepEqual(await service.productSlugAvailability("used-slug", PRODUCT_ID, "owner"), { available: true });
+    assert.deepEqual(await service.productSlugAvailability("used-slug", PRODUCT_ID, "other"), { available: false });
+  });
+
+  it("allows an unreserved normalized slug", async () => {
+    const service = serviceWith({ product_slug_routes: { findUnique: async () => null } });
+    assert.deepEqual(await service.productSlugAvailability("new-slug"), { available: true });
+    await assert.rejects(() => service.productSlugAvailability("New Slug"), BadRequestException);
+  });
+});
 
 describe("public product search", () => {
   it("matches multiple terms and Persian digit variants while retaining public visibility rules", async () => {
@@ -41,8 +100,15 @@ describe("public product search", () => {
 describe("managed product lists", () => {
   it("applies admin filters and a stable page order in the database", async () => {
     let query: Record<string, unknown> | undefined;
-    const service = serviceWith({ products: { findMany: async (input: Record<string, unknown>) => { query = input; return []; } } });
-    await service.listAdminProducts({ search: "phone", category: "accessories", status: "active", type: "physical", kind: "variable", sort: "title_asc", limit: 20 });
+    let countQuery: Record<string, unknown> | undefined;
+    const service = serviceWith({ products: {
+      findMany: async (input: Record<string, unknown>) => { query = input; return []; },
+      groupBy: async (input: Record<string, unknown>) => {
+        countQuery = input;
+        return [{ status: "active", _count: { _all: 27 } }, { status: "archived", _count: { _all: 3 } }];
+      }
+    } });
+    const page = await service.listAdminProducts({ search: "phone", category: "accessories", status: "active", type: "physical", kind: "variable", sort: "title_asc", limit: 20 });
     assert.deepEqual(query?.where, {
       type: "physical", kind: "variable", status: "active",
       category_record: { name: { contains: "accessories", mode: "insensitive" } },
@@ -54,6 +120,36 @@ describe("managed product lists", () => {
     });
     assert.deepEqual(query?.orderBy, [{ title: "asc" }, { id: "asc" }]);
     assert.equal(query?.take, 21);
+    assert.deepEqual(countQuery?.by, ["status"]);
+    const expectedCountWhere = { ...(query?.where as Record<string, unknown>) };
+    delete expectedCountWhere.status;
+    assert.deepEqual(countQuery?.where, expectedCountWhere);
+    assert.deepEqual(page.statusCounts, { draft: 0, pending_review: 0, active: 27, archived: 3, trashed: 0 });
+  });
+
+  it("combines seller, physical stock, and local-day boundary instants", async () => {
+    let query: Record<string, unknown> | undefined;
+    const service = serviceWith({ products: {
+      findMany: async (input: Record<string, unknown>) => { query = input; return []; },
+      groupBy: async () => []
+    } });
+    await service.listAdminProducts({ seller: "north", stock: "in_stock", dateField: "created", dateFrom: "2026-08-31T20:30:00.000Z", dateTo: "2026-09-03T20:30:00.000Z", limit: 20 });
+    assert.deepEqual(query?.where, {
+      type: "physical",
+      AND: [
+        { listings: { some: {
+          seller: { shop_name: { contains: "north", mode: "insensitive" } },
+          status: "active",
+          offers: { some: { status: "active", physical: { is: { stock: { gt: 0 } } } } }
+        } } }
+      ],
+      created_at: { gte: new Date("2026-08-31T20:30:00.000Z"), lt: new Date("2026-09-03T20:30:00.000Z") }
+    });
+    await service.listAdminProducts({ seller: "north", stock: "out_of_stock", limit: 20 });
+    assert.ok(JSON.stringify(query?.where).includes('"none"'));
+    await assert.rejects(() => service.listAdminProducts({ dateFrom: "2026-02-30T00:00:00.000Z", limit: 20 }), BadRequestException);
+    await assert.rejects(() => service.listAdminProducts({ dateFrom: "2026-09-04T00:00:00.000Z", dateTo: "2026-09-03T00:00:00.000Z", limit: 20 }), BadRequestException);
+    await assert.rejects(() => service.listAdminProducts({ type: "digital", stock: "in_stock", limit: 20 }), BadRequestException);
   });
 
   it("keeps filtered seller listings scoped to the authenticated seller", async () => {
@@ -103,6 +199,7 @@ describe("admin product editing", () => {
               status: "active",
               created_at: new Date("2026-09-01T08:00:00.000Z"),
               updated_at: updatedAt,
+              created_by: { id: "00000000-0000-4000-8000-000000000012", shop_name: "Creator" },
               _count: { listings: 3 }
             };
           }
@@ -127,15 +224,17 @@ describe("admin product editing", () => {
       data: {
         title: "Clean title",
         slug: "catalog-product",
-        description: "Clean description",
+        description: "Clean   description",
         category_record: { disconnect: true },
         status: "active"
       },
       select: {
         id: true,
+        price_currency: true,
         title: true,
         slug: true,
         description: true,
+        tags: true,
         category_record: { select: productCategorySelect },
         kind: true,
         type: true,
@@ -151,6 +250,7 @@ describe("admin product editing", () => {
             }
           }
         },
+        created_by: { select: { id: true, shop_name: true } },
         _count: { select: { listings: true } }
       }
     });
@@ -195,6 +295,7 @@ describe("admin product editing", () => {
       status: "draft",
       created_at: new Date("2026-09-01T08:00:00.000Z"),
       updated_at: new Date("2026-09-09T08:00:00.000Z"),
+      created_by: { id: "00000000-0000-4000-8000-000000000012", shop_name: "Creator" },
       _count: { listings: 2 }
     };
     const service = serviceWith({
@@ -203,6 +304,7 @@ describe("admin product editing", () => {
         product_change_events: {
           findFirst: async () => ({
             id: "00000000-0000-4000-8000-000000000003",
+            changed_fields: ["title"],
             after_snapshot: { title: "Earlier title", description: null, category: "Tools", status: "draft" }
           }),
           create: async (input: { data: unknown }) => { auditData = input.data; return {}; }

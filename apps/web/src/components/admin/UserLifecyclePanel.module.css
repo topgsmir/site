@@ -1,0 +1,24 @@
+.panel { display: grid; gap: 16px; padding: 20px; border: 1px solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-control); background: var(--color-dashboard-surface); }
+.panel h3, .panel h4, .panel p { margin: 0; }
+.panel p { font-size: .85rem; line-height: 1.8; color: var(--color-dashboard-muted); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.form { display: grid; gap: 14px; }
+.form label { display: grid; gap: 6px; font-size: .85rem; }
+.form input, .form select, .form textarea { width: 100%; min-height: 40px; padding: 8px 10px; background: var(--color-dashboard-surface-raised); color: var(--color-dashboard-ink); border: 1px solid var(--color-dashboard-rule-strong); border-radius: 6px; font: inherit; }
+.panel fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.panel fieldset:disabled { opacity: .65; }
+.panel button { min-height: 40px; padding: 8px 14px; border: 1px solid var(--color-dashboard-rule-strong); border-radius: 6px; background: var(--color-dashboard-surface-raised); color: var(--color-dashboard-ink); font: inherit; cursor: pointer; }
+.panel button:disabled { opacity: .5; cursor: not-allowed; }
+.panel :is(input,select,textarea,button):focus-visible { outline: 2px solid var(--color-dashboard-accent-strong); outline-offset: 3px; }
+.panel .danger, .panel .error { color: var(--color-dashboard-error); }
+.checks { display: flex; flex-wrap: wrap; gap: 12px; }
+.checks label { display: flex; align-items: center; gap: 6px; }
+.checks input { width: 18px; min-height: 18px; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: 12px; margin: 0; }
+.facts dt { color: var(--color-dashboard-muted); font-size: .8rem; }
+.facts dd { margin: 4px 0 0; overflow-wrap: anywhere; }
+.table { overflow-x: auto; }
+.table table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.table th, .table td { text-align: start; padding: 8px; border-bottom: 1px solid var(--color-dashboard-rule); }
+.badge { font-size: .75rem; padding: 3px 8px; border: 1px solid var(--color-dashboard-rule); border-radius: 12px; }
+.panel code { overflow-wrap: anywhere; }

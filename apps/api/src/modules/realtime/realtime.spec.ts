@@ -84,16 +84,14 @@ describe("realtime tenant isolation", () => {
     assert.deepEqual(client.rooms, ["user:editor-1"]);
   });
 
-  it("emits order events only to buyer, seller, and platform rooms", () => {
+  it("rechecks authentication before delivering private events to scoped rooms", async () => {
     const emissions: Array<{ room: string; event: string }> = [];
-    const gateway = new RealtimeGateway({} as AuthService, {} as PrismaService, comments);
+    const gateway = new RealtimeGateway({ getUserFromToken: async () => ({ id: "active" }) } as unknown as AuthService, {} as PrismaService, comments);
     gateway.server = {
-      to: (room: string) => ({
-        emit: (event: string) => emissions.push({ room, event })
-      })
+      in: (rooms: string[]) => ({ fetchSockets: async () => rooms.map(room => ({ handshake: { headers: { authorization: "Bearer active" } }, emit: (event: string) => emissions.push({ room, event }) })) })
     } as unknown as Server;
 
-    gateway.emitOrderStatusChanged(
+    await gateway.emitOrderStatusChanged(
       { buyerId: "buyer-1", sellerId: "seller-1" },
       { orderId: "order-1", status: "shipped" }
     );
@@ -103,5 +101,12 @@ describe("realtime tenant isolation", () => {
       { room: "platform:orders", event: "order.status.updated" }
     ]);
     assert.ok(emissions.every((entry) => entry.room !== "global"));
+  });
+  it("disconnects revoked or blocked sockets instead of delivering private events", async () => {
+    let disconnected = false; let emitted = false;
+    const gateway = new RealtimeGateway({ getUserFromToken: async () => { throw new Error("revoked"); } } as unknown as AuthService, {} as PrismaService, comments);
+    gateway.server = { in: () => ({ fetchSockets: async () => [{ handshake: { headers: {} }, disconnect: () => { disconnected = true; }, emit: () => { emitted = true; } }] }) } as unknown as Server;
+    await gateway.emitPayoutStatusChanged("seller", {});
+    assert.equal(disconnected, true); assert.equal(emitted, false);
   });
 });

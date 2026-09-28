@@ -9,6 +9,7 @@ import {
 import { SERVER_API_BASE } from "@/lib/api/server";
 import { dashboardFor, getCurrentUser } from "@/lib/auth/server";
 import { isLocale, localizePath } from "@/lib/i18n";
+import { getSeoConfiguration, managedSeoMetadata } from "@/lib/seo-settings-server";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://top-gsm.ir";
 
@@ -56,7 +57,7 @@ export async function generateMetadata({ params }: HomePageProps): Promise<Metad
   const localized = metadataByLocale[locale];
   const canonical = new URL(localizePath(locale), siteUrl);
 
-  return {
+  return managedSeoMetadata(locale, `/${locale}`, {
     metadataBase: new URL(siteUrl),
     title: localized.title,
     description: localized.description,
@@ -80,7 +81,7 @@ export async function generateMetadata({ params }: HomePageProps): Promise<Metad
     },
     twitter: { card: "summary", title: localized.title, description: localized.description },
     robots: { index: true, follow: true }
-  };
+  });
 }
 
 export default async function HomePage({ params }: HomePageProps) {
@@ -95,20 +96,23 @@ export default async function HomePage({ params }: HomePageProps) {
     fetchHomepage(locale)
   ]);
 
+  const seo = await getSeoConfiguration();
+  const siteName = seo.locales.find((item) => item.locale === locale)!.siteName;
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "Organization",
         "@id": `${siteUrl}/#organization`,
-        name: "Top GSM",
+        name: seo.organizationName,
         url: siteUrl,
-        logo: `${siteUrl}/brand/topgsm-logo.jpg`
+        logo: seo.organizationLogo || `${siteUrl}/brand/topgsm-logo.jpg`,
+        sameAs: seo.sameAs
       },
       {
         "@type": "WebSite",
         "@id": `${siteUrl}/#website`,
-        name: "Top GSM",
+        name: siteName,
         url: siteUrl,
         inLanguage: locale,
         publisher: { "@id": `${siteUrl}/#organization` }

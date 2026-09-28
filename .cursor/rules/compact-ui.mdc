@@ -1,0 +1,12 @@
+---
+description: Keep TopGSM feature designs compact, readable, and useful in the first viewport
+alwaysApply: true
+---
+
+# Compact UI defaults
+
+For UI design, implementation, and review, read and apply
+`.agents/skills/hallmark/references/topgsm-compact-ui.md` from the repository root.
+It defines the shared sizing defaults, disclosure rules, and viewport checks.
+These project defaults take precedence over generic design-skill guidance about
+oversized heroes, display typography, generous whitespace, and layout variety.

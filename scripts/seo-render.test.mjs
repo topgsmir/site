@@ -21,9 +21,43 @@ function page(items, cursor, limit) {
   const visible = items.slice(index, index + limit);
   return { items: visible, nextCursor: index + limit < items.length ? visible.at(-1).id : null };
 }
+let seoConfiguration = { indexingEnabled: true, locales: ["fa", "en", "ar"].map((locale) => ({ locale, siteName: "Top GSM", titleTemplate: "%s | Top GSM", description: "", socialImage: "" })), googleVerification: "fixture-google-token", bingVerification: "fixture-bing-token", organizationName: "Top GSM", organizationLogo: "", sameAs: [], pages: [{ path: "/fa/products/product-49", title: "Managed SEO title", description: "Managed description", socialImage: "", noIndex: true, excludeFromSitemap: false }], redirects: [{ source: "/en/blog/retired-guide", destination: "/en/products", status: 301, enabled: true }] };
+let seoVersion = 1;
+const seoHistory = [];
 const fixture = createServer((request, response) => {
   const url = new URL(request.url, "http://fixture");
+  if (process.env.SEO_PREVIEW === "1") {
+    response.setHeader("Access-Control-Allow-Origin", origin);
+    response.setHeader("Access-Control-Allow-Credentials", "true");
+    response.setHeader("Access-Control-Allow-Headers", "content-type");
+    response.setHeader("Access-Control-Allow-Methods", "GET, PATCH, OPTIONS");
+    if (request.method === "OPTIONS") { response.writeHead(204); return response.end(); }
+    if (url.pathname === "/preview-login") { response.writeHead(302, { "Set-Cookie": `topgsm_session=${"x".repeat(43)}; Path=/; HttpOnly; SameSite=Lax`, Location: `${origin}/fa/admin/settings/seo` }); return response.end(); }
+  }
   const json = (data, status = 200) => { response.writeHead(status, { "Content-Type": "application/json" }); response.end(JSON.stringify(data)); };
+  if (process.env.SEO_PREVIEW === "1") {
+    if (url.pathname === "/api/orders/new-count") return json({ count: 0 });
+    if (url.pathname === "/api/auth/me") return json({ id: id(900), fullName: "SEO preview", role: "platform-admin", isPlatformOwner: true });
+    if (url.pathname === "/api/admin/seo/history") return json(seoHistory);
+    if (url.pathname === "/api/admin/seo") {
+      if (request.method === "PATCH") {
+        let body = "";
+        request.on("data", (chunk) => { body += chunk; });
+        request.on("end", () => {
+          const value = JSON.parse(body);
+          if (value.version !== seoVersion) return json({ message: "Conflict" }, 409);
+          seoConfiguration = value.configuration; seoVersion++;
+          const result = { version: seoVersion, updatedAt: now, configuration: seoConfiguration };
+          seoHistory.unshift({ ...result, actorUserId: id(900) });
+          return json(result);
+        });
+        return;
+      }
+      return json({ version: seoVersion, updatedAt: now, configuration: seoConfiguration });
+    }
+    if (url.pathname === "/api/system/status") return json({ maintenance: false });
+  }
+  if (url.pathname === "/api/seo/configuration") return json(seoConfiguration);
   if (url.pathname.startsWith("/api/seo/sitemap")) {
     if (sitemapMode === "failure") return json({}, 503);
     if (sitemapMode === "malformed") return json({ unexpected: true });
@@ -109,6 +143,15 @@ try {
   assert.match((await html("/robots.txt")).body, /Sitemap: .*\/sitemap.xml/);
   assert.match((await html("/sitemap.xml")).body, /\/sitemap\/0.xml/);
   const xml = (await html("/sitemap/0.xml")).body;
+  assert.doesNotMatch(xml, /product-49</);
+  const managed = await html("/fa/products/product-49");
+  assert.match(managed.body, /Managed SEO title/);
+  assert.match(managed.body, /Managed description/);
+  assert.match(managed.body, /fixture-google-token/);
+  assert.match(managed.body, /fixture-bing-token/);
+  assert.equal(managed.response.headers.get("x-robots-tag"), "noindex, follow");
+  const customRedirect = await html("/en/blog/retired-guide?tracking=discard", 301);
+  assert.equal(new URL(customRedirect.response.headers.get("location"), origin).href, origin + "/en/products");
   assert.match(xml, /\/fa\/products\?type=physical/); assert.match(xml, /product-50/);
   await html("/sitemap/999.xml", 404);
   for (const term of ["outage", "malformed", "timeout"]) {
@@ -199,8 +242,9 @@ try {
   const refreshedProduct = (await html("/en/products/product-5")).body;
   assert.match(refreshedProduct, /Updated repair product description\./);
   assert.doesNotMatch(refreshedProduct, /Detailed repair product description\./);
-  if (process.env.PRODUCT_PREVIEW === "1") {
+  if (process.env.PRODUCT_PREVIEW === "1" || process.env.SEO_PREVIEW === "1") {
     console.log(`PRODUCT_PREVIEW_URL=${origin}`);
+    if (process.env.SEO_PREVIEW === "1") console.log(`SEO_PREVIEW_LOGIN=http://127.0.0.1:${apiPort}/preview-login`);
     const stopFile = resolve(web, `${output}.stop`);
     console.log(`PRODUCT_PREVIEW_STOP=${stopFile}`);
     await new Promise((done) => {

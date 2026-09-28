@@ -1,6 +1,8 @@
 import { partitionEntries, sitemapXml, partitionCount } from "@/lib/sitemap-core";
 import { sitemapManifest, sitemapBatch, sitemapUnavailable, xmlResponse } from "@/lib/sitemap-server";
 import { SITE_URL } from "@/lib/seo";
+import { getSeoConfiguration } from "@/lib/seo-settings-server";
+import { filterSeoSitemap } from "@/lib/seo-settings-core";
 
 export const dynamic = "force-dynamic";
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -15,6 +17,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       if (Date.now() > deadline) throw new Error("Sitemap generation timed out");
       return sitemapBatch(feed.kind, feed.locale, cursor);
     });
-    return xmlResponse(sitemapXml(SITE_URL, entries));
+    return xmlResponse(sitemapXml(SITE_URL, filterSeoSitemap(await getSeoConfiguration(), entries)));
   } catch { return sitemapUnavailable(); }
 }

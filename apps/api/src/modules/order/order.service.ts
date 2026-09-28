@@ -334,6 +334,7 @@ export class OrderService {
                   select: {
                     title: true,
                     type: true,
+                    price_currency: true,
                     bridge_binding: {
                       select: {
                         mode: true,
@@ -367,6 +368,9 @@ export class OrderService {
         }
 
         const offerCurrency = offer.currency.trim();
+        if (offerCurrency !== offer.listing.product.price_currency) {
+          throw new ConflictException("This offer does not use the product currency");
+        }
         if ((offerCurrency !== "TOMAN" && offerCurrency !== "USD") || (offerCurrency === "TOMAN" && !offer.price.isInteger())) {
           throw new BadRequestException("The offer currency or precision is unsupported");
         }

@@ -1,8 +1,8 @@
-.layout { display: grid; gap: 1.5rem; }
-.heading h2 { margin: 0; font-size: clamp(1.5rem, 3vw, 2.25rem); }
+.layout { display: grid; gap: var(--space-dashboard-md); }
+.heading h1 { margin: 0; font-size: var(--text-dashboard-lg); }
 .heading p { max-width: 46rem; margin: .5rem 0 0; color: var(--color-dashboard-muted); }
 .form, .coupon, .message { border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-sm); background: var(--color-dashboard-surface); }
-.form { padding: clamp(1rem, 3vw, 1.5rem); }
+.form { padding: var(--space-dashboard-md); }
 .grid { display: grid; gap: 1rem; }
 .grid label { display: grid; gap: .4rem; color: var(--color-dashboard-ink-soft); font-size: var(--text-dashboard-sm); font-weight: 700; }
 .grid input, .grid select { width: 100%; min-height: 2.75rem; padding-inline: .75rem; border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-xs); color: var(--color-dashboard-ink); background: var(--color-dashboard-paper); }

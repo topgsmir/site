@@ -29,6 +29,22 @@
 .button:active { transform: translateY(1px); }
 .button:disabled { cursor: not-allowed; opacity: .52; }
 @media (hover: hover) and (pointer: fine) { .button:hover { background: var(--color-dashboard-surface); transform: translateY(-1px); } .primary:hover { background: var(--color-dashboard-accent-strong); } }
-@media (min-width: 62rem) { .grid { grid-template-columns: 360px minmax(0, 1fr); align-items: start; } }
+/* Compact staff workbench: the invitation form uses the available width before the roster. */
+@media (min-width: 62rem) {
+  .workspace { gap: .75rem; padding-block: .75rem 1.5rem; }
+  .header { padding-bottom: .5rem; }
+  .header h1 { font-size: 1.5rem; line-height: 1.25; }
+  .header p { max-width: none; margin-top: .25rem; line-height: 1.4; }
+  .grid { grid-template-columns: minmax(0, 1fr); gap: .75rem; }
+  .panel { padding: .875rem; }
+  .panel h2 { margin-bottom: .5rem; font-size: 1rem; }
+  .form { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem .75rem; }
+  .field { gap: .25rem; }
+  .field input { min-height: 40px; padding: .4rem .65rem; }
+  .form > .permissions { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .125rem .5rem; }
+  .permissions label { min-height: 30px; }
+  .form > .button { grid-column: 1 / -1; justify-self: start; min-height: 38px; }
+  .card { gap: .5rem; padding: .75rem; }
+}
 @media (max-width: 39.999rem) { .workspace { padding-block-start: var(--space-dashboard-lg); } .panel { padding: var(--space-dashboard-md); } .button { width: 100%; } }
 @media (prefers-reduced-motion: reduce) { .button { transition-duration: var(--dur-dashboard-reduced); transform: none !important; } }

@@ -42,6 +42,7 @@ export type PublicProduct = {
   category: string | null;
   kind: "simple" | "variable";
   type: "digital" | "physical" | "service" | "bridge";
+  currency: "TOMAN" | "USD";
   image: null | {
     id: string;
     variants: Array<{ name: "thumb" | "large"; url: string; width: number; height: number }>;
@@ -197,6 +198,7 @@ function isProductResponse(value: unknown): value is PublicProduct {
     !isString(value.updatedAt) ||
     !["simple", "variable"].includes(String(value.kind)) ||
     !["digital", "physical", "service", "bridge"].includes(String(value.type)) ||
+    !["TOMAN", "USD"].includes(String(value.currency)) ||
     !(value.image === null || isProductImage(value.image)) ||
     !Array.isArray(value.options) ||
     !Array.isArray(value.variants)

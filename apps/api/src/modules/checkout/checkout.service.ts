@@ -333,6 +333,7 @@ export class CheckoutService {
                 id: true,
                 title: true,
                 type: true,
+                price_currency: true,
                 media: {
                   select: {
                     id: true,
@@ -356,6 +357,13 @@ export class CheckoutService {
       });
     }
     const currencies = new Set(offers.map((offer) => offer.currency.trim()));
+    const wrongCurrencyOffers = offers.filter((offer) => offer.currency.trim() !== offer.listing.product.price_currency);
+    if (wrongCurrencyOffers.length) {
+      throw new PublicHttpException(HttpStatus.CONFLICT, "One or more cart items are unavailable", {
+        code: "CART_ITEMS_UNAVAILABLE",
+        offerIds: wrongCurrencyOffers.map((offer) => offer.id)
+      });
+    }
     if ([...currencies].some((currency) => currency !== "TOMAN" && currency !== "USD")) {
       throw new BadRequestException("Only toman and USD offers can be purchased");
     }
@@ -436,7 +444,7 @@ export class CheckoutService {
     if (quotedGroups.some((group) => group.paymentMethods.length === 0)) throw new ServiceUnavailableException("One or more seller groups have no available payment method");
     const commonPaymentMethods = providers.filter((provider) => quotedGroups.every((group) => group.paymentMethods.some((method) => method.code === provider.code)));
     const total = quotedGroups.reduce((sum, group) => sum.add(group.total), new Prisma.Decimal(0));
-    return { currency: "TOMAN", totalAmount: total.toString(), groups: quotedGroups, commonPaymentMethods, requiresShippingAddress: quotedGroups.some((group) => group.productType === "physical") };
+    return { currency: "TOMAN", totalAmount: total.toString(), usdToTomanRate: tomanPerUsd?.toString() ?? null, groups: quotedGroups, commonPaymentMethods, requiresShippingAddress: quotedGroups.some((group) => group.productType === "physical") };
   }
 
   private mapCheckoutImage(

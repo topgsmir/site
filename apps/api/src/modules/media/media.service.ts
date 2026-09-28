@@ -300,6 +300,9 @@ export class MediaService {
     });
     if (!seller) throw new NotFoundException("Seller was not found");
 
+    if (file?.mimetype.toLowerCase().split(";", 1)[0]?.trim() !== "image/webp") {
+      throw new BadRequestException("Only WebP profile pictures are accepted");
+    }
     const { buffer, mimeType, originalFilename } = await this.validateImageUpload(file);
     const id = randomUUID();
     const relativePath = join("sellers", sellerId, "profile", `${id}.webp`).replaceAll("\\", "/");
@@ -328,7 +331,7 @@ export class MediaService {
       const checksum = createHash("sha256").update(output.data).digest("hex");
 
       await this.prisma.$transaction(async (tx) => {
-        await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock_shared(${MEDIA_BACKUP_LOCK})`);
+        await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock_shared(${MEDIA_BACKUP_LOCK})`);
         await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "sellers" WHERE "id" = ${sellerId} FOR UPDATE`);
         const editableSeller = await tx.sellers.findFirst({
           where: { id: sellerId, invited: false, approved: true, suspended_at: null },
@@ -378,7 +381,7 @@ export class MediaService {
     }
     let path: string | null = null;
     await this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock_shared(${MEDIA_BACKUP_LOCK})`);
+      await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock_shared(${MEDIA_BACKUP_LOCK})`);
       await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "sellers" WHERE "id" = ${sellerId} FOR UPDATE`);
       const seller = await tx.sellers.findFirst({
         where: { id: sellerId, invited: false, approved: true, suspended_at: null },
@@ -404,6 +407,7 @@ export class MediaService {
       select: {
         id: true,
         owner_user_id: true,
+        seller_id: true,
         published_at: true,
         trashed_at: true,
         checksum: true,
@@ -419,9 +423,14 @@ export class MediaService {
       user?.role === "platform-staff" && user.platformPermissions?.includes("uploads_manage")
     );
     if (asset.trashed_at && !uploadsManager) throw new NotFoundException("Media asset was not found");
+    const sellerCanRead = Boolean(user && asset.seller_id && (user.role === "seller-admin" || user.role === "seller-staff") &&
+      await this.prisma.seller_memberships.findFirst({ where: { user_id: user.id, seller_id: asset.seller_id, active: true, seller: { invited: false, approved: true, suspended_at: null } }, select: { user_id: true } }));
+    const uploaderCanRead = asset.owner_user_id === user?.id &&
+      (!asset.seller_id || user?.role === "platform-admin" || user?.role === "platform-staff" || sellerCanRead);
     if (
       !asset.published_at &&
-      asset.owner_user_id !== user?.id &&
+      !uploaderCanRead &&
+      !sellerCanRead &&
       user?.role !== "platform-admin" &&
       !(user?.role === "platform-staff" && user.platformPermissions?.includes("blog_manage"))
     ) {
@@ -477,7 +486,9 @@ export class MediaService {
     const platformCanRead = user?.role === "platform-admin" || (
       user?.role === "platform-staff" && user.platformPermissions?.includes("catalog_view")
     );
-    if (!published && asset.uploaded_by_user_id !== user?.id && !platformCanRead && !sellerCanRead) {
+    const uploaderCanRead = asset.uploaded_by_user_id === user?.id &&
+      (user?.role === "platform-admin" || user?.role === "platform-staff" || sellerCanRead);
+    if (!published && !uploaderCanRead && !platformCanRead && !sellerCanRead) {
       throw new ForbiddenException("Media asset is private");
     }
     try {

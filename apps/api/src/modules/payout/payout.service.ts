@@ -42,13 +42,13 @@ export class PayoutService {
     const sellerId = await this.sellerScope(actor);
     if (input.cursor) {
       const cursor = await this.prisma.payout_ledger.findFirst({
-        where: { id: input.cursor, ...(sellerId ? { seller_id: sellerId } : {}) },
+        where: { id: input.cursor, ...(sellerId ? { seller_id: sellerId } : {}), ...(input.status ? { status: input.status } : {}) },
         select: { id: true }
       });
       if (!cursor) throw new NotFoundException("Payout page cursor was not found");
     }
     const rows = await this.prisma.payout_ledger.findMany({
-      where: sellerId ? { seller_id: sellerId } : {},
+      where: { ...(sellerId ? { seller_id: sellerId } : {}), ...(input.status ? { status: input.status } : {}) },
       ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
       take: input.limit + 1,
       orderBy: [{ created_at: "desc" }, { id: "desc" }],

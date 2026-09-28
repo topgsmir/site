@@ -66,5 +66,30 @@
 @media (hover: hover) and (pointer: fine) { .refresh:hover, .customRange button:hover { transform: translateY(-1px); } .presets button:hover { color: var(--color-dashboard-ink); background: var(--color-dashboard-surface-raised); } .cardHead a:hover { text-decoration: underline; } }
 @media (min-width: 42rem) { .customRange { grid-template-columns: repeat(2, minmax(0, 1fr)) auto; align-items: end; } .customRange button { grid-column: auto; } .metrics, .workspace[data-compact="true"] .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } .detailGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 72rem) { .metrics { grid-template-columns: repeat(6, minmax(0, 1fr)); } .detailGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } .rankGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Full analytics keeps the date range, six KPIs, trend, and breakdowns in view on a laptop. */
+.workspace[data-compact="false"][data-audience="admin"] { gap: .75rem; }
+.workspace[data-compact="false"][data-audience="admin"] .header { align-items: center; }
+.workspace[data-compact="false"][data-audience="admin"] .header h1 { font-size: clamp(1.25rem, 2vw, 1.5rem); }
+.workspace[data-compact="false"][data-audience="admin"] .header p { margin-block-start: .125rem; line-height: 1.35; }
+.workspace[data-compact="false"][data-audience="admin"] .filters { --size-dashboard-filter-trigger: 2.75rem; }
+.workspace[data-compact="false"][data-audience="admin"] .filters > div:not([hidden]) { padding: .5rem; }
+.workspace[data-compact="false"][data-audience="admin"] .presets button { min-height: 2rem; padding-inline: .75rem; }
+.workspace[data-compact="false"][data-audience="admin"] .metrics { gap: .5rem; }
+.workspace[data-compact="false"][data-audience="admin"] .metrics article { min-height: 5.75rem; padding: .75rem; }
+.workspace[data-compact="false"][data-audience="admin"] .metrics strong { margin-block: .25rem; font-size: clamp(1rem, 1.65vw, 1.25rem); line-height: 1.2; }
+.workspace[data-compact="false"][data-audience="admin"] .chartCard,
+.workspace[data-compact="false"][data-audience="admin"] .breakdown,
+.workspace[data-compact="false"][data-audience="admin"] .ranking,
+.workspace[data-compact="false"][data-audience="admin"] .activity { padding: .875rem; }
+.workspace[data-compact="false"][data-audience="admin"] .cardHead { align-items: center; }
+.workspace[data-compact="false"][data-audience="admin"] .cardHead p { margin-block-start: .125rem; line-height: 1.3; }
+.workspace[data-compact="false"][data-audience="admin"] .chart { display: block; height: 10rem; min-height: 10rem; margin-block-start: .5rem; }
+.workspace[data-compact="false"][data-audience="admin"] .breakdown ul,
+.workspace[data-compact="false"][data-audience="admin"] .ranking ol,
+.workspace[data-compact="false"][data-audience="admin"] .activity ul { margin-block-start: .5rem; }
+.workspace[data-compact="false"][data-audience="admin"] .breakdown li,
+.workspace[data-compact="false"][data-audience="admin"] .ranking li,
+.workspace[data-compact="false"][data-audience="admin"] .activity li { padding-block: .4rem; }
+.workspace[data-compact="false"][data-audience="admin"] .skeleton i { min-height: 5.75rem; }
 @media (max-width: 30rem) { .header, .cardHead { align-items: start; flex-direction: column; } .refresh { width: 100%; } .metrics, .workspace[data-compact="true"] .metrics { grid-template-columns: 1fr; } .ranking li, .activity li { grid-template-columns: auto minmax(0, 1fr); } .ranking li > strong, .activity li > div:last-child { grid-column: 2; text-align: start; } }
 @media (prefers-reduced-motion: reduce) { .refresh, .customRange button { transition-duration: var(--dur-dashboard-reduced); } .skeleton i { animation: none; opacity: .65; } }

@@ -1,0 +1,20 @@
+.panel { display: grid; gap: .75rem; margin-block: .75rem; padding: .875rem; border: 1px solid var(--line); border-radius: .875rem; background: var(--card-surface); }
+.top, .actions { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.top strong { font-size: .875rem; }
+.panel button { min-height: 2.5rem; padding: .4rem .75rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--card-surface); color: var(--ink); font: inherit; cursor: pointer; }
+.panel button:disabled { opacity: .55; cursor: not-allowed; }
+.panel button:focus-visible, .panel input:focus-visible, .panel select:focus-visible { outline: 2px solid var(--signal-dark); outline-offset: 2px; }
+.panel .primary { border-color: var(--signal-dark); background: var(--signal-dark); color: white; font-weight: 650; }
+.controls { display: flex; align-items: end; flex-wrap: wrap; gap: .625rem; }
+.controls label { display: grid; gap: .25rem; min-width: min(100%, 11rem); font-size: .8125rem; }
+.controls input, .controls select { width: 100%; min-height: 2.5rem; padding: .4rem .5rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--card-surface); color: var(--ink); font: inherit; }
+.error { color: var(--color-error, #a42424); }
+.preview { display: grid; gap: .5rem; border-top: 1px solid var(--line); padding-top: .75rem; font-size: .875rem; }
+.preview p { margin: 0; }
+.previewList { max-height: 20rem; overflow-y: auto; border: 1px solid var(--line); border-radius: .5rem; }
+.previewRow { display: grid; grid-template-columns: minmax(8rem, 1fr) minmax(8rem, 1fr) minmax(8rem, 1fr); gap: .75rem; padding: .5rem .75rem; border-bottom: 1px solid var(--line); }
+.previewRow:last-child { border-bottom: 0; }
+.previewRow > span { min-width: 0; overflow-wrap: anywhere; }
+.previewRow small { display: block; color: var(--muted); }
+.actions { justify-content: flex-end; }
+@media (max-width: 700px) { .previewRow { grid-template-columns: minmax(0, 1fr); gap: .25rem; } .controls > label, .controls > button { flex: 1 1 100%; } }

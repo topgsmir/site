@@ -15,6 +15,18 @@
 Report security defects and meaningful best-practice problems discovered while
 working, even when they are outside the immediate change.
 
+## Compact feature design
+
+- For every UI feature, redesign, or review, read
+  [the compact UI guidelines](.agents/skills/hallmark/references/topgsm-compact-ui.md).
+- Default to compact, task-focused layouts: show the primary action, essential
+  controls, and useful content in the first laptop viewport. Reduce unnecessary
+  scrolling through layout and progressive disclosure, while preserving readable
+  text, accessible controls, and all required information.
+- These project defaults override generic skill advice about oversized heroes,
+  display typography, generous whitespace, and page-to-page layout variation.
+  A more spacious treatment requires a clear need in the user's brief.
+
 ## Admin AI tool parity
 
 - Follow `.cursor/rules/ai-tool-parity.mdc` for every feature or API change.

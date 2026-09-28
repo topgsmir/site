@@ -26,7 +26,15 @@ export const activeOfferWhere: Prisma.seller_offersWhereInput = {
 };
 
 export function publicProductWhere(bridgeEnabled: boolean): Prisma.productsWhereInput {
-  return { status: "active", ...(bridgeEnabled ? {} : { type: { not: "bridge" } }), variants: { some: { offers: { some: activeOfferWhere } } } };
+  return {
+    status: "active",
+    ...(bridgeEnabled ? {} : { type: { not: "bridge" } }),
+    variants: { some: { offers: { some: activeOfferWhere } } },
+    OR: (["TOMAN", "USD"] as const).map((currency) => ({
+      price_currency: currency,
+      variants: { some: { offers: { some: { ...activeOfferWhere, currency } } } }
+    }))
+  };
 }
 
 export const publishedTranslationSelect = { locale: true, published_title: true, published_description: true, published_category: true, published_at: true } as const;

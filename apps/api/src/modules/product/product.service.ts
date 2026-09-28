@@ -29,6 +29,7 @@ import type {
 } from "./dto/product.dto";
 
 import { activeOfferWhere, publicProductWhere, publishedTranslationSelect } from "./product-visibility";
+import { normalizeProductDescription } from "./product-description";
 
 const variantOptionSelect = {
   option_value: {
@@ -62,6 +63,7 @@ const sellerListingSelect = {
       category_record: { select: productCategorySelect },
       kind: true,
       type: true,
+      price_currency: true,
       status: true,
       created_at: true,
       updated_at: true,
@@ -115,9 +117,11 @@ const sellerListingSelect = {
 
 const adminProductSelect = {
   id: true,
+  price_currency: true,
   title: true,
   slug: true,
   description: true,
+  tags: true,
   category_record: { select: productCategorySelect },
   kind: true,
   type: true,
@@ -125,6 +129,7 @@ const adminProductSelect = {
   created_at: true,
   updated_at: true,
   media: { select: productMediaSelect },
+  created_by: { select: { id: true, shop_name: true } },
   _count: { select: { listings: true } }
 } satisfies Prisma.productsSelect;
 
@@ -196,7 +201,7 @@ type ProductSnapshot = {
   description: string | null;
   category: string | null;
   categoryId?: string | null;
-  status: "draft" | "pending_review" | "active" | "archived";
+  status: "draft" | "pending_review" | "active" | "archived" | "trashed";
 };
 
 type ProductSnapshotRecord = Omit<ProductSnapshot, "category"> & { category_record: ProductCategoryRecord | null };
@@ -361,6 +366,7 @@ export class ProductService {
         category_record: { select: productCategorySelect },
         kind: true,
         type: true,
+        price_currency: true,
         created_at: true,
         media: { select: productMediaSelect }
       }
@@ -377,10 +383,12 @@ export class ProductService {
         v."product_id", o."currency", o."price"
       FROM "seller_offers" o
       JOIN "seller_listings" l ON l."id" = o."listing_id"
+      JOIN "products" p ON p."id" = l."product_id"
       JOIN "sellers" s ON s."id" = l."seller_id"
       JOIN "product_variants" v ON v."id" = o."variant_id"
       WHERE v."product_id" IN (${Prisma.join(products.map((product) => Prisma.sql`${product.id}::uuid`))})
         AND o."status" = 'active'::"listing_status"
+        AND BTRIM(o."currency") = p."price_currency"
         AND l."status" = 'active'::"listing_status"
         AND s."invited" = FALSE
         AND s."approved" = TRUE
@@ -410,6 +418,7 @@ export class ProductService {
         categoryId: product.category_record?.id ?? null,
         kind: product.kind,
         type: product.type,
+        currency: product.price_currency,
         image: this.mapProductImage(product.media),
         ...(startingPrices.length === 1
           ? {
@@ -429,11 +438,14 @@ export class ProductService {
       throw new NotFoundException("Product was not found");
     }
 
+    const where: Prisma.productsWhereInput = {
+      ...publicProductWhere(this.bridgeEnabled()),
+      AND: [{ OR: [...(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(idOrSlug) ? [{ id: idOrSlug }] : []), { slug: idOrSlug }, { slug_routes: { some: { slug: idOrSlug } } }] }]
+    };
+    const priceSelection = await this.prisma.products.findFirst({ where, select: { price_currency: true } });
+    if (!priceSelection) throw new NotFoundException("Product was not found");
     const product = await this.prisma.products.findFirst({
-      where: {
-        ...publicProductWhere(this.bridgeEnabled()),
-        OR: [...(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(idOrSlug) ? [{ id: idOrSlug }] : []), { slug: idOrSlug }, { slug_routes: { some: { slug: idOrSlug } } }]
-      },
+      where,
       select: {
         id: true,
         title: true,
@@ -443,6 +455,7 @@ export class ProductService {
         category_record: { select: productCategorySelect },
         kind: true,
         type: true,
+        price_currency: true,
         created_at: true,
         updated_at: true,
         media: { select: productMediaSelect },
@@ -472,7 +485,7 @@ export class ProductService {
             name: true,
             option_values: { select: variantOptionSelect },
             offers: {
-              where: activeOfferWhere,
+              where: { ...activeOfferWhere, currency: priceSelection.price_currency },
               orderBy: [
                 { currency: "asc" },
                 { price: "asc" },
@@ -514,6 +527,7 @@ export class ProductService {
       categoryId: product.category_record?.id ?? null,
       kind: product.kind,
       type: product.type,
+      currency: product.price_currency,
       image: this.mapProductImage(product.media),
       ...(product.bridge_binding
         ? {
@@ -536,7 +550,7 @@ export class ProductService {
         id: variant.id,
         name: variant.name,
         options: this.mapVariantOptions(variant.option_values),
-        offers: variant.offers.map((offer) => ({
+        offers: variant.offers.filter((offer) => offer.currency.trim() === product.price_currency).map((offer) => ({
           id: offer.id,
           price: offer.price.toString(),
           currency: offer.currency.trim(),
@@ -599,39 +613,83 @@ export class ProductService {
   }
 
   async listAdminProducts(input: ManageProductsQueryDto) {
-    const products = await this.prisma.products.findMany({
-      where: this.manageProductWhere(input),
-      ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
-      take: input.limit + 1,
-      orderBy: input.sort?.startsWith("title_")
-        ? [{ title: input.sort.endsWith("asc") ? "asc" : "desc" }, { id: input.sort?.endsWith("asc") ? "asc" : "desc" }]
-        : [{ [input.sort?.startsWith("created_") ? "created_at" : "updated_at"]: input.sort?.endsWith("asc") ? "asc" : "desc" }, { id: input.sort?.endsWith("asc") ? "asc" : "desc" }],
-      select: adminProductSelect
-    });
+    const where = this.manageProductWhere(input);
+    const countWhere = this.manageProductWhere({ ...input, status: undefined });
+    const [products, counts] = await Promise.all([
+      this.prisma.products.findMany({
+        where,
+        ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+        take: input.limit + 1,
+        orderBy: input.sort?.startsWith("title_")
+          ? [{ title: input.sort.endsWith("asc") ? "asc" : "desc" }, { id: input.sort?.endsWith("asc") ? "asc" : "desc" }]
+          : [{ [input.sort?.startsWith("created_") ? "created_at" : "updated_at"]: input.sort?.endsWith("asc") ? "asc" : "desc" }, { id: input.sort?.endsWith("asc") ? "asc" : "desc" }],
+        select: adminProductSelect
+      }),
+      this.prisma.products.groupBy({
+        by: ["status"],
+        where: countWhere,
+        _count: { _all: true }
+      })
+    ]);
     const hasMore = products.length > input.limit;
     const page = hasMore ? products.slice(0, input.limit) : products;
+    const statusCounts = { draft: 0, pending_review: 0, active: 0, archived: 0, trashed: 0 };
+    for (const count of counts) statusCounts[count.status] = count._count._all;
 
     return {
       items: page.map((product) => this.toAdminProduct(product)),
-      nextCursor: hasMore ? page.at(-1)?.id ?? null : null
+      nextCursor: hasMore ? page.at(-1)?.id ?? null : null,
+      statusCounts
     };
   }
 
   private manageProductWhere(input: ManageProductsQueryDto): Prisma.productsWhereInput {
     const search = input.search?.trim();
     const category = input.category?.trim();
+    const seller = input.seller?.trim();
+    const dateFrom = input.dateFrom ? this.adminFilterInstant(input.dateFrom) : undefined;
+    const dateTo = input.dateTo ? this.adminFilterInstant(input.dateTo) : undefined;
+    if (dateFrom && dateTo && dateFrom >= dateTo) throw new BadRequestException("Date range is reversed");
+    if (input.stock && input.type && input.type !== "physical") throw new BadRequestException("Stock filter requires physical products");
+    const dateField = input.dateField === "created" ? "created_at" : "updated_at";
+    const stockedOffer: Prisma.seller_listingsWhereInput = {
+      status: "active",
+      offers: { some: { status: "active", physical: { is: { stock: { gt: 0 } } } } }
+    };
+    const sellerListing: Prisma.seller_listingsWhereInput = seller
+      ? { seller: { shop_name: { contains: seller, mode: "insensitive" } } }
+      : {};
     return {
       ...(input.type ? { type: input.type } : {}),
       ...(input.kind ? { kind: input.kind } : {}),
       ...(input.status ? { status: input.status } : {}),
       ...(input.categoryId ? { category_id: input.categoryId } : {}),
       ...(category ? { category_record: { name: { contains: category, mode: "insensitive" as const } } } : {}),
+      ...(seller || input.stock ? { AND: [
+        ...(seller && input.stock !== "in_stock" ? [{ listings: { some: sellerListing } }] : []),
+        ...(input.stock === "in_stock" ? [{ listings: { some: { ...sellerListing, ...stockedOffer } } }] : []),
+        ...(input.stock === "out_of_stock" ? [{ listings: { none: { ...sellerListing, ...stockedOffer } } }] : [])
+      ] } : {}),
+      ...(dateFrom || dateTo ? { [dateField]: {
+        ...(dateFrom ? { gte: dateFrom } : {}),
+        ...(dateTo ? { lt: dateTo } : {})
+      } } : {}),
+      ...(input.stock ? { type: "physical" as const } : {}),
       ...(search ? { OR: [
         { title: { contains: search, mode: "insensitive" as const } },
         { slug: { contains: search, mode: "insensitive" as const } },
         { category_record: { name: { contains: search, mode: "insensitive" as const } } }
       ] } : {})
     };
+  }
+
+  private adminFilterInstant(value: string) {
+    const instant = new Date(value);
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) ||
+      Number.isNaN(instant.getTime()) || instant.toISOString() !== value) {
+      throw new BadRequestException("Invalid product filter date");
+    }
+    return instant;
   }
 
   async listProductChanges(input: ListProductsQueryDto, productId?: string) {
@@ -835,7 +893,7 @@ export class ProductService {
           where: { id: productId },
           data: {
             ...await this.productUpdateData(tx,input),
-            ...(input.slug === undefined ? {} : { slug: this.clean(input.slug) })
+            ...(input.slug === undefined ? {} : { slug: this.slugify(input.slug) })
           },
           select: adminProductSelect
         });
@@ -852,6 +910,67 @@ export class ProductService {
       }
       this.rethrowWriteError(error);
     }
+  }
+
+  async transferProductSeller(productId: string, actorUserId: string, sellerId: string) {
+    try {
+      await this.prisma.$transaction(async (tx) => {
+      const product = await tx.products.findUnique({
+        where: { id: productId },
+        select: {
+          ...productSnapshotSelect,
+          type: true,
+          created_by: { select: { id: true, shop_name: true } },
+          bridge_binding: { select: { grant_id: true } },
+          listings: { select: { id: true, seller_id: true, offers: { select: { _count: { select: { order_items: true, inventory_reservations: true } } } } } }
+        }
+      });
+      if (!product) throw new NotFoundException("Product was not found");
+      if (product.created_by.id === sellerId) throw new BadRequestException("This seller already owns the product");
+      if (product.status === "trashed") throw new ConflictException("Restore the product before transferring its seller");
+      const destination = await tx.sellers.findFirst({
+        where: { id: sellerId, approved: true, invited: false, suspended_at: null, merged_into_seller_id: null },
+        select: { id: true, shop_name: true, permissions: { select: { permission: true } } }
+      });
+      if (!destination) throw new BadRequestException("Select an active, approved seller");
+      const requiredPermission = product.type === "physical" ? "physical_products_manage" : "products_manage";
+      if (!destination.permissions.some(({ permission }) => permission === requiredPermission)) {
+        throw new BadRequestException("The destination seller cannot manage this product type");
+      }
+      if (product.bridge_binding) throw new ConflictException("Bridge products cannot be reassigned while bound to a seller service");
+      if (product.listings.some((listing) => listing.seller_id === sellerId)) {
+        throw new ConflictException("The destination seller already has a listing for this product");
+      }
+      const sourceListing = product.listings.find((listing) => listing.seller_id === product.created_by.id);
+      if (sourceListing?.offers.some((offer) => offer._count.order_items || offer._count.inventory_reservations)) {
+        throw new ConflictException("Products with sales or inventory reservations cannot transfer their seller listing");
+      }
+      if (sourceListing) {
+        await tx.seller_listings.update({ where: { id: sourceListing.id }, data: { seller_id: sellerId } });
+      } else {
+        await tx.seller_listings.create({ data: { seller_id: sellerId, product_id: productId, status: "draft" } });
+      }
+      await tx.products.update({ where: { id: productId }, data: { created_by_seller_id: sellerId } });
+      const snapshot = this.productSnapshot(product);
+      await tx.product_change_events.create({ data: {
+        product_id: productId,
+        actor_user_id: actorUserId,
+        action: "update",
+        changed_fields: ["seller"],
+        before_snapshot: { ...snapshot, seller: { id: product.created_by.id, shopName: product.created_by.shop_name } } as Prisma.InputJsonValue,
+        after_snapshot: { ...snapshot, seller: { id: destination.id, shopName: destination.shop_name } } as Prisma.InputJsonValue
+      } });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") {
+        throw new ConflictException("The product changed during transfer; reload and try again");
+      }
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        throw new ConflictException("The destination seller already has a listing for this product");
+      }
+      throw error;
+    }
+    return this.getAdminProduct(productId, { limit: 20 });
   }
 
   async updateAdminListing(
@@ -893,10 +1012,13 @@ export class ProductService {
             id: true,
             price: true,
             currency: true,
-            listing: { select: { product: { select: { type: true } } } }
+            listing: { select: { product: { select: { type: true, price_currency: true } } } }
           }
         });
         if (!offer) throw new NotFoundException("Seller offer was not found");
+        if (input.currency !== undefined && input.currency !== offer.listing.product.price_currency) {
+          throw new BadRequestException("Offer currency must match the product currency");
+        }
         if (input.price !== undefined || input.currency !== undefined) {
           this.assertOfferMoney(input.price === undefined ? offer.price : new Prisma.Decimal(input.price), input.currency ?? offer.currency.trim());
         }
@@ -973,7 +1095,7 @@ export class ProductService {
       const [event, current] = await Promise.all([
         tx.product_change_events.findFirst({
           where: { id: changeId, product_id: productId },
-          select: { id: true, before_snapshot: true, after_snapshot: true }
+          select: { id: true, changed_fields: true, before_snapshot: true, after_snapshot: true }
         }),
         tx.products.findUnique({
           where: { id: productId },
@@ -984,6 +1106,7 @@ export class ProductService {
         })
       ]);
       if (!event || !current) throw new NotFoundException("Product change was not found");
+      if (event.changed_fields.includes("seller")) throw new ConflictException("Seller transfers cannot be restored as catalog edits");
       const savedSnapshot = side === "before" ? event.before_snapshot : event.after_snapshot;
       if (!savedSnapshot) {
         throw new ConflictException("This change has no earlier product version");
@@ -1012,11 +1135,16 @@ export class ProductService {
   }
 
   async createProduct(sellerId: string, actorUserId: string, input: CreateProductDto) {
+    if (input.status === "trashed") throw new ForbiddenException("Only an administrator can move products to trash");
     if (input.type === "bridge" && !this.bridgeEnabled()) throw new ConflictException("Bridge is not enabled");
     if (input.type !== "bridge" && input.bridge) {
       throw new BadRequestException("Only Bridge products may define a Bridge binding");
     }
     const plan = this.buildProductPlan(input);
+    const priceCurrency = input.offers[0]?.currency;
+    if (!priceCurrency || input.offers.some((offer) => offer.currency !== priceCurrency)) {
+      throw new BadRequestException("Every offer on a product must use the same currency");
+    }
     const seller = await this.prisma.sellers.findUnique({
       where: { id: sellerId },
       select: { permissions: { select: { permission: true } } }
@@ -1036,9 +1164,10 @@ export class ProductService {
           data: {
             id: plan.productId,
             created_by_seller_id: sellerId,
+            price_currency: priceCurrency,
             title: this.clean(input.title),
             slug: plan.slug,
-            description: this.cleanOptional(input.description),
+            description: normalizeProductDescription(input.description),
             category_id: await resolveProductCategory(transaction,input),
             kind: input.kind,
             type: input.type,
@@ -1156,26 +1285,33 @@ export class ProductService {
     if (!seller) throw new NotFoundException("Seller was not found");
 
     const mayPublish = seller.permissions.some((item) => item.permission === "products_publish");
-    await this.prisma.$transaction(async (tx) => {
-      const product = await tx.products.findFirst({
-        where: { id: productId, created_by_seller_id: sellerId },
-        select: { id: true, ...productSnapshotSelect }
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const product = await tx.products.findFirst({
+          where: { id: productId, created_by_seller_id: sellerId },
+          select: { id: true, ...productSnapshotSelect }
+        });
+        if (!product) throw new NotFoundException("Seller product was not found");
+        if (product.status === "trashed") throw new ForbiddenException("Trashed products can only be restored by an administrator");
+        if (input.status === "trashed") throw new ForbiddenException("Only an administrator can move products to trash");
+        const requestedStatus = input.status;
+        const nextStatus = requestedStatus === undefined
+          ? product.status === "active" && !mayPublish ? "pending_review" : undefined
+          : requestedStatus === "active" && !mayPublish ? "pending_review" : requestedStatus;
+        const updated = await tx.products.update({
+          where: { id: product.id },
+          data: {
+            ...await this.productUpdateData(tx,input),
+            ...(input.slug === undefined ? {} : { slug: this.slugify(input.slug) }),
+            ...(nextStatus === undefined ? {} : { status: nextStatus })
+          },
+          select: productSnapshotSelect
+        });
+        await this.recordProductChange(tx, product.id, actorUserId, "update", product, updated);
       });
-      if (!product) throw new NotFoundException("Seller product was not found");
-      const requestedStatus = input.status;
-      const nextStatus = requestedStatus === undefined
-        ? product.status === "active" && !mayPublish ? "pending_review" : undefined
-        : requestedStatus === "active" && !mayPublish ? "pending_review" : requestedStatus;
-      const updated = await tx.products.update({
-        where: { id: product.id },
-        data: {
-          ...await this.productUpdateData(tx,input),
-          ...(nextStatus === undefined ? {} : { status: nextStatus })
-        },
-        select: productSnapshotSelect
-      });
-      await this.recordProductChange(tx, product.id, actorUserId, "update", product, updated);
-    });
+    } catch (error) {
+      this.rethrowWriteError(error);
+    }
 
     return this.getSellerListingByProduct(sellerId, productId);
   }
@@ -1232,6 +1368,7 @@ export class ProductService {
           select: {
             id: true,
             type: true,
+            price_currency: true,
             created_by_seller_id: true,
             bridge_binding: {
               select: {
@@ -1264,6 +1401,9 @@ export class ProductService {
 
         const variantIds = new Set(product.variants.map((variant) => variant.id));
         for (const offer of input.offers) {
+          if (offer.currency !== product.price_currency) {
+            throw new BadRequestException("Offer currency must match the product currency");
+          }
           if (!variantIds.has(offer.variantId)) {
             throw new BadRequestException(
               `Variant ${offer.variantId} does not belong to this product`
@@ -1332,10 +1472,13 @@ export class ProductService {
             price: true,
             currency: true,
             listing_id: true,
-            listing: { select: { product: { select: { type: true } } } }
+            listing: { select: { product: { select: { type: true, price_currency: true } } } }
           }
         });
         if (!offer) throw new NotFoundException("Seller offer was not found");
+        if (input.currency !== undefined && input.currency !== offer.listing.product.price_currency) {
+          throw new BadRequestException("Offer currency must match the product currency");
+        }
         if (input.price !== undefined || input.currency !== undefined) {
           this.assertOfferMoney(input.price === undefined ? offer.price : new Prisma.Decimal(input.price), input.currency ?? offer.currency.trim());
         }
@@ -1679,6 +1822,7 @@ export class ProductService {
         categoryId: listing.product.category_record?.id ?? null,
         kind: listing.product.kind,
         type: listing.product.type,
+        currency: listing.product.price_currency,
         status: listing.product.status,
         image: this.mapProductImage(listing.product.media),
         canEdit: listing.product.created_by_seller_id === listing.seller_id,
@@ -1769,9 +1913,11 @@ export class ProductService {
   private toAdminProduct(product: AdminProductRecord) {
     return {
       id: product.id,
+      currency: product.price_currency,
       title: product.title,
       slug: product.slug,
       description: product.description,
+      tags: product.tags,
       category: categoryLabel(product.category_record),
       categoryId: product.category_record?.id ?? null,
       kind: product.kind,
@@ -1779,6 +1925,7 @@ export class ProductService {
       status: product.status,
       image: this.mapProductImage(product.media),
       listingCount: product._count.listings,
+      seller: { id: product.created_by.id, shopName: product.created_by.shop_name },
       createdAt: product.created_at.toISOString(),
       updatedAt: product.updated_at.toISOString()
     };
@@ -1795,7 +1942,7 @@ export class ProductService {
       ...(input.title === undefined ? {} : { title: this.clean(input.title) }),
       ...(input.description === undefined
         ? {}
-        : { description: this.cleanOptional(input.description ?? undefined) }),
+        : { description: normalizeProductDescription(input.description) }),
       ...await productCategoryUpdate(tx,input),
       ...(input.status === undefined ? {} : { status: input.status })
     };
@@ -1947,6 +2094,7 @@ export class ProductService {
       { bulk_operation_id: null },
       { before_snapshot: { not: Prisma.DbNull } },
       { changed_fields: { isEmpty: false } },
+      { NOT: { changed_fields: { has: "seller" } } },
       ...(input.mode === "after_time" ? [{ created_at: { gt: new Date(input.after!) } }] : [])
     ];
     if (filters.length) {
@@ -2074,15 +2222,41 @@ export class ProductService {
     ) {
       throw error;
     }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2010" && error.meta?.code === "23505") {
+      if (String(error.meta?.message ?? "").includes("product_slug_routes_pkey") || String(error.meta?.message ?? "").includes("Product slug is already reserved")) {
+        throw new ConflictException("The product slug is already reserved");
+      }
+      throw new ConflictException("A product value already exists");
+    }
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
+      if (String(error.meta?.target ?? "").includes("slug")) {
+        throw new ConflictException("The product slug is already reserved");
+      }
       throw new ConflictException(
         "The slug, seller SKU, variant combination, or seller offer already exists"
       );
     }
     throw error;
+  }
+
+  async productSlugAvailability(slug: string, currentProductId?: string, sellerId?: string) {
+    const normalizedSlug = this.slugify(slug);
+    if (!normalizedSlug || normalizedSlug !== slug) {
+      throw new BadRequestException("A normalized product slug is required");
+    }
+    const route = await this.prisma.product_slug_routes.findUnique({
+      where: { slug: normalizedSlug }, select: { product_id: true }
+    });
+    if (!route) return { available: true };
+    if (route.product_id !== currentProductId) return { available: false };
+    if (!sellerId) return { available: true };
+    const owned = await this.prisma.products.findFirst({
+      where: { id: currentProductId, created_by_seller_id: sellerId }, select: { id: true }
+    });
+    return { available: Boolean(owned) };
   }
 
   private async validateDeferredConstraints(

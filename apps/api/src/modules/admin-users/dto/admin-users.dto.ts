@@ -1,13 +1,15 @@
 import { Type } from "class-transformer";
-import { IsEmail, IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, MinLength } from "class-validator";
+import { IsEmail, IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from "class-validator";
+import { USER_REFERENCE_PATTERN } from "../../../common/user-reference";
 
 const roles = ["all", "buyer", "seller_admin", "seller_staff", "platform_staff", "platform_admin"] as const;
 export const historySections = ["orders", "checkouts", "payments", "entitlements", "comments", "communications", "sessions", "seller", "ai", "activity", "profile", "related"] as const;
 export type HistorySection = typeof historySections[number];
 
-export class UserIdDto { @IsUUID("4") id!: string; }
+export class UserIdDto { @Matches(USER_REFERENCE_PATTERN) id!: string; }
 
 export class ListAdminUsersQueryDto {
+  @IsOptional() @IsIn(["all", "active", "blocked", "deletion_pending", "deleted"]) status?: string = "all";
   @IsOptional() @IsString() @MaxLength(100) search?: string;
   @IsOptional() @IsIn(roles) role: typeof roles[number] = "all";
   @IsOptional() @IsIn(["newest", "oldest", "name", "orders"]) sort: "newest" | "oldest" | "name" | "orders" = "newest";
@@ -36,4 +38,24 @@ export class UpdateAdminUserDto {
   @IsOptional() @IsEmail() @MaxLength(254) email?: string;
   @IsOptional() @IsString() @Matches(/^[a-z0-9_]{3,32}$/) username?: string | null;
   @IsOptional() @IsString() @Matches(/^\+?[0-9]{8,15}$/) phoneNumber?: string | null;
+}
+
+export class CreateAdminUserDto {
+  @IsString() @MinLength(2) @MaxLength(100) fullName!: string;
+  @IsEmail() @MaxLength(254) email!: string;
+  @IsOptional() @IsString() @Matches(/^[a-z0-9_]{3,32}$/) username?: string;
+  @IsOptional() @IsString() @Matches(/^\+?[0-9]{8,15}$/) phoneNumber?: string;
+  @IsString() @MinLength(12) @MaxLength(128) password!: string;
+}
+
+export class ChangeAdminUserPasswordDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(128)
+  currentPassword!: string;
+
+  @IsString()
+  @MinLength(12)
+  @MaxLength(128)
+  newPassword!: string;
 }

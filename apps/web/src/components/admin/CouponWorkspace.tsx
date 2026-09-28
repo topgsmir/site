@@ -1,4 +1,5 @@
 "use client";
+import { JalaliDatePicker } from "@/components/dashboard/JalaliDatePicker";
 
 import axios from "axios";
 import type {
@@ -340,8 +341,8 @@ export function CouponWorkspace({ locale }: { locale: Locale }) {
           <label><span>{c.currency}</span><strong>تومان</strong></label>
           <label><span>{c.minimum} <small>{c.optional}</small></span><input inputMode="decimal" pattern="(?:0|[1-9][0-9]*)(?:\.[0-9]{1,4})?" value={draft.minimumOrderAmount} onChange={(event) => update("minimumOrderAmount", event.target.value)} /></label>
           <label><span>{c.maximum} <small>{c.optional}</small></span><input type="number" min="1" max="1000000000" value={draft.maximumRedemptions} onChange={(event) => update("maximumRedemptions", event.target.value)} /></label>
-          <label><span>{c.starts} <small>{c.optional}</small></span><input type="datetime-local" value={draft.startsAt} onChange={(event) => update("startsAt", event.target.value)} /></label>
-          <label><span>{c.expires} <small>{c.optional}</small></span><input type="datetime-local" value={draft.expiresAt} onChange={(event) => update("expiresAt", event.target.value)} /></label>
+          <label><span>{c.starts} <small>{c.optional}</small></span><JalaliDatePicker locale={locale} dateTime value={draft.startsAt} onChange={(value) => update("startsAt", value)} /></label>
+          <label><span>{c.expires} <small>{c.optional}</small></span><JalaliDatePicker locale={locale} dateTime value={draft.expiresAt} onChange={(value) => update("expiresAt", value)} /></label>
         </div>
         <div className={styles.formFooter}>
           <label className={styles.checkbox}><input type="checkbox" checked={draft.active} onChange={(event) => update("active", event.target.checked)} /><span>{c.active}</span></label>
@@ -359,7 +360,7 @@ export function CouponWorkspace({ locale }: { locale: Locale }) {
         {!listError && loading && coupons.length === 0 ? <p className={styles.message}>{c.loading}</p> : null}
         {!listError && !loading && coupons.length === 0 ? <p className={styles.message}>{c.empty}</p> : null}
         {coupons.map((coupon) => (
-          <article className={styles.coupon} key={coupon.id}>
+          <article className={styles.coupon} key={coupon.id} data-admin-box-key={`coupon:${coupon.id}`}>
             <div className={styles.couponLead}><small>{coupon.seller.shopName}</small><strong>{coupon.code}</strong><span>{coupon.discountType === "percentage" ? `${coupon.discountValue}%` : `${formatCurrencyAmount(coupon.discountValue, coupon.currency, locale)} ${currencyLabel(coupon.currency)}`}</span></div>
             <dl>
               <div><dt>{c.status}</dt><dd data-active={coupon.active}>{coupon.active ? c.enabled : c.disabled}</dd></div>
