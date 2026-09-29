@@ -6,6 +6,15 @@ export const productCategorySelect = {
   translations: { select: { locale: true, name: true } }
 } satisfies Prisma.product_categoriesSelect;
 
+export const managedCategorySelect = {
+  id: true, name: true, slug: true, description: true, meta_title: true,
+  meta_description: true, parent_id: true, image_updated_at: true,
+  parent: { select: { name: true } },
+  created_at: true, updated_at: true,
+  translations: { select: { locale: true, name: true } },
+  _count: { select: { products: true, children: true } }
+} satisfies Prisma.product_categoriesSelect;
+
 export type ProductCategoryRecord = Prisma.product_categoriesGetPayload<{ select: typeof productCategorySelect }>;
 
 export function categoryLabel(category: ProductCategoryRecord | null, locale?: string, legacyLabel?: string | null) {

@@ -80,11 +80,16 @@ export class CreateCouponDto {
 }
 
 export class CreateAdminCouponDto extends CreateCouponDto {
+  @ValidateIf((_object, value) => value !== null)
   @IsUUID("4")
-  sellerId!: string;
+  sellerId!: string | null;
 }
 
 export class UpdateCouponDto {
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @IsUUID("4")
+  sellerId?: string | null;
+
   @ValidateIf((_object, value) => value !== undefined)
   @IsString()
   @Matches(COUPON_CODE_PATTERN, {

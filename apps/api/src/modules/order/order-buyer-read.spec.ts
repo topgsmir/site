@@ -9,7 +9,8 @@ const createdAt = new Date("2026-09-19T10:00:00.000Z");
 const summary = {
   id: "order-1", status: "paid", currency: "TOMAN", total_amount: { toString: () => "120000" }, created_at: createdAt,
   seller: { shop_name: "Example seller", goghdi_agent_id: null },
-  items: [{ id: "item-1", product_title: "Repair file", product_type: "digital", quantity: 1 }]
+  items: [{ id: "item-1", product_title: "Repair file", product_type: "digital", quantity: 1,
+    offer: { listing: { product_id: "product-1" } } }]
 };
 
 describe("buyer order reads", () => {
@@ -103,6 +104,7 @@ describe("buyer order reads", () => {
         const prisma = { orders: { findFirst: async ({ select }: { select: typeof selection }) => { selection = select; return record; } } } as unknown as PrismaService;
         const detail = await new OrderService(prisma).get(buyer, record.id);
         assert.equal("chatAvailable" in detail && detail.chatAvailable, Boolean(agentId));
+        assert.equal(detail.items[0]?.productId, "product-1");
         assert.equal(selection?.seller?.select.goghdi_agent_id, true);
         assert.deepEqual(detail.seller, { id: "seller-1", shopName: "Seller" });
       }

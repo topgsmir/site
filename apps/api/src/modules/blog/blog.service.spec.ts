@@ -7,7 +7,39 @@ import { BlogService } from "./blog.service";
 import { validateRichText } from "./rich-text.validator";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
-import { ManagedBlogQueryDto } from "./dto/blog-post.dto";
+import { ManagedBlogQueryDto, ReorderTaxonomyDto, TaxonomyDto } from "./dto/blog-post.dto";
+
+describe("blog taxonomy management", () => {
+  it("rejects duplicate and invalid reorder IDs and overlong metadata", async () => {
+    const id = "00000000-0000-4000-8000-000000000003";
+    assert.ok((await validate(plainToInstance(ReorderTaxonomyDto, { ids: [id, id] }))).length > 0);
+    assert.ok((await validate(plainToInstance(ReorderTaxonomyDto, { ids: ["invalid"] }))).length > 0);
+    const translations = (["fa", "en", "ar"] as const).map((locale) => ({ locale, name: "Guide", slug: `guide-${locale}`, metaDescription: "x".repeat(321) }));
+    assert.ok((await validate(plainToInstance(TaxonomyDto, { translations }))).length > 0);
+    const service = new BlogService({} as PrismaService);
+    const oversizedTag = (["fa", "en", "ar"] as const).map((locale) => ({ locale, name: "x".repeat(81), slug: `tag-${locale}` }));
+    await assert.rejects(service.createTaxonomy("tag", { translations: oversizedTag }), BadRequestException);
+  });
+
+  it("reorders only when the supplied IDs exactly match current terms", async () => {
+    const first = "00000000-0000-4000-8000-000000000003";
+    const second = "00000000-0000-4000-8000-000000000004";
+    const updates: Array<{ id: string; position: number }> = [];
+    const prisma = {
+      $transaction: async (callback: (tx: unknown) => Promise<void>) => callback(prisma),
+      blog_categories: {
+        findMany: async (query?: { select?: { id?: boolean } }) => query?.select ? [{ id: first }, { id: second }] : [],
+        update: async ({ where, data }: { where: { id: string }; data: { position: number } }) => { updates.push({ id: where.id, position: data.position }); }
+      },
+      blog_tags: { findMany: async () => [] }
+    } as unknown as PrismaService;
+    const service = new BlogService(prisma);
+    await assert.rejects(service.reorderTaxonomy("category", [first]), /Taxonomy changed/);
+    assert.deepEqual(updates, []);
+    await service.reorderTaxonomy("category", [second, first]);
+    assert.deepEqual(updates, [{ id: second, position: 0 }, { id: first, position: 1 }]);
+  });
+});
 
 const sellerActor: BlogActor = {
   type: "seller",
@@ -118,6 +150,28 @@ describe("multilingual blog security", () => {
       type: "doc",
       content: [{ type: "paragraph", content: [{ type: "text", text: "Safe", marks: [{ type: "bold" }] }] }]
     });
+  });
+
+  it("preserves safe article tables, alignment and image descriptions", () => {
+    const result = validateRichText({ type: "doc", content: [
+      { type: "paragraph", attrs: { textAlign: "center", onclick: "ignored" }, content: [{ type: "text", text: "Intro" }] },
+      { type: "table", content: [{ type: "tableRow", content: [
+        { type: "tableHeader", content: [{ type: "paragraph", content: [{ type: "text", text: "Title" }] }] },
+        { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "Value" }] }] }
+      ] }] },
+      { type: "image", attrs: { src: "/media/00000000-0000-4000-8000-000000000003/md.webp", alt: "Useful chart", onclick: "ignored" } }
+    ] });
+    assert.deepEqual(result.content, { type: "doc", content: [
+      { type: "paragraph", attrs: { textAlign: "center" }, content: [{ type: "text", text: "Intro" }] },
+      { type: "table", content: [{ type: "tableRow", content: [
+        { type: "tableHeader", content: [{ type: "paragraph", content: [{ type: "text", text: "Title" }] }] },
+        { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "Value" }] }] }
+      ] }] },
+      { type: "image", attrs: { src: "/media/00000000-0000-4000-8000-000000000003/md.webp", alt: "Useful chart" } }
+    ] });
+    assert.throws(() => validateRichText({ type: "doc", content: [{ type: "paragraph", attrs: { textAlign: "expression(alert(1))" } }] }), BadRequestException);
+    assert.throws(() => validateRichText({ type: "doc", content: [{ type: "table", content: [{ type: "paragraph" }] }] }), BadRequestException);
+    assert.throws(() => validateRichText({ type: "doc", content: [{ type: "tableRow", content: [{ type: "tableCell", content: [{ type: "paragraph" }] }] }] }), BadRequestException);
   });
 
   it("scopes seller product search to active listings", async () => {

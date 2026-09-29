@@ -8,8 +8,10 @@ import type { PaymentCredentialService } from "../../integrations/payments/payme
 import type { PaymentIntentInput } from "../../integrations/payments/payment.interface";
 import type { PaymentService } from "../../integrations/payments/payment.service";
 import { PrismaService } from "../../prisma/prisma.service";
+import { Prisma } from "../../prisma/client";
 import { assertDedicatedTestDatabase } from "../../test/test-database";
 import { CheckoutService } from "./checkout.service";
+import { ShippingPolicyService } from "../../integrations/shipping/shipping-policy.service";
 import { UsdRateService } from "../usd-rate/usd-rate.service";
 import { ConfigService } from "@nestjs/config";
 import { OrderService } from "../order/order.service";
@@ -35,20 +37,24 @@ const paymentService = {
   initiateWithProvider: (_code: string, input: PaymentIntentInput) => adapter.initiate(input)
 } as unknown as PaymentService;
 const application = new PaymentApplicationService(prisma, paymentService, {} as PaymentCredentialService);
-const checkouts = new CheckoutService(prisma, paymentService, application, new UsdRateService(prisma), {} as never);
+const checkouts = new CheckoutService(prisma, paymentService, application, new UsdRateService(prisma), {} as never, new ShippingPolicyService(prisma), { active: () => ({ isConfigured: async () => true }) } as never);
 
 let buyer: AppUser;
 let physicalOfferId: string;
 let digitalOfferId: string;
 let checkoutId: string;
+let couponId: string;
 
 before(async () => {
   await prisma.$connect();
   const created = await prisma.$transaction(async (tx) => {
     const buyerUser = await tx.users.create({ data: { full_name: "Checkout Buyer", email: `checkout-buyer-${suffix}@example.com`, role: "buyer" } });
-    const sellerUsers = await Promise.all(["Physical", "Digital"].map((name) => tx.users.create({ data: { full_name: `${name} Seller`, email: `${name.toLowerCase()}-${suffix}@example.com`, role: "seller_admin" } })));
-    const sellers = await Promise.all(sellerUsers.map((user, index) => tx.sellers.create({ data: { user_id: user.id, shop_name: `Checkout Shop ${index}`, approved: true, commission: "0.10", holdback_rate: "0.05" } })));
+    const sellerUsers = [];
+    for (const name of ["Physical", "Digital"]) sellerUsers.push(await tx.users.create({ data: { full_name: `${name} Seller`, email: `${name.toLowerCase()}-${suffix}@example.com`, role: "seller_admin" } }));
+    const sellers = [];
+    for (const [index, user] of sellerUsers.entries()) sellers.push(await tx.sellers.create({ data: { user_id: user.id, shop_name: `Checkout Shop ${index}`, approved: true, commission: "0.10", holdback_rate: "0.05" } }));
     await tx.seller_permissions.create({ data: { seller_id: sellers[0]!.id, permission: "physical_products_manage" } });
+    await tx.seller_shipping_profiles.create({ data: { seller_id: sellers[0]!.id, enabled: true, sender_name: "Checkout Sender", sender_mobile: "09123456789", province: "Tehran", city: "Tehran", address_line: "A complete test sender address", postal_code: "1234567890", latitude: 35.7, longitude: 51.4, updated_by_user_id: sellerUsers[0]!.id } });
     const physicalProduct = await tx.products.create({ data: { created_by_seller_id: sellers[0]!.id, title: "Physical checkout item", slug: `physical-checkout-${suffix}`, type: "physical" } });
     const digitalProduct = await tx.products.create({ data: { created_by_seller_id: sellers[1]!.id, title: "Digital checkout item", slug: `digital-checkout-${suffix}`, type: "digital" } });
     const physicalVariant = await tx.product_variants.create({ data: { product_id: physicalProduct.id, option_signature: "a".repeat(64) } });
@@ -58,11 +64,13 @@ before(async () => {
     const physicalOffer = await tx.seller_offers.create({ data: { listing_id: physicalListing.id, variant_id: physicalVariant.id, price: "1000", currency: "TOMAN", physical: { create: { stock: 3, weight_grams: 100 } } } });
     const digitalOffer = await tx.seller_offers.create({ data: { listing_id: digitalListing.id, variant_id: digitalVariant.id, price: "2000", currency: "TOMAN", digital: { create: { file_reference: "https://uploads.example/test.zip", file_references: ["https://uploads.example/test.zip", "https://uploads.example/second.zip"], max_downloads: 2 } } } });
     await tx.payment_method_configs.upsert({ where: { provider_code: "zarinpal" }, create: { provider_code: "zarinpal", enabled: true }, update: { enabled: true } });
-    return { buyerUser, physicalOffer, digitalOffer };
+    const coupon = await tx.coupons.create({ data: { seller_id: null, code: `ALL${suffix.replaceAll("-", "").slice(0, 12).toUpperCase()}`, discount_type: "fixed", discount_value: "300", currency: "TOMAN", maximum_redemptions: 1 } });
+    return { buyerUser, physicalOffer, digitalOffer, coupon };
   });
   buyer = { id: created.buyerUser.id, fullName: created.buyerUser.full_name, email: created.buyerUser.email, role: "buyer" };
   physicalOfferId = created.physicalOffer.id;
   digitalOfferId = created.digitalOffer.id;
+  couponId = created.coupon.id;
 });
 
 after(async () => {
@@ -84,6 +92,7 @@ after(async () => {
       prisma.checkouts.deleteMany({ where: { id: checkoutId } })
     ]);
   }
+  if (couponId) await prisma.coupons.delete({ where: { id: couponId } });
   const offers = await prisma.seller_offers.findMany({ where: { id: { in: [physicalOfferId, digitalOfferId] } }, select: { listing_id: true, variant_id: true, listing: { select: { product_id: true, seller_id: true } } } });
   await prisma.seller_listings.deleteMany({ where: { id: { in: offers.map((item) => item.listing_id) } } });
   await prisma.product_variants.deleteMany({ where: { id: { in: offers.map((item) => item.variant_id) } } });
@@ -97,9 +106,18 @@ describe("marketplace checkout persistence", () => {
   it("creates seller/type orders, reserves stock, and settles them with one payment", async () => {
     const key = randomUUID();
     const items = [{ offerId: physicalOfferId, quantity: 2 }, { offerId: digitalOfferId, quantity: 1 }];
-    const quote = await checkouts.quote({ items });
+    const couponCode = (await prisma.coupons.findUniqueOrThrow({ where: { id: couponId } })).code;
+    const sellerId = (await prisma.seller_offers.findUniqueOrThrow({ where: { id: physicalOfferId }, select: { listing: { select: { seller_id: true } } } })).listing.seller_id;
+    await assert.rejects(
+      () => prisma.coupons.create({ data: { seller_id: sellerId, code: couponCode, discount_type: "percentage", discount_value: "5", currency: "TOMAN" } }),
+      (error: unknown) => error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002"
+    );
+    const quote = await checkouts.quote({ items, couponCode });
+    assert.equal(quote.discountAmount, "300");
+    assert.equal(quote.totalAmount, "3700");
     const input = {
       items,
+      couponCode,
       paymentSelections: quote.groups.map((group) => ({ orderGroupKey: group.key, providerCode: "zarinpal" })),
       shippingAddress: { recipientName: "Checkout Buyer", phoneNumber: "09123456789", province: "Tehran", city: "Tehran", postalCode: "1234567890", addressLine: "A complete checkout integration test address" }
     };
@@ -107,6 +125,9 @@ describe("marketplace checkout persistence", () => {
     checkoutId = created.id;
     const replay = await checkouts.create(buyer, input, key);
     assert.equal(replay.id, created.id);
+    assert.equal(created.discountAmount, "300");
+    assert.equal((await prisma.coupons.findUniqueOrThrow({ where: { id: couponId } })).redeemed_count, 1);
+    await assert.rejects(() => checkouts.quote({ items, couponCode }), /not have enough stock|no longer available/i);
     assert.equal(created.orders.length, 2);
     assert.equal(created.paymentGroups.length, 1);
     assert.equal((await prisma.seller_offer_physical.findUniqueOrThrow({ where: { offer_id: physicalOfferId } })).stock, 1);

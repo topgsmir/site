@@ -5,23 +5,26 @@ import { safeExternalHref } from "@/lib/safe-navigation";
 
 const SAFE_IMAGE = /^\/media\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/[a-z0-9-]{1,80}\.webp$/i;
 
-export function RichText({ document, headingAnchors = false, className = "article-prose" }: { document: RichTextDocument; headingAnchors?: boolean; className?: string }) {
-  return <div className={className}>{renderNodes(document.content ?? [], "", headingAnchors)}</div>;
+export function RichText({ document, headingAnchors = false, className = "article-prose", language = "fa" }: { document: RichTextDocument; headingAnchors?: boolean; className?: string; language?: "fa" | "en" | "ar" }) {
+  return <div className={className}>{renderNodes(document.content ?? [], "", headingAnchors, language)}</div>;
 }
 
-function renderNodes(nodes: RichTextNode[], path = "", headingAnchors = false): ReactNode {
-  return nodes.map((node, index) => renderNode(node, index, `${path}${index}`, headingAnchors));
+function renderNodes(nodes: RichTextNode[], path = "", headingAnchors = false, language: "fa" | "en" | "ar" = "fa"): ReactNode {
+  return nodes.map((node, index) => renderNode(node, index, `${path}${index}`, headingAnchors, language));
 }
 
-function renderNode(node: RichTextNode, key: number, path: string, headingAnchors: boolean): ReactNode {
-  const children = renderNodes(node.content ?? [], `${path}-`, headingAnchors);
+function renderNode(node: RichTextNode, key: number, path: string, headingAnchors: boolean, language: "fa" | "en" | "ar"): ReactNode {
+  const children = renderNodes(node.content ?? [], `${path}-`, headingAnchors, language);
+  const alignment = ["start", "center", "end", "justify", "left", "right"].includes(String(node.attrs?.textAlign))
+    ? node.attrs?.textAlign as "start" | "center" | "end" | "justify" | "left" | "right"
+    : undefined;
   let result: ReactNode;
   switch (node.type) {
-    case "paragraph": result = <p key={key}>{children}</p>; break;
+    case "paragraph": result = <p key={key} style={alignment ? { textAlign: alignment } : undefined}>{children}</p>; break;
     case "heading": {
       const level = node.attrs?.level === 3 ? 3 : 2;
       const id = headingAnchors ? `section-${path}` : undefined;
-      result = level === 3 ? <h3 key={key} id={id}>{children}</h3> : <h2 key={key} id={id}>{children}</h2>;
+      result = level === 3 ? <h3 key={key} id={id} style={alignment ? { textAlign: alignment } : undefined}>{children}</h3> : <h2 key={key} id={id} style={alignment ? { textAlign: alignment } : undefined}>{children}</h2>;
       break;
     }
     case "bulletList": result = <ul key={key}>{children}</ul>; break;
@@ -29,13 +32,17 @@ function renderNode(node: RichTextNode, key: number, path: string, headingAnchor
     case "listItem": result = <li key={key}>{children}</li>; break;
     case "blockquote": result = <blockquote key={key}>{children}</blockquote>; break;
     case "codeBlock": result = <pre key={key}><code>{children}</code></pre>; break;
+    case "table": result = <div key={key} className="article-table-scroll" tabIndex={0} role="region" aria-label={{ fa: "جدول", en: "Table", ar: "جدول" }[language]}><table><tbody>{children}</tbody></table></div>; break;
+    case "tableRow": result = <tr key={key}>{children}</tr>; break;
+    case "tableCell": result = <td key={key}>{children}</td>; break;
+    case "tableHeader": result = <th key={key} scope="col">{children}</th>; break;
     case "hardBreak": result = <br key={key} />; break;
     case "horizontalRule": result = <hr key={key} />; break;
     case "image": {
       const src = typeof node.attrs?.src === "string" && SAFE_IMAGE.test(node.attrs.src)
         ? node.attrs.src
         : null;
-      result = src ? <Image key={key} unoptimized src={src} alt="" width={960} height={640} sizes="(max-width: 760px) 100vw, 760px" /> : null;
+      result = src ? <Image key={key} unoptimized src={src} alt={typeof node.attrs?.alt === "string" ? node.attrs.alt : ""} width={960} height={640} sizes="(max-width: 760px) 100vw, 760px" /> : null;
       break;
     }
     case "text": result = node.text ?? ""; break;

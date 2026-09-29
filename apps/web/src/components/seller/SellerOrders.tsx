@@ -1,5 +1,8 @@
 "use client";
+import type { Route } from "next";
+import Link from "next/link";
 import { JalaliDatePicker } from "@/components/dashboard/JalaliDatePicker";
+import { RelativeOrderTime } from "@/components/orders/RelativeOrderTime";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
@@ -16,7 +19,7 @@ type SellerOrder = {
   shippingAddress?: { recipientName: string; phoneNumber: string; province: string; city: string; postalCode: string; addressLine: string } | null;
   shipment?: { carrier: string | null; trackingCode: string | null } | null;
   shippingDispatch?: { externalOrderId: number; provider: string; status: string; providerTrackingCode: string | null; courierTrackingCode: string | null; courierTitle: string | null; errorCode: string | null } | null;
-  items: Array<{ offerId: string; productTitle: string; productType: string; quantity: number; serviceNote?: string | null; serviceInputs?: Array<{ key: string; label: string; value: string | null; sensitive: boolean }>; bridge?: BridgeDetails }>;
+  items: Array<{ offerId: string; productId?: string; productTitle: string; productType: string; quantity: number; serviceNote?: string | null; serviceInputs?: Array<{ key: string; label: string; value: string | null; sensitive: boolean }>; digitalDeliveries?: Array<{ destinationHost: string; maxDownloads: number; downloadCount: number }>; bridge?: BridgeDetails }>;
 };
 type BridgeOrderAction = { id: string; mayRetry: boolean };
 type Filters = { search: string; status: string; productType: string; dateFrom: string; dateTo: string; sort: string };
@@ -30,6 +33,11 @@ const COPY = {
   ar: { title: "الطلبات", intro: "ابحث في طلبات عملائك وراجعها ونفّذها.", search: "بحث الطلبات", searchHint: "٣ أحرف على الأقل: رقم الطلب أو المشتري أو المنتج أو المصدر", shortSearch: "أدخل ٣ أحرف على الأقل للبحث.", status: "الحالة", type: "نوع المنتج", from: "من تاريخ", to: "إلى تاريخ", sort: "الترتيب", newest: "الأحدث أولاً", oldest: "الأقدم أولاً", all: "الكل", filters: "مرشحات", clear: "مسح المرشحات", refresh: "تحديث", order: "الطلب", customer: "المشتري", items: "العناصر", amount: "الإجمالي", date: "تاريخ الطلب", details: "التفاصيل", close: "إغلاق", source: "المصدر", delivery: "عنوان التسليم", noDelivery: "لا يوجد عنوان للتسليم", fulfilment: "تنفيذ الطلب", empty: "لا توجد طلبات تطابق هذه المرشحات.", loading: "جارٍ تحميل الطلبات…", error: "تعذر تحميل الطلبات. حاول مرة أخرى.", actionError: "تعذر تنفيذ إجراء الطلب.", previous: "السابق", next: "التالي", page: "صفحة", showing: "عرض", of: "طلبات", pending: "معلق", paid: "مدفوع", processing: "قيد المعالجة", shipped: "تم الشحن", awaiting_confirmation: "بانتظار التأكيد", delivered: "تم التسليم", cancelled: "ملغى", digital: "رقمي", physical: "مادي", service: "خدمة", bridge: "بريدج", result: "نتيجة التسليم", complete: "نشر النتيجة", retry: "إعادة المحاولة", process: "بدء المعالجة", ready: "جاهز لتأكيد العميل", ship: "تسجيل الشحن يدوياً", amadast: "الشحن عبر Amadast", amadastSync: "تحديث تتبع Amadast", carrier: "شركة الشحن", tracking: "رقم التتبع", noTracking: "لا يوجد رقم تتبع بعد" }
 } as const;
 const SOURCE_COPY = { en: { direct: "Direct", unknown: "Unknown" }, fa: { direct: "مستقیم", unknown: "نامشخص" }, ar: { direct: "مباشر", unknown: "غير معروف" } } as const;
+const DOWNLOAD_COPY = {
+  en: { file: "File", downloaded: "Downloaded", remaining: "Remaining", unlimited: "Unlimited" },
+  fa: { file: "فایل", downloaded: "دانلودشده", remaining: "باقی‌مانده", unlimited: "نامحدود" },
+  ar: { file: "ملف", downloaded: "تم تنزيله", remaining: "المتبقي", unlimited: "غير محدود" }
+} as const;
 
 function displaySource(source: string | null | undefined, locale: Locale) {
   if (!source) return SOURCE_COPY[locale].unknown;
@@ -153,7 +161,7 @@ export function SellerOrders({ locale, onOrderUpdated }: { locale: Locale; onOrd
           <td data-label={c.items}>{count.toLocaleString(locale)} · {order.items[0]?.productTitle ?? "—"}{order.items.length > 1 ? ` +${order.items.length - 1}` : ""}</td>
           <td data-label={c.amount}><strong dir="ltr">{formatCurrencyAmount(order.totalAmount, order.currency, locale)} {currencyLabel(order.currency)}</strong></td>
           <td data-label={c.status}><span className={styles.badge} data-status={order.status}>{c[order.status as keyof typeof c] ?? order.status}</span></td>
-          <td data-label={c.date}><time dateTime={order.createdAt}>{new Date(order.createdAt).toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" })}</time></td>
+          <td data-label={c.date}><RelativeOrderTime value={order.createdAt} locale={locale} /></td>
           <td><button className={styles.detailsButton} type="button" aria-expanded={isExpanded} aria-controls={`seller-order-${order.id}`} onClick={() => setExpanded(isExpanded ? null : order.id)}>{isExpanded ? c.close : c.details}</button></td>
         </tr>{isExpanded ? <tr className={styles.detailRow}><td colSpan={8}><OrderDetails order={order} locale={locale} c={c} retryable={retryable} results={results} shipping={shipping} shippingProvider={shippingProvider} busy={busy} setResults={setResults} setShipping={setShipping} bridgeAction={bridgeAction} transition={transition} ship={ship} providerShipping={providerShipping} /></td></tr> : null}</Fragment>;
       })}</tbody></table>
@@ -175,8 +183,17 @@ function OrderDetails({ order, locale, c, retryable, results, shipping, shipping
   const providerAction = order.shippingDispatch?.status === "registered" || order.shippingDispatch?.status === "tracking_available" ? "sync" : "register";
   return <section className={styles.detailPanel} id={`seller-order-${order.id}`} aria-label={`${c.details} #${order.id}`}>
     <div className={styles.detailGrid}>
-      <section><h3>{c.delivery}</h3>{order.shippingAddress ? <address>{order.shippingAddress.recipientName}<br />{order.shippingAddress.province}، {order.shippingAddress.city}، {order.shippingAddress.addressLine}<br /><span dir="ltr">{order.shippingAddress.phoneNumber} · {order.shippingAddress.postalCode}</span></address> : <p>{c.noDelivery}</p>}</section>
-      <section><h3>{c.items}</h3><ul className={styles.itemList}>{order.items.map((item) => <li key={item.offerId}><strong>{item.productTitle}</strong><span>{item.quantity.toLocaleString(locale)} × {c[item.productType as keyof typeof c] ?? item.productType}</span>{item.serviceNote ? <small>{item.serviceNote}</small> : null}{item.serviceInputs?.length ? <dl className={styles.serviceAnswers}>{item.serviceInputs.map((field) => <div key={field.key}><dt>{field.label}</dt><dd>{field.value ?? "—"}</dd></div>)}</dl> : null}</li>)}</ul></section>
+      <section><h3>{c.delivery}</h3>{order.shippingAddress ? <address>{order.shippingAddress.recipientName}<br />{order.shippingAddress.province}، {order.shippingAddress.city}، {order.shippingAddress.addressLine}<br /><span dir="ltr">{order.shippingAddress.phoneNumber} · {order.shippingAddress.postalCode}</span></address> : <p>{c.noDelivery}</p>}<p>{c.date}: <RelativeOrderTime value={order.createdAt} locale={locale} showExact /></p></section>
+      <section><h3>{c.items}</h3><ul className={styles.itemList}>{order.items.map((item) => <li key={item.offerId}>
+        <strong>{item.productId ? <Link className={styles.productLink} href={`/${locale}/products/${item.productId}` as Route}>{item.productTitle}</Link> : item.productTitle}</strong>
+        <span>{item.quantity.toLocaleString(locale)} × {c[item.productType as keyof typeof c] ?? item.productType}</span>
+        {item.digitalDeliveries?.length ? <dl className={styles.fileCounts}>{item.digitalDeliveries.map((file, index) => <div key={index}>
+          <dt>{DOWNLOAD_COPY[locale].file} {(index + 1).toLocaleString(locale)} · <bdi>{file.destinationHost}</bdi></dt>
+          <dd>{DOWNLOAD_COPY[locale].downloaded}: {file.downloadCount.toLocaleString(locale)} · {file.maxDownloads > 0 ? `${DOWNLOAD_COPY[locale].remaining}: ${Math.max(0, file.maxDownloads - file.downloadCount).toLocaleString(locale)}` : DOWNLOAD_COPY[locale].unlimited}</dd>
+        </div>)}</dl> : null}
+        {item.serviceNote ? <small>{item.serviceNote}</small> : null}
+        {item.serviceInputs?.length ? <dl className={styles.serviceAnswers}>{item.serviceInputs.map((field) => <div key={field.key}><dt>{field.label}</dt><dd>{field.value ?? "—"}</dd></div>)}</dl> : null}
+      </li>)}</ul></section>
       <section><h3>{c.tracking}</h3><p>{order.shippingDispatch?.courierTrackingCode ?? order.shippingDispatch?.providerTrackingCode ?? order.shipment?.trackingCode ?? c.noTracking}</p>{order.shippingDispatch?.courierTitle || order.shipment?.carrier ? <small>{order.shippingDispatch?.courierTitle ?? order.shipment?.carrier}</small> : null}</section>
     </div>
     {order.items.map((item) => item.bridge ? <section className={styles.fulfilment} key={item.bridge.id}><header><div><h3>{item.productTitle}</h3><p>{c.fulfilment}</p></div><span className={styles.badge} data-status={item.bridge.status}>{item.bridge.status}</span></header>{Object.keys(item.bridge.input?.fields ?? {}).length ? <dl className={styles.bridgeFields}>{Object.entries(item.bridge.input?.fields ?? {}).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl> : null}{["manual_required", "failed"].includes(item.bridge.status) ? <div className={styles.actionForm}><label><span>{c.result}</span><textarea value={results[item.bridge.id] ?? ""} onChange={(event) => setResults((current) => ({ ...current, [item.bridge!.id]: event.target.value }))} maxLength={10000} /><small>{item.bridge.errorCode ?? " "}</small></label><div className={styles.actions}><button className={styles.primary} type="button" disabled={!results[item.bridge.id]?.trim() || Boolean(busy)} onClick={() => void bridgeAction(item.bridge!.id, "complete")}>{c.complete}</button>{retryable.has(item.bridge.id) ? <button className={styles.secondary} type="button" disabled={Boolean(busy)} onClick={() => void bridgeAction(item.bridge!.id, "retry")}>{c.retry}</button> : null}</div></div> : null}</section> : null)}

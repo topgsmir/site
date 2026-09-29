@@ -13,6 +13,7 @@ import {
   ListPaymentSellerOptionsQueryDto,
   PaymentCallbackQueryDto,
   PaymentProviderParamDto,
+  ZibalCallbackQueryDto,
   RefundPaymentDto,
   UpdatePaymentMethodDto
 } from "./dto/payment.dto";
@@ -71,7 +72,17 @@ export class PaymentController {
   @Get("zarinpal/callback")
   async callback(@Query() query: PaymentCallbackQueryDto, @Ip() clientIp: string, @Res({ passthrough: true }) response: { redirect?(url: string): void }) {
     await this.rateLimits.consumePaymentCallback(query.Authority, clientIp);
-    const result = await this.application.callback("zarinpal", query.Authority, query.Status);
+    return this.handleCallback("zarinpal", query.Authority, query.Status, response);
+  }
+
+  @Get("zibal/callback")
+  async zibalCallback(@Query() query: ZibalCallbackQueryDto, @Ip() clientIp: string, @Res({ passthrough: true }) response: { redirect?(url: string): void }) {
+    await this.rateLimits.consumePaymentCallback(query.trackId, clientIp);
+    return this.handleCallback("zibal", query.trackId, query.success === "0" ? "NOK" : undefined, response);
+  }
+
+  private async handleCallback(providerCode: string, authority: string, status: string | undefined, response: { redirect?(url: string): void }) {
+    const result = await this.application.callback(providerCode, authority, status);
     const configuredWebUrl = this.config.get<string>("WEB_APP_URL")?.trim();
     let webOrigin: string | null = null;
     try {
@@ -83,7 +94,9 @@ export class PaymentController {
     if (webOrigin && response.redirect) {
       const locale = this.config.get<string>("DEFAULT_LOCALE")?.trim() || "fa";
       const safeLocale = ["fa", "en", "ar"].includes(locale) ? locale : "fa";
-      const destination = "checkoutId" in result && result.checkoutId
+      const destination = "topupId" in result && result.topupId
+        ? `${webOrigin}/${safeLocale}/account/wallet?topup=${result.topupId}`
+        : "checkoutId" in result && result.checkoutId
         ? `${webOrigin}/${safeLocale}/checkout/${result.checkoutId}?payment=${result.status}`
         : `${webOrigin}/${safeLocale}/orders/${"orderId" in result ? result.orderId : ""}?payment=${result.status}`;
       response.redirect(destination);
@@ -95,6 +108,12 @@ export class PaymentController {
   @UseGuards(PlatformAdminGuard)
   methods() {
     return this.application.listMethods();
+  }
+
+  @Get("methods/offer/:offerId")
+  async offerMethods(@Param("offerId", new ParseUUIDPipe({ version: "4" })) offerId: string, @Ip() clientIp: string) {
+    await this.rateLimits.consumeCheckoutQuote(`payment-methods:${offerId}`, clientIp);
+    return this.application.listOfferMethods(offerId);
   }
 
   @Patch("admin/methods/:providerCode")

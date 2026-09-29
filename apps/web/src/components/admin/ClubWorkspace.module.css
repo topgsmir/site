@@ -1,0 +1,44 @@
+.club { display: grid; gap: 16px; padding: 16px 20px; color: var(--color-dashboard-ink); }
+.club > header { display: flex; align-items: center; gap: 16px; }
+.club h1 { font-size: 1.45rem; line-height: 1.4; }
+.club > header span { padding: 4px 9px; border-radius: 999px; background: var(--color-dashboard-accent-soft); font-size: .8rem; }
+.club nav { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--color-dashboard-rule); }
+.club nav button { min-height: 40px; padding: 8px 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; }
+.club nav button[aria-current="page"] { color: var(--color-dashboard-accent); border-bottom-color: currentColor; }
+.stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.stats > div { display: grid; gap: 5px; padding: 12px; border: 1px solid var(--color-dashboard-rule); border-radius: 8px; background: var(--color-dashboard-surface); }
+.stats span { color: var(--color-dashboard-muted); font-size: .76rem; }
+.stats strong { font-size: 1.12rem; }
+.reportDetails { border: 1px solid var(--color-dashboard-rule); border-radius: 8px; background: var(--color-dashboard-surface); }
+.reportDetails summary { cursor: pointer; padding: 9px 12px; font-size: .84rem; }
+.reportDetails > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; padding: 0 12px 8px; }
+.reportDetails p { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-top: 1px solid var(--color-dashboard-rule); font-size: .8rem; }
+.form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 12px; max-width: 100%; padding: 16px; border: 1px solid var(--color-dashboard-rule); border-radius: 9px; background: var(--color-dashboard-surface); }
+.form h2, .names { grid-column: 1 / -1; }
+.form h2 { font-size: 1rem; }
+.form label, .names label { display: grid; gap: 5px; font-size: .8rem; }
+.names { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.form input:not([type="checkbox"]), .form select { width: 100%; min-height: 38px; padding: 7px 9px; border: 1px solid var(--color-dashboard-rule); border-radius: 6px; background: var(--color-dashboard-surface); color: inherit; }
+.form .checkbox { display: flex; align-items: center; gap: 8px; min-height: 38px; }
+.form button { min-height: 38px; padding: 7px 14px; border-radius: 6px; background: var(--color-dashboard-accent); color: var(--color-dashboard-accent-ink); }
+.form button:disabled { opacity: .5; }
+.list { border: 1px solid var(--color-dashboard-rule); border-radius: 9px; background: var(--color-dashboard-surface); }
+.row { display: flex; justify-content: space-between; gap: 12px; width: 100%; min-height: 44px; padding: 9px 12px; border-bottom: 1px solid var(--color-dashboard-rule); text-align: start; }
+.row[aria-current="true"] { background: var(--color-dashboard-accent-soft); }
+.list > button:last-child { border-bottom: 0; }
+.memberActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.memberActions .form { grid-template-columns: 1fr; }
+.error { padding: 10px 12px; border-radius: 6px; background: #fff0f0; color: #9e2929; }
+.error button { margin-inline-start: 10px; text-decoration: underline; }
+.club :is(button, input, select):focus-visible { outline: 2px solid var(--color-dashboard-accent); outline-offset: 2px; }
+@media (max-width: 1000px) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } .form { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .club { padding: 12px; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); order: 2; }
+  .reportDetails { order: 3; }
+  .club > .form { grid-template-columns: repeat(2, minmax(0, 1fr)); order: 1; }
+  .club > .form > button, .club > .form > .checkbox { grid-column: 1 / -1; }
+  .names, .memberActions, .reportDetails > div { grid-template-columns: 1fr; }
+  .row { flex-wrap: wrap; }
+  .club nav button, .form button, .form input:not([type="checkbox"]), .form select { min-height: 44px; }
+}

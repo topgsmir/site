@@ -106,6 +106,8 @@
   font-weight: 650;
 }
 
+.nestedItem { padding-inline-start: calc(var(--space-dashboard-sm) + 1rem); }
+
 .item[data-alert="true"]:not([aria-current="page"]) {
   color: var(--color-dashboard-error);
 }

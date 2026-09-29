@@ -43,4 +43,15 @@ describe("PaymentCredentialService", () => {
       /could not be decrypted/i
     );
   });
+
+  it("accepts Zibal credentials without a refund token", async () => {
+    const prisma = { payment_method_configs: { findUnique: async () => null } } as unknown as PrismaService;
+    const service = new PaymentCredentialService(prisma, crypto);
+    const prepared = await service.prepareUpdate("zibal", {
+      merchantId: "zibal-merchant-123", callbackUrl: "https://api.example.com/payments/zibal/callback"
+    });
+    assert.equal(prepared.reason, null);
+    assert.equal(prepared.configuration?.refundAccessTokenConfigured, false);
+    await assert.rejects(() => service.prepareUpdate("zibal", { refundAccessToken: "unsupported-token" }), /does not support refund credentials/);
+  });
 });

@@ -34,8 +34,9 @@ export class ShippingService {
         id: true,
         currency: true,
         total_amount: true,
+        shipping_fee: true,
         shipping_address: { select: { recipient_name: true, phone_number: true, province: true, city: true, postal_code: true, address_line: true } },
-        items: { select: { product_title: true, quantity: true, offer: { select: { physical: { select: { weight_grams: true } } } } } }
+        items: { select: { product_title: true, quantity: true, shipping_weight_grams: true, offer: { select: { physical: { select: { weight_grams: true } } } } } }
       }
     });
     if (!order) throw new NotFoundException("A processing physical order was not found");
@@ -66,11 +67,11 @@ export class ShippingService {
           recipientAddress: order.shipping_address.address_line,
           recipientPostalCode: order.shipping_address.postal_code.trim(),
           currency: order.currency.trim(),
-          totalAmount: order.total_amount.toString(),
+          totalAmount: order.total_amount.minus(order.shipping_fee).toString(),
           items: order.items.map((item) => ({
             title: item.product_title,
             quantity: item.quantity,
-            weightGrams: item.offer.physical?.weight_grams ?? 0
+            weightGrams: item.shipping_weight_grams ?? item.offer.physical?.weight_grams ?? 0
           }))
         }
       });

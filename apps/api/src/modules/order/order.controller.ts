@@ -17,11 +17,14 @@ import {
 import { AuthenticatedGuard } from "../auth/authenticated.guard";
 import { DigitalDownloadQueryDto } from "./dto/digital-download.dto";
 import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
+import { BrowserSessionMutation } from "../auth/browser-session-mutation.decorator";
 import { IdempotencyKey } from "../auth/idempotency-key.decorator";
 import type { AuthenticatedRequest } from "../auth/platform-admin.guard";
 import {
   CreateOrderDto,
+  ExportOrdersDto,
   ListOrdersQueryDto,
+  SetOrderTrashDto,
   UpdateOrderShippingDto,
   UpdateOrderStatusDto
 } from "./dto/order.dto";
@@ -45,6 +48,23 @@ export class OrderController {
   @Header("Cache-Control", "private, no-store")
   list(@Req() request: AuthenticatedRequest, @Query() query: ListOrdersQueryDto) {
     return this.orders.list(request.authenticatedUser!, query);
+  }
+
+  @Post("export")
+  @BrowserSessionMutation()
+  @HttpCode(200)
+  @Header("Cache-Control", "private, no-store")
+  async exportOrders(
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string,
+    @Body() body: ExportOrdersDto,
+    @Res() response: { setHeader(name: string, value: string): void; send(body: string): void }
+  ) {
+    await this.rateLimits.consumeAnalyticsRead(request.authenticatedUser!.id, clientIp);
+    const csv = await this.orders.exportCsv(request.authenticatedUser!, body);
+    response.setHeader("Content-Type", "text/csv; charset=utf-8");
+    response.setHeader("Content-Disposition", `attachment; filename="orders-${new Date().toISOString().slice(0, 10)}.csv"`);
+    response.send(csv);
   }
 
   @Get("new-count")
@@ -115,6 +135,18 @@ export class OrderController {
   ) {
     await this.rateLimits.consumeAnalyticsRead(request.authenticatedUser!.id, clientIp);
     return this.adminDetails.get(request.authenticatedUser!, id);
+  }
+
+  @Patch("admin/:id/trash")
+  async setTrash(
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string,
+    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
+    @Body() body: SetOrderTrashDto,
+    @IdempotencyKey() idempotencyKey: string
+  ) {
+    await this.rateLimits.consumeOrderMutation(request.authenticatedUser!.id, clientIp);
+    return this.orders.setTrash(request.authenticatedUser!, id, body, idempotencyKey);
   }
 
   @Patch(":id/shipping")

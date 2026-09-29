@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import { createHash } from "node:crypto";
 import { describe, it } from "node:test";
-import { signUploadDownloadLink } from "./upload-download-link";
+import { isAllowedUnsignedFileUrl, signUploadDownloadLink } from "./upload-download-link";
 
 describe("upload download link signing", () => {
   const now = Date.UTC(2026, 8, 19, 12);
@@ -30,8 +30,10 @@ describe("upload download link signing", () => {
       "https://uploads.example.com:8443/file.zip",
       "https://uploads.example.com/"
     ]) {
+      assert.equal(isAllowedUnsignedFileUrl(reference, hosts), false);
       assert.throws(() => signUploadDownloadLink(reference, "192.0.2.10", hosts, secret, now));
     }
+    assert.equal(isAllowedUnsignedFileUrl("https://uploads.example.com/files/a%20b.zip", hosts), true);
     assert.throws(() => signUploadDownloadLink("https://uploads.example.com/file.zip", "192.0.2.10", hosts, "", now));
     assert.throws(() => signUploadDownloadLink("https://uploads.example.com/file.zip", "not-an-ip", hosts, secret, now));
   });

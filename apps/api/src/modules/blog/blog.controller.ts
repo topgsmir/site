@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   UseGuards
@@ -26,6 +27,7 @@ import {
   ListBlogPostsQueryDto,
   ManagedBlogQueryDto,
   ProductOptionsQueryDto,
+  ReorderTaxonomyDto,
   RejectBlogPostDto,
   RestoreBlogChangeDto,
   TaxonomyDto,
@@ -155,6 +157,12 @@ export class BlogTaxonomyController {
     return this.blog.createTaxonomy("category", body);
   }
 
+  @Put("categories/order")
+  async reorderCategories(@Body() body: ReorderTaxonomyDto, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+    await this.rateLimits.consumeBlogMutation(request.authenticatedUser!.id, clientIp);
+    return this.blog.reorderTaxonomy("category", body.ids);
+  }
+
   @Patch("categories/:id")
   async updateCategory(@Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Body() body: TaxonomyDto, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
     await this.rateLimits.consumeBlogMutation(request.authenticatedUser!.id, clientIp);
@@ -171,6 +179,12 @@ export class BlogTaxonomyController {
   async createTag(@Body() body: TaxonomyDto, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
     await this.rateLimits.consumeBlogMutation(request.authenticatedUser!.id, clientIp);
     return this.blog.createTaxonomy("tag", body);
+  }
+
+  @Put("tags/order")
+  async reorderTags(@Body() body: ReorderTaxonomyDto, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+    await this.rateLimits.consumeBlogMutation(request.authenticatedUser!.id, clientIp);
+    return this.blog.reorderTaxonomy("tag", body.ids);
   }
 
   @Patch("tags/:id")

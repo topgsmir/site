@@ -31,7 +31,9 @@ describe("SmsSettingsService", () => {
         otp: null,
         sellerNewOrder: null,
         buyerSuccess: null,
-        buyerFailure: null
+        buyerFailure: null,
+        clubRedemption: null,
+        clubExpiry: null
       },
       updatedAt: null
     });
@@ -60,6 +62,8 @@ describe("SmsSettingsService", () => {
               seller_new_order_template_id: 234,
               buyer_success_template_id: 345,
               buyer_failure_template_id: 456,
+              club_redemption_template_id: null,
+              club_expiry_template_id: null,
               updated_at: updatedAt
             };
           }
@@ -99,7 +103,9 @@ describe("SmsSettingsService", () => {
       otp_template_id: 123,
       seller_new_order_template_id: 234,
       buyer_success_template_id: 345,
-      buyer_failure_template_id: 456
+      buyer_failure_template_id: 456,
+      club_redemption_template_id: null,
+      club_expiry_template_id: null
     });
     assert.equal(settings.apiKeyConfigured, true);
     assert.equal(settings.apiKeyHint, "-key");

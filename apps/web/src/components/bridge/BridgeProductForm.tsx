@@ -1,5 +1,6 @@
 "use client";
 import { ProductAiPanel } from "@/components/ai/ProductAiPanel";
+import { LiveSeoPanel } from "@/components/seo/LiveSeoPanel";
 
 import type { BridgeGrantSummary } from "@topgsm/shared-types";
 import type { Route } from "next";
@@ -86,6 +87,7 @@ export function BridgeProductForm({ locale, initialGrantId }: { locale: Locale; 
             <label className={styles.field}><span>{c.max}</span><input name="maximumQuantity" type="number" min="1" max="100" defaultValue="1" required/><small>&nbsp;</small></label>
           </div>
           <label className={styles.field}><span>{c.description}</span><textarea name="description" maxLength={10000} value={content.description} onChange={(event) => setContent((current) => ({ ...current, description: event.target.value }))}/><small>&nbsp;</small></label>
+          <LiveSeoPanel locale={locale} input={{ kind: "product", title: content.title, body: content.description }} />
         </section>
         <section className={styles.section}><div className={styles.sectionHead}><div><h2>{c.labels}</h2><p>{c.labelHelp}</p></div></div><div className={styles.formGrid}>{selected.service.fields.map((field) => <label className={styles.field} key={field.key}><span>{field.label}</span><input name={`label:${field.key}`} defaultValue={field.label} required maxLength={160}/><small>{field.key} · {field.type}</small></label>)}</div></section>
         <section className={styles.section}><div className={styles.sectionHead}><h2>{kind === "variable" ? c.variant : c.price}</h2>{kind === "variable" ? <button className={styles.buttonQuiet} type="button" onClick={() => setVariants((items) => [...items, { id: Date.now(), name: "", value: "", price: "" }])}>{c.add}</button> : null}</div>

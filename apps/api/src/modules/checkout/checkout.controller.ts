@@ -3,17 +3,19 @@ import { AuthenticatedGuard } from "../auth/authenticated.guard";
 import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
 import { IdempotencyKey } from "../auth/idempotency-key.decorator";
 import type { AuthenticatedRequest } from "../auth/platform-admin.guard";
+import { RequestAuthenticationService } from "../auth/request-authentication.service";
 import { CheckoutService } from "./checkout.service";
-import { CheckoutShippingPlacesDto, CreateCheckoutDto, QuoteCheckoutDto } from "./dto/checkout.dto";
+import { CheckoutShippingPlacesDto, CreateCheckoutDto, InitiateCheckoutPaymentDto, QuoteCheckoutDto } from "./dto/checkout.dto";
 
 @Controller("checkouts")
 export class CheckoutController {
-  constructor(private readonly checkouts: CheckoutService, private readonly rateLimits: AuthRateLimitService) {}
+  constructor(private readonly checkouts: CheckoutService, private readonly rateLimits: AuthRateLimitService, private readonly auth: RequestAuthenticationService) {}
 
   @Post("quote")
-  async quote(@Body() body: QuoteCheckoutDto, @Ip() clientIp: string) {
+  async quote(@Body() body: QuoteCheckoutDto, @Ip() clientIp: string, @Req() request: AuthenticatedRequest) {
     await this.rateLimits.consumeCheckoutQuote(body.items.map((item) => item.offerId).sort().join(":"), clientIp);
-    return this.checkouts.quote(body);
+    const buyer = body.clubPoints || body.clubRewardId ? await this.auth.authenticate(request) : null;
+    return this.checkouts.quote(body, buyer?.id);
   }
 
   @Post("shipping-places")
@@ -48,9 +50,10 @@ export class CheckoutController {
     @Ip() clientIp: string,
     @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
     @Param("groupId", new ParseUUIDPipe({ version: "4" })) groupId: string,
-    @IdempotencyKey() idempotencyKey: string
+    @IdempotencyKey() idempotencyKey: string,
+    @Body() body: InitiateCheckoutPaymentDto
   ) {
     await this.rateLimits.consumePaymentInitiation(request.authenticatedUser!.id, clientIp);
-    return this.checkouts.initiate(request.authenticatedUser!, id, groupId, idempotencyKey);
+    return this.checkouts.initiate(request.authenticatedUser!, id, groupId, idempotencyKey, body.walletAmount ?? "0");
   }
 }

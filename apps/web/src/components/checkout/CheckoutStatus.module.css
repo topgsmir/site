@@ -98,3 +98,7 @@
   .summary { padding: 22px; }
   .summary h2 { margin-bottom: 18px; }
 }
+.postalLine { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px; color: var(--color-dashboard-ink-soft); font-size: .875rem; }
+.walletContribution { display: grid; gap: 5px; margin: 8px 0; font-size: 13px; }
+.walletContribution input { min-height: 38px; width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font: inherit; }
+.walletContribution input:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }

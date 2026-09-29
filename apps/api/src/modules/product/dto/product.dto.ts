@@ -119,6 +119,15 @@ export class DigitalFulfillmentDto {
   @MaxLength(2048, { each: true })
   fileReferences?: string[];
 
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  @MaxLength(120, { each: true })
+  @Matches(/\S/u, { each: true })
+  fileTitles?: string[];
+
   @Type(() => Number)
   @IsInt()
   @Min(0)
@@ -138,6 +147,10 @@ export class PhysicalFulfillmentDto {
   @Min(0)
   @Max(2_147_483_647)
   weightGrams!: number;
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(1_000) lengthCm?: number | null;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(1_000) widthCm?: number | null;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(1_000) heightCm?: number | null;
 }
 
 export class ServiceInputDefinitionDto {
@@ -369,6 +382,14 @@ export class UpdateSellerOfferDto {
 }
 
 export class UpdateProductDto {
+  @ValidateIf((_, value) => value !== undefined)
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  @Matches(/\S/u, { each: true })
+  tags?: string[];
+
   @IsOptional()
   @IsUUID("4")
   categoryId?: string | null;

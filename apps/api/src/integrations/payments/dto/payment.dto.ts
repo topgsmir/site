@@ -50,6 +50,16 @@ export class PaymentCallbackQueryDto {
   Status?: string;
 }
 
+export class ZibalCallbackQueryDto {
+  @IsString()
+  @Matches(/^[1-9]\d{0,15}$/)
+  trackId!: string;
+
+  @IsOptional()
+  @IsIn(["0", "1"])
+  success?: "0" | "1";
+}
+
 export class CompleteLocalPaymentDto {
   @IsIn(["paid", "canceled"])
   status!: "paid" | "canceled";

@@ -46,8 +46,14 @@
 .itemList { display: grid; gap: var(--space-dashboard-xs); margin: 0; padding: 0; list-style: none; }
 .itemList li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-dashboard-2xs) var(--space-dashboard-sm); }
 .itemList strong { min-width: 0; overflow-wrap: anywhere; }
+.productLink { color: inherit; text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+.productLink:hover { color: var(--color-dashboard-info); text-decoration-color: currentColor; }
 .itemList span { color: var(--muted); white-space: nowrap; }
 .itemList small { grid-column: 1 / -1; }
+.fileCounts { grid-column: 1 / -1; display: grid; gap: var(--space-dashboard-2xs); margin: 0; }
+.fileCounts div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px var(--space-dashboard-sm); border-block-start: 1px solid var(--rule); padding-block: var(--space-dashboard-2xs); font-size: var(--text-dashboard-xs); }
+.fileCounts dt { min-width: 0; overflow-wrap: anywhere; }
+.fileCounts dd { margin: 0; color: var(--muted); font-variant-numeric: tabular-nums; }
 .serviceAnswers { grid-column: 1 / -1; display: grid; gap: var(--space-dashboard-2xs); margin: 0; }
 .serviceAnswers div { display: grid; grid-template-columns: minmax(8rem, .6fr) minmax(0, 1.4fr); gap: var(--space-dashboard-sm); padding-block: var(--space-dashboard-2xs); border-block-start: 1px solid var(--rule); }
 .serviceAnswers dt { color: var(--muted); font-size: var(--text-dashboard-xs); }

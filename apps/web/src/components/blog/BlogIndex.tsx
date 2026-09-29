@@ -19,9 +19,28 @@ const LABELS = {
   ar: { journal: "مجلة Top GSM", topics: "مواضيع هذه الصفحة", more: "المزيد للقراءة", about: "عن الكتّاب", all: "جميع المقالات", article: "مقالات في هذه الصفحة" }
 } as const;
 
+const COLLECTION_COPY = {
+  fa: {
+    categories: { eyebrow: "دسته‌بندی مجله", latest: "مطالب این دسته", empty: "هنوز مطلبی در این دسته منتشر نشده است.", hint: "می‌توانید سایر مطالب مجله را بخوانید." },
+    tags: { eyebrow: "برچسب مجله", latest: "مطالب با این برچسب", empty: "هنوز مطلبی با این برچسب منتشر نشده است.", hint: "می‌توانید سایر مطالب مجله را بخوانید." },
+    sellers: { eyebrow: "نویسنده مجله", latest: "مطالب این نویسنده", empty: "هنوز مطلبی از این نویسنده منتشر نشده است.", hint: "می‌توانید سایر مطالب مجله را بخوانید." }
+  },
+  en: {
+    categories: { eyebrow: "Journal category", latest: "Articles in this category", empty: "No articles have been published in this category yet.", hint: "Explore the rest of the journal." },
+    tags: { eyebrow: "Journal tag", latest: "Articles with this tag", empty: "No articles have been published with this tag yet.", hint: "Explore the rest of the journal." },
+    sellers: { eyebrow: "Journal author", latest: "Articles by this author", empty: "No articles have been published by this author yet.", hint: "Explore the rest of the journal." }
+  },
+  ar: {
+    categories: { eyebrow: "تصنيف المجلة", latest: "مقالات هذا التصنيف", empty: "لم تُنشر مقالات في هذا التصنيف بعد.", hint: "يمكنك استكشاف بقية المجلة." },
+    tags: { eyebrow: "وسم المجلة", latest: "مقالات بهذا الوسم", empty: "لم تُنشر مقالات بهذا الوسم بعد.", hint: "يمكنك استكشاف بقية المجلة." },
+    sellers: { eyebrow: "كاتب المجلة", latest: "مقالات هذا الكاتب", empty: "لم تُنشر مقالات لهذا الكاتب بعد.", hint: "يمكنك استكشاف بقية المجلة." }
+  }
+} as const;
+
 export function BlogIndex({
   locale,
   posts,
+  kind,
   heading,
   description,
   languageHrefs,
@@ -30,6 +49,7 @@ export function BlogIndex({
 }: {
   locale: Locale;
   posts: BlogPostSummary[];
+  kind?: "categories" | "tags" | "sellers";
   heading?: string;
   description?: string;
   languageHrefs?: Record<Locale, string>;
@@ -38,6 +58,7 @@ export function BlogIndex({
 }) {
   const copy = COPY[locale];
   const labels = LABELS[locale];
+  const collectionCopy = kind ? COLLECTION_COPY[locale][kind] : null;
   const categories = [...new Map(posts.flatMap((post) => post.category ? [[post.category.id, post.category] as const] : [])).values()];
   const [featured, ...latest] = posts;
   const dateFormatter = new Intl.DateTimeFormat(locale === "fa" ? "fa-IR" : locale, { dateStyle: "long" });
@@ -48,8 +69,9 @@ export function BlogIndex({
       <main id="journal-content" className={styles.index}>
         <header className={styles.intro}>
           <div className={styles.masthead}><span>{labels.journal}</span><span lang="en" dir="ltr">TOP GSM / JOURNAL</span></div>
+          {collectionCopy ? <nav className={styles.breadcrumb} aria-label={labels.journal}><Link href={`/${locale}/blog` as Route}>{labels.all}</Link><span aria-hidden="true">/</span><span aria-current="page">{heading}</span></nav> : null}
           <div className={styles.introBody}><div>
-          <p>{copy.eyebrow}</p>
+          <p>{collectionCopy?.eyebrow ?? copy.eyebrow}</p>
           <h1>{heading ?? copy.title}</h1>
           </div>
           <p>{description ?? copy.intro}</p>
@@ -57,7 +79,7 @@ export function BlogIndex({
         </header>
         <div className={styles.layout}>
         <div className={styles.feed}>
-        <header className={styles.feedHeader}><h2>{copy.latest}</h2><span>{new Intl.NumberFormat(locale).format(posts.length)} {labels.article}</span></header>
+        <header className={styles.feedHeader}><h2>{collectionCopy?.latest ?? copy.latest}</h2><span>{new Intl.NumberFormat(locale).format(posts.length)} {labels.article}</span></header>
         {featured ? (
           <article className={styles.feature}>
             <Link className={styles.coverLink} href={`/${locale}/blog/${featured.slug}` as Route} tabIndex={-1} aria-hidden="true"><Cover post={featured} eager /></Link>
@@ -75,8 +97,9 @@ export function BlogIndex({
         ) : (
           <section className={styles.empty} aria-labelledby="empty-title">
             <span aria-hidden="true">§</span>
-            <h2 id="empty-title">{copy.empty}</h2>
-            <p>{copy.emptyHint}</p>
+            <h2 id="empty-title">{collectionCopy?.empty ?? copy.empty}</h2>
+            <p>{collectionCopy?.hint ?? copy.emptyHint}</p>
+            {collectionCopy ? <Link href={`/${locale}/blog` as Route}>{labels.all}<span aria-hidden="true">{locale === "en" ? "→" : "←"}</span></Link> : null}
           </section>
         )}
 

@@ -28,13 +28,16 @@ import { AdminBridgeWorkspace } from "@/components/bridge/AdminBridgeWorkspace";
 import { StaffWorkspace } from "@/components/admin/StaffWorkspace";
 import { UsersWorkspace } from "@/components/admin/UsersWorkspace";
 import { AdminBlogWorkspace } from "@/components/admin/AdminBlogWorkspace";
+import { BlogTaxonomyWorkspace } from "@/components/admin/BlogTaxonomyWorkspace";
 import { AdminOrdersWorkspace } from "@/components/admin/AdminOrdersWorkspace";
 import { AdminOrderDetails } from "@/components/admin/AdminOrderDetails";
 import { PaymentServiceWorkspace } from "@/components/admin/PaymentServiceWorkspace";
 import { ProductChangesWorkspace } from "@/components/admin/ProductChangesWorkspace";
+import { ProductCategoriesWorkspace } from "@/components/admin/ProductCategoriesWorkspace";
 import { ProductBulkEdit } from "@/components/admin/ProductBulkEdit";
 import { AiWorkspace } from "@/components/admin/AiWorkspace";
 import { CouponWorkspace } from "@/components/admin/CouponWorkspace";
+import { ClubWorkspace } from "@/components/admin/ClubWorkspace";
 import { SmsSettingsWorkspace } from "@/components/admin/SmsSettingsWorkspace";
 import { GoghdiSettingsWorkspace } from "@/components/admin/GoghdiSettingsWorkspace";
 import { AuthLoginSettingsWorkspace } from "@/components/admin/AuthLoginSettingsWorkspace";
@@ -126,6 +129,7 @@ const copy = {
     search: "Search by shop, owner, or email…",
     empty: "No vendors match this search.",
     products: "Products",
+    productCategories: "Categories",
     productChanges: "Product changes",
     coupons: "Coupons",
     orders: "Orders",
@@ -284,6 +288,7 @@ const copy = {
     search: "جست‌وجوی فروشگاه، مالک یا ایمیل…",
     empty: "فروشنده‌ای با این جست‌وجو پیدا نشد.",
     products: "محصول",
+    productCategories: "دسته‌بندی‌ها",
     productChanges: "تغییرات محصولات",
     coupons: "کدهای تخفیف",
     orders: "سفارش",
@@ -442,6 +447,7 @@ const copy = {
     search: "البحث بالمتجر أو المالك أو البريد…",
     empty: "لا يوجد بائع يطابق هذا البحث.",
     products: "المنتجات",
+    productCategories: "الفئات",
     productChanges: "تغييرات المنتجات",
     coupons: "القسائم",
     orders: "الطلبات",
@@ -714,9 +720,9 @@ export function VendorManagement({
   const canManageUploads = ownerNavigation || platformPermissions.includes("uploads_manage");
   const isUsersSection = section === "vendors" || section === "staff" || section === "users";
   const usersExpanded = isUsersSection || usersOpen;
-  const isProductServiceSection = section === "products" || section === "product-changes";
+  const isProductServiceSection = section === "products" || section === "product-categories" || section === "product-changes";
   const productServiceExpanded = isProductServiceSection || productServiceOpen;
-  const isSalesServiceSection = section === "statistics" || section === "coupons" || section === "orders" || section === "order-detail";
+  const isSalesServiceSection = section === "statistics" || section === "coupons" || section === "club" || section === "orders" || section === "order-detail";
   const salesServiceExpanded = isSalesServiceSection || salesServiceOpen;
   const isPaymentServiceSection = section === "payment-transactions" || section === "payment-methods" || section === "settings-usd";
   const paymentServiceExpanded = isPaymentServiceSection || paymentServiceOpen;
@@ -724,7 +730,7 @@ export function VendorManagement({
   const aiExpanded = isAiSection || aiOpen;
   const isWebsiteSection = section === "settings-seo" || section === "settings-homepage" || section === "settings-notice" || section === "settings-stories" || section === "settings-blog-sidebar";
   const websiteExpanded = isWebsiteSection || websiteOpen;
-  const isContentSection = section === "uploads" || section === "editorial" || section === "settings-comments";
+  const isContentSection = section === "uploads" || section === "editorial" || section === "blog-categories" || section === "blog-tags" || section === "settings-comments";
   const contentExpanded = isContentSection || contentOpen;
   const isIntegrationsSection = section === "settings-sms" || section === "settings-goghdi" || section === "settings-shipping" || section === "bridge";
   const integrationsExpanded = isIntegrationsSection || integrationsOpen;
@@ -737,8 +743,10 @@ export function VendorManagement({
     vendors: c.vendors,
     users: c.users,
     products: c.products,
+    "product-categories": c.productCategories,
     "product-changes": c.productChanges,
     coupons: c.coupons,
+    club: locale === "fa" ? "باشگاه مشتریان" : locale === "ar" ? "نادي العملاء" : "Customer club",
     orders: c.orders,
     "order-detail": c.orders,
     "payment-transactions": c.paymentTransactions,
@@ -762,6 +770,8 @@ export function VendorManagement({
     "settings-seo": locale === "fa" ? "سئو" : locale === "ar" ? "تحسين البحث" : "SEO",
     "settings-backup": c.backupRestore,
     editorial: c.editorial,
+    "blog-categories": locale === "fa" ? "دسته‌بندی‌ها" : locale === "ar" ? "التصنيفات" : "Categories",
+    "blog-tags": locale === "fa" ? "برچسب‌ها" : locale === "ar" ? "الوسوم" : "Tags",
     uploads: c.uploads
   } satisfies Record<AdminSection, string>)[section];
 
@@ -1103,6 +1113,9 @@ export function VendorManagement({
                 <ProductsIcon />
                 <span>{c.products}</span>
               </Link>
+              <Link className={navigationStyles.item} href={`/${locale}/admin/product-categories` as Route} aria-current={section === "product-categories" ? "page" : undefined}>
+                <ProductsIcon /><span>{c.productCategories}</span>
+              </Link>
               <Link
                 className={navigationStyles.item}
                 href={`/${locale}/admin/product-changes` as Route}
@@ -1141,6 +1154,10 @@ export function VendorManagement({
               >
                 <CouponIcon />
                 <span>{c.coupons}</span>
+              </Link>
+              <Link className={navigationStyles.item} href={`/${locale}/admin/club` as Route} aria-current={section === "club" ? "page" : undefined}>
+                <CouponIcon />
+                <span>{locale === "fa" ? "باشگاه مشتریان" : locale === "ar" ? "نادي العملاء" : "Customer club"}</span>
               </Link>
               <Link
                 className={navigationStyles.item}
@@ -1217,6 +1234,12 @@ export function VendorManagement({
               {canManageBlog ? <Link className={navigationStyles.item} href={`/${locale}/admin/blog` as Route} aria-current={section === "editorial" ? "page" : undefined}>
                 <EditorialIcon />
                 <span>{c.editorial}</span>
+              </Link> : null}
+              {canManageBlog ? <Link className={`${navigationStyles.item} ${navigationStyles.nestedItem}`} href={`/${locale}/admin/blog/categories` as Route} aria-current={section === "blog-categories" ? "page" : undefined}>
+                <span>{locale === "fa" ? "دسته‌بندی‌ها" : locale === "ar" ? "التصنيفات" : "Categories"}</span>
+              </Link> : null}
+              {canManageBlog ? <Link className={`${navigationStyles.item} ${navigationStyles.nestedItem}`} href={`/${locale}/admin/blog/tags` as Route} aria-current={section === "blog-tags" ? "page" : undefined}>
+                <span>{locale === "fa" ? "برچسب‌ها" : locale === "ar" ? "الوسوم" : "Tags"}</span>
               </Link> : null}
               {ownerNavigation ? <Link className={navigationStyles.item} href={`/${locale}/admin/settings/comments` as Route} aria-current={section === "settings-comments" ? "page" : undefined}>
                 <EditorialIcon /><span>{c.comments}</span>
@@ -1420,6 +1443,7 @@ export function VendorManagement({
         </div>
       </section> : null}
 
+      {section === "product-categories" ? <ProductCategoriesWorkspace locale={locale} /> : null}
       {section === "products" ? <section className="admin-product-catalog" aria-labelledby="admin-products-title">
         <header>
           <div>
@@ -1491,6 +1515,7 @@ export function VendorManagement({
       {section === "product-changes" ? <ProductChangesWorkspace locale={locale} /> : null}
 
       {section === "coupons" ? <CouponWorkspace locale={locale} /> : null}
+      {section === "club" ? <ClubWorkspace locale={locale} /> : null}
 
       {section === "orders" ? <AdminOrdersWorkspace locale={locale} /> : null}
       {section === "order-detail" && orderId ? <AdminOrderDetails locale={locale} orderId={orderId} /> : null}
@@ -1506,6 +1531,8 @@ export function VendorManagement({
       {section === "bridge" ? <AdminBridgeWorkspace locale={locale} /> : null}
 
       {section === "editorial" ? <AdminBlogWorkspace locale={locale} /> : null}
+      {section === "blog-categories" ? <BlogTaxonomyWorkspace locale={locale} kind="category" /> : null}
+      {section === "blog-tags" ? <BlogTaxonomyWorkspace locale={locale} kind="tag" /> : null}
       {section === "uploads" ? <UploadsWorkspace locale={locale} /> : null}
       {section === "ai-models" ? <AiWorkspace locale={locale} view="models" /> : null}
       {section === "ai-assistant" ? <AiWorkspace locale={locale} view="assistant" /> : null}

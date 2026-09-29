@@ -172,7 +172,42 @@ describe("CouponService", () => {
     });
 
     assert.equal(written?.seller_id, "seller-1");
-    assert.equal(result.seller.shopName, "Seller one");
+    assert.equal(result.seller?.shopName, "Seller one");
+  });
+
+  it("creates an all-sellers coupon without looking up a seller", async () => {
+    let written: Record<string, unknown> | undefined;
+    const prisma = {
+      sellers: { findUnique: async () => { throw new Error("Seller lookup must be skipped"); } },
+      coupons: { create: async ({ data }: { data: Record<string, unknown> }) => {
+        written = data;
+        return adminCouponRecord({ seller: null });
+      } }
+    } as unknown as PrismaService;
+
+    const result = await new CouponService(prisma).createAdmin({
+      sellerId: null, code: "EVERYONE", discountType: "percentage",
+      discountValue: "10", currency: "TOMAN", active: true
+    });
+
+    assert.equal(written?.seller_id, null);
+    assert.equal(result.seller, null);
+  });
+
+  it("switches an existing coupon to all sellers", async () => {
+    let written: Record<string, unknown> | undefined;
+    const prisma = {
+      coupons: {
+        findUnique: async () => couponRecord(),
+        update: async ({ data }: { data: Record<string, unknown> }) => {
+          written = data;
+          return adminCouponRecord({ seller: null });
+        }
+      }
+    } as unknown as PrismaService;
+    const result = await new CouponService(prisma).updateAdmin("34b91c96-6c02-4a8d-aadb-3caec91779fe", { sellerId: null });
+    assert.equal(written?.seller_id, null);
+    assert.equal(result.seller, null);
   });
 
   it("validates admin updates against the redeemed count", async () => {

@@ -111,7 +111,7 @@ export function ContentAiPanel({ locale, kind, language = "fa", fields, snapshot
           {draft && <>
             <div className={styles.preview} dir={active === "en" ? "ltr" : "rtl"} lang={active}>
               <h3>{draft.title}</h3>
-              <RichText document={draft.content} />
+              <RichText document={draft.content} language={active} />
               <dl>{fields.filter((field) => !["content", "description", "title"].includes(field)).map((field) => <div key={field}><dt>{fieldLabel(field)}</dt><dd>{field === "tags" ? draft.tags.join("، ") || c.noMatch : String(draft[field] || c.noMatch)}</dd></div>)}</dl>
               {!!draft.warnings.length && <aside className={styles.notice}><strong>{c.review}</strong><ul>{draft.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></aside>}
             </div>

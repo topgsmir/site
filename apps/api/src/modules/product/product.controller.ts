@@ -1,5 +1,5 @@
 import { ProductTranslationsService } from "./product-translations.service";
-import { ProductCategoriesQueryDto, UpdateProductCategoryDto } from "./dto/product-category.dto";
+import { CreateProductCategoryDto, DeleteProductCategoryDto, ProductCategoriesQueryDto, UpdateProductCategoryDto } from "./dto/product-category.dto";
 import { BrowserSessionMutation } from "../auth/browser-session-mutation.decorator";
 import { ParseConstrainedStringPipe, ROUTE_SLUG_PATTERN } from "../../common/http/parse-constrained-string.pipe";
 import { ProductLocaleQueryDto, ProductTranslationParamsDto, ProductTranslationDraftDto } from "./dto/product-seo.dto";
@@ -8,6 +8,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   Ip,
   Param,
   ParseUUIDPipe,
@@ -15,6 +16,7 @@ import {
   Post,
   Query,
   Req,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors
@@ -91,6 +93,35 @@ export class ProductController {
     return this.productService.listCategories(query);
   }
 
+  @Get("categories/:categoryId/image")
+  async categoryImage(
+    @Param("categoryId", new ParseUUIDPipe({ version: "4" })) categoryId: string,
+    @Headers("if-none-match") ifNoneMatch: string | undefined,
+    @Res() response: { setHeader(name: string, value: string): void; status(code: number): { end(): unknown }; send(data: Buffer): unknown }
+  ) {
+    const image = await this.productService.getCategoryImage(categoryId);
+    response.setHeader("Content-Type", "image/webp");
+    response.setHeader("X-Content-Type-Options", "nosniff");
+    response.setHeader("Cache-Control", "public, max-age=300");
+    response.setHeader("ETag", image.etag);
+    if (ifNoneMatch === image.etag) return response.status(304).end();
+    return response.send(image.buffer);
+  }
+
+  @Get("admin/categories")
+  @UseGuards(PlatformAdminGuard)
+  listManagedCategories(@Query() query: ProductCategoriesQueryDto) {
+    return this.productService.listManagedCategories(query);
+  }
+
+  @Post("admin/categories")
+  @BrowserSessionMutation()
+  @UseGuards(PlatformAdminGuard)
+  async createCategory(@Body() body: CreateProductCategoryDto, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
+    return this.productService.createCategory(request.authenticatedUser!.id, body);
+  }
+
   @Patch("admin/categories/:categoryId")
   @BrowserSessionMutation()
   @UseGuards(PlatformAdminGuard)
@@ -102,6 +133,46 @@ export class ProductController {
   ) {
     await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
     return this.productService.updateCategory(categoryId, request.authenticatedUser!.id, body);
+  }
+
+  @Delete("admin/categories/:categoryId")
+  @BrowserSessionMutation()
+  @UseGuards(PlatformAdminGuard)
+  async deleteCategory(
+    @Param("categoryId", new ParseUUIDPipe({ version: "4" })) categoryId: string,
+    @Body() body: DeleteProductCategoryDto,
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
+  ) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
+    return this.productService.deleteCategory(categoryId, request.authenticatedUser!.id, body);
+  }
+
+  @Post("admin/categories/:categoryId/image")
+  @BrowserSessionMutation()
+  @UseGuards(PlatformAdminGuard)
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 8 * 1024 * 1024, files: 1, fields: 0, parts: 1 } }))
+  async uploadCategoryImage(
+    @Param("categoryId", new ParseUUIDPipe({ version: "4" })) categoryId: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
+  ) {
+    await this.rateLimits.consumeMediaUpload(request.authenticatedUser!.id, clientIp);
+    const image = await this.media.prepareCategoryImage(file);
+    return this.productService.setCategoryImage(categoryId, request.authenticatedUser!.id, image);
+  }
+
+  @Delete("admin/categories/:categoryId/image")
+  @BrowserSessionMutation()
+  @UseGuards(PlatformAdminGuard)
+  async deleteCategoryImage(
+    @Param("categoryId", new ParseUUIDPipe({ version: "4" })) categoryId: string,
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
+  ) {
+    await this.rateLimits.consumeMediaUpload(request.authenticatedUser!.id, clientIp);
+    return this.productService.setCategoryImage(categoryId, request.authenticatedUser!.id, null);
   }
 
   @Get("admin/:productId/translations")

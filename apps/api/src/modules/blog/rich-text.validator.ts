@@ -13,7 +13,11 @@ const NODE_TYPES = new Set([
   "hardBreak",
   "horizontalRule",
   "text",
-  "image"
+  "image",
+  "table",
+  "tableRow",
+  "tableCell",
+  "tableHeader"
 ]);
 const MARK_TYPES = new Set(["bold", "italic", "strike", "code", "link"]);
 const MEDIA_URL = /^\/media\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/[a-z0-9-]{1,80}\.webp$/i;
@@ -30,7 +34,7 @@ export function validateRichText(value: unknown) {
     throw new BadRequestException("Rich-text content is too large");
   }
 
-  const visit = (node: unknown, depth: number): JsonRecord => {
+  const visit = (node: unknown, depth: number, parentType?: string): JsonRecord => {
     if (!isRecord(node) || depth > 12 || ++nodes > 2_000) {
       throw new BadRequestException("Rich-text document is too complex");
     }
@@ -40,6 +44,19 @@ export function validateRichText(value: unknown) {
     }
     if (type === "doc" && depth !== 0) {
       throw new BadRequestException("Nested rich-text documents are not allowed");
+    }
+    if ((type === "tableRow" && parentType !== "table") ||
+      ((type === "tableCell" || type === "tableHeader") && parentType !== "tableRow")) {
+      throw new BadRequestException("Rich-text table structure is invalid");
+    }
+    if (type === "table" && (!Array.isArray(node.content) || !node.content.length || node.content.some((child) => !isRecord(child) || child.type !== "tableRow"))) {
+      throw new BadRequestException("Tables must contain rows");
+    }
+    if (type === "tableRow" && (!Array.isArray(node.content) || !node.content.length || node.content.some((child) => !isRecord(child) || (child.type !== "tableCell" && child.type !== "tableHeader")))) {
+      throw new BadRequestException("Table rows must contain cells");
+    }
+    if ((type === "tableCell" || type === "tableHeader") && (!Array.isArray(node.content) || !node.content.length)) {
+      throw new BadRequestException("Table cells must contain content");
     }
     const sanitized: JsonRecord = { type };
     if (type === "text") {
@@ -55,6 +72,15 @@ export function validateRichText(value: unknown) {
       }
       sanitized.attrs = { level };
     }
+    if (type === "paragraph" || type === "heading") {
+      const alignment = isRecord(node.attrs) ? node.attrs.textAlign : undefined;
+      if (alignment !== undefined && alignment !== null) {
+        if (alignment !== "start" && alignment !== "center" && alignment !== "end" && alignment !== "justify" && alignment !== "left" && alignment !== "right") {
+          throw new BadRequestException("Rich-text alignment is invalid");
+        }
+        sanitized.attrs = { ...(isRecord(sanitized.attrs) ? sanitized.attrs : {}), textAlign: alignment };
+      }
+    }
     if (type === "image") {
       const src = isRecord(node.attrs) ? node.attrs.src : undefined;
       const match = typeof src === "string" ? MEDIA_URL.exec(src) : null;
@@ -62,7 +88,11 @@ export function validateRichText(value: unknown) {
         throw new BadRequestException("Inline images must use owned media URLs");
       }
       mediaIds.add(match[1]);
-      sanitized.attrs = { src };
+      const alt = isRecord(node.attrs) ? node.attrs.alt : undefined;
+      if (alt !== undefined && (typeof alt !== "string" || alt.length > 300)) {
+        throw new BadRequestException("Inline image description is invalid");
+      }
+      sanitized.attrs = { src, ...(typeof alt === "string" ? { alt } : {}) };
     }
     if (node.marks !== undefined) {
       if (!Array.isArray(node.marks) || node.marks.length > 8) {
@@ -83,7 +113,7 @@ export function validateRichText(value: unknown) {
       if (!Array.isArray(node.content)) {
         throw new BadRequestException("Rich-text node content must be an array");
       }
-      sanitized.content = node.content.map((child) => visit(child, depth + 1));
+      sanitized.content = node.content.map((child) => visit(child, depth + 1, type));
     }
     return sanitized;
   };

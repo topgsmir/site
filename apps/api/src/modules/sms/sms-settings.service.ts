@@ -18,6 +18,8 @@ const SETTINGS_SELECT = {
   seller_new_order_template_id: true,
   buyer_success_template_id: true,
   buyer_failure_template_id: true,
+  club_redemption_template_id: true,
+  club_expiry_template_id: true,
   updated_at: true
 } as const;
 
@@ -31,6 +33,8 @@ type SettingsRecord = {
   seller_new_order_template_id: number | null;
   buyer_success_template_id: number | null;
   buyer_failure_template_id: number | null;
+  club_redemption_template_id: number | null;
+  club_expiry_template_id: number | null;
   updated_at: Date;
 };
 
@@ -38,14 +42,18 @@ const templateColumns = {
   otp: "otp_template_id",
   seller_new_order: "seller_new_order_template_id",
   buyer_success: "buyer_success_template_id",
-  buyer_failure: "buyer_failure_template_id"
+  buyer_failure: "buyer_failure_template_id",
+  club_redemption: "club_redemption_template_id",
+  club_expiry: "club_expiry_template_id"
 } as const satisfies Record<SmsTemplate, keyof SettingsRecord>;
 
 const templateEnvironment = {
   otp: "SMS_IR_TEMPLATE_OTP",
   seller_new_order: "SMS_IR_TEMPLATE_SELLER_NEW_ORDER",
   buyer_success: "SMS_IR_TEMPLATE_BUYER_SUCCESS",
-  buyer_failure: "SMS_IR_TEMPLATE_BUYER_FAILURE"
+  buyer_failure: "SMS_IR_TEMPLATE_BUYER_FAILURE",
+  club_redemption: "SMS_IR_TEMPLATE_CLUB_REDEMPTION",
+  club_expiry: "SMS_IR_TEMPLATE_CLUB_EXPIRY"
 } as const satisfies Record<SmsTemplate, string>;
 
 @Injectable()
@@ -109,7 +117,9 @@ export class SmsSettingsService {
       ...(Object.hasOwn(input, "otpTemplateId") ? { otp_template_id: input.otpTemplateId ?? null } : {}),
       ...(Object.hasOwn(input, "sellerNewOrderTemplateId") ? { seller_new_order_template_id: input.sellerNewOrderTemplateId ?? null } : {}),
       ...(Object.hasOwn(input, "buyerSuccessTemplateId") ? { buyer_success_template_id: input.buyerSuccessTemplateId ?? null } : {}),
-      ...(Object.hasOwn(input, "buyerFailureTemplateId") ? { buyer_failure_template_id: input.buyerFailureTemplateId ?? null } : {})
+      ...(Object.hasOwn(input, "buyerFailureTemplateId") ? { buyer_failure_template_id: input.buyerFailureTemplateId ?? null } : {}),
+      ...(Object.hasOwn(input, "clubRedemptionTemplateId") ? { club_redemption_template_id: input.clubRedemptionTemplateId ?? null } : {}),
+      ...(Object.hasOwn(input, "clubExpiryTemplateId") ? { club_expiry_template_id: input.clubExpiryTemplateId ?? null } : {})
     };
 
     const effectiveApiKey = apiKey ?? this.databaseApiKey(current) ?? this.environmentApiKey();
@@ -139,7 +149,9 @@ export class SmsSettingsService {
           otp_template_id: updated.otp_template_id,
           seller_new_order_template_id: updated.seller_new_order_template_id,
           buyer_success_template_id: updated.buyer_success_template_id,
-          buyer_failure_template_id: updated.buyer_failure_template_id
+          buyer_failure_template_id: updated.buyer_failure_template_id,
+          club_redemption_template_id: updated.club_redemption_template_id,
+          club_expiry_template_id: updated.club_expiry_template_id
         }
       });
       return updated;
@@ -169,7 +181,9 @@ export class SmsSettingsService {
         otp: settings?.otp_template_id ?? this.environmentTemplateId("otp"),
         sellerNewOrder: settings?.seller_new_order_template_id ?? this.environmentTemplateId("seller_new_order"),
         buyerSuccess: settings?.buyer_success_template_id ?? this.environmentTemplateId("buyer_success"),
-        buyerFailure: settings?.buyer_failure_template_id ?? this.environmentTemplateId("buyer_failure")
+        buyerFailure: settings?.buyer_failure_template_id ?? this.environmentTemplateId("buyer_failure"),
+        clubRedemption: settings?.club_redemption_template_id ?? this.environmentTemplateId("club_redemption"),
+        clubExpiry: settings?.club_expiry_template_id ?? this.environmentTemplateId("club_expiry")
       },
       updatedAt: settings?.updated_at.toISOString() ?? null
     };

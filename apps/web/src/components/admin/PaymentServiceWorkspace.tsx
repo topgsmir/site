@@ -528,11 +528,11 @@ export function PaymentServiceWorkspace({
         enabled: method.enabled,
         productTypes: method.allowedProductTypes,
         sellerIds: method.allowedSellers.map((seller) => seller.id),
-        ...(method.code === "zarinpal" ? {
+        ...(method.configuration ? {
           ...(credentialDraft.merchantId.trim() ? { merchantId: credentialDraft.merchantId.trim() } : {}),
           ...(credentialDraft.callbackUrl.trim() ? { callbackUrl: credentialDraft.callbackUrl.trim() } : {}),
-          ...(credentialDraft.refundAccessToken.trim() ? { refundAccessToken: credentialDraft.refundAccessToken.trim() } : {}),
-          ...(credentialDraft.clearRefundAccessToken ? { clearRefundAccessToken: true } : {})
+          ...(method.supportsRefunds && credentialDraft.refundAccessToken.trim() ? { refundAccessToken: credentialDraft.refundAccessToken.trim() } : {}),
+          ...(method.supportsRefunds && credentialDraft.clearRefundAccessToken ? { clearRefundAccessToken: true } : {})
         } : {})
       });
       updateMethod(method.code, response.data);
@@ -648,7 +648,7 @@ export function PaymentServiceWorkspace({
                 <strong>{scopeSentence(method, c, locale)}</strong>
               </div>
 
-              {method.code === "zarinpal" ? <fieldset className={styles.credentialsPanel}>
+              {method.configuration ? <fieldset className={styles.credentialsPanel}>
                 <legend>{c.credentials}</legend>
                 <p>{c.credentialsHint}</p>
                 <div className={styles.credentialFields}>
@@ -681,7 +681,7 @@ export function PaymentServiceWorkspace({
                       }))}
                     />
                   </label>
-                  <label>
+                  {method.supportsRefunds ? <label>
                     <span>{c.refundToken}</span>
                     <input
                       type="password"
@@ -696,9 +696,9 @@ export function PaymentServiceWorkspace({
                         [method.code]: { ...credentialDraft, refundAccessToken: event.currentTarget.value }
                       }))}
                     />
-                  </label>
+                  </label> : null}
                 </div>
-                {method.configuration?.refundAccessTokenConfigured ? <label className={styles.clearCredential}>
+                {method.supportsRefunds && method.configuration.refundAccessTokenConfigured ? <label className={styles.clearCredential}>
                   <input
                     type="checkbox"
                     checked={credentialDraft.clearRefundAccessToken}
@@ -724,7 +724,7 @@ export function PaymentServiceWorkspace({
                   type="checkbox"
                   role="switch"
                   checked={method.enabled}
-                  disabled={!method.adapterAvailable && !method.enabled && method.code !== "zarinpal"}
+                  disabled={!method.adapterAvailable && !method.enabled && !method.configuration}
                   aria-describedby={!method.adapterAvailable ? `method-${method.code}-availability` : undefined}
                   onChange={(event) => updateMethod(method.code, { enabled: event.currentTarget.checked })}
                 />

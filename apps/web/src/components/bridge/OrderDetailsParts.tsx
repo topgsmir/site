@@ -1,11 +1,13 @@
 "use client";
 
+import type { Route } from "next";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import type { Locale } from "@/lib/i18n";
 import { AccountIcon } from "@/components/account/AccountIcon";
-import { type BuyerOrder, type OrderItem } from "./OrderDetails.types";
+import { remainingDownloads, type BuyerOrder, type OrderItem } from "./OrderDetails.types";
 import { statusLabel, statusTone, type OrderCopy } from "./OrderDetailsCopy";
 import s from "./OrderDetails.module.css";
 import { CustomerOrderChat } from "./CustomerOrderChat";
@@ -95,13 +97,23 @@ export function PurchasedItem({ item, order, locale, c, refresh }: { item: Order
   const files = item.digitalDeliveries ?? (delivery ? [delivery] : []);
   return <article className={s.item} aria-labelledby={`item-${item.id}`}>
     <div className={s.itemTop}>
-      <header className={s.itemHeader}><span className={s.itemIcon}><AccountIcon name={item.productType === "digital" ? "file" : "orders"} width={26} height={26} /></span><div><span className={s.eyebrow}>{c.types[item.productType as keyof OrderCopy["types"]] ?? c.order}</span><h3 id={`item-${item.id}`}>{item.productTitle}</h3></div>{bridge ? <StatusBadge status={bridge.status} c={c} /> : null}</header>
+      <header className={s.itemHeader}><span className={s.itemIcon}><AccountIcon name={item.productType === "digital" ? "file" : "orders"} width={26} height={26} /></span><div><span className={s.eyebrow}>{c.types[item.productType as keyof OrderCopy["types"]] ?? c.order}</span><h3 id={`item-${item.id}`}>{item.productId ? <Link className={s.productLink} href={`/${locale}/products/${item.productId}` as Route}>{item.productTitle}</Link> : item.productTitle}</h3></div>{bridge ? <StatusBadge status={bridge.status} c={c} /> : null}</header>
       {item.productType === "digital" && files.length > 0 ? <div className={s.downloadActions}>
         <button type="button" className={s.primary} aria-haspopup="dialog" onClick={() => setDownloadsOpen(true)}>{c.download}<AccountIcon name="arrow" width={17} height={17} /></button>
         {downloadsOpen ? <DownloadFilesModal item={item} order={order} locale={locale} c={c} onClose={() => setDownloadsOpen(false)} /> : null}
       </div> : null}
     </div>
     <dl className={s.itemPricing}><div><dt>{c.quantity}</dt><dd>{item.quantity.toLocaleString(locale)}</dd></div><div><dt>{c.unit}</dt><dd><Money amount={item.unitPrice} currency={order.currency} locale={locale} /></dd></div><div><dt>{c.itemTotal}</dt><dd><Money amount={item.totalAmount} currency={order.currency} locale={locale} /></dd></div></dl>
+    {item.productType === "digital" && files.length > 0 ? <div className={s.itemSection}>
+      <h4>{c.downloads}</h4>
+      <ul className={s.fileUsage}>{files.map((file, index) => {
+        const remaining = remainingDownloads(file);
+        return <li key={file.downloadUrl}>
+          <strong>{files.length > 1 ? `${c.file} ${(index + 1).toLocaleString(locale)} · ` : ""}<bdi>{file.title || file.destinationHost}</bdi></strong>
+          <span>{c.downloadCount}: {file.downloadCount.toLocaleString(locale)} · {remaining === null ? c.unlimited : `${c.remaining}: ${remaining.toLocaleString(locale)}`}</span>
+        </li>;
+      })}</ul>
+    </div> : null}
     {item.productType === "digital" && !files.length ? <div className={s.download}><strong>{c.locked}</strong><p>{c.downloadWait}</p></div> : null}
     {inputs.length || fields.length ? <div className={s.itemSection}><h4>{c.inputs}</h4><dl className={s.fields}>{inputs.map((field) => <div key={field.key}><dt>{field.label}</dt><dd><bdi>{field.sensitive || field.type === "password" || field.value === null ? c.protected : field.value}</bdi></dd></div>)}{fields.map(([key, value]) => <div key={key}><dt><bdi>{key}</bdi></dt><dd><bdi>{value}</bdi></dd></div>)}</dl></div> : null}
     {item.serviceNote ? <div className={s.itemSection}><h4>{c.note}</h4><p className={s.result}>{item.serviceNote}</p></div> : null}

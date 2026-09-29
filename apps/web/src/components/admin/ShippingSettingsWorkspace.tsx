@@ -6,23 +6,24 @@ import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
 import { safeApiError, type SafeApiErrorCopy } from "@/lib/api/error";
 import { AdminSellerShippingProfiles } from "./AdminSellerShippingProfiles";
+import { ShippingPolicyWorkspace } from "./ShippingPolicyWorkspace";
 import styles from "./SmsSettingsWorkspace.module.css";
 
 const copy = {
   en: {
-    eyebrow: "Platform settings / Shipping", title: "Shipping settings", intro: "Add the active shipping provider API key once. TopGSM provisions each seller automatically.",
+    eyebrow: "Platform settings / Shipping", title: "Shipping settings", intro: "Set postal delivery rules, then connect the shipping provider and review seller sender profiles.",
     credentials: "Shipping API connection", credentialHint: "The API key is encrypted before storage and is never returned to this browser. Seller resources are provisioned automatically when they first ship an order.",
     clientCode: "API key", configured: "Configured · ending in {hint}", missing: "No API key configured", environment: "Currently supplied by the deployment environment. Saving a new key moves it to encrypted database storage.", database: "Stored encrypted in the database.",
     save: "Save API key", saving: "Saving…", saved: "Shipping API key saved.", noChanges: "Enter a new API key to replace the current one", retry: "Try again", loadError: "Shipping settings could not be loaded.", saveError: "The shipping API key could not be saved.", updated: "Last changed {date}"
   },
   fa: {
-    eyebrow: "تنظیمات پلتفرم / ارسال", title: "تنظیمات ارسال", intro: "کلید API سرویس فعال ارسال را یک‌بار وارد کنید. تاپ‌جی‌اس‌ام منابع هر فروشنده را خودکار می‌سازد.",
+    eyebrow: "تنظیمات پلتفرم / ارسال", title: "تنظیمات ارسال", intro: "قوانین ارسال پستی را تعیین کنید، سپس اتصال سرویس و پروفایل فرستنده فروشندگان را بررسی کنید.",
     credentials: "اتصال API ارسال", credentialHint: "کلید API پیش از ذخیره رمزنگاری می‌شود و هرگز به مرورگر برگردانده نمی‌شود. منابع هر فروشنده هنگام اولین ارسال به‌صورت خودکار ساخته می‌شوند.",
     clientCode: "کلید API", configured: "تنظیم شده · چهار نویسه پایانی {hint}", missing: "کلید API تنظیم نشده است", environment: "کلید فعلی از محیط اجرا خوانده می‌شود. با ذخیره کلید جدید، مقدار فعال به‌صورت رمزنگاری‌شده در پایگاه داده نگهداری می‌شود.", database: "به‌صورت رمزنگاری‌شده در پایگاه داده ذخیره شده است.",
     save: "ذخیره کلید API", saving: "در حال ذخیره…", saved: "کلید API ارسال ذخیره شد.", noChanges: "برای جایگزینی، کلید API جدید را وارد کنید", retry: "تلاش دوباره", loadError: "تنظیمات ارسال بارگذاری نشد.", saveError: "کلید API ارسال ذخیره نشد.", updated: "آخرین تغییر: {date}"
   },
   ar: {
-    eyebrow: "إعدادات المنصة / الشحن", title: "إعدادات الشحن", intro: "أدخل مفتاح API لمزود الشحن النشط مرة واحدة. ينشئ TopGSM موارد كل بائع تلقائياً.",
+    eyebrow: "إعدادات المنصة / الشحن", title: "إعدادات الشحن", intro: "حدد قواعد الشحن البريدي، ثم راجع اتصال المزود وملفات مرسلي البائعين.",
     credentials: "اتصال API للشحن", credentialHint: "يُشفّر مفتاح API قبل التخزين ولا يُعاد إلى المتصفح. تُنشأ موارد البائع تلقائياً عند أول عملية شحن.",
     clientCode: "مفتاح API", configured: "تم الإعداد · ينتهي بـ {hint}", missing: "لم يتم إعداد مفتاح API", environment: "المفتاح الحالي مقدم من بيئة التشغيل. يؤدي حفظ مفتاح جديد إلى تخزينه مشفراً في قاعدة البيانات.", database: "مخزن بشكل مشفر في قاعدة البيانات.",
     save: "حفظ مفتاح API", saving: "جارٍ الحفظ…", saved: "تم حفظ مفتاح API للشحن.", noChanges: "أدخل مفتاح API جديداً لاستبدال المفتاح الحالي", retry: "حاول مجدداً", loadError: "تعذر تحميل إعدادات الشحن.", saveError: "تعذر حفظ مفتاح API للشحن.", updated: "آخر تغيير: {date}"
@@ -69,6 +70,7 @@ export function ShippingSettingsWorkspace({ locale }: { locale: Locale }) {
   const updatedLabel = saved?.updatedAt ? c.updated.replace("{date}", new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(saved.updatedAt))) : null;
   return <section className={styles.workspace} aria-labelledby="shipping-settings-title">
     <header className={styles.header}><span>{c.eyebrow}</span><h1 id="shipping-settings-title">{c.title}</h1><p>{c.intro}</p></header>
+    <ShippingPolicyWorkspace locale={locale} />
     {loading ? <div className={styles.skeleton} aria-label={c.intro} aria-busy="true"><i /><i /></div> : error && !saved ? <div className={styles.error} role="alert"><p>{error}</p><button type="button" onClick={() => void load()}>{c.retry}</button></div> :
       <form className={styles.form} onSubmit={submit}>
         <section className={styles.credentials} aria-labelledby="shipping-provider-title">

@@ -8,6 +8,7 @@ import { api } from "@/lib/api/client";
 import { getSocket } from "@/lib/sockets/socket";
 import type { Locale } from "@/lib/i18n";
 import { AccountIcon } from "@/components/account/AccountIcon";
+import { RelativeOrderTime } from "@/components/orders/RelativeOrderTime";
 import { canConfirmOrder, type BuyerOrder } from "./OrderDetails.types";
 import { ORDER_COPY, statusLabel } from "./OrderDetailsCopy";
 import { Confirmation, CopyValue, Money, OrderDate, OrderProgress, PurchasedItem, ShippingDetails, StatusBadge } from "./OrderDetailsParts";
@@ -88,7 +89,7 @@ function OrderDetails({ locale, orderId }: { locale: Locale; orderId: string }) 
 
   return <div className={s.shell} dir={locale === "en" ? "ltr" : "rtl"}>
     <nav className={s.navigation} aria-label={c.back}><Link href={`/${locale}/account/orders` as Route}><AccountIcon name="arrow" width={18} height={18} />{c.back}</Link><span>TOP<span className={s.brandAccent}>GSM</span></span></nav>
-    <header className={s.header}><div><p className={s.eyebrow}>{c.eyebrow}</p><h1>{order?.items[0]?.productTitle ?? c.order}{order && order.items.length > 1 ? <span className={s.extra}> +{(order.items.length - 1).toLocaleString(locale)}</span> : null}</h1>{order ? <div className={s.metadata}><span>{c.number}: <CopyValue value={order.id} label={c.number} c={c} /></span><span>{c.created}: <OrderDate value={order.createdAt} locale={locale} /></span></div> : null}</div>{order ? <button type="button" className={s.secondary} disabled={refreshing} onClick={() => void load()}>{refreshing ? c.refreshing : c.refresh}</button> : null}</header>
+    <header className={s.header}><div><p className={s.eyebrow}>{c.eyebrow}</p><h1>{order?.items[0]?.productTitle ?? c.order}{order && order.items.length > 1 ? <span className={s.extra}> +{(order.items.length - 1).toLocaleString(locale)}</span> : null}</h1>{order ? <div className={s.metadata}><span>{c.number}: <CopyValue value={order.id} label={c.number} c={c} /></span><span>{c.created}: <RelativeOrderTime value={order.createdAt} locale={locale} showExact /></span></div> : null}</div>{order ? <button type="button" className={s.secondary} disabled={refreshing} onClick={() => void load()}>{refreshing ? c.refreshing : c.refresh}</button> : null}</header>
     <main>
       {error ? <div className={s.errorBanner} role="alert"><p>{errorText}</p><button type="button" className={s.secondary} onClick={() => void load()} disabled={refreshing}>{c.retry}</button></div> : null}
       {!order && !error ? <div className={s.skeleton} role="status" aria-label={c.loading}><div /><div /><div /></div> : null}

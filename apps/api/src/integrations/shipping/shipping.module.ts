@@ -9,6 +9,7 @@ import { AmadastSettingsService } from "./amadast/amadast-settings.service";
 import { ShippingSettingsController } from "./shipping-settings.controller";
 import { ShippingProviderRegistry } from "./shipping-provider.registry";
 import { ShippingService } from "./shipping.service";
+import { ShippingPolicyService } from "./shipping-policy.service";
 import { ShippingTenantService } from "./shipping-tenant.service";
 import { SellerShippingProfileController } from "./seller-shipping-profile.controller";
 import { SellerShippingProfileService } from "./seller-shipping-profile.service";
@@ -26,8 +27,9 @@ import { SellerShippingProfileService } from "./seller-shipping-profile.service"
     ShippingProviderRegistry,
     ShippingTenantService,
     SellerShippingProfileService,
-    ShippingService
+    ShippingService,
+    ShippingPolicyService
   ],
-  exports: [ShippingProviderRegistry, ShippingTenantService, SellerShippingProfileService, ShippingService]
+  exports: [ShippingProviderRegistry, ShippingTenantService, SellerShippingProfileService, ShippingService, ShippingPolicyService]
 })
 export class ShippingModule {}

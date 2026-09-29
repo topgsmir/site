@@ -99,6 +99,12 @@
 .article-prose blockquote { margin-inline: 0; padding-inline-start: 22px; border-inline-start: 3px solid var(--journal-accent); color: var(--journal-muted); font-size: 1.2em; }
 .article-prose img { width: 100%; height: auto; }
 .article-prose pre { overflow-x: auto; padding: 18px; color: var(--journal-paper); background: var(--journal-ink); }
+.article-prose .article-table-scroll { max-width: 100%; overflow-x: auto; }
+.article-prose .article-table-scroll:focus-visible { outline: 2px solid var(--journal-focus); outline-offset: -2px; }
+.article-prose table { min-width: 420px; width: 100%; border-collapse: collapse; font-size: .88em; line-height: 1.7; }
+.article-prose th, .article-prose td { padding: 9px 12px; border: 1px solid var(--journal-rule); text-align: start; vertical-align: top; }
+.article-prose th { color: var(--journal-ink); background: var(--journal-paper-2); font-weight: 650; }
+.article-prose :is(th, td) p { margin: 0; }
 .article-products { max-width: 1000px; margin: 88px auto 0; padding-top: 34px; border-top: 1px solid var(--journal-rule); }
 .article-products > div { display: grid; }
 .article-products > div a { display: grid; gap: 8px; min-height: 88px; padding-block: 20px; border-bottom: 1px solid var(--journal-rule); }

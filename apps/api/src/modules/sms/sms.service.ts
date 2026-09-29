@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { PrismaService } from "../../prisma/prisma.service";
 import { CredentialCryptoService } from "../bridge/credential-crypto.service";
 
-export type SmsTemplate = "otp" | "seller_new_order" | "buyer_success" | "buyer_failure";
+export type SmsTemplate = "otp" | "seller_new_order" | "buyer_success" | "buyer_failure" | "club_redemption" | "club_expiry";
 
 @Injectable()
 export class SmsService {

@@ -183,6 +183,7 @@ describe("admin product editing", () => {
             title: "Old title",
             slug: "old-catalog-product",
             description: null,
+            tags: ["old"],
             category: null,
             status: "draft"
           }),
@@ -193,6 +194,7 @@ describe("admin product editing", () => {
               title: "Clean title",
               slug: "catalog-product",
               description: "Clean description",
+              tags: ["new"],
               category: null,
               kind: "simple",
               type: "service",
@@ -215,6 +217,7 @@ describe("admin product editing", () => {
       title: "  Clean   title  ",
       slug: "catalog-product",
       description: " Clean   description ",
+      tags: [" new ", "new"],
       category: null,
       status: "active"
     });
@@ -225,6 +228,7 @@ describe("admin product editing", () => {
         title: "Clean title",
         slug: "catalog-product",
         description: "Clean   description",
+        tags: ["new"],
         category_record: { disconnect: true },
         status: "active"
       },
@@ -262,11 +266,12 @@ describe("admin product editing", () => {
         product_id: PRODUCT_ID,
         actor_user_id: ACTOR_ID,
         action: "update",
-        changed_fields: ["title", "slug", "description", "status"],
+        changed_fields: ["title", "slug", "description", "tags", "status"],
         before_snapshot: {
           title: "Old title",
           slug: "old-catalog-product",
           description: null,
+          tags: ["old"],
           category: null,
           status: "draft"
         },
@@ -274,6 +279,7 @@ describe("admin product editing", () => {
           title: "Clean title",
           slug: "catalog-product",
           description: "Clean description",
+          tags: ["new"],
           category: null,
           status: "active"
         }

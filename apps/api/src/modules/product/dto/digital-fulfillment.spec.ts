@@ -10,7 +10,13 @@ describe("digital file validation", () => {
   const errors = (input: object) => validate(plainToInstance(DigitalFulfillmentDto, { maxDownloads: 2, ...input }));
   it("accepts multiple files and legacy single URLs", async () => {
     assert.equal((await errors({ fileReferences: ["https://uploads.example/a.zip", "https://uploads.example/b.zip"] })).length, 0);
+    assert.equal((await errors({ fileReferences: ["https://uploads.example/a.zip"], fileTitles: ["Installation guide"] })).length, 0);
     assert.equal((await errors({ fileReference: "https://uploads.example/a.zip" })).length, 0);
+  });
+  it("rejects blank or oversized download titles", async () => {
+    for (const fileTitles of [[""], ["  "], ["a".repeat(121)]]) {
+      assert.ok((await errors({ fileReferences: ["https://uploads.example/a.zip"], fileTitles })).length > 0);
+    }
   });
   it("rejects missing, empty, duplicate, oversized and unsafe file lists", async () => {
     for (const input of [{}, { fileReferences: null }, { fileReferences: [] }, { fileReferences: "https://uploads.example/a" }, { fileReferences: ["http://uploads.example/a"] }, { fileReferences: [null] }, { fileReferences: ["https://uploads.example/a", "https://uploads.example/a"] }, { fileReferences: ["https://uploads.example/" + "a".repeat(2048)] }, { fileReferences: Array.from({ length: 51 }, (_, index) => `https://uploads.example/${index}`) }]) {

@@ -25,6 +25,8 @@ import { ContentAiPanel } from "@/components/ai/ContentAiPanel";
 import { applyBlogAiTranslation, articleText, taxonomyMatch } from "@/components/ai/blog-ai-draft";
 import { safeExternalHref } from "@/lib/safe-navigation";
 import { RichTextVisualEditor, richTextExtensions } from "./RichTextVisualEditor";
+import { LiveSeoPanel } from "@/components/seo/LiveSeoPanel";
+import { BlogPublicUrl, blogPublicUrl } from "./BlogPublicUrl";
 
 const LABELS: Record<BlogLocale, string> = { fa: "فارسی", en: "English", ar: "العربية" };
 const AUTHORING_LOCALE: BlogLocale = "fa";
@@ -35,7 +37,7 @@ const COPY = {
   uploadError: "بارگذاری انجام نشد. از تصویر ثابت JPEG، PNG یا WebP با حجم کمتر از ۸ مگابایت و ابعاد کمتر از ۲۴ مگاپیکسل استفاده کنید.",
   visual: "دیداری",
   html: "HTML",
-  htmlHint: "از HTML مقاله مانند پاراگراف، تیترهای H2 و H3، فهرست، نقل‌قول، پیوند، کد و تصاویر بارگذاری‌شده استفاده کنید. اسکریپت، embed، style، رویدادها و نشانی‌های ناامن ذخیره نمی‌شوند.",
+  htmlHint: "از HTML مقاله مانند پاراگراف، تیترهای H2 و H3، فهرست، جدول، تراز متن، نقل‌قول، پیوند، کد و تصاویر بارگذاری‌شده استفاده کنید. اسکریپت، embed، رویدادها و نشانی‌های ناامن ذخیره نمی‌شوند.",
   strike: "خط‌خورده",
   inlineCode: "کد درون‌خطی",
   subheading: "زیرتیتر",
@@ -44,7 +46,12 @@ const COPY = {
   codeBlock: "بلوک کد",
   rule: "جداکننده",
   link: "پیوند",
-  linkPrompt: "پیوند http، https، mailto یا tel را وارد کنید"
+  linkPrompt: "پیوند http، https، mailto یا tel را وارد کنید",
+  publishedUrl: "نشانی نسخه منتشرشده",
+  imageAltPrompt: "توضیح جایگزین تصویر را بنویسید (برای تصویر تزئینی خالی بگذارید)",
+  table: "جدول", addRow: "افزودن سطر", addColumn: "افزودن ستون", deleteTable: "حذف جدول",
+  alignment: "تراز", alignStart: "ابتدای سطر", alignCenter: "وسط", alignEnd: "انتهای سطر", alignJustify: "دوطرفه",
+  undo: "بازگشت", redo: "انجام مجدد"
 };
 
 const SAFE_INLINE_IMAGE = /^\/media\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/[a-z0-9-]{1,80}\.webp$/i;
@@ -53,7 +60,8 @@ function sanitizeHtmlNode(node: RichTextNode): RichTextNode | null {
   if (node.type === "image") {
     const src = typeof node.attrs?.src === "string" ? node.attrs.src : "";
     if (!SAFE_INLINE_IMAGE.test(src)) return null;
-    return { type: "image", attrs: { src } };
+    const alt = typeof node.attrs?.alt === "string" ? node.attrs.alt.slice(0, 300) : "";
+    return { type: "image", attrs: { src, alt } };
   }
   const marks = node.marks?.flatMap((mark) => {
     if (mark.type !== "link") return [mark];
@@ -98,6 +106,7 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
   const [saving, setSaving] = useState(false);
   const [editorMode, setEditorMode] = useState<"visual" | "html">("visual");
   const [htmlSource, setHtmlSource] = useState("");
+  const [seoKeywords, setSeoKeywords] = useState<Record<BlogLocale, string>>({ fa: "", en: "", ar: "" });
   const [changes, setChanges] = useState<BlogChangeEvent[]>([]);
   const [historyError, setHistoryError] = useState("");
   const [confirmRestoreKey, setConfirmRestoreKey] = useState<string | null>(null);
@@ -105,8 +114,8 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
   const editor = useEditor({
     immediatelyRender: false,
     editorProps: { attributes: { role: "textbox", "aria-label": copy.body, "aria-multiline": "true" } },
-    extensions: richTextExtensions(copy.bodyPlaceholder),
-    content: EMPTY,
+    extensions: richTextExtensions(copy.bodyPlaceholder, true, true),
+    content: translations.find((item) => item.locale === active)?.content ?? EMPTY,
     onUpdate: ({ editor: currentEditor }) => {
       const localeCode = activeRef.current;
       setTranslations((current) => current.map((translation) => translation.locale === localeCode
@@ -114,7 +123,7 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
         : translation));
       setMessage(copy.unsaved);
     }
-  });
+  }, [active, loadedContent]);
 
   const load = useCallback(async () => {
     try {
@@ -155,11 +164,7 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
     translationsRef.current = translations;
   }, [translations]);
 
-  useEffect(() => {
-    activeRef.current = active;
-    const content = translationsRef.current.find((item) => item.locale === active)?.content ?? EMPTY;
-    editor?.commands.setContent(content, { emitUpdate: false });
-  }, [active, editor, loadedContent]);
+  useEffect(() => { activeRef.current = active; }, [active]);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -205,6 +210,7 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
   function changeLanguage(locale: BlogLocale) {
     if (editorMode === "html") applyHtmlSource();
     setEditorMode("visual");
+    activeRef.current = locale;
     setActive(locale);
   }
 
@@ -271,6 +277,8 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
   }
 
   async function upload(file: File, kind: "cover" | "inline") {
+    const alt = kind === "inline" ? window.prompt(COPY.imageAltPrompt, "") : null;
+    if (kind === "inline" && alt === null) return;
     const body = new FormData();
     body.append("file", file); body.append("kind", kind); body.append("focalX", "0.5"); body.append("focalY", "0.5");
     setError(false); setMessage(copy.processing);
@@ -279,7 +287,7 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
       if (kind === "cover") setCover(response.data);
       else {
         const variant = response.data.variants.find((item) => item.name === "lg") ?? response.data.variants[0];
-        if (variant) editor?.chain().focus().setImage({ src: variant.url }).run();
+        if (variant) editor?.chain().focus().setImage({ src: variant.url, alt: (alt ?? "").trim().slice(0, 300) }).run();
       }
       setMessage(copy.imageReady);
     } catch { setError(true); setMessage(copy.uploadError); }
@@ -309,6 +317,16 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
       <div className={styles.pageHeading}><div><h1>{copy.title}</h1><p>{copy.intro}</p></div><p className={styles.status} role={error ? "alert" : "status"} data-error={error}><span aria-hidden="true" />{message}</p></div>
       <div className={styles.workspace}>
         <main className={styles.main}>
+          <section className={styles.identityCard} aria-label="عنوان و نشانی مقاله">
+            <div className={styles.languageBar}><span>{copy.language}</span><div className={styles.languageTabs} role="group" aria-label={copy.language}>
+              {(["fa", "en", "ar"] as const).map((code) => <button key={code} type="button" aria-pressed={active === code} lang={code} onClick={() => changeLanguage(code)}>{LABELS[code]}</button>)}
+            </div></div>
+            <div className={styles.identityFields} dir={active === "en" ? "ltr" : "rtl"} lang={active}>
+              <label className={styles.titleField}><span>{copy.headline}</span><textarea rows={1} value={current.title} maxLength={200} placeholder={copy.titleHint} onChange={(event) => updateTranslation("title", event.target.value)} /></label>
+              <label className={styles.addressField}><span>{copy.slug}</span><div className={styles.slugInput}><span dir="ltr">{blogPublicUrl(active, "")}</span><input value={current.slug} maxLength={200} dir="auto" spellCheck={false} onChange={(event) => updateTranslation("slug", event.target.value)} /></div><small>{copy.slugHint}</small></label>
+              {post.publicSlugs[active] && !post.archivedAt ? <div className={styles.publishedUrl}><span>{COPY.publishedUrl}</span><BlogPublicUrl locale={active} slug={post.publicSlugs[active]} label={COPY.publishedUrl} /></div> : null}
+            </div>
+          </section>
           <ContentAiPanel key={postId} locale={AUTHORING_LOCALE} kind="blog" disabled={saving || !editor || editorMode === "html"}
             disabledHint={editorMode === "html" ? "برای استفاده از دستیار، ابتدا به حالت دیداری برگردید تا تغییرات HTML وارد ویرایشگر شوند." : undefined}
             fields={["title", "slug", "excerpt", "content", "seoTitle", "seoDescription", "coverAltText", "category", "tags"]}
@@ -333,21 +351,20 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
             }} />
           {post.moderationNote ? <p className={styles.moderation}><strong>{copy.note}:</strong> {post.moderationNote}</p> : null}
           <section className={styles.writingCard} aria-label={copy.body}>
-            <div className={styles.languageBar}><span>{copy.language}</span><div className={styles.languageTabs} role="group" aria-label={copy.language}>
-              {(["fa", "en", "ar"] as const).map((code) => <button key={code} type="button" aria-pressed={active === code} lang={code} onClick={() => changeLanguage(code)}>{LABELS[code]}</button>)}
-            </div></div>
             <div className={styles.writingFields} dir={active === "en" ? "ltr" : "rtl"} lang={active}>
-              <label className={styles.titleField}><span>{copy.headline}</span><textarea rows={1} value={current.title} maxLength={200} placeholder={copy.titleHint} onChange={(event) => updateTranslation("title", event.target.value)} /></label>
               <label className={styles.excerptField}><span>{copy.excerpt}</span><textarea value={current.excerpt} maxLength={500} placeholder={copy.excerptHint} onChange={(event) => updateTranslation("excerpt", event.target.value)} /><small>{current.excerpt.length}/500</small></label>
             </div>
             <div className={styles.editorModes} role="group" aria-label={copy.body}>
               <button type="button" aria-pressed={editorMode === "visual"} onClick={() => setMode("visual")}>{COPY.visual}</button>
               <button type="button" aria-pressed={editorMode === "html"} onClick={() => setMode("html")}>{COPY.html}</button>
             </div>
-            {editorMode === "visual" ? <RichTextVisualEditor editor={editor} language={active} labels={{
+            {editorMode === "visual" ? <RichTextVisualEditor editor={editor} language={active} articleTools labels={{
               body: copy.body, bold: copy.bold, italic: copy.italic, strike: COPY.strike, inlineCode: COPY.inlineCode,
               heading: copy.heading, subheading: COPY.subheading, list: copy.list, orderedList: COPY.orderedList,
-              quote: COPY.quote, codeBlock: COPY.codeBlock, rule: COPY.rule, link: COPY.link, linkPrompt: COPY.linkPrompt, image: copy.image
+              quote: COPY.quote, codeBlock: COPY.codeBlock, rule: COPY.rule, link: COPY.link, linkPrompt: COPY.linkPrompt, image: copy.image,
+              table: COPY.table, addRow: COPY.addRow, addColumn: COPY.addColumn, deleteTable: COPY.deleteTable,
+              alignment: COPY.alignment, alignStart: COPY.alignStart, alignCenter: COPY.alignCenter, alignEnd: COPY.alignEnd, alignJustify: COPY.alignJustify,
+              undo: COPY.undo, redo: COPY.redo
             }} onInvalidLink={() => { setError(true); setMessage("این نوع نشانی برای پیوند مجاز نیست."); }} onUpload={(file) => void upload(file, "inline")} /> : <div className={styles.htmlEditor}>
               <textarea dir="ltr" lang="en" spellCheck={false} aria-label={`${copy.body} HTML`} value={htmlSource} onChange={(event) => { setHtmlSource(event.target.value); setMessage(copy.unsaved); }} />
               <p>{COPY.htmlHint}</p>
@@ -356,7 +373,6 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
           <section className={styles.searchPanel} aria-labelledby="search-appearance">
             <header className={styles.sectionHeading}><span className={styles.sectionIcon}><DesignIcon name="search" /></span><div><h2 id="search-appearance">{copy.search}</h2><p>{copy.searchHint}</p></div></header>
             <div className={styles.fields}>
-              <label className={`${styles.field} ${styles.fieldWide}`}><span>{copy.slug}</span><div className={styles.slugInput}><span dir="ltr">/{active}/blog/</span><input value={current.slug} maxLength={200} dir="auto" onChange={(event) => updateTranslation("slug", event.target.value)} /></div><small>{copy.slugHint}</small></label>
               <label className={`${styles.field} ${styles.fieldWide}`}><span>{copy.seoTitle}</span><input dir={active === "en" ? "ltr" : "rtl"} value={current.seoTitle} maxLength={70} onChange={(event) => updateTranslation("seoTitle", event.target.value)} /><small>{current.seoTitle.length}/70</small></label>
               <label className={`${styles.field} ${styles.fieldWide}`}><span>{copy.seoDescription}</span><textarea dir={active === "en" ? "ltr" : "rtl"} value={current.seoDescription} maxLength={170} onChange={(event) => updateTranslation("seoDescription", event.target.value)} /><small>{current.seoDescription.length}/170</small></label>
             </div>
@@ -364,6 +380,7 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
         </main>
         <aside className={styles.sidebar}>
           <section className={`${styles.panel} ${styles.publishPanel}`}><div className={styles.panelTitle}><h2>{copy.ready}</h2><span className={styles.progressCount}>{checks.filter((check) => check.done).length}/{checks.length}</span></div><p>{copy.readyHint}</p><ul className={styles.checks}>{checks.map((check) => <li key={check.label} data-complete={check.done}><span className={styles.checkIcon}>{check.done ? <DesignIcon name="check" /> : null}</span><span>{check.label}</span><small>{check.done ? copy.complete : copy.incomplete}</small></li>)}</ul></section>
+          <LiveSeoPanel locale={active} keyword={seoKeywords[active]} onKeywordChange={(value) => setSeoKeywords((current) => ({ ...current, [active]: value }))} input={{ kind: "blog", title: current.title, body: current.content, shortDescription: current.excerpt, metaTitle: current.seoTitle, metaDescription: current.seoDescription, hasCover: Boolean(cover), coverAlt: current.coverAltText }} htmlSource={editorMode === "html" ? htmlSource : undefined} />
           <section className={styles.panel}>
             <h2>{copy.cover}</h2><p>{copy.coverHint}</p>
             <label className={styles.coverUpload}>

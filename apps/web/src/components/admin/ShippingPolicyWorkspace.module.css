@@ -1,0 +1,26 @@
+.section { margin-block: 16px; padding: 16px; border: 1px solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-card); background: var(--color-dashboard-surface-raised); }
+.section header { margin-block-end: 12px; }
+.section h2 { font-size: 1.125rem; line-height: 1.4; }
+.section p, .hint { color: var(--color-dashboard-muted); line-height: 1.6; }
+.section form { display: grid; gap: 12px; }
+.fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.fields label, .sellerSearch label { display: grid; align-content: start; gap: 5px; min-width: 0; font-size: .875rem; }
+.fields input, .fields select, .sellerSearch input, .sellerSearch select { width: 100%; min-height: 40px; padding: 7px 10px; border: 1px solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-control); color: var(--color-dashboard-ink); background: var(--color-dashboard-paper); font: inherit; }
+.fields small { color: var(--color-dashboard-muted); line-height: 1.5; }
+.section button { min-height: 40px; padding-inline: 14px; border: 1px solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-control); color: var(--color-dashboard-ink); background: var(--color-dashboard-paper); font: inherit; cursor: pointer; }
+.section button:disabled { opacity: .5; cursor: default; }
+.section button:focus-visible, .section input:focus-visible, .section select:focus-visible, .section summary:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
+.overrides { padding-block: 12px; border-block: 1px solid var(--color-dashboard-rule); }
+.overrides summary { cursor: pointer; font-weight: 600; }
+.overrides[open] { display: grid; gap: 12px; }
+.sellerSearch { display: flex; align-items: end; flex-wrap: wrap; gap: 8px; }
+.sellerSearch label { flex: 1 1 15rem; }
+.sellerSearch select { flex: 1 1 12rem; width: auto; }
+.overrides fieldset { display: grid; gap: 12px; min-width: 0; padding: 12px; border: 1px solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-control); }
+.overrides legend { padding-inline: 5px; font-weight: 600; }
+.overrides legend { overflow-wrap: anywhere; }
+.overrides fieldset > button { justify-self: start; }
+.section footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.section footer button { border-color: var(--color-dashboard-accent); color: var(--color-dashboard-accent-ink); background: var(--color-dashboard-accent); font-weight: 700; }
+@media (max-width: 62rem) { .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 36rem) { .fields { grid-template-columns: 1fr; } .section footer { align-items: stretch; flex-direction: column; } }

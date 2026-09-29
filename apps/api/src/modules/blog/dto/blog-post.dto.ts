@@ -160,6 +160,21 @@ export class TaxonomyTranslationDto {
   @MaxLength(120)
   @Matches(SLUG_PATTERN)
   slug!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  metaTitle?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(320)
+  metaDescription?: string;
 }
 
 export class TaxonomyDto {
@@ -168,6 +183,14 @@ export class TaxonomyDto {
   @ValidateNested({ each: true })
   @Type(() => TaxonomyTranslationDto)
   translations!: TaxonomyTranslationDto[];
+}
+
+export class ReorderTaxonomyDto {
+  @IsArray()
+  @ArrayMaxSize(500)
+  @ArrayUnique()
+  @IsUUID("4", { each: true })
+  ids!: string[];
 }
 
 export class ProductOptionsQueryDto extends ListBlogPostsQueryDto {

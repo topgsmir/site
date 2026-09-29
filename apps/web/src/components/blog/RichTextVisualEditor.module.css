@@ -2,11 +2,14 @@
 .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 3px; padding: 8px 28px; border-block: 1px solid var(--color-dashboard-rule); background: var(--color-dashboard-paper); }
 .toolbar button, .upload { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 40px; min-height: 40px; padding: 8px 10px; border: 0; border-radius: 8px; color: var(--color-dashboard-ink-soft); background: transparent; cursor: pointer; font-size: .8rem; }
 .toolbar button[aria-pressed="true"] { color: var(--color-dashboard-accent); background: var(--color-dashboard-accent-soft); }
+.toolbar button:disabled { opacity: .42; cursor: not-allowed; }
+.alignment { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding-inline: 8px; color: var(--color-dashboard-ink-soft); font-size: .8rem; }
+.alignment select { min-height: 36px; max-width: 105px; padding-inline: 5px; border: 1px solid var(--color-dashboard-rule); border-radius: 7px; color: var(--color-dashboard-ink); background: var(--color-dashboard-surface); font: inherit; }
 .toolbar svg { width: 17px; height: 17px; }
 .divider { height: 18px; width: 1px; margin-inline: 8px; background: var(--color-dashboard-rule); }
 .upload { margin-inline-start: auto; }
 .upload input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
-.editor { min-height: 430px; padding: 30px 40px 44px; }
+.editor { min-height: 430px; padding: 30px 40px 44px; overflow-x: auto; }
 .editor :global(.tiptap) { min-height: 360px; outline: 0; line-height: 2; color: var(--color-dashboard-ink-soft); overflow-wrap: anywhere; }
 .editor :global(.tiptap > * + *) { margin-top: 1em; }
 .editor :global(.tiptap ul) { list-style: disc; padding-inline-start: 24px; }
@@ -20,8 +23,12 @@
 .editor :global(.tiptap a) { color: var(--color-dashboard-accent); text-decoration: underline; text-underline-offset: 3px; }
 .editor :global(.tiptap hr) { margin-block: 2em; border: 0; border-top: 1px solid var(--color-dashboard-rule-strong); }
 .editor :global(.tiptap img) { max-width: 100%; height: auto; border-radius: 12px; }
+.editor :global(.tiptap table) { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.editor :global(.tiptap th), .editor :global(.tiptap td) { min-width: 90px; padding: 8px 10px; border: 1px solid var(--color-dashboard-rule-strong); vertical-align: top; }
+.editor :global(.tiptap th) { background: var(--color-dashboard-paper); font-weight: 650; }
+.editor :global(.tiptap :is(th, td) p) { margin: 0; }
 .editor :global(.tiptap p.is-editor-empty:first-child::before) { content: attr(data-placeholder); float: inline-start; color: var(--color-dashboard-muted); pointer-events: none; height: 0; }
-.surface :is(button):focus-visible, .upload:focus-within, .editor:focus-within { outline: 2px solid var(--color-dashboard-focus); outline-offset: 3px; }
+.surface :is(button, select):focus-visible, .upload:focus-within, .editor:focus-within { outline: 2px solid var(--color-dashboard-focus); outline-offset: 3px; }
 @media (hover: hover) and (pointer: fine) { .toolbar button:hover, .toolbar .upload:hover { background: var(--color-dashboard-surface-raised); } }
 .surface[data-compact="true"] { border: 1px solid var(--color-dashboard-rule); border-radius: 10px; overflow: hidden; }
 .surface[data-compact="true"] .toolbar { padding: 5px 8px; border-top: 0; }

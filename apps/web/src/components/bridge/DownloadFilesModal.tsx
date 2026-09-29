@@ -4,7 +4,7 @@ import { useEffect, useId, useRef } from "react";
 import { AccountIcon } from "@/components/account/AccountIcon";
 import { API_BASE } from "@/lib/api/client";
 import type { Locale } from "@/lib/i18n";
-import { canDownload, type BuyerOrder, type OrderItem } from "./OrderDetails.types";
+import { canDownload, remainingDownloads, type BuyerOrder, type OrderItem } from "./OrderDetails.types";
 import type { OrderCopy } from "./OrderDetailsCopy";
 import s from "./OrderDetails.module.css";
 
@@ -38,8 +38,9 @@ export function DownloadFilesModal({ item, order, locale, c, onClose }: {
       {files.map((file, index) => {
         const available = canDownload(order, { ...item, digitalDelivery: file });
         const exhausted = file.maxDownloads > 0 && file.downloadCount >= file.maxDownloads;
+        const remaining = remainingDownloads(file);
         return <li className={s.download} key={file.downloadUrl}>
-          <div><strong><bdi>{file.destinationHost}</bdi></strong><p>{file.maxDownloads > 0 ? `${c.remaining}: ${Math.max(0, file.maxDownloads - file.downloadCount).toLocaleString(locale)}` : c.unlimited}</p></div>
+          <div><strong><bdi>{file.title || file.destinationHost}</bdi></strong><p>{c.downloadCount}: {file.downloadCount.toLocaleString(locale)} · {remaining === null ? c.unlimited : `${c.remaining}: ${remaining.toLocaleString(locale)}`}</p></div>
           <div>{available ? <a className={s.primary} href={`${API_BASE}${file.downloadUrl}`} target="_blank" rel="noopener noreferrer" aria-describedby={`${descriptionId}-${index}`}>
             {c.download} {(index + 1).toLocaleString(locale)}<AccountIcon name="arrow" width={17} height={17} />
           </a> : <span className={s.muted}>{exhausted ? c.exhausted : c.locked}</span>}

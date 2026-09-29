@@ -1,0 +1,22 @@
+.panel { display: grid; gap: .7rem; min-width: 0; padding: .875rem; border: 1px solid var(--color-dashboard-rule, #d8d8d8); border-radius: 12px; color: var(--color-dashboard-ink, #222); background: var(--color-dashboard-surface, #fff); font-size: .875rem; line-height: 1.6; }
+.panel header { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.panel h2 { margin: 0; font-size: 1rem; line-height: 1.5; }
+.score { padding: .15rem .55rem; border-radius: 999px; color: var(--color-dashboard-accent, #155e58); background: var(--color-dashboard-accent-soft, #e5f4f0); font-weight: 700; font-variant-numeric: tabular-nums; }
+.status, .note { margin: 0; color: var(--color-dashboard-muted, #666); }
+.status strong { color: var(--color-dashboard-ink, #222); }
+.stats { display: flex; flex-wrap: wrap; gap: .3rem .75rem; padding-block: .5rem; border-block: 1px solid var(--color-dashboard-rule, #ddd); font-variant-numeric: tabular-nums; }
+.lengths { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; }
+.lengths li { display: flex; justify-content: space-between; gap: .75rem; color: var(--color-dashboard-muted, #666); }
+.lengths li::before { content: "•"; color: var(--color-dashboard-error, #a43d3d); }
+.lengths li[data-good="true"]::before { content: "✓"; color: var(--color-dashboard-accent, #155e58); }
+.lengths li span { flex: 1; }
+.lengths strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+.keyword { display: grid; gap: .3rem; font-weight: 600; }
+.keyword input { width: 100%; min-width: 0; min-height: 2.5rem; padding: .4rem .6rem; border: 1px solid var(--color-dashboard-rule-strong, #aaa); border-radius: 8px; color: inherit; background: transparent; font: inherit; }
+.keyword input:focus-visible, .details summary:focus-visible { outline: 2px solid var(--color-dashboard-focus, #176e69); outline-offset: 2px; }
+.keyword small, .note { font-size: .75rem; font-weight: 400; line-height: 1.6; }
+.details summary { min-height: 2.25rem; cursor: pointer; font-weight: 600; }
+.details summary span { font-variant-numeric: tabular-nums; }
+.details ul { display: grid; gap: .35rem; margin: .25rem 0 0; padding-inline-start: 1.2rem; }
+.details li { color: var(--color-dashboard-ink-soft, #444); }
+.details p { margin: .25rem 0 0; }

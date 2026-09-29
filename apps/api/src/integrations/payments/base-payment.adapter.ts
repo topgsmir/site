@@ -7,7 +7,7 @@ import {
 } from "./payment.interface";
 
 export abstract class BasePaymentAdapter implements PaymentAdapter {
-  abstract readonly providerCode: "zarinpal" | "local-country-gateway" | "manual";
+  abstract readonly providerCode: import("./payment.interface").PaymentProviderCode;
   abstract readonly displayName: string;
   abstract readonly supportedCurrencies: readonly string[];
   readonly supportsRefunds: boolean = true;

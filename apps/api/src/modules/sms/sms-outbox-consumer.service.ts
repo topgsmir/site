@@ -1,9 +1,10 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Prisma } from "../../prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { normalizeIranianPhone } from "./phone-number";
 import { SmsService, type SmsTemplate } from "./sms.service";
+import { SmsSettingsService } from "./sms-settings.service";
 
 type ClaimedEvent = { event_id: string; event_type: string; payload: Prisma.JsonValue };
 
@@ -12,7 +13,7 @@ export class SmsOutboxConsumerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(SmsOutboxConsumerService.name);
   private timer?: NodeJS.Timeout;
   private running = false;
-  constructor(private readonly prisma: PrismaService, private readonly sms: SmsService, private readonly config: ConfigService) {}
+  constructor(private readonly prisma: PrismaService, private readonly sms: SmsService, private readonly config: ConfigService, @Optional() private readonly settings?: SmsSettingsService) {}
 
   onModuleInit() {
     if (this.config.get<string>("DISABLE_BACKGROUND_WORKERS") === "true") return;
@@ -29,7 +30,7 @@ export class SmsOutboxConsumerService implements OnModuleInit, OnModuleDestroy {
       await this.prisma.$executeRaw(Prisma.sql`
         INSERT INTO "outbox_deliveries" ("event_id", "consumer")
         SELECT "id", 'sms' FROM "outbox_events"
-        WHERE "event_type" IN ('order.paid', 'bridge.fulfillment.succeeded', 'bridge.fulfillment.failed')
+        WHERE "event_type" IN ('order.paid', 'bridge.fulfillment.succeeded', 'bridge.fulfillment.failed', 'club.wallet.redeemed', 'club.points.expiring')
         ON CONFLICT DO NOTHING
       `);
       const rows = await this.prisma.$queryRaw<ClaimedEvent[]>(Prisma.sql`
@@ -38,7 +39,8 @@ export class SmsOutboxConsumerService implements OnModuleInit, OnModuleDestroy {
         FROM "outbox_events" e
         WHERE (d."event_id", d."consumer") = (
           SELECT d2."event_id", d2."consumer" FROM "outbox_deliveries" d2
-          WHERE d2."consumer" = 'sms' AND d2."status" IN ('pending', 'failed')
+          WHERE d2."consumer" = 'sms'
+            AND (d2."status" IN ('pending', 'failed') OR (d2."status" = 'processing' AND d2."locked_at" < CURRENT_TIMESTAMP - INTERVAL '5 minutes'))
             AND d2."next_attempt_at" <= CURRENT_TIMESTAMP AND d2."attempts" < 20
           ORDER BY d2."next_attempt_at", d2."event_id" FOR UPDATE SKIP LOCKED LIMIT 1
         ) AND e."id" = d."event_id"
@@ -59,6 +61,19 @@ export class SmsOutboxConsumerService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async target(eventType: string, payload: Record<string, unknown>) {
+    if (eventType === "club.wallet.redeemed" || eventType === "club.points.expiring") {
+      const userId = typeof payload.userId === "string" ? payload.userId : "";
+      if (!userId || !this.settings) return null;
+      const configuration = await this.settings.get();
+      const expiry = eventType === "club.points.expiring";
+      if (!(expiry ? configuration.templateIds.clubExpiry : configuration.templateIds.clubRedemption)) return null;
+      const user = await this.prisma.users.findUnique({ where: { id: userId }, select: { phone_number: true } });
+      if (!user?.phone_number) return null;
+      const parameters: Record<string, string> = expiry
+        ? { points: String(payload.points ?? ""), expiresAt: String(payload.expiresAt ?? "") }
+        : { amount: String(payload.amount ?? "") };
+      return { phone: normalizeIranianPhone(user.phone_number), template: expiry ? "club_expiry" as const : "club_redemption" as const, parameters };
+    }
     const orderId = typeof payload.orderId === "string" ? payload.orderId : "";
     if (!orderId) return null;
     if (eventType === "order.paid") {

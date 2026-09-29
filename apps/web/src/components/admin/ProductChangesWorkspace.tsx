@@ -181,7 +181,7 @@ export function ProductChangesWorkspace({
   }
 
   const actionLabel = (action: ProductChangeEvent["action"]) => action === "create" ? c.create : action === "update" ? c.update : action === "review" ? c.review : c.restoreAction;
-  const fieldLabel = (field: string) => ({ title: locale === "fa" ? "عنوان" : locale === "ar" ? "العنوان" : "title", slug: locale === "fa" ? "نامک" : locale === "ar" ? "المعرّف" : "slug", description: locale === "fa" ? "توضیحات" : locale === "ar" ? "الوصف" : "description", category: locale === "fa" ? "دسته‌بندی" : locale === "ar" ? "الفئة" : "category", status: locale === "fa" ? "وضعیت" : locale === "ar" ? "الحالة" : "status", seller: locale === "fa" ? "فروشنده" : locale === "ar" ? "البائع" : "seller" }[field] ?? field);
+  const fieldLabel = (field: string) => ({ title: locale === "fa" ? "عنوان" : locale === "ar" ? "العنوان" : "title", slug: locale === "fa" ? "نامک" : locale === "ar" ? "المعرّف" : "slug", description: locale === "fa" ? "توضیحات" : locale === "ar" ? "الوصف" : "description", tags: locale === "fa" ? "برچسب‌ها" : locale === "ar" ? "الوسوم" : "tags", category: locale === "fa" ? "دسته‌بندی" : locale === "ar" ? "الفئة" : "category", status: locale === "fa" ? "وضعیت" : locale === "ar" ? "الحالة" : "status", seller: locale === "fa" ? "فروشنده" : locale === "ar" ? "البائع" : "seller" }[field] ?? field);
 
   return (
     <section className={styles.workspace} data-compact={compact || undefined} aria-labelledby={compact ? undefined : "product-changes-title"}>

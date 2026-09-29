@@ -1,6 +1,18 @@
 import { createHash } from "node:crypto";
 import { isIP } from "node:net";
 
+export function isAllowedUnsignedFileUrl(fileReference: string, hosts: string): boolean {
+  const allowedHosts = hosts.split(",").map((host) => host.trim().toLowerCase()).filter(Boolean);
+  if (!allowedHosts.length || allowedHosts.some((host) => !/^[a-z0-9.-]+$/.test(host))) return false;
+  try {
+    const url = new URL(fileReference);
+    decodeURIComponent(url.pathname.replace(/\+/g, " "));
+    return url.protocol === "https:" && allowedHosts.includes(url.hostname.toLowerCase()) &&
+      !url.username && !url.password && !url.port && !url.search && !url.hash &&
+      Boolean(url.pathname) && url.pathname !== "/";
+  } catch { return false; }
+}
+
 /** Matches the legacy upload server's secure_link_md5 input exactly. */
 export function signUploadDownloadLink(
   fileReference: string,
@@ -13,24 +25,10 @@ export function signUploadDownloadLink(
     throw new Error("Upload download signing is not configured");
   }
 
-  const allowedHosts = hosts.split(",").map((host) => host.trim().toLowerCase()).filter(Boolean);
-  if (!allowedHosts.length || allowedHosts.some((host) => !/^[a-z0-9.-]+$/.test(host))) {
-    throw new Error("Upload download hosts are invalid");
-  }
-
-  let url: URL;
-  try {
-    url = new URL(fileReference);
-  } catch {
-    throw new Error("Upload download URL is invalid");
-  }
-  if (
-    url.protocol !== "https:" || !allowedHosts.includes(url.hostname.toLowerCase()) ||
-    url.username || url.password || url.port || url.search || url.hash ||
-    !url.pathname || url.pathname === "/"
-  ) {
+  if (!isAllowedUnsignedFileUrl(fileReference, hosts)) {
     throw new Error("Upload download URL is not an allowed unsigned file URL");
   }
+  const url = new URL(fileReference);
 
   // The legacy PHP code signs urldecode(path), then appends the original path.
   let decodedPath: string;

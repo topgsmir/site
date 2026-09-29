@@ -30,6 +30,8 @@ import { BackupModule } from "./modules/backup/backup.module";
 import { HomepageStoriesModule } from "./modules/homepage-stories/homepage-stories.module";
 import { HomepageModule } from "./modules/homepage/homepage.module";
 import { AdminNotificationsModule } from "./modules/notifications/admin-notifications.module";
+import { WalletModule } from "./modules/wallet/wallet.module";
+import { ClubModule } from "./modules/club/club.module";
 
 @Module({
   imports: [
@@ -41,6 +43,8 @@ import { AdminNotificationsModule } from "./modules/notifications/admin-notifica
     AuthModule,
     AdminUsersModule,
     AdminNotificationsModule,
+    WalletModule,
+    ClubModule,
     AiModule,
     ContentAiModule,
     DataAssistantModule,

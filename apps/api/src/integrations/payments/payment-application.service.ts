@@ -19,16 +19,19 @@ import { createHash, randomUUID } from "node:crypto";
 import { PrismaService } from "../../prisma/prisma.service";
 import { PaymentService } from "./payment.service";
 import { PaymentCredentialService, type PaymentCredentialInput } from "./payment-credential.service";
+import { WalletLedgerService } from "../../modules/wallet/wallet-ledger.service";
+import { Optional } from "@nestjs/common";
 
 @Injectable()
 export class PaymentApplicationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly payments: PaymentService,
-    private readonly credentials: PaymentCredentialService
+    private readonly credentials: PaymentCredentialService,
+    @Optional() private readonly wallets?: WalletLedgerService
   ) {}
 
-  async initiate(actor: AppUser, orderId: string, idempotencyKey: string, providerCode = "zarinpal") {
+  async initiate(actor: AppUser, orderId: string, idempotencyKey: string, providerCode: string) {
     if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can pay for orders");
     const adapter = this.payments.get(providerCode);
     const order = await this.prisma.orders.findFirst({
@@ -141,12 +144,12 @@ export class PaymentApplicationService {
     return { orderId: order.id, authority: result.providerReferenceId, paymentUrl: result.paymentUrl, status: "pending" };
   }
 
-  async initiateCheckoutGroup(actor: AppUser, checkoutId: string, groupId: string, idempotencyKey: string) {
+  async initiateCheckoutGroup(actor: AppUser, checkoutId: string, groupId: string, idempotencyKey: string, walletAmount = "0") {
     if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can pay for checkouts");
     const group = await this.prisma.checkout_payment_groups.findFirst({
       where: { id: groupId, checkout_id: checkoutId, checkout: { buyer_id: actor.id } },
       select: {
-        id: true, provider: true, status: true, amount: true, currency: true, expires_at: true,
+        id: true, provider: true, status: true, amount: true, wallet_amount: true, currency: true, expires_at: true,
         checkout: { select: { id: true, status: true, buyer_id: true } },
         orders: { orderBy: { order_id: "asc" }, select: { order: { select: { id: true, seller_id: true, status: true, total_amount: true } } } }
       }
@@ -160,17 +163,27 @@ export class PaymentApplicationService {
     if (!group.orders.length || group.orders.some(({ order }) => order.status !== "pending")) throw new ConflictException("One or more allocated orders are not awaiting payment");
     const allocated = group.orders.reduce((sum, { order }) => sum.add(order.total_amount), new Prisma.Decimal(0));
     if (allocated.comparedTo(group.amount) !== 0) throw new ConflictException("Payment allocation integrity check failed");
+    if (group.provider === "wallet") {
+      if (walletAmount !== "0" || !this.wallets) throw new ConflictException("Wallet payment is unavailable");
+      return this.wallets.payCheckoutGroup(group.id, actor.id);
+    }
+    const contribution = new Prisma.Decimal(walletAmount);
+    if (!contribution.isInteger() || contribution.isNegative() || contribution.greaterThanOrEqualTo(group.amount)) throw new BadRequestException("Wallet contribution is invalid");
+    if (group.wallet_amount.comparedTo(contribution) !== 0 && group.wallet_amount.greaterThan(0)) throw new ConflictException("Wallet contribution differs from the initiated amount");
     const adapter = this.payments.get(group.provider);
     if (!(await adapter.availability()).available) throw new ServiceUnavailableException("This payment method is not configured");
+    const gatewayAmount = group.amount.sub(contribution);
     const primary = group.orders[0]!.order;
     let attempt = await this.prisma.payment_attempts.findUnique({
       where: { order_id_idempotency_key: { order_id: primary.id, idempotency_key: idempotencyKey } }
     });
+    let createdAttempt = false;
     if (!attempt) {
       try {
         attempt = await this.prisma.payment_attempts.create({
-          data: { order_id: primary.id, checkout_payment_group_id: group.id, provider: group.provider, amount: group.amount, currency: group.currency.trim(), idempotency_key: idempotencyKey }
+          data: { order_id: primary.id, checkout_payment_group_id: group.id, provider: group.provider, amount: gatewayAmount, currency: group.currency.trim(), idempotency_key: idempotencyKey }
         });
+        createdAttempt = true;
       } catch (error) {
         if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
         attempt = await this.prisma.payment_attempts.findUnique({
@@ -181,8 +194,17 @@ export class PaymentApplicationService {
         }
       }
     }
-    if (attempt.checkout_payment_group_id !== group.id || attempt.provider !== group.provider || attempt.amount.comparedTo(group.amount) !== 0) {
+    if (attempt.checkout_payment_group_id !== group.id || attempt.provider !== group.provider || attempt.amount.comparedTo(gatewayAmount) !== 0) {
       throw new ConflictException("The payment idempotency key belongs to another operation");
+    }
+    if (contribution.greaterThan(0)) {
+      if (!this.wallets) throw new ServiceUnavailableException("Wallet service is unavailable");
+      try {
+        await this.wallets.reserveCheckoutAmount(group.id, actor.id, contribution);
+      } catch (error) {
+        if (createdAttempt) await this.prisma.payment_attempts.updateMany({ where: { id: attempt.id, status: "created" }, data: { status: "failed", failure_code: "wallet_reservation_failed" } });
+        throw error;
+      }
     }
     if (attempt.status === "succeeded") return { checkoutId, paymentGroupId: group.id, status: "succeeded" };
     if (attempt.status === "pending" && attempt.authority) {
@@ -197,7 +219,7 @@ export class PaymentApplicationService {
     try {
       result = await this.payments.initiateWithProvider(group.provider, {
         operationId: attempt.id, orderId: primary.id, sellerId: primary.seller_id, buyerId: actor.id,
-        amount: group.amount.toString(), currency: group.currency.trim(), metadata: { checkoutId, paymentGroupId: group.id }
+        amount: gatewayAmount.toString(), currency: group.currency.trim(), metadata: { checkoutId, paymentGroupId: group.id }
       });
     } catch (error) {
       await this.markInitiationUnknown(attempt.id, error);
@@ -215,8 +237,17 @@ export class PaymentApplicationService {
   }
 
   async callback(providerCode: string, authority: string, callbackStatus: string | undefined) {
-    if (typeof authority !== "string" || !/^[A-Za-z0-9-]{10,128}$/.test(authority)) {
+    if (typeof authority !== "string" || !/^[A-Za-z0-9-]{1,128}$/.test(authority)) {
       throw new BadRequestException("Payment authority is invalid");
+    }
+    const topup = await this.prisma.wallet_topups.findUnique({ where: { provider_authority: { provider: providerCode, authority } }, select: { id: true, amount: true, status: true } });
+    if (topup) {
+      if (!this.wallets) throw new ServiceUnavailableException("Wallet service is unavailable");
+      if (topup.status === "succeeded") return { topupId: topup.id, status: "succeeded" as const };
+      if (topup.status !== "pending") throw new ConflictException("Wallet top-up is not awaiting verification");
+      const verification = await this.payments.get(providerCode).verify(authority, topup.amount.toString());
+      if (!verification.verified) return { topupId: topup.id, status: "failed" as const };
+      return this.wallets.settleTopup(topup.id, providerCode, authority, verification.referenceId);
     }
     const attempt = await this.prisma.payment_attempts.findUnique({
       where: { provider_authority: { provider: providerCode, authority } },
@@ -235,11 +266,7 @@ export class PaymentApplicationService {
     const verification = await this.payments.get(attempt.provider).verify(authority, attempt.amount.toString());
     if (!verification.verified) {
       const failureCode = callbackStatus?.toUpperCase() === "NOK" ? "BUYER_CANCELLED" : "VERIFICATION_FAILED";
-      const changed = await this.prisma.payment_attempts.updateMany({
-        where: { id: attempt.id, status: "pending" },
-        data: { status: "failed", failure_code: failureCode }
-      });
-      if (changed.count !== 1) throw new ConflictException("Payment changed while verification was processed");
+      // A browser callback can arrive before provider settlement and is not evidence of a terminal failure.
       return { orderId: attempt.order_id, authority, status: "failed", failureCode };
     }
 
@@ -361,7 +388,7 @@ export class PaymentApplicationService {
         id: true, provider: true, status: true, amount: true, currency: true, provider_ref_id: true,
         checkout_payment_group: {
           select: {
-            id: true, checkout_id: true, status: true, amount: true, currency: true,
+            id: true, checkout_id: true, status: true, amount: true, wallet_amount: true, currency: true,
             checkout: { select: { buyer_id: true } },
             orders: {
               select: {
@@ -382,23 +409,26 @@ export class PaymentApplicationService {
     if (attempt.status === "succeeded") return { checkoutId: group.checkout_id, paymentGroupId: group.id, authority, referenceId: attempt.provider_ref_id, status: "succeeded" };
     if (attempt.status !== "pending" || group.status !== "pending") throw new ConflictException("Payment is not awaiting verification");
     const allocated = group.orders.reduce((sum, item) => sum.add(item.order.total_amount), new Prisma.Decimal(0));
-    if (allocated.comparedTo(group.amount) !== 0 || attempt.amount.comparedTo(group.amount) !== 0 || attempt.currency.trim() !== group.currency.trim()) {
+    if (allocated.comparedTo(group.amount) !== 0 || attempt.amount.add(group.wallet_amount).comparedTo(group.amount) !== 0 || attempt.currency.trim() !== group.currency.trim()) {
       throw new ConflictException("Checkout payment amount integrity check failed");
     }
     const verification = await this.payments.get(attempt.provider).verify(authority, attempt.amount.toString());
     if (!verification.verified) {
       const failureCode = callbackStatus?.toUpperCase() === "NOK" ? "BUYER_CANCELLED" : "VERIFICATION_FAILED";
-      const changed = await this.prisma.payment_attempts.updateMany({ where: { id: attempt.id, status: "pending" }, data: { status: "failed", failure_code: failureCode } });
-      if (changed.count !== 1) throw new ConflictException("Payment changed while verification was processed");
       return { checkoutId: group.checkout_id, paymentGroupId: group.id, authority, status: "failed", failureCode };
     }
     await this.prisma.$transaction(async (tx) => {
       const current = await tx.checkout_payment_groups.findUniqueOrThrow({
         where: { id: group.id },
-        select: { status: true, checkout_id: true, orders: { select: { order: { select: { id: true, buyer_id: true, seller_id: true, status: true, items: { select: { id: true, digital_delivery_url: true, digital_delivery_urls: true, digital_max_downloads: true } } } } } } }
+        select: { status: true, checkout_id: true, wallet_amount: true, orders: { select: { order: { select: { id: true, buyer_id: true, seller_id: true, status: true, items: { select: { id: true, digital_delivery_url: true, digital_delivery_urls: true, digital_max_downloads: true } } } } } } }
       });
       if (current.status === "paid") return;
       if (current.status !== "pending" || current.orders.some(({ order }) => order.status !== "pending")) throw new ConflictException("Checkout orders are not awaiting payment");
+      if (current.wallet_amount.comparedTo(group.wallet_amount) !== 0) throw new ConflictException("Wallet payment allocation changed");
+      if (current.wallet_amount.greaterThan(0)) {
+        const debit = await tx.wallet_entries.findUnique({ where: { operation_key: `checkout-debit:${group.id}` }, select: { user_id: true, amount: true } });
+        if (!debit || debit.user_id !== group.checkout.buyer_id || debit.amount.comparedTo(current.wallet_amount.neg()) !== 0) throw new ConflictException("Wallet contribution is not funded");
+      }
       const changed = await tx.payment_attempts.updateMany({ where: { id: attempt.id, status: "pending" }, data: { status: "succeeded", provider_ref_id: verification.referenceId, verified_at: new Date(), failure_code: null } });
       if (changed.count !== 1) throw new ConflictException("Payment changed while it was being settled");
       await tx.checkout_payment_groups.update({ where: { id: group.id }, data: { status: "paid" } });
@@ -457,6 +487,7 @@ export class PaymentApplicationService {
           status: true,
           authority: true,
           amount: true,
+          checkout_payment_group_id: true,
           refund: true,
           order: {
             select: {
@@ -476,6 +507,12 @@ export class PaymentApplicationService {
       });
       if (!attempt || !attempt.authority) {
         throw new ConflictException("Payment is not eligible for a refund");
+      }
+      if (attempt.checkout_payment_group_id) {
+        throw new ConflictException("Grouped orders require an order-specific refund");
+      }
+      if (!this.payments.get(attempt.provider).supportsRefunds) {
+        throw new BadRequestException("This payment provider does not support refunds");
       }
       if (attempt.refund) {
         if (attempt.refund.idempotency_key !== idempotencyKey || attempt.refund.request_hash !== requestHash) {
@@ -627,6 +664,34 @@ export class PaymentApplicationService {
     });
   }
 
+  async listOfferMethods(offerId: string) {
+    const offer = await this.prisma.seller_offers.findFirst({
+      where: {
+        id: offerId,
+        status: "active",
+        listing: { status: "active", product: { status: "active", type: "bridge" }, seller: { invited: false, approved: true, suspended_at: null } }
+      },
+      select: { listing: { select: { seller_id: true } } }
+    });
+    if (!offer) throw new NotFoundException("Offer was not found");
+    const providers = (await this.payments.listProviders()).filter((provider) => provider.available && provider.currencies.includes("TOMAN"));
+    const configs = await this.prisma.payment_method_configs.findMany({
+      where: { enabled: true, provider_code: { in: providers.map((provider) => provider.code) } },
+      select: {
+        provider_code: true,
+        seller_rules: { select: { seller_id: true } },
+        product_type_rules: { select: { product_type: true } }
+      }
+    });
+    const byCode = new Map(configs.map((config) => [config.provider_code, config]));
+    return providers.filter((provider) => {
+      const config = byCode.get(provider.code);
+      return config &&
+        (config.seller_rules.length === 0 || config.seller_rules.some((rule) => rule.seller_id === offer.listing.seller_id)) &&
+        (config.product_type_rules.length === 0 || config.product_type_rules.some((rule) => rule.product_type === "bridge"));
+    }).map((provider) => ({ code: provider.code, name: provider.name }));
+  }
+
   async updateMethod(
     providerCode: string,
     input: {
@@ -642,7 +707,7 @@ export class PaymentApplicationService {
       throw new BadRequestException("Choose either a new refund token or removal, not both");
     }
     const credentialUpdate = await this.credentials.prepareUpdate(adapter.providerCode, input.credentials);
-    const adapterAvailability = adapter.providerCode === "zarinpal"
+    const adapterAvailability = credentialUpdate.configuration !== null
       ? { available: credentialUpdate.reason === null }
       : await adapter.availability();
     if (input.enabled && !adapterAvailability.available) {

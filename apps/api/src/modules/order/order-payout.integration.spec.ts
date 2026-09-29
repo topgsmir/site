@@ -237,10 +237,16 @@ describe("secure order and payout persistence", () => {
     // Payment settlement is intentionally absent from the client API; this
     // simulates a future verified provider transition.
     await prisma.orders.update({ where: { id: row.id }, data: { status: "paid" } });
+    await assert.rejects(
+      () => orders.transition(admin, row.id, { status: "delivered", confirmSensitive: true }, randomUUID()),
+      /not allowed/
+    );
     await orders.transition(sellerActor, row.id, { status: "processing" }, randomUUID());
     await orders.transition(sellerActor, row.id, { status: "shipped" }, randomUUID());
-    const delivered = await orders.transition(buyer, row.id, { status: "delivered" }, randomUUID());
-    assert.equal("commissionRate" in delivered, false);
+    const delivered = await orders.transition(admin, row.id, { status: "delivered", confirmSensitive: true }, randomUUID());
+    assert.equal(delivered.status, "delivered");
+    const completion = await prisma.order_events.findFirstOrThrow({ where: { order_id: row.id, to_status: "delivered" } });
+    assert.equal(completion.actor_user_id, admin.id);
 
     const requestKey = randomUUID();
     const requested = await payouts.request(sellerActor, row.id, requestKey);

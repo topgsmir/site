@@ -10,8 +10,10 @@ export type AdminSection =
   | "vendors"
   | "users"
   | "products"
+  | "product-categories"
   | "product-changes"
   | "coupons"
+  | "club"
   | "orders"
   | "order-detail"
   | "payment-transactions"
@@ -35,6 +37,8 @@ export type AdminSection =
   | "settings-seo"
   | "settings-backup"
   | "editorial"
+  | "blog-categories"
+  | "blog-tags"
   | "uploads";
 
 export type AdminPanelRouteProps = {
@@ -55,13 +59,13 @@ export async function AdminPanelRoute({ params, section, orderId, userId }: Admi
 
   const user = await requireUser(
     locale,
-    section === "editorial" || section === "uploads" ? ["platform-admin", "platform-staff"] : ["platform-admin"]
+    section === "editorial" || section === "blog-categories" || section === "blog-tags" || section === "uploads" ? ["platform-admin", "platform-staff"] : ["platform-admin"]
   );
 
   if (
-    (section === "editorial" || section === "uploads") &&
+    (section === "editorial" || section === "blog-categories" || section === "blog-tags" || section === "uploads") &&
     user.role === "platform-staff" &&
-    !user.platformPermissions?.includes(section === "editorial" ? "blog_manage" : "uploads_manage")
+    !user.platformPermissions?.includes(section === "uploads" ? "uploads_manage" : "blog_manage")
   ) {
     redirect(`/${locale}`);
   }

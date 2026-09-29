@@ -7,9 +7,11 @@ import { CheckoutService } from "./checkout.service";
 import { CheckoutExpiryService } from "./checkout-expiry.service";
 import { CredentialCryptoService } from "../../common/security/credential-crypto.service";
 import { ShippingModule } from "../../integrations/shipping/shipping.module";
+import { WalletCoreModule } from "../wallet/wallet-core.module";
+import { ClubCoreModule } from "../club/club-core.module";
 
 @Module({
-  imports: [AuthModule, PaymentsModule, ShippingModule, UsdRateModule],
+  imports: [AuthModule, PaymentsModule, ShippingModule, UsdRateModule, WalletCoreModule, ClubCoreModule],
   controllers: [CheckoutController],
   providers: [CheckoutService, CheckoutExpiryService, CredentialCryptoService]
 })

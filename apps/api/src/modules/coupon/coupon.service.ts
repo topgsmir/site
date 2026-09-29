@@ -76,11 +76,7 @@ export class CouponService {
   }
 
   async createAdmin(input: CreateAdminCouponDto) {
-    const seller = await this.prisma.sellers.findUnique({
-      where: { id: input.sellerId },
-      select: { id: true }
-    });
-    if (!seller) throw new NotFoundException("Seller not found");
+    if (input.sellerId !== null) await this.assertSellerExists(input.sellerId);
     const coupon = await this.createForSeller(input.sellerId, input);
     return this.toAdminCoupon(coupon);
   }
@@ -95,6 +91,7 @@ export class CouponService {
       select: couponSelect
     });
     if (!current) throw new NotFoundException("Coupon not found");
+    if (input.sellerId !== undefined && input.sellerId !== null) await this.assertSellerExists(input.sellerId);
 
     const discountType = input.discountType ?? current.discount_type;
     const discountValue = input.discountValue === undefined
@@ -127,6 +124,7 @@ export class CouponService {
       const coupon = await this.prisma.coupons.update({
         where: { id },
         data: {
+          ...(input.sellerId === undefined ? {} : { seller_id: input.sellerId }),
           ...(input.code === undefined ? {} : {
             code: input.code.normalize("NFKC").trim().toLocaleUpperCase("en-US")
           }),
@@ -150,12 +148,24 @@ export class CouponService {
   }
 
   async deleteAdmin(id: string) {
-    const result = await this.prisma.coupons.deleteMany({ where: { id } });
-    if (result.count === 0) throw new NotFoundException("Coupon not found");
-    return { deleted: true };
+    try {
+      const result = await this.prisma.coupons.deleteMany({ where: { id } });
+      if (result.count === 0) throw new NotFoundException("Coupon not found");
+      return { deleted: true };
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+        throw new ConflictException("Used coupons cannot be deleted; deactivate this coupon instead");
+      }
+      throw error;
+    }
   }
 
-  private async createForSeller(sellerId: string, input: CreateCouponDto) {
+  private async assertSellerExists(sellerId: string) {
+    const seller = await this.prisma.sellers.findUnique({ where: { id: sellerId }, select: { id: true } });
+    if (!seller) throw new NotFoundException("Seller not found");
+  }
+
+  private async createForSeller(sellerId: string | null, input: CreateCouponDto) {
     const startsAt = input.startsAt ? new Date(input.startsAt) : new Date();
     const expiresAt = input.expiresAt ? new Date(input.expiresAt) : null;
     const discountValue = new Prisma.Decimal(input.discountValue);
@@ -224,7 +234,7 @@ export class CouponService {
   private translateWriteError(error: unknown): never {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2002") {
-        throw new ConflictException("This seller already has a coupon with that code");
+        throw new ConflictException("This seller or the platform already has a coupon with that code");
       }
       if (error.code === "P2025") throw new NotFoundException("Coupon not found");
     }
@@ -252,10 +262,10 @@ export class CouponService {
   private toAdminCoupon(coupon: AdminCouponRecord) {
     return {
       ...this.toCoupon(coupon),
-      seller: {
+      seller: coupon.seller ? {
         id: coupon.seller.id,
         shopName: coupon.seller.shop_name
-      }
+      } : null
     };
   }
 }

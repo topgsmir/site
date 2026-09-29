@@ -1,6 +1,6 @@
 export type PaymentStatus = "pending" | "succeeded" | "failed" | "refunded";
 
-export type PaymentProviderCode = "zarinpal" | "local-country-gateway" | "manual";
+export type PaymentProviderCode = "zarinpal" | "zibal" | "local-country-gateway" | "manual";
 
 export type PaymentProviderUnavailabilityReason =
   | "development_only"

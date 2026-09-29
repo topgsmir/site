@@ -45,7 +45,7 @@ describe("checkout identities and gateways", () => {
     const local = new LocalGatewayAdapter(new ConfigService({ NODE_ENV: "production" }));
     const misconfigured = new LocalGatewayAdapter(new ConfigService({ NODE_ENV: "production", LOCAL_PAYMENT_GATEWAY_ENABLED: "true" }));
     const fake = { providerCode: "zarinpal", initiate: async () => { throw new Error(); }, verify: async () => ({ verified: false }), inquiry: async () => false, refund: async () => null } as never;
-    const payments = new PaymentService(local, fake);
+    const payments = new PaymentService([local, fake]);
     assert.throws(() => payments.get("typo"), /unsupported/i);
     assert.throws(() => misconfigured.onModuleInit(), /cannot be enabled in production/i);
     await assert.rejects(local.verify("local-anything"), /disabled in production/i);

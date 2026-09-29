@@ -129,11 +129,15 @@ export interface SellerProductOffer {
   digital?: {
     fileReference: string;
     fileReferences: string[];
+    fileTitles: string[];
     maxDownloads: number;
   };
   physical?: {
     stock: number;
     weightGrams: number;
+    lengthCm?: number | null;
+    widthCm?: number | null;
+    heightCm?: number | null;
   };
   service?: {
     serviceType: string;
@@ -224,10 +228,14 @@ export interface BlogTaxonomyTranslation {
   locale: BlogLocale;
   name: string;
   slug: string;
+  description?: string | null;
+  meta_title?: string | null;
+  meta_description?: string | null;
 }
 
 export interface BlogTaxonomyTerm {
   id: string;
+  position: number;
   translations: BlogTaxonomyTranslation[];
 }
 
@@ -314,6 +322,9 @@ export interface PublicBlogCollection {
   id: string;
   kind: "category" | "tag" | "seller";
   name: string;
+  description?: string | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
   alternateSlugs: Record<BlogLocale, string>;
 }
 
@@ -345,7 +356,7 @@ export interface SellerCouponsPage {
 }
 
 export interface AdminSellerCoupon extends SellerCoupon {
-  seller: {
+  seller: null | {
     id: string;
     shopName: string;
   };
@@ -410,6 +421,7 @@ export interface ProductChangeSnapshot {
   title: string;
   slug?: string;
   description: string | null;
+  tags?: string[];
   category: string | null;
   status: ProductStatus;
   seller?: { id: string; shopName: string };
@@ -527,6 +539,8 @@ export interface AdminSmsSettings {
     sellerNewOrder: number | null;
     buyerSuccess: number | null;
     buyerFailure: number | null;
+    clubRedemption: number | null;
+    clubExpiry: number | null;
   };
   updatedAt: string | null;
 }
@@ -563,6 +577,25 @@ export interface AdminShippingSettings {
   apiKeyConfigured: boolean;
   apiKeyHint: string | null;
   credentialSource: "database" | "environment" | "none";
+  updatedAt: string | null;
+}
+
+export type ShippingPayer = "customer" | "seller" | "site";
+
+export interface ShippingPolicyRule {
+  payer: ShippingPayer;
+  flatRateToman: string;
+  freeAboveToman: string | null;
+  allowedProvinces: string[];
+  maxWeightGrams: number | null;
+  maxLengthCm: number | null;
+  maxWidthCm: number | null;
+  maxHeightCm: number | null;
+}
+
+export interface AdminShippingPolicy {
+  defaultRule: ShippingPolicyRule;
+  sellerRules: Array<{ sellerId: string; rule: ShippingPolicyRule }>;
   updatedAt: string | null;
 }
 
@@ -650,6 +683,9 @@ export interface SellerProfilePicture {
 export interface PublicExpertSummary {
   id: string;
   name: string;
+  description?: string | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
   specialty: string | null;
   profilePicture: SellerProfilePicture | null;
   activeProductCount: number;
@@ -809,12 +845,22 @@ export interface CheckoutQuoteGroup {
     serviceInputs: ServiceInputDefinition[];
   }>;
   totalAmount: string;
+  shippingCost: string;
+  shippingFee: string;
+  shippingPayer: ShippingPayer | null;
+  discountAmount: string;
+  clubDiscountAmount: string;
+  clubPoints: number;
   paymentMethods: CheckoutPaymentMethod[];
 }
 
 export interface CheckoutQuote {
   currency: "TOMAN";
   totalAmount: string;
+  discountAmount: string;
+  clubDiscountAmount: string;
+  clubPoints: number;
+  couponCode: string | null;
   usdToTomanRate: string | null;
   groups: CheckoutQuoteGroup[];
   commonPaymentMethods: CheckoutPaymentMethod[];
@@ -826,6 +872,8 @@ export interface CheckoutDetail {
   status: "pending_payment" | "partially_paid" | "paid" | "expired" | "cancelled";
   currency: "TOMAN";
   totalAmount: string;
+  discountAmount: string;
+  couponCode: string | null;
   expiresAt: string;
   createdAt: string;
   orders: Array<{
@@ -833,6 +881,10 @@ export interface CheckoutDetail {
     status: OrderStatus;
     seller: { id: string; shopName: string };
     totalAmount: string;
+    shippingCost: string;
+    shippingFee: string;
+    shippingPayer: ShippingPayer | null;
+    discountAmount: string;
     items: Array<{
       id: string;
       offerId: string;
@@ -842,8 +894,8 @@ export interface CheckoutDetail {
       unitPrice: string;
       totalAmount: string;
       serviceNote: string | null;
-      digitalDeliveries: Array<{ downloadUrl: string; destinationHost: string; maxDownloads: number; downloadCount: number }>;
-      digitalDelivery: null | { downloadUrl: string; destinationHost: string; maxDownloads: number; downloadCount: number };
+      digitalDeliveries: Array<{ downloadUrl: string; destinationHost: string; title: string | null; maxDownloads: number; downloadCount: number }>;
+      digitalDelivery: null | { downloadUrl: string; destinationHost: string; title: string | null; maxDownloads: number; downloadCount: number };
     }>;
   }>;
   paymentGroups: Array<{
@@ -851,6 +903,7 @@ export interface CheckoutDetail {
     provider: string;
     status: "pending" | "paid" | "failed" | "expired";
     amount: string;
+    walletAmount: string;
     currency: "TOMAN";
     orderIds: string[];
     expiresAt: string;

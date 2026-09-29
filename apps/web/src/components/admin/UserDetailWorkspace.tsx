@@ -16,6 +16,7 @@ import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import type { Locale } from "@/lib/i18n";
 import { historyHelp, historyTerm } from "./user-history-copy";
 import { AdminUserNotes } from "./AdminUserNotes";
+import { AdminWalletPanel } from "./AdminWalletPanel";
 import { UserLifecyclePanel } from "./UserLifecyclePanel";
 import styles from "./UsersWorkspace.module.css";
 
@@ -1334,6 +1335,7 @@ export function UserDetailWorkspace({
           />
 
           <AdminUserNotes userId={user.id} locale={locale} />
+          {user.role === "buyer" ? <AdminWalletPanel userId={user.id} locale={locale} /> : null}
 
           <details className={`${styles.editPanel} ${styles.securityPanel}`}>
             <summary id="user-security-title">{c.security}</summary>

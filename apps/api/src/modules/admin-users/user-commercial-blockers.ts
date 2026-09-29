@@ -5,6 +5,8 @@ export async function commercialBlockers(tx: Prisma.TransactionClient, id: strin
   const blockers = {
     orders: await tx.orders.count({ where: { ...commercialScope, status: { notIn: ["delivered", "cancelled"] } } }),
     checkouts: await tx.checkouts.count({ where: { buyer_id: id, status: { in: ["pending_payment", "partially_paid"] } } }),
+    walletBalance: await tx.wallet_accounts.count({ where: { user_id: id, balance: { gt: 0 } } }),
+    walletTopups: await tx.wallet_topups.count({ where: { user_id: id, status: { in: ["created", "initiating", "initiation_unknown", "pending"] } } }),
     payments: await tx.payment_attempts.count({ where: { order: commercialScope, status: { in: ["created", "initiating", "initiation_unknown", "pending", "refund_pending", "refund_unknown"] } } }),
     refunds: await tx.payment_refunds.count({ where: { payment_attempt: { order: commercialScope }, status: { not: "succeeded" } } }),
     payouts: source ? await tx.payout_ledger.count({ where: { seller_id: source, status: { not: "settled" }, order: { status: { not: "cancelled" } } } }) : 0,

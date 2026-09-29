@@ -3,10 +3,10 @@ import { describe, it } from "node:test";
 import type { BasePaymentAdapter } from "./base-payment.adapter";
 import { PaymentService } from "./payment.service";
 
-function adapter(code: "zarinpal" | "local-country-gateway", available: boolean) {
+function adapter(code: "zarinpal" | "zibal" | "local-country-gateway", available: boolean) {
   return {
     providerCode: code,
-    displayName: code === "zarinpal" ? "Zarinpal" : "Local test gateway",
+    displayName: code === "zarinpal" ? "Zarinpal" : code === "zibal" ? "Zibal" : "Local test gateway",
     supportedCurrencies: ["TOMAN"],
     supportsRefunds: true,
     availability: async () => ({
@@ -25,9 +25,12 @@ describe("PaymentService", () => {
   it("resolves payment behavior and admin metadata from the same adapter registry", async () => {
     const local = adapter("local-country-gateway", false);
     const zarinpal = adapter("zarinpal", true);
-    const service = new PaymentService(local, zarinpal);
+    const zibal = adapter("zibal", true);
+    const service = new PaymentService([local, zarinpal, zibal]);
 
     assert.equal(service.get("zarinpal"), zarinpal);
+    assert.equal(service.get("zibal"), zibal);
+    assert.throws(() => service.get("constructor"), /Unsupported payment provider/);
     assert.deepEqual(await service.listProviders(), [
       {
         code: "local-country-gateway",
@@ -41,6 +44,15 @@ describe("PaymentService", () => {
       {
         code: "zarinpal",
         name: "Zarinpal",
+        available: true,
+        unavailabilityReason: null,
+        currencies: ["TOMAN"],
+        supportsRefunds: true,
+        configuration: null
+      },
+      {
+        code: "zibal",
+        name: "Zibal",
         available: true,
         unavailabilityReason: null,
         currencies: ["TOMAN"],

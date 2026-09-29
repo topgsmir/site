@@ -37,4 +37,10 @@ export class UpdateSmsSettingsDto {
   @Min(1)
   @Max(2_147_483_647)
   buyerFailureTemplateId?: number | null;
+
+  @IsOptional() @IsInt() @Min(1) @Max(2_147_483_647)
+  clubRedemptionTemplateId?: number | null;
+
+  @IsOptional() @IsInt() @Min(1) @Max(2_147_483_647)
+  clubExpiryTemplateId?: number | null;
 }

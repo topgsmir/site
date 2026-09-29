@@ -38,7 +38,7 @@ describe("admin order details", () => {
       events: [{ id: "event-1", from_status: "pending", to_status: "paid", created_at: at,
         actor: { id: "owner-1", full_name: "Owner", email: "owner@example.com" } }],
       payout_records: [],
-      payment_attempts: [{ id: "payment-1", checkout_payment_group_id: null, provider: "test", status: "verified",
+      payment_attempts: [{ id: "payment-1", checkout_payment_group_id: null, provider: "zarinpal", provider_ref_id: "bank-ref-42", status: "succeeded",
         amount: money, currency: "TOMAN", failure_code: null, verified_at: at, refunded_at: null,
         initiation_started_at: at, created_at: at, updated_at: at, refund: null }],
       checkout: null, payment_groups: []
@@ -47,16 +47,18 @@ describe("admin order details", () => {
       orders: { findUnique: async (args: { select: Record<string, unknown> }) => { select = args.select; return record; } },
       outbox_events: { findMany: async () => [] }
     } as unknown as PrismaService;
-    const orders = { get: async () => ({ id: "order-1", status: "paid", items: [] }) } as unknown as OrderService;
+    const orders = { get: async () => ({ id: "order-1", status: "paid", items: [], trashedAt: null }), adminTransitions: () => [] } as unknown as OrderService;
     const result = await new AdminOrderDetailsService(prisma, orders).get(admin, "order-1");
     assert.equal(result.buyerProfile.email, buyer.email);
     assert.equal(result.sellerProfile.owner.email, "owner@example.com");
     assert.equal(result.payments[0]?.amount, "120000");
+    assert.equal(result.payments[0]?.bankReference, "bank-ref-42");
     assert.equal(result.history[0]?.toStatus, "paid");
+    assert.deepEqual(result.history[0]?.payment, { provider: "zarinpal", reference: "bank-ref-42" });
     assert.equal(select?.request_hash, undefined);
     assert.equal(select?.idempotency_key, undefined);
     const paymentSelection = (select?.payment_attempts as { select: Record<string, unknown> }).select;
     assert.equal(paymentSelection.authority, undefined);
-    assert.equal(paymentSelection.provider_ref_id, undefined);
+    assert.equal(paymentSelection.provider_ref_id, true);
   });
 });

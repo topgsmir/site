@@ -20,45 +20,48 @@ const COPY = {
   en: {
     eyebrow: "Secure checkout", title: "Review your cart.", intro: "Confirm your selections, then choose delivery and payment details.",
     empty: "Your cart is ready for its first item.", emptyHint: "Browse files, tools, and specialist services selected for repair professionals.", shop: "Browse products", continueShopping: "Continue shopping",
-    item: "item", items: "items", quantity: "Quantity", remove: "Remove", each: "each", total: "Order total", summary: "Order summary", payment: "Payment method",
+    item: "item", items: "items", quantity: "Quantity", remove: "Remove", each: "each", total: "Order total", summary: "Order summary", payment: "Payment method", postalFee: "Postal delivery", freePostal: "Free postal delivery",
     address: "Shipping address", recipient: "Recipient name", phone: "Iranian mobile", province: "Province", city: "City", postal: "10-digit postal code", street: "Full address",
     signin: "Verify your mobile", signinHint: "We’ll send a one-time code before creating your order.", code: "Six-digit code", fullName: "Name", sendCode: "Send verification code", verify: "Verify and continue", pay: "Create checkout and pay",
     busy: "Please wait…", failed: "Checkout could not continue. Try again.", cartSaveFailed: "Your cart could not be saved in this browser. Check storage permissions and try again.", serviceDetails: "Details needed for this service", secretHint: "Secret answers are encrypted and are not saved in this browser.", serviceNote: "Anything else?", serviceNoteHint: "Add any other context that may help the specialist.",
     external: "Digital delivery links are supplied by sellers and may open an external website.", seller: "Sold by", stepCart: "Cart", stepDetails: "Details", stepPayment: "Payment", loading: "Confirming current prices…", secure: "Your payment details are handled by the selected payment provider.",
     digital: "Digital file", physical: "Repair tool", service: "Specialist service", productUnavailable: "Product name unavailable",
     progress: "Checkout progress", completed: "Completed", current: "Current step", upcoming: "Upcoming", updating: "Updating total…",
-    quoteFailed: "Current prices could not be confirmed.", unavailable: "Some items are no longer available. Remove them to continue.", stockChanged: "An item no longer has the requested quantity. Remove it or choose a lower quantity.", retry: "Try again", removeUnavailable: "Remove unavailable items",
+    quoteFailed: "Current prices could not be confirmed.", unavailable: "Some items are no longer available. Remove them to continue.", stockChanged: "An item no longer has the requested quantity. Remove it or choose a lower quantity.", destinationUnavailable: "Postal delivery is unavailable for this destination. Choose another province.", quoteChanged: "The total changed. Review the updated price and try again.", retry: "Try again", removeUnavailable: "Remove unavailable items",
     usdRate: "USD items are converted for payment at 1 USD =",
+    coupon: "Discount code", applyCoupon: "Apply", removeCoupon: "Remove code", couponInvalid: "This discount code cannot be used for this cart.", discount: "Discount",
     removed: "Item removed from your cart.", removedMany: "Unavailable items removed from your cart.", undo: "Undo",
     otpSent: "Code sent to", otpExpires: "Code expires in", otpExpired: "This code has expired.", otpInvalid: "The code is incorrect or expired. Check it or send a new one.", resend: "Send again", resendIn: "Send again in", changePhone: "Change number", newBuyerHint: "New buyers also need to enter their name.", profileRequired: "For a new account, enter your name, then try again.", newCode: "Send a new code"
   },
   fa: {
     eyebrow: "خرید امن", title: "سبد خریدتان را مرور کنید.", intro: "انتخاب‌ها را بررسی کنید و سپس اطلاعات تحویل و پرداخت را تکمیل کنید.",
     empty: "سبد خریدتان منتظر اولین انتخاب است.", emptyHint: "فایل‌ها، ابزارها و خدمات تخصصی مناسب تعمیرکاران را ببینید.", shop: "مشاهده محصولات", continueShopping: "ادامه خرید",
-    item: "محصول", items: "محصول", quantity: "تعداد", remove: "حذف", each: "قیمت واحد", total: "مبلغ سفارش", summary: "خلاصه سفارش", payment: "روش پرداخت",
+    item: "محصول", items: "محصول", quantity: "تعداد", remove: "حذف", each: "قیمت واحد", total: "مبلغ سفارش", summary: "خلاصه سفارش", payment: "روش پرداخت", postalFee: "هزینه ارسال پستی", freePostal: "ارسال پستی رایگان",
     address: "نشانی تحویل", recipient: "نام گیرنده", phone: "شماره موبایل ایران", province: "استان", city: "شهر", postal: "کد پستی ۱۰ رقمی", street: "نشانی کامل",
     signin: "تأیید شماره موبایل", signinHint: "پیش از ثبت سفارش، یک کد یک‌بارمصرف برایتان می‌فرستیم.", code: "کد شش‌رقمی", fullName: "نام", sendCode: "ارسال کد تأیید", verify: "تأیید و ادامه", pay: "ثبت سفارش و پرداخت",
     busy: "کمی صبر کنید…", failed: "ادامه خرید ممکن نبود. دوباره تلاش کنید.", cartSaveFailed: "سبد خرید در این مرورگر ذخیره نشد. دسترسی ذخیره‌سازی را بررسی و دوباره تلاش کنید.", serviceDetails: "اطلاعات لازم برای این خدمت", secretHint: "پاسخ‌های محرمانه رمزگذاری می‌شوند و در این مرورگر ذخیره نمی‌شوند.", serviceNote: "توضیح دیگری دارید؟", serviceNoteHint: "هر نکته دیگری که به متخصص کمک می‌کند بنویسید.",
     external: "لینک تحویل فایل را فروشنده ارائه می‌کند و ممکن است در وب‌سایت دیگری باز شود.", seller: "فروشنده", stepCart: "سبد", stepDetails: "اطلاعات", stepPayment: "پرداخت", loading: "در حال بررسی قیمت‌های فعلی…", secure: "اطلاعات پرداخت شما در درگاه پرداخت منتخب پردازش می‌شود.",
     digital: "فایل دیجیتال", physical: "ابزار تعمیر", service: "خدمت تخصصی", productUnavailable: "نام محصول در دسترس نیست",
     progress: "مراحل خرید", completed: "انجام شد", current: "مرحله فعلی", upcoming: "مرحله بعد", updating: "در حال به‌روزرسانی مبلغ…",
-    quoteFailed: "بررسی قیمت‌های فعلی ممکن نبود.", unavailable: "بعضی محصولات دیگر در دسترس نیستند. برای ادامه آن‌ها را حذف کنید.", stockChanged: "موجودی یکی از محصولات برای این تعداد کافی نیست. تعداد را کم کنید یا محصول را حذف کنید.", retry: "تلاش دوباره", removeUnavailable: "حذف محصولات ناموجود",
+    quoteFailed: "بررسی قیمت‌های فعلی ممکن نبود.", unavailable: "بعضی محصولات دیگر در دسترس نیستند. برای ادامه آن‌ها را حذف کنید.", stockChanged: "موجودی یکی از محصولات برای این تعداد کافی نیست. تعداد را کم کنید یا محصول را حذف کنید.", destinationUnavailable: "ارسال پستی به این مقصد ممکن نیست. استان دیگری انتخاب کنید.", quoteChanged: "مبلغ تغییر کرده است. قیمت تازه را بررسی کنید و دوباره ادامه دهید.", retry: "تلاش دوباره", removeUnavailable: "حذف محصولات ناموجود",
     usdRate: "محصولات دلاری برای پرداخت با نرخ هر ۱ دلار =",
+    coupon: "کد تخفیف", applyCoupon: "اعمال کد", removeCoupon: "حذف کد", couponInvalid: "این کد تخفیف برای این سبد خرید قابل استفاده نیست.", discount: "تخفیف",
     removed: "محصول از سبد خرید حذف شد.", removedMany: "محصولات ناموجود از سبد خرید حذف شدند.", undo: "برگرداندن",
     otpSent: "کد به این شماره فرستاده شد:", otpExpires: "مهلت استفاده از کد:", otpExpired: "مهلت این کد تمام شده است.", otpInvalid: "کد نادرست است یا مهلتش تمام شده. کد را بررسی کنید یا کد تازه بگیرید.", resend: "ارسال دوباره", resendIn: "ارسال دوباره تا", changePhone: "تغییر شماره", newBuyerHint: "اگر حساب تازه می‌سازید، نام خود را هم وارد کنید.", profileRequired: "برای ساخت حساب، نام خود را وارد و دوباره تلاش کنید.", newCode: "ارسال کد جدید"
   },
   ar: {
     eyebrow: "دفع آمن", title: "راجع سلة التسوق.", intro: "تأكد من اختياراتك، ثم أكمل بيانات التسليم والدفع.",
     empty: "سلة التسوق بانتظار اختيارك الأول.", emptyHint: "تصفح الملفات والأدوات والخدمات المتخصصة لفنيي الصيانة.", shop: "تصفح المنتجات", continueShopping: "متابعة التسوق",
-    item: "منتج", items: "منتجات", quantity: "الكمية", remove: "إزالة", each: "سعر الوحدة", total: "إجمالي الطلب", summary: "ملخص الطلب", payment: "طريقة الدفع",
+    item: "منتج", items: "منتجات", quantity: "الكمية", remove: "إزالة", each: "سعر الوحدة", total: "إجمالي الطلب", summary: "ملخص الطلب", payment: "طريقة الدفع", postalFee: "تكلفة الشحن البريدي", freePostal: "شحن بريدي مجاني",
     address: "عنوان الشحن", recipient: "اسم المستلم", phone: "رقم جوال إيراني", province: "المحافظة", city: "المدينة", postal: "الرمز البريدي من 10 أرقام", street: "العنوان الكامل",
     signin: "تحقق من رقم الجوال", signinHint: "سنرسل رمزاً لمرة واحدة قبل إنشاء الطلب.", code: "الرمز المكوّن من ستة أرقام", fullName: "الاسم", sendCode: "إرسال رمز التحقق", verify: "تحقق وتابع", pay: "إنشاء الطلب والدفع",
     busy: "يرجى الانتظار…", failed: "تعذر متابعة الشراء. حاول مجددًا.", cartSaveFailed: "تعذر حفظ سلة التسوق في هذا المتصفح. تحقق من صلاحية التخزين وحاول مجددًا.", serviceDetails: "البيانات المطلوبة لهذه الخدمة", secretHint: "تُشفّر الإجابات السرية ولا تُحفظ في هذا المتصفح.", serviceNote: "هل لديك تفاصيل أخرى؟", serviceNoteHint: "أضف أي معلومات أخرى قد تساعد المختص.",
     external: "يوفر البائع روابط التسليم الرقمي وقد تفتح موقعًا خارجيًا.", seller: "البائع", stepCart: "السلة", stepDetails: "البيانات", stepPayment: "الدفع", loading: "جارٍ تأكيد الأسعار الحالية…", secure: "تتم معالجة بيانات الدفع لدى مزود الدفع الذي تختاره.",
     digital: "ملف رقمي", physical: "أداة صيانة", service: "خدمة متخصصة", productUnavailable: "اسم المنتج غير متاح",
     progress: "مراحل الشراء", completed: "مكتمل", current: "المرحلة الحالية", upcoming: "التالي", updating: "جارٍ تحديث الإجمالي…",
-    quoteFailed: "تعذر تأكيد الأسعار الحالية.", unavailable: "بعض المنتجات لم تعد متاحة. أزلها للمتابعة.", stockChanged: "الكمية المطلوبة لأحد المنتجات لم تعد متاحة. قلل الكمية أو أزل المنتج.", retry: "حاول مجددًا", removeUnavailable: "إزالة المنتجات غير المتاحة",
+    quoteFailed: "تعذر تأكيد الأسعار الحالية.", unavailable: "بعض المنتجات لم تعد متاحة. أزلها للمتابعة.", stockChanged: "الكمية المطلوبة لأحد المنتجات لم تعد متاحة. قلل الكمية أو أزل المنتج.", destinationUnavailable: "الشحن البريدي غير متاح لهذه الوجهة. اختر محافظة أخرى.", quoteChanged: "تغير الإجمالي. راجع السعر الجديد وحاول مجددًا.", retry: "حاول مجددًا", removeUnavailable: "إزالة المنتجات غير المتاحة",
     usdRate: "تُحوّل المنتجات المسعّرة بالدولار للدفع بسعر 1 دولار =",
+    coupon: "رمز الخصم", applyCoupon: "تطبيق", removeCoupon: "إزالة الرمز", couponInvalid: "لا يمكن استخدام رمز الخصم لهذه السلة.", discount: "الخصم",
     removed: "تمت إزالة المنتج من سلة التسوق.", removedMany: "تمت إزالة المنتجات غير المتاحة من سلة التسوق.", undo: "تراجع",
     otpSent: "أُرسل الرمز إلى", otpExpires: "تنتهي صلاحية الرمز خلال", otpExpired: "انتهت صلاحية هذا الرمز.", otpInvalid: "الرمز غير صحيح أو انتهت صلاحيته. تحقّق منه أو أرسل رمزًا جديدًا.", resend: "إرسال مجددًا", resendIn: "إعادة الإرسال خلال", changePhone: "تغيير الرقم", newBuyerHint: "إذا كنت تنشئ حسابًا جديدًا، فأدخل اسمك أيضًا.", profileRequired: "لإنشاء حساب جديد، أدخل اسمك ثم حاول مجددًا.", newCode: "إرسال رمز جديد"
   }
@@ -86,7 +89,18 @@ export function CartCheckout({ locale, signedInBuyer }: { locale: Locale; signed
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [quoteUpdating, setQuoteUpdating] = useState(false);
   const [quoteIssue, setQuoteIssue] = useState<QuoteIssue | null>(null);
+  const [couponDraft, setCouponDraft] = useState("");
+  const [appliedCouponCode, setAppliedCouponCode] = useState("");
   const [selections, setSelections] = useState<Record<string, string>>({});
+  const [walletBalance, setWalletBalance] = useState("0");
+  const [walletAmount, setWalletAmount] = useState("");
+  const [clubBalance, setClubBalance] = useState(0);
+  const [clubEnabled, setClubEnabled] = useState(false);
+  const [clubLimits, setClubLimits] = useState<{ minPoints: number; maxPoints: number; tomanPerPoint: number } | null>(null);
+  const [clubRewards, setClubRewards] = useState<Array<{ id: string; name_fa: string; name_en: string; name_ar: string; kind: string; points_cost: number }>>([]);
+  const [clubDraft, setClubDraft] = useState("");
+  const [clubPoints, setClubPoints] = useState(0);
+  const [clubRewardId, setClubRewardId] = useState("");
   const [authenticated, setAuthenticated] = useState(signedInBuyer);
   const [challenge, setChallenge] = useState<OtpChallenge | null>(null);
   const [phone, setPhone] = useState("");
@@ -108,7 +122,7 @@ export function CartCheckout({ locale, signedInBuyer }: { locale: Locale; signed
     setQuoteUpdating(true);
     setQuoteIssue(null);
     try {
-      const response = await api.post<CheckoutQuote>("/checkouts/quote", { items: cart.map(({ offerId, quantity, serviceNote }) => ({ offerId, quantity, ...(serviceNote ? { serviceNote } : {}) })) });
+      const response = await api.post<CheckoutQuote>("/checkouts/quote", { items: cart.map(({ offerId, quantity, serviceNote }) => ({ offerId, quantity, ...(serviceNote ? { serviceNote } : {}) })), ...(appliedCouponCode ? { couponCode: appliedCouponCode } : {}), ...(clubPoints ? { clubPoints } : {}), ...(clubRewardId ? { clubRewardId } : {}) });
       if (request !== quoteRequest.current) return;
       setQuote(response.data);
       const productNames = new Map(response.data.groups.flatMap((group) => group.items.map((item) => [item.offerId, item.title])));
@@ -135,26 +149,37 @@ export function CartCheckout({ locale, signedInBuyer }: { locale: Locale; signed
       const payload = apiErrorData(requestError);
       const offerIds = Array.isArray(payload.offerIds) ? payload.offerIds.filter((value): value is string => typeof value === "string") : [];
       setQuoteIssue({
-        message: payload.code === "CART_ITEMS_UNAVAILABLE" ? c.unavailable : payload.code === "CART_STOCK_INSUFFICIENT" ? c.stockChanged : c.quoteFailed,
+        message: payload.code === "CART_ITEMS_UNAVAILABLE" ? c.unavailable : payload.code === "CART_STOCK_INSUFFICIENT" ? c.stockChanged : appliedCouponCode ? c.couponInvalid : c.quoteFailed,
         offerIds
       });
     } finally {
       if (request === quoteRequest.current) setQuoteUpdating(false);
     }
-  }, [c.quoteFailed, c.stockChanged, c.unavailable]);
+  }, [appliedCouponCode, clubPoints, clubRewardId, c.couponInvalid, c.quoteFailed, c.stockChanged, c.unavailable]);
 
   useEffect(() => {
-    const cart = readCart();
-    setItems(cart);
-    setHydrated(true);
-    void refresh(cart);
+    const frame = window.requestAnimationFrame(() => {
+      const cart = readCart();
+      setItems(cart);
+      setHydrated(true);
+      void refresh(cart);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [refresh]);
 
   useEffect(() => {
+    if (!authenticated) return;
+    void api.get<{ balance: string }>("/wallet").then((response) => setWalletBalance(response.data.balance)).catch(() => setWalletBalance("0"));
+    void Promise.all([api.get<{ enabled: boolean; balance: number; redemption: { minPoints: number; maxPoints: number; tomanPerPoint: number } | null }>("/club/me"), api.get<Array<{ id: string; name_fa: string; name_en: string; name_ar: string; kind: string; points_cost: number }>>("/club/rewards")]).then(([member, rewards]) => {
+      setClubEnabled(member.data.enabled); setClubBalance(member.data.balance); setClubLimits(member.data.redemption); setClubRewards(rewards.data.filter((reward) => reward.kind !== "wallet"));
+    }).catch(() => { setClubEnabled(false); setClubBalance(0); setClubLimits(null); });
+  }, [authenticated]);
+
+  useEffect(() => {
     if (!challenge) return;
-    setClock(Date.now());
+    const frame = window.requestAnimationFrame(() => setClock(Date.now()));
     const timer = window.setInterval(() => setClock(Date.now()), 1000);
-    return () => window.clearInterval(timer);
+    return () => { window.cancelAnimationFrame(frame); window.clearInterval(timer); };
   }, [challenge]);
 
   useEffect(() => () => {
@@ -283,6 +308,10 @@ export function CartCheckout({ locale, signedInBuyer }: { locale: Locale; signed
     const data = new FormData(form);
     const body = {
       trafficSource: getTrafficSource(),
+      expectedTotalAmount: quote.totalAmount,
+      ...(appliedCouponCode ? { couponCode: appliedCouponCode } : {}),
+      ...(clubPoints ? { clubPoints } : {}),
+      ...(clubRewardId ? { clubRewardId } : {}),
       items: items.map(({ offerId, quantity, serviceNote }) => ({
         offerId,
         quantity,
@@ -298,7 +327,9 @@ export function CartCheckout({ locale, signedInBuyer }: { locale: Locale; signed
     const group = checkout.data.paymentGroups.find((item) => item.status === "pending");
     if (!isUuidV4(checkout.data.id)) throw new Error("Checkout response is invalid");
     if (!group) { window.location.assign(`/${locale}/checkout/${checkout.data.id}`); return; }
-    const payment = await api.post<{ paymentUrl?: string }>(`/checkouts/${checkout.data.id}/payment-groups/${group.id}/initiate`, {}, { headers: { "Idempotency-Key": crypto.randomUUID() } });
+    const contribution = group.provider !== "wallet" && walletAmount ? walletAmount : "0";
+    if (!/^(?:0|[1-9]\d{0,15})$/.test(contribution) || BigInt(contribution) > BigInt(walletBalance) || (group.provider !== "wallet" && BigInt(contribution) >= BigInt(group.amount))) throw new Error("Invalid wallet contribution");
+    const payment = await api.post<{ paymentUrl?: string }>(`/checkouts/${checkout.data.id}/payment-groups/${group.id}/initiate`, { walletAmount: contribution }, { headers: { "Idempotency-Key": crypto.randomUUID() } });
     const destination = payment.data.paymentUrl
       ? safePaymentHref(payment.data.paymentUrl, locale)
       : `/${locale}/checkout/${checkout.data.id}`;
@@ -328,11 +359,21 @@ export function CartCheckout({ locale, signedInBuyer }: { locale: Locale; signed
     } catch (submitError) {
       const status = axios.isAxiosError(submitError) ? submitError.response?.status : undefined;
       const message = axios.isAxiosError(submitError) ? submitError.response?.data?.message : undefined;
+      const totalChanged = status === 409 && typeof message === "string" && message.includes("Checkout total changed");
+      if (totalChanged) void refresh(items);
       setError(verifyingOtp && status === 400 && message === "Name is required for a new buyer"
-        ? c.profileRequired : verifyingOtp && status === 401 ? c.otpInvalid : c.failed);
+        ? c.profileRequired : verifyingOtp && status === 401 ? c.otpInvalid
+          : appliedCouponCode && (status === 400 || status === 409) && typeof message === "string" && /coupon/i.test(message) ? c.couponInvalid
+          : apiErrorData(submitError).code === "SHIPPING_DESTINATION_UNAVAILABLE" ? c.destinationUnavailable
+          : totalChanged ? c.quoteChanged : c.failed);
       setBusy(false);
     }
   }
+
+  const selectedRewardCost = clubRewards.find((reward) => reward.id === clubRewardId)?.points_cost ?? 0;
+  const clubDraftAmount = Number(clubDraft || "0");
+  const clubDraftValid = /^\d*$/.test(clubDraft) && Number.isSafeInteger(clubDraftAmount) && clubDraftAmount <= clubBalance - selectedRewardCost
+    && (clubDraftAmount === 0 || Boolean(clubLimits && clubDraftAmount >= clubLimits.minPoints && clubDraftAmount <= clubLimits.maxPoints));
 
   if (!hydrated) return <main className={styles.page} id="cart-content"><div className={styles.loading} role="status"><span /><p>{c.loading}</p></div></main>;
 
@@ -373,11 +414,16 @@ export function CartCheckout({ locale, signedInBuyer }: { locale: Locale; signed
       </section>
       <aside className={styles.summary}>
         <div className={styles.summaryTitle}><div><p>{c.summary}</p><span>{number.format(itemCount)} {itemCount === 1 ? c.item : c.items}</span></div>{quote ? <><strong>{formatCurrencyAmount(quote.totalAmount, quote.currency, locale)} <small>{currencyLabel(quote.currency)}</small></strong>{quoteUpdating ? <span className={styles.updating} role="status">{c.updating}</span> : null}</> : <span className={styles.pricePlaceholder}>{c.loading}</span>}</div>
+        <div className={styles.couponControl}><label><span>{c.coupon}</span><input value={couponDraft} maxLength={32} pattern="[A-Za-z0-9][A-Za-z0-9_-]{2,31}" onChange={(event) => setCouponDraft(event.target.value.toUpperCase())} /></label><button type="button" disabled={!couponDraft.trim() || quoteUpdating} onClick={() => { checkoutKey.current = crypto.randomUUID(); setQuoteUpdating(true); const code = couponDraft.trim(); if (code === appliedCouponCode) void refresh(items); else setAppliedCouponCode(code); }}>{c.applyCoupon}</button>{appliedCouponCode ? <button type="button" onClick={() => { checkoutKey.current = crypto.randomUUID(); setQuoteUpdating(true); setAppliedCouponCode(""); setCouponDraft(""); }}>{c.removeCoupon}</button> : null}</div>
+        {authenticated && clubEnabled ? <div className={styles.couponControl}><label><span>{locale === "fa" ? "امتیاز باشگاه" : locale === "ar" ? "نقاط النادي" : "Club points"} · {number.format(clubBalance)}</span><input type="number" min="0" max={Math.min(clubBalance - selectedRewardCost, clubLimits?.maxPoints ?? clubBalance)} step="1" inputMode="numeric" value={clubDraft} onChange={(event) => setClubDraft(event.target.value)} />{clubLimits ? <small>{locale === "fa" ? "حداقل / حداکثر" : locale === "ar" ? "الحد الأدنى / الأعلى" : "Minimum / maximum"}: {number.format(clubLimits.minPoints)} / {number.format(clubLimits.maxPoints)}</small> : null}</label><button type="button" disabled={quoteUpdating || !clubDraftValid} onClick={() => { checkoutKey.current = crypto.randomUUID(); setClubPoints(clubDraftAmount); }}>{locale === "fa" ? "اعمال" : locale === "ar" ? "تطبيق" : "Apply"}</button><label><span>{locale === "fa" ? "جایزه تخفیف" : locale === "ar" ? "مكافأة الخصم" : "Discount reward"}</span><select value={clubRewardId} onChange={(event) => { checkoutKey.current = crypto.randomUUID(); setClubRewardId(event.target.value); }}><option value="">{locale === "fa" ? "بدون جایزه" : locale === "ar" ? "دون مكافأة" : "No reward"}</option>{clubRewards.map((reward) => <option key={reward.id} value={reward.id} disabled={reward.points_cost + clubPoints > clubBalance}>{locale === "fa" ? reward.name_fa : locale === "ar" ? reward.name_ar : reward.name_en} · {number.format(reward.points_cost)}</option>)}</select></label></div> : null}
+        {quote && quote.couponCode && quote.discountAmount !== "0" ? <p className={styles.discountLine}><span>{c.discount} ({quote.couponCode})</span><strong>−{formatCurrencyAmount((BigInt(quote.discountAmount) - BigInt(quote.clubDiscountAmount)).toString(), quote.currency, locale)} {currencyLabel(quote.currency)}</strong></p> : null}
+        {quote && quote.clubDiscountAmount !== "0" ? <p className={styles.discountLine}><span>{locale === "fa" ? "تخفیف باشگاه" : locale === "ar" ? "خصم النادي" : "Club discount"}</span><strong>−{formatCurrencyAmount(quote.clubDiscountAmount, quote.currency, locale)} {currencyLabel(quote.currency)}</strong></p> : null}
         {quote?.usdToTomanRate ? <p className={styles.rateNote}>{c.usdRate} <bdi>{formatCurrencyAmount(quote.usdToTomanRate, "TOMAN", locale)} {currencyLabel("TOMAN")}</bdi>. {locale === "fa" ? "مبلغ نهایی هنگام ثبت سفارش دوباره محاسبه می‌شود." : locale === "ar" ? "يُعاد حساب المبلغ النهائي عند إنشاء الطلب." : "The final amount is recalculated when you place the order."}</p> : null}
-        {quote?.groups.map((group) => <div className={styles.paymentGroup} key={group.key}><div><span>{group.seller.shopName}</span><strong>{formatCurrencyAmount(group.totalAmount, quote.currency, locale)} {currencyLabel(quote.currency)}</strong></div><label><span>{c.payment}</span><select value={selections[group.key] ?? ""} onChange={(event) => setSelections((current) => ({ ...current, [group.key]: event.target.value }))}>{group.paymentMethods.map((method) => <option key={method.code} value={method.code}>{method.name}</option>)}</select></label></div>)}
+        {quote?.groups.map((group) => <div className={styles.paymentGroup} key={group.key}><div><span>{group.seller.shopName}{group.productType === "physical" ? <small> · {group.shippingFee !== "0" ? `${c.postalFee}: ${formatCurrencyAmount(group.shippingFee, quote.currency, locale)}` : c.freePostal}</small> : null}</span><strong>{formatCurrencyAmount(group.totalAmount, quote.currency, locale)} {currencyLabel(quote.currency)}</strong></div><label><span>{c.payment}</span><select value={selections[group.key] ?? ""} onChange={(event) => setSelections((current) => ({ ...current, [group.key]: event.target.value }))}>{group.paymentMethods.map((method) => <option key={method.code} value={method.code}>{method.name}</option>)}</select></label></div>)}
+        {authenticated && BigInt(walletBalance) > 0n && quote?.groups.every((group) => selections[group.key] !== "wallet") ? <label className={styles.walletContribution}><span>{locale === "fa" ? "پرداخت بخشی از خرید با کیف پول" : locale === "ar" ? "دفع جزء من الشراء بالمحفظة" : "Pay part with wallet"} · {formatCurrencyAmount(walletBalance, "TOMAN", locale)} {currencyLabel("TOMAN")}</span><input type="text" inputMode="numeric" pattern="[0-9]+" value={walletAmount} onChange={(event) => setWalletAmount(event.target.value)} /></label> : null}
         {quote?.requiresShippingAddress ? <fieldset><legend>{c.address}</legend><label><span>{c.recipient}</span><input name="recipientName" autoComplete="name" minLength={2} maxLength={120} required /></label><label><span>{c.phone}</span><input name="shippingPhone" type="tel" inputMode="tel" autoComplete="tel" pattern="(?:\+98|0098|98|0)?9[0-9]{9}" required /></label><div><CheckoutPlaceSelects locale={locale} offerIds={physicalOfferIds} /></div><label><span>{c.postal}</span><input name="postalCode" autoComplete="postal-code" pattern="[0-9]{10}" inputMode="numeric" required /></label><label><span>{c.street}</span><textarea name="addressLine" autoComplete="street-address" minLength={10} maxLength={1000} required /></label></fieldset> : null}
         {!authenticated ? <fieldset><legend>{c.signin}</legend><p className={styles.fieldHint}>{c.signinHint}</p><label><span>{c.phone}</span><input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} inputMode="tel" autoComplete="tel" pattern="(?:\+98|0098|98|0)?9[0-9]{9}" disabled={Boolean(challenge)} required /></label>{challenge ? <><div className={styles.otpMeta}><p>{c.otpSent} <b dir="ltr">{challenge.requestedPhone}</b></p><button type="button" onClick={changePhone}>{c.changePhone}</button></div><p className={otpRemaining === 0 ? styles.otpExpired : styles.otpTimer} role={otpRemaining === 0 ? "status" : undefined}>{otpRemaining === 0 ? c.otpExpired : `${c.otpExpires} ${formatCountdown(otpRemaining, locale)}`}</p>{otpRemaining > 0 ? <label><span>{c.code}</span><input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" autoFocus required /></label> : null}<p className={styles.fieldHint}>{c.newBuyerHint}</p><label><span>{c.fullName}</span><input name="fullName" autoComplete="name" minLength={2} maxLength={120} /></label><button className={styles.resend} type="button" disabled={busy || resendRemaining > 0} onClick={() => void resendOtp()}>{resendRemaining > 0 ? `${c.resendIn} ${formatCountdown(resendRemaining, locale)}` : c.resend}</button></> : null}</fieldset> : null}
-        {quoteIssue ? <div className={styles.quoteError} role="alert"><p>{quoteIssue.message}</p><div><button type="button" onClick={() => void refresh(items)} disabled={quoteUpdating}>{c.retry}</button>{quoteIssue.offerIds.length ? <button type="button" onClick={() => removeOffers(quoteIssue.offerIds)}>{c.removeUnavailable}</button> : null}</div></div> : null}
+        {quoteIssue ? <div className={styles.quoteError} role="alert"><p>{quoteIssue.message}</p><div><button type="button" onClick={() => void refresh(items)} disabled={quoteUpdating}>{c.retry}</button>{quoteIssue.offerIds.length ? <button type="button" onClick={() => removeOffers(quoteIssue.offerIds)}>{c.removeUnavailable}</button> : null}{appliedCouponCode ? <button type="button" onClick={() => { checkoutKey.current = crypto.randomUUID(); setAppliedCouponCode(""); setCouponDraft(""); }}>{c.removeCoupon}</button> : null}</div></div> : null}
         {error ? <p className={styles.error} role="alert">{error}</p> : null}
         <button className={styles.primary} type="submit" disabled={busy || quoteUpdating || Boolean(quoteIssue) || !quote}>{busy ? c.busy : !authenticated && (!challenge || otpRemaining === 0) ? (challenge ? c.newCode : c.sendCode) : !authenticated ? c.verify : c.pay}<DesignIcon name="arrow" /></button>
         <div className={styles.secureNote}><DesignIcon name="check" /><p>{c.secure}<small>{c.external}</small></p></div>

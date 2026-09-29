@@ -1,8 +1,11 @@
 "use client";
+
 import { useParams } from "next/navigation";
+import { isLocale } from "@/lib/i18n";
+import { PublicStatePage, errorRetryLabel, publicStateActionClass } from "@/components/PublicStatePage";
 
 export default function PublicError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  const { locale } = useParams<{ locale: string }>();
-  const copy = locale === "fa" ? { title: "صفحه بارگذاری نشد", text: "ارتباط موقتاً برقرار نیست. دوباره تلاش کنید.", retry: "تلاش دوباره" } : locale === "ar" ? { title: "تعذر تحميل الصفحة", text: "الاتصال غير متاح مؤقتاً. حاول مرة أخرى.", retry: "حاول مرة أخرى" } : { title: "The page could not be loaded", text: "The service is temporarily unavailable. Please try again.", retry: "Try again" };
-  return <main style={{ maxWidth: 640, margin: "80px auto", padding: 24 }}><h1>{copy.title}</h1><p>{copy.text}</p><button style={{ minHeight: 44, padding: "10px 20px" }} onClick={reset}>{copy.retry}</button></main>;
+  const { locale: value } = useParams<{ locale: string }>();
+  const locale = isLocale(value) ? value : "fa";
+  return <PublicStatePage locale={locale} kind="error" action={<button className={publicStateActionClass} type="button" onClick={reset}>{errorRetryLabel(locale)}</button>} />;
 }

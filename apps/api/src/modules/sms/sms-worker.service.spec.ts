@@ -7,7 +7,7 @@ import type { SmsIrAdapter } from "./sms-ir.adapter";
 import type { SmsSettingsService } from "./sms-settings.service";
 import { SmsWorkerService } from "./sms-worker.service";
 
-it("prints SMS details and skips the provider in test mode", async () => {
+it("logs template metadata without OTP values and skips the provider in test mode", async () => {
   const calls: string[] = [];
   const prisma = {
     $queryRaw: async () => [{
@@ -31,7 +31,7 @@ it("prints SMS details and skips the provider in test mode", async () => {
   await worker["tick"]();
 
   assert.deepEqual(calls, [
-    'SMS test mode: {"recipient":"+989123456789","template":"otp","parameters":{"code":"123456"}}',
+    'SMS test mode: {"template":"otp","parameterNames":["code"]}',
     "marked-sent"
   ]);
 });

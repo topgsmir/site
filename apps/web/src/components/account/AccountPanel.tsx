@@ -14,6 +14,8 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { CustomerLeaderboard } from "./CustomerLeaderboard";
 import { AccountSettings } from "./AccountSettings";
 import { AccountOrders } from "./AccountOrders";
+import { WalletPanel } from "./WalletPanel";
+import { ClubPanel } from "./ClubPanel";
 import { AccountIcon } from "./AccountIcon";
 import { ACCOUNT_COPY } from "./AccountCopy";
 import { WORKSPACE_COPY } from "./AccountWorkspaceCopy";
@@ -28,7 +30,7 @@ export function AccountPanel({
 }: {
   locale: Locale;
   user: AppUser;
-  view: "overview" | "orders" | "settings";
+  view: "overview" | "orders" | "settings" | "wallet" | "club";
 }) {
   const c = ACCOUNT_COPY[locale];
   const w = WORKSPACE_COPY[locale];
@@ -118,7 +120,7 @@ export function AccountPanel({
       </header>
       <div className={styles.navbar}>
         <nav className={styles.navigation} aria-label={c.account}>
-          {(["overview", "orders", "settings"] as const).map((item) => (
+          {(["overview", "orders", "wallet", "club", "settings"] as const).map((item) => (
             <Link
               key={item}
               href={
@@ -126,13 +128,17 @@ export function AccountPanel({
               }
               aria-current={view === item ? "page" : undefined}
             >
-              <AccountIcon name={item === "settings" ? "account" : item} />
+              <AccountIcon name={item === "settings" ? "account" : item === "club" ? "wallet" : item} />
               <span>
                 {item === "overview"
                   ? c.overview
                   : item === "orders"
                     ? c.orders
-                    : w.settings}
+                    : item === "wallet"
+                    ? (locale === "fa" ? "کیف پول" : locale === "ar" ? "المحفظة" : "Wallet")
+                    : item === "club"
+                      ? (locale === "fa" ? "باشگاه مشتریان" : locale === "ar" ? "نادي العملاء" : "Customer club")
+                      : w.settings}
               </span>
             </Link>
           ))}
@@ -186,15 +192,15 @@ export function AccountPanel({
         ) : (
           <header className={styles.heading} data-account-enter>
             <p className={styles.greeting}>{c.account}</p>
-            <h1>{view === "orders" ? c.history : w.settings}</h1>
-            <p>{view === "orders" ? w.ordersIntro : w.settingsIntro}</p>
+            <h1>{view === "orders" ? c.history : view === "wallet" ? (locale === "fa" ? "کیف پول" : locale === "ar" ? "المحفظة" : "Wallet") : view === "club" ? (locale === "fa" ? "باشگاه مشتریان" : locale === "ar" ? "نادي العملاء" : "Customer club") : w.settings}</h1>
+            <p>{view === "orders" ? w.ordersIntro : view === "wallet" ? (locale === "fa" ? "موجودی و تراکنش‌های خود را مدیریت کنید." : locale === "ar" ? "أدر رصيدك ومعاملاتك." : "Manage your balance and transactions.") : view === "club" ? (locale === "fa" ? "امتیازها، سطح و جوایز خود را ببینید." : locale === "ar" ? "راجع نقاطك ومستواك ومكافآتك." : "Review your points, tier and rewards.") : w.settingsIntro}</p>
           </header>
         )}
         <div
-          className={view === "orders" ? styles.fullContent : styles.content}
+          className={view === "orders" || view === "wallet" || view === "club" ? styles.fullContent : styles.content}
         >
           <div className={styles.primaryColumn} data-account-enter>
-            {view === "settings" ? (
+            {view === "wallet" ? <WalletPanel locale={locale} /> : view === "club" ? <ClubPanel locale={locale} /> : view === "settings" ? (
               <AccountSettings
                 locale={locale}
                 user={profile}
@@ -219,7 +225,7 @@ export function AccountPanel({
               </Link>
             ) : null}
           </div>
-          {view !== "orders" ? (
+          {view !== "orders" && view !== "wallet" && view !== "club" ? (
             <aside
               className={styles.secondaryColumn}
               aria-label={w.profile}

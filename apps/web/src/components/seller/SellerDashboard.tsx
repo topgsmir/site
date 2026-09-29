@@ -1,8 +1,10 @@
 "use client";
 import { ProductAiPanel } from "@/components/ai/ProductAiPanel";
 import { ProductDescriptionEditor } from "@/components/product/ProductDescriptionEditor";
+import { LiveSeoPanel } from "@/components/seo/LiveSeoPanel";
 import { mergeProductAiDescription, productDescriptionText } from "@/lib/product-description";
-import { splitDownloadUrls, validDownloadUrls } from "../../lib/download-urls";
+import { validDownloadLinks, type DownloadLink } from "@/lib/download-links";
+import { DownloadLinkRows } from "@/components/product/DownloadLinkRows";
 
 import axios from "axios";
 import type { Route } from "next";
@@ -87,10 +89,13 @@ type OfferDraft = {
   optionValue: string;
   price: string;
   sellerSku: string;
-  fileReference: string;
+  downloadLinks: DownloadLink[];
   maxDownloads: string;
   stock: string;
   weightGrams: string;
+  lengthCm: string;
+  widthCm: string;
+  heightCm: string;
   serviceType: string;
   estimatedHours: string;
   instructions: string;
@@ -577,10 +582,11 @@ function makeOffer(id: string): OfferDraft {
     optionValue: "",
     price: "",
     sellerSku: "",
-    fileReference: "",
+    downloadLinks: [{ url: "", title: "" }],
     maxDownloads: "1",
     stock: "0",
     weightGrams: "0",
+    lengthCm: "", widthCm: "", heightCm: "",
     serviceType: "",
     estimatedHours: "1",
     instructions: "",
@@ -650,7 +656,7 @@ function validateDraft(draft: ProductDraft) {
     if (draft.currency === "TOMAN" && !/^\d+$/.test(offer.price.trim())) return false;
     if (draft.kind === "variable" && !offer.optionValue.trim()) return false;
     if (draft.type === "digital") {
-      return validDownloadUrls(offer.fileReference) && Number.isInteger(Number(offer.maxDownloads)) && Number(offer.maxDownloads) >= 0;
+      return validDownloadLinks(offer.downloadLinks) && Number.isInteger(Number(offer.maxDownloads)) && Number(offer.maxDownloads) >= 0;
     }
     if (draft.type === "physical") {
       return Number.isInteger(Number(offer.stock)) && Number(offer.stock) >= 0 && Number.isInteger(Number(offer.weightGrams)) && Number(offer.weightGrams) >= 0;
@@ -681,7 +687,8 @@ function buildOffer(draft: ProductDraft, offer: OfferDraft) {
     return {
       ...shared,
       digital: {
-        fileReferences: splitDownloadUrls(offer.fileReference),
+        fileReferences: offer.downloadLinks.map((link) => link.url.trim()),
+        fileTitles: offer.downloadLinks.map((link) => link.title.trim()),
         maxDownloads: Number(offer.maxDownloads)
       }
     };
@@ -691,7 +698,10 @@ function buildOffer(draft: ProductDraft, offer: OfferDraft) {
       ...shared,
       physical: {
         stock: Number(offer.stock),
-        weightGrams: Number(offer.weightGrams)
+        weightGrams: Number(offer.weightGrams),
+        ...(offer.lengthCm ? { lengthCm: Number(offer.lengthCm) } : {}),
+        ...(offer.widthCm ? { widthCm: Number(offer.widthCm) } : {}),
+        ...(offer.heightCm ? { heightCm: Number(offer.heightCm) } : {})
       }
     };
   }
@@ -716,23 +726,29 @@ function buildOffer(draft: ProductDraft, offer: OfferDraft) {
 }
 
 function OfferFields({
+  locale,
   copy,
   draft,
   offer,
   index,
   canRemove,
+  linksLocked,
   update,
+  updateDownloadLinks,
   remove,
   addServiceInput,
   updateServiceInput,
   removeServiceInput
 }: {
+  locale: Locale;
   copy: DashboardCopy;
   draft: ProductDraft;
   offer: OfferDraft;
   index: number;
   canRemove: boolean;
-  update: (id: string, key: Exclude<keyof OfferDraft, "serviceInputs">, value: string) => void;
+  linksLocked: boolean;
+  update: (id: string, key: Exclude<keyof OfferDraft, "serviceInputs" | "downloadLinks">, value: string) => void;
+  updateDownloadLinks: (id: string, links: DownloadLink[]) => void;
   remove: (id: string) => void;
   addServiceInput: (offerId: string) => void;
   updateServiceInput: <K extends keyof ServiceInputDraft>(offerId: string, inputId: string, key: K, value: ServiceInputDraft[K]) => void;
@@ -778,6 +794,7 @@ function OfferFields({
               <span>{copy.weightGrams}</span>
               <input required type="number" min="0" step="1" value={offer.weightGrams} onChange={(event) => update(offer.id, "weightGrams", event.target.value)} />
             </label>
+            {(["lengthCm", "widthCm", "heightCm"] as const).map((field) => <label className={styles.field} key={field}><span>{({ en: { lengthCm: "Length", widthCm: "Width", heightCm: "Height" }, fa: { lengthCm: "طول", widthCm: "عرض", heightCm: "ارتفاع" }, ar: { lengthCm: "الطول", widthCm: "العرض", heightCm: "الارتفاع" } })[locale][field]} (cm)</span><input type="number" min="1" max="1000" step="1" value={offer[field]} onChange={(event) => update(offer.id, field, event.target.value)} /></label>)}
           </>
         ) : null}
         {draft.type === "service" ? (
@@ -793,13 +810,7 @@ function OfferFields({
           </>
         ) : null}
       </div>
-      {draft.type === "digital" ? (
-        <label className={styles.field}>
-          <span>{copy.fileReference}</span>
-          <textarea required dir="ltr" rows={4} maxLength={102449} value={offer.fileReference} onChange={(event) => update(offer.id, "fileReference", event.target.value)} aria-describedby={`${offer.id}-file-hint`} />
-          <small id={`${offer.id}-file-hint`}>{copy.fileReferenceHint}</small>
-        </label>
-      ) : null}
+      {draft.type === "digital" ? <DownloadLinkRows locale={locale} links={offer.downloadLinks} disabled={linksLocked} onChange={(links) => updateDownloadLinks(offer.id, links)} /> : null}
       {draft.type === "service" ? (
         <>
           <label className={styles.field}>
@@ -1324,6 +1335,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
               <ProductSlugEditor locale={locale} mode="seller" currentProductId={editingProduct.product.id} slug={editDraft.slug} onChange={(slug) => setEditDraft((current) => ({ ...current, slug }))} />
               <label className={styles.field}><span>{copy.category}</span><input maxLength={100} value={editDraft.category} onChange={(event) => setEditDraft((current) => ({ ...current, category: event.target.value }))} /></label>
               <div className={styles.field}><span>{copy.description}</span><ProductDescriptionEditor key={editingProduct.product.id} locale={locale} label={copy.description} value={editDraft.description} disabled={editState === "loading"} onChange={(description) => setEditDraft((current) => ({ ...current, description }))} /></div>
+              <LiveSeoPanel key={editingProduct.product.id} locale={locale} input={{ kind: "product", title: editDraft.title, body: editDraft.description, hasCover: Boolean(editingProduct.product.image) }} />
               <label className={styles.field}><span>{copy.publishState}</span><select value={editDraft.status} onChange={(event) => setEditDraft((current) => ({ ...current, status: event.target.value as ProductStatus }))}><option value="draft">{copy.draft}</option><option value="active">{copy.active}</option><option value="pending_review">{copy.pending_review}</option><option value="archived">{copy.archived}</option></select></label>
               {editError ? <p className={styles.inlineError} role="alert">{editError}</p> : null}
               <footer><button className={styles.secondaryButton} type="button" onClick={() => setEditingProduct(null)}>{copy.cancel}</button><button className={styles.primaryButton} type="submit" disabled={editState === "loading"}>{editState === "loading" ? copy.savingChanges : copy.saveChanges}</button></footer>
@@ -1387,11 +1399,17 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
     setFormError("");
   }
 
-  function updateOffer(id: string, key: Exclude<keyof OfferDraft, "serviceInputs">, value: string) {
+  function updateOffer(id: string, key: Exclude<keyof OfferDraft, "serviceInputs" | "downloadLinks">, value: string) {
     setDraft((current) => ({
       ...current,
       offers: current.offers.map((offer) => offer.id === id ? { ...offer, [key]: value } : offer)
     }));
+    if (formError) setFormError("");
+  }
+
+  function updateDownloadLinks(id: string, links: DownloadLink[]) {
+    if (createdProductId) return;
+    setDraft((current) => ({ ...current, offers: current.offers.map((offer) => offer.id === id ? { ...offer, downloadLinks: links } : offer) }));
     if (formError) setFormError("");
   }
 
@@ -1547,13 +1565,14 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
                 {draft.kind === "variable" ? <label className={styles.field}><span>{copy.optionName}</span><input required maxLength={50} value={draft.optionName} onChange={(event) => updateDraft("optionName", event.target.value)} aria-describedby="option-name-hint" /><small id="option-name-hint">{copy.optionNameHint}</small></label> : null}
               </div>
               <p className={creation.pricingHint}>{locale === "fa" ? "همه قیمت‌های این محصول با همین ارز ثبت می‌شوند. قیمت دلاری هنگام پرداخت با نرخ فعلی سامانه به تومان تبدیل می‌شود." : locale === "ar" ? "تُسجّل جميع أسعار هذا المنتج بهذه العملة. يُحوّل السعر بالدولار إلى التومان عند الدفع بسعر النظام الحالي." : "All offers for this product use this currency. USD prices convert to toman at the platform's current rate during checkout."}</p>
-              <div className={creation.offers}>{draft.offers.map((offer, index) => <OfferFields key={offer.id} copy={copy} draft={draft} offer={offer} index={index} canRemove={draft.kind === "variable" && draft.offers.length > 1} update={updateOffer} remove={removeVariant} addServiceInput={addServiceInput} updateServiceInput={updateServiceInput} removeServiceInput={removeServiceInput} />)}</div>
+              <div className={creation.offers}>{draft.offers.map((offer, index) => <OfferFields key={offer.id} locale={locale} copy={copy} draft={draft} offer={offer} index={index} canRemove={draft.kind === "variable" && draft.offers.length > 1} linksLocked={Boolean(createdProductId)} update={updateOffer} updateDownloadLinks={updateDownloadLinks} remove={removeVariant} addServiceInput={addServiceInput} updateServiceInput={updateServiceInput} removeServiceInput={removeServiceInput} />)}</div>
               {draft.kind === "variable" && draft.offers.length < 100 ? <button className={styles.addVariantButton} type="button" onClick={addVariant}><Icon name="plus" />{copy.addVariant}</button> : null}
             </section>
           </div>
           <aside className={creation.sidebar}>
             <section className={creation.preview} aria-labelledby="product-preview"><span className={creation.eyebrow} id="product-preview">{formCopy.preview}</span><div className={creation.previewIcon}><DesignIcon name={productIcons[draft.type as keyof typeof productIcons] ?? "layers"} /></div><span className={creation.previewCategory}>{draft.category.trim() || formCopy.noCategory}</span><h2>{draft.title.trim() || formCopy.untitled}</h2><p>{copy[draft.type]}<span>·</span>{copy[draft.kind]}</p><div className={creation.previewPrice}>{startingPrice ? <><small>{draft.kind === "variable" ? formCopy.from : copy.price}</small><strong>{startingPrice}<span>{currencyLabel(draft.currency)}</span></strong></> : <span>{formCopy.pricePending}</span>}</div></section>
             <section className={creation.publish}><h2>{formCopy.summary}</h2><p>{formCopy.summaryHint}</p><label className={styles.field}><span>{copy.publishState}</span><select value={draft.status} disabled={Boolean(createdProductId)} onChange={(event) => updateDraft("status", event.target.value as ProductStatus)}><option value="draft">{copy.draft}</option><option value="active">{copy.active}</option></select></label><p className={creation.statusHint}>{draft.status === "draft" ? formCopy.draftHint : formCopy.activeHint}</p><div className={creation.readiness} data-ready={validateDraft(draft)}><DesignIcon name="check" /><span>{validateDraft(draft) ? formCopy.ready : formCopy.incomplete}</span></div><div aria-live="polite">{formError ? <p className={creation.error} role="alert">{formError}</p> : null}</div><button className={styles.primaryButton} type="submit" disabled={submitState === "loading"} data-state={submitState}>{submitState === "loading" ? copy.creatingProduct : createdProductId ? formCopy.retryImage : copy.createProduct}<DesignIcon name="arrow" /></button><Link className={creation.cancel} href={`/${locale}/seller-dashboard?section=products`}>{copy.cancel}</Link></section>
+            <LiveSeoPanel locale={locale} input={{ kind: "product", title: draft.title, body: draft.description, hasCover: Boolean(imageFile) }} />
           </aside>
         </form>
       </main>

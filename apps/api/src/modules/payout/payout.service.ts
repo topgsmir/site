@@ -20,6 +20,7 @@ const payoutSelect = {
   gross_amount: true,
   commission_amount: true,
   holdback_amount: true,
+  shipping_cost_amount: true,
   payable_amount: true,
   currency: true,
   status: true,
@@ -96,7 +97,10 @@ export class PayoutService {
           where: {
             order_id: orderId,
             seller_id: sellerId,
-            order: { status: "delivered" }
+            order: { status: "delivered", OR: [
+              { payment_attempts: { some: { status: "succeeded", verified_at: { not: null } } } },
+              { payment_groups: { some: { payment_group: { status: "paid" } } } }
+            ] }
           },
           select: payoutSelect
         });
@@ -342,6 +346,7 @@ export class PayoutService {
       grossAmount: row.gross_amount.toString(),
       commissionAmount: row.commission_amount.toString(),
       holdbackAmount: row.holdback_amount.toString(),
+      shippingCostAmount: row.shipping_cost_amount.toString(),
       payableAmount: row.payable_amount.toString(),
       currency: row.currency.trim(),
       status: row.status,

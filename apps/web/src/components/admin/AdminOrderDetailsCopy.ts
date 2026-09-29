@@ -31,6 +31,7 @@ const fields: Record<string, { fa: string; ar: string }> = {
   grossAmount: { fa: "مبلغ ناخالص", ar: "المبلغ الإجمالي" },
   commissionAmount: { fa: "مبلغ کارمزد", ar: "مبلغ العمولة" },
   holdbackAmount: { fa: "مبلغ ذخیره", ar: "المبلغ المحتجز" },
+  shippingCostAmount: { fa: "هزینه ارسال از سهم فروشنده", ar: "تكلفة الشحن من حصة البائع" },
   payableAmount: { fa: "مبلغ قابل پرداخت", ar: "المبلغ المستحق" },
   commissionRate: { fa: "نرخ کارمزد", ar: "نسبة العمولة" },
   holdbackRate: { fa: "نرخ ذخیره", ar: "نسبة الاحتجاز" },
@@ -48,6 +49,7 @@ const fields: Record<string, { fa: string; ar: string }> = {
   destinationHost: { fa: "میزبان فایل", ar: "مضيف الملف" },
   maxDownloads: { fa: "حداکثر دریافت", ar: "الحد الأقصى للتنزيل" },
   downloadCount: { fa: "تعداد دریافت", ar: "عدد مرات التنزيل" },
+  remainingDownloads: { fa: "دفعات باقی‌مانده دریافت", ar: "التنزيلات المتبقية" },
   lastAccessedAt: { fa: "آخرین دریافت", ar: "آخر تنزيل" },
   recipientName: { fa: "نام گیرنده", ar: "اسم المستلم" },
   province: { fa: "استان", ar: "المحافظة" },
@@ -95,6 +97,9 @@ const fields: Record<string, { fa: string; ar: string }> = {
   events: { fa: "رویدادها", ar: "الأحداث" },
   actor: { fa: "انجام‌دهنده", ar: "المنفذ" },
   provider: { fa: "درگاه یا سرویس", ar: "مزود الخدمة" },
+  payment: { fa: "پرداخت", ar: "الدفع" },
+  reference: { fa: "کد پیگیری بانک", ar: "رمز تتبع البنك" },
+  bankReference: { fa: "کد پیگیری بانک", ar: "رمز تتبع البنك" },
   refund: { fa: "بازپرداخت", ar: "الاسترداد" },
   initiationStartedAt: { fa: "آغاز پرداخت", ar: "بدء الدفع" },
   verifiedAt: { fa: "زمان تأیید پرداخت", ar: "وقت تأكيد الدفع" },
@@ -113,6 +118,9 @@ const fields: Record<string, { fa: string; ar: string }> = {
 };
 
 const values: Record<string, { fa: string; ar: string }> = {
+  status_changed: { fa: "تغییر وضعیت", ar: "تغيير الحالة" },
+  trashed: { fa: "انتقال به زباله‌دان", ar: "نقل إلى المهملات" },
+  restored: { fa: "بازگردانی از زباله‌دان", ar: "استعادة من المهملات" },
   pending: { fa: "در انتظار", ar: "معلق" },
   paid: { fa: "پرداخت‌شده", ar: "مدفوع" },
   processing: { fa: "در حال پردازش", ar: "قيد المعالجة" },
@@ -177,7 +185,18 @@ const values: Record<string, { fa: string; ar: string }> = {
 };
 
 const translatedValueKeys = new Set(["status", "fromStatus", "toStatus", "productType", "mode", "role", "trafficSource", "outcome", "action", "type"]);
-const ltrKeys = new Set(["id", "buyerId", "sellerId", "checkoutId", "itemId", "offerId", "groupId", "grantId", "providerOrderId", "providerOrderReference", "externalOrderId", "externalServiceId", "providerReference", "email", "username", "phoneNumber", "postalCode", "trackingCode", "providerTrackingCode", "amadastTrackingCode", "courierTrackingCode", "downloadUrl", "destinationHost", "currency", "errorCode", "failureCode"]);
+const ltrKeys = new Set(["id", "buyerId", "sellerId", "checkoutId", "itemId", "offerId", "groupId", "grantId", "providerOrderId", "providerOrderReference", "externalOrderId", "externalServiceId", "providerReference", "bankReference", "reference", "email", "username", "phoneNumber", "postalCode", "trackingCode", "providerTrackingCode", "amadastTrackingCode", "courierTrackingCode", "downloadUrl", "destinationHost", "currency", "errorCode", "failureCode"]);
+
+const paymentProviders: Record<string, Record<Locale, string>> = {
+  zarinpal: { en: "Zarinpal", fa: "زرین‌پال", ar: "زرين پال" },
+  zibal: { en: "Zibal", fa: "زیبال", ar: "زیبال" },
+  "local-country-gateway": { en: "local gateway", fa: "درگاه محلی", ar: "البوابة المحلية" },
+  manual: { en: "manual payment", fa: "پرداخت دستی", ar: "الدفع اليدوي" }
+};
+
+export function paymentProviderLabel(provider: string, locale: Locale) {
+  return paymentProviders[provider]?.[locale] ?? provider;
+}
 
 export function orderFieldLabel(key: string, locale: Locale) {
   if (locale !== "en" && fields[key]) return fields[key][locale];

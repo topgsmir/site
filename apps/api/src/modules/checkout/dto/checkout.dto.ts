@@ -50,6 +50,15 @@ export class ServiceAnswerDto {
   value!: string;
 }
 
+export class ShippingAddressDto {
+  @IsString() @MinLength(2) @MaxLength(120) recipientName!: string;
+  @IsString() @Matches(/^(?:\+98|0098|98|0)?9\d{9}$/) phoneNumber!: string;
+  @IsString() @MinLength(2) @MaxLength(100) province!: string;
+  @IsString() @MinLength(2) @MaxLength(100) city!: string;
+  @IsString() @Matches(/^\d{10}$/) postalCode!: string;
+  @IsString() @MinLength(10) @MaxLength(1000) addressLine!: string;
+}
+
 export class QuoteCheckoutDto {
   @IsArray()
   @ArrayMinSize(1)
@@ -58,6 +67,19 @@ export class QuoteCheckoutDto {
   @ValidateNested({ each: true })
   @Type(() => CheckoutLineDto)
   items!: CheckoutLineDto[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ShippingAddressDto)
+  shippingAddress?: ShippingAddressDto;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^[A-Za-z0-9][A-Za-z0-9_-]{2,31}$/)
+  couponCode?: string;
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(100000) clubPoints?: number;
+  @IsOptional() @IsUUID("4") clubRewardId?: string;
 }
 
 export class CheckoutShippingPlacesDto extends QuoteCheckoutDto {
@@ -66,15 +88,6 @@ export class CheckoutShippingPlacesDto extends QuoteCheckoutDto {
   @IsInt()
   @Min(1)
   provinceId?: number;
-}
-
-export class ShippingAddressDto {
-  @IsString() @MinLength(2) @MaxLength(120) recipientName!: string;
-  @IsString() @Matches(/^(?:\+98|0098|98|0)?9\d{9}$/) phoneNumber!: string;
-  @IsString() @MinLength(2) @MaxLength(100) province!: string;
-  @IsString() @MinLength(2) @MaxLength(100) city!: string;
-  @IsString() @Matches(/^\d{10}$/) postalCode!: string;
-  @IsString() @MinLength(10) @MaxLength(1000) addressLine!: string;
 }
 
 export class CheckoutPaymentSelectionDto {
@@ -93,14 +106,14 @@ export class CheckoutPaymentSelectionDto {
 export class CreateCheckoutDto extends QuoteCheckoutDto {
   @IsOptional()
   @IsString()
+  @Matches(/^(?:0|[1-9]\d{0,15})$/)
+  expectedTotalAmount?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(100)
   @Matches(/^[a-zA-Z0-9][a-zA-Z0-9._ -]*$/)
   trafficSource?: string;
-
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => ShippingAddressDto)
-  shippingAddress?: ShippingAddressDto;
 
   @IsArray()
   @ArrayMinSize(1)
@@ -109,4 +122,11 @@ export class CreateCheckoutDto extends QuoteCheckoutDto {
   @ValidateNested({ each: true })
   @Type(() => CheckoutPaymentSelectionDto)
   paymentSelections!: CheckoutPaymentSelectionDto[];
+}
+
+export class InitiateCheckoutPaymentDto {
+  @IsOptional()
+  @IsString()
+  @Matches(/^(?:0|[1-9]\d{0,15})$/)
+  walletAmount?: string;
 }

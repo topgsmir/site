@@ -1,0 +1,21 @@
+.club { display: grid; gap: 16px; color: var(--color-dashboard-ink); }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.stats > div { display: grid; gap: 7px; padding: 14px; border: 1px solid var(--color-dashboard-rule); border-radius: 10px; background: var(--color-dashboard-surface); }
+.stats span, .reward small, .progress, .history time { color: var(--color-dashboard-muted); font-size: .78rem; }
+.stats strong { font-size: 1.15rem; font-weight: 650; line-height: 1.4; overflow-wrap: anywhere; }
+.stats small { font-size: .75rem; font-weight: 450; }
+.progress { padding: 10px 14px; border-inline-start: 3px solid var(--color-dashboard-accent); background: var(--color-dashboard-accent-soft); }
+.club section { padding: 16px; border: 1px solid var(--color-dashboard-rule); border-radius: 10px; background: var(--color-dashboard-surface); }
+.club h2 { margin-bottom: 12px; font-size: 1.05rem; }
+.rewards, .history { display: grid; gap: 0; }
+.reward, .history > div { display: flex; align-items: center; gap: 12px; min-height: 48px; padding-block: 8px; border-top: 1px solid var(--color-dashboard-rule); }
+.reward > div { display: grid; gap: 4px; min-width: 0; }
+.reward button, .more, .error button { margin-inline-start: auto; min-height: 38px; padding: 7px 12px; border: 1px solid var(--color-dashboard-accent); border-radius: 7px; color: var(--color-dashboard-accent); }
+.reward button:disabled { opacity: .5; cursor: not-allowed; }
+.history strong { margin-inline-start: auto; }
+.error, .notice { padding: 10px 12px; border-radius: 8px; }
+.error { color: var(--color-dashboard-danger, #a32929); background: #fff1f1; }
+.notice { background: var(--color-dashboard-accent-soft); }
+.club :is(button, a):focus-visible { outline: 2px solid var(--color-dashboard-accent); outline-offset: 3px; }
+@media (max-width: 800px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 400px) { .stats { grid-template-columns: minmax(0, 1fr); } .reward { align-items: start; flex-direction: column; } .reward button { min-height: 44px; margin-inline-start: 0; } }

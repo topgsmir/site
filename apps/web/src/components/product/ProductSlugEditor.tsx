@@ -19,13 +19,14 @@ export function normalizeProductSlug(value: string) {
     .replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 200);
 }
 
-export function ProductSlugEditor({ locale, slug, onChange, mode, currentProductId, className }: {
+export function ProductSlugEditor({ locale, slug, onChange, mode, currentProductId, className, formId }: {
   locale: Locale;
   slug: string;
   onChange: (slug: string) => void;
   mode: "admin" | "seller";
   currentProductId?: string;
   className?: string;
+  formId?: string;
 }) {
   const hintId = useId();
   const copy = COPY[locale];
@@ -53,7 +54,7 @@ export function ProductSlugEditor({ locale, slug, onChange, mode, currentProduct
   return <div className={`${styles.field} ${className ?? ""}`}>
     <div className={styles.url} id={`${hintId}-url`} dir="ltr">{productPublicUrl(locale, slug)}</div>
     <label htmlFor={hintId}>{copy.label}</label>
-    <input id={hintId} required minLength={1} maxLength={200} pattern="[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*" dir="ltr" spellCheck={false} autoComplete="off" value={slug} aria-invalid={state === "taken" || (Boolean(slug) && state === "invalid")} aria-describedby={`${hintId}-url ${hintId}-status`} onChange={(event) => onChange(event.target.value)} onBlur={() => onChange(normalizeProductSlug(slug))} />
+    <input id={hintId} form={formId} required minLength={1} maxLength={200} pattern="[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*" dir="ltr" spellCheck={false} autoComplete="off" value={slug} aria-invalid={state === "taken" || (Boolean(slug) && state === "invalid")} aria-describedby={`${hintId}-url ${hintId}-status`} onChange={(event) => onChange(event.target.value)} onBlur={() => onChange(normalizeProductSlug(slug))} />
     {slug ? <small id={`${hintId}-status`} className={styles.status} data-state={state} role="status">{copy[state]}</small> : <span id={`${hintId}-status`} className={styles.visuallyHidden}>{copy.invalid}</span>}
   </div>;
 }

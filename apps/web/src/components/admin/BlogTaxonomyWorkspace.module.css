@@ -1,0 +1,40 @@
+.workspace { display: grid; gap: 12px; min-width: 0; padding-block: 16px 28px; color: var(--color-dashboard-ink); }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.header h1 { font-size: 24px; line-height: 1.4; }
+.header p { color: var(--color-dashboard-muted); font-size: 14px; }
+.workspace button { min-height: 38px; padding: 6px 12px; border: 1px solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-control); background: var(--color-dashboard-surface-raised); color: var(--color-dashboard-ink); cursor: pointer; }
+.workspace button:disabled { opacity: .5; cursor: not-allowed; }
+.workspace :is(button, input, textarea):focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
+.status { color: var(--color-dashboard-muted); font-size: 14px; }
+.form { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-panel); background: var(--color-dashboard-surface); }
+.formHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.formHeading h2 { font-size: 18px; }
+.languages { display: grid; gap: 12px; }
+.languages fieldset { min-width: 0; padding: 12px; border: 1px solid var(--color-dashboard-rule); }
+.languages legend { padding-inline: 6px; font-weight: 700; }
+.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.fields label { display: grid; min-width: 0; gap: 4px; font-size: 14px; font-weight: 600; }
+.fields .wide { grid-column: 1 / -1; }
+.fields :is(input, textarea) { width: 100%; min-width: 0; padding: 8px 10px; border: 1px solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-control); color: var(--color-dashboard-ink); background: var(--color-dashboard-surface-raised); font: inherit; }
+.fields input { min-height: 38px; }
+.fields textarea { resize: vertical; }
+.form > button { justify-self: start; min-width: 96px; background: var(--color-dashboard-accent); color: var(--color-dashboard-accent-ink); }
+.list { display: grid; border-top: 1px solid var(--color-dashboard-rule); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 50px; padding: 6px 0; border-bottom: 1px solid var(--color-dashboard-rule); }
+.term { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; min-width: 0; }
+.term strong { overflow-wrap: anywhere; }
+.term span { color: var(--color-dashboard-muted); font-size: 13px; overflow-wrap: anywhere; }
+.actions { display: flex; gap: 6px; flex-shrink: 0; }
+.actions button { min-width: 38px; }
+.feedback { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 20px 16px; border: 1px solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-panel); color: var(--color-dashboard-muted); background: var(--color-dashboard-surface); font-size: 14px; }
+.feedback[role="alert"] { color: var(--color-dashboard-error); background: var(--color-dashboard-error-soft); }
+.feedback button { background: var(--color-dashboard-surface); }
+.loading { display: grid; gap: 9px; color: var(--color-dashboard-muted); font-size: 14px; }
+.loading div { height: 48px; border-radius: var(--radius-dashboard-control); background: var(--color-dashboard-surface-raised); animation: pulse 1.4s ease-in-out infinite; }
+.loading div:nth-of-type(2) { animation-delay: .1s; }
+.loading div:nth-of-type(3) { animation-delay: .2s; }
+.pagination { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px 16px; padding-top: 8px; }
+.pagination span { color: var(--color-dashboard-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+@keyframes pulse { 50% { opacity: .5; } }
+@media (max-width: 600px) { .header, .row { align-items: stretch; flex-direction: column; } .actions { flex-wrap: wrap; } .actions button { min-height: 44px; } .fields { grid-template-columns: 1fr; } .pagination button { min-height: 44px; } }
+@media (prefers-reduced-motion: reduce) { .loading div { animation: none; } }

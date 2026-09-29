@@ -11,6 +11,10 @@ export function blogPublicPath(locale: Locale, slug: string) {
   return `/${locale}/blog/${encodeURIComponent(slug)}`;
 }
 
+export function blogPublicUrl(locale: Locale, slug: string) {
+  return `${SITE_URL}${blogPublicPath(locale, slug)}`;
+}
+
 export function BlogPublicUrl({
   locale,
   slug,
@@ -34,7 +38,7 @@ export function BlogPublicUrl({
       title={label}
       aria-label={label}
     >
-      {SITE_URL}{path}
+      {blogPublicUrl(locale, slug)}
     </Link>
   );
 }

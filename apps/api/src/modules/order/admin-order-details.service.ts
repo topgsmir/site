@@ -5,7 +5,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { OrderService } from "./order.service";
 
 const detailsSelect = {
-  buyer_id: true, seller_id: true, checkout_id: true,
+  buyer_id: true, seller_id: true, checkout_id: true, status: true, trashed_at: true,
   buyer: { select: { id: true, full_name: true, username: true, email: true, phone_number: true, role: true, created_at: true, updated_at: true } },
   seller: { select: { id: true, shop_name: true, phone_number: true, invited: true, approved: true,
     suspended_at: true, created_at: true, updated_at: true,
@@ -19,7 +19,7 @@ const detailsSelect = {
     tracking_synced_at: true, created_at: true, updated_at: true
   } },
   items: { select: {
-    id: true, inventory_reservation: { select: {
+    id: true, product_type: true, inventory_reservation: { select: {
       id: true, offer_id: true, quantity: true, status: true, expires_at: true, created_at: true, updated_at: true
     } }, digital_entitlement: { orderBy: { file_index: "asc" }, select: {
       id: true, buyer_id: true, max_downloads: true, download_count: true, last_accessed_at: true, created_at: true
@@ -34,11 +34,11 @@ const detailsSelect = {
     } }
   } },
   events: { orderBy: { created_at: "desc" }, select: {
-    id: true, from_status: true, to_status: true, created_at: true,
+    id: true, from_status: true, to_status: true, action: true, created_at: true,
     actor: { select: { id: true, full_name: true, email: true } }
   } },
   payout_records: { select: {
-    id: true, gross_amount: true, commission_amount: true, holdback_amount: true,
+    id: true, gross_amount: true, commission_amount: true, holdback_amount: true, shipping_cost_amount: true,
     payable_amount: true, currency: true, status: true, requested_at: true,
     approved_at: true, settled_at: true, created_at: true, updated_at: true,
     events: { orderBy: { created_at: "desc" }, select: {
@@ -47,7 +47,7 @@ const detailsSelect = {
     } }
   } },
   payment_attempts: { orderBy: { created_at: "desc" }, select: {
-    id: true, checkout_payment_group_id: true, provider: true, status: true,
+    id: true, checkout_payment_group_id: true, provider: true, provider_ref_id: true, status: true,
     amount: true, currency: true, failure_code: true, verified_at: true,
     refunded_at: true, initiation_started_at: true, created_at: true, updated_at: true,
     refund: { select: {
@@ -80,7 +80,8 @@ export class AdminOrderDetailsService {
     }
     const order = await this.prisma.orders.findUnique({ where: { id }, select: detailsSelect });
     if (!order) throw new NotFoundException("Order was not found");
-    const base = await this.orders.get(actor, id);
+    const base = await this.orders.get(actor, id, true);
+    const verifiedPayment = order.payment_attempts.find((payment) => payment.verified_at && payment.provider_ref_id);
     const outbox = await this.prisma.outbox_events.findMany({
       where: { aggregate: "order", aggregate_id: id },
       orderBy: { created_at: "desc" },
@@ -89,6 +90,8 @@ export class AdminOrderDetailsService {
     });
     return {
       ...base,
+      trashedAt: order.trashed_at?.toISOString() ?? null,
+      allowedStatusTransitions: order.trashed_at || !order.items[0] ? [] : this.orders.adminTransitions(order.status, order.items[0].product_type, order.payout_records[0]?.status),
       buyerId: order.buyer_id, sellerId: order.seller_id, checkoutId: order.checkout_id,
       buyerProfile: { id: order.buyer.id, fullName: order.buyer.full_name,
         username: order.buyer.username, email: order.buyer.email,
@@ -158,15 +161,16 @@ export class AdminOrderDetailsService {
         } : null
       })),
       history: order.events.map((event) => ({
-        id: event.id, fromStatus: event.from_status, toStatus: event.to_status,
+        id: event.id, action: event.action, fromStatus: event.from_status, toStatus: event.to_status,
         at: event.created_at.toISOString(), actor: {
           id: event.actor.id, name: event.actor.full_name, email: event.actor.email
-        }
+        },
+        ...(event.to_status === "paid" && verifiedPayment ? { payment: { provider: verifiedPayment.provider, reference: verifiedPayment.provider_ref_id } } : {})
       })),
       payouts: order.payout_records.map((payout) => ({
         id: payout.id, status: payout.status, currency: payout.currency.trim(),
         grossAmount: payout.gross_amount.toString(), commissionAmount: payout.commission_amount.toString(),
-        holdbackAmount: payout.holdback_amount.toString(), payableAmount: payout.payable_amount.toString(),
+        holdbackAmount: payout.holdback_amount.toString(), shippingCostAmount: payout.shipping_cost_amount.toString(), payableAmount: payout.payable_amount.toString(),
         requestedAt: payout.requested_at?.toISOString() ?? null,
         approvedAt: payout.approved_at?.toISOString() ?? null,
         settledAt: payout.settled_at?.toISOString() ?? null,
@@ -177,7 +181,7 @@ export class AdminOrderDetailsService {
       })),
       payments: order.payment_attempts.map((payment) => ({
         id: payment.id, groupId: payment.checkout_payment_group_id,
-        provider: payment.provider, status: payment.status,
+        provider: payment.provider, bankReference: payment.provider_ref_id, status: payment.status,
         amount: payment.amount.toString(), currency: payment.currency.trim(),
         failureCode: payment.failure_code,
         initiationStartedAt: payment.initiation_started_at?.toISOString() ?? null,

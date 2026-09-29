@@ -59,6 +59,7 @@ test("catalog covers every ordinary controller route and documents security-flow
   const catalogRoutes = new Set(ADMIN_TOOL_CATALOG.map((entry) => `${entry.method} ${entry.path}`));
   const excluded = [
     "GET /payments/zarinpal/callback",
+    "GET /payments/zibal/callback",
     "GET /system/restores/:id",
     "POST /admin/staff/setup/:token",
     "POST /auth/login",

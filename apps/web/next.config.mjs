@@ -6,7 +6,8 @@ const nextConfig = {
   distDir: process.env.TOPGSM_NEXT_DIST_DIR ?? ".next",
   reactStrictMode: true,
   htmlLimitedBots: /.*/,
-  typedRoutes: true
+  typedRoutes: true,
+  experimental: { globalNotFound: true }
 };
 
 export default nextConfig;

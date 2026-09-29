@@ -1,35 +1,30 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { BasePaymentAdapter } from "./base-payment.adapter";
-import { LocalGatewayAdapter } from "./providers/local-gateway/local-gateway.adapter";
-import { ZarinpalAdapter } from "./providers/zarinpal/zarinpal.adapter";
 import {
   PaymentIntentInput,
   PaymentIntentResult,
   PaymentProviderDescriptor
 } from "./payment.interface";
 
-type ProviderMap = Record<string, BasePaymentAdapter>;
+export const PAYMENT_ADAPTERS = Symbol("PAYMENT_ADAPTERS");
 
 @Injectable()
 export class PaymentService {
-  private readonly adapters: ProviderMap = {};
+  private readonly adapters: Map<string, BasePaymentAdapter>;
 
-  constructor(
-    @Inject(LocalGatewayAdapter) private readonly local: BasePaymentAdapter,
-    @Inject(ZarinpalAdapter) private readonly zarinpal: BasePaymentAdapter
-  ) {
-    this.adapters[this.local.providerCode] = local;
-    this.adapters[this.zarinpal.providerCode] = zarinpal;
+  constructor(@Inject(PAYMENT_ADAPTERS) adapters: BasePaymentAdapter[]) {
+    this.adapters = new Map(adapters.map((adapter) => [adapter.providerCode, adapter]));
+    if (this.adapters.size !== adapters.length) throw new Error("Duplicate payment provider code");
   }
 
   get(providerCode: string): BasePaymentAdapter {
-    const adapter = this.adapters[providerCode];
+    const adapter = this.adapters.get(providerCode);
     if (!adapter) throw new BadRequestException("Unsupported payment provider");
     return adapter;
   }
 
   async listProviders(): Promise<PaymentProviderDescriptor[]> {
-    return Promise.all(Object.values(this.adapters).map(async (adapter) => {
+    return Promise.all([...this.adapters.values()].map(async (adapter) => {
       const availability = await adapter.availability();
       return {
         code: adapter.providerCode,

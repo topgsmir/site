@@ -49,7 +49,7 @@ export class SmsWorkerService implements OnModuleInit, OnModuleDestroy {
       if (!envelope.ciphertext || !envelope.keyId) throw new Error("SMS parameters are invalid");
       const parameters = JSON.parse(this.crypto.decrypt(envelope.ciphertext, envelope.keyId, `sms:${job.id}:parameters`)) as Record<string, string>;
       if (await this.settings.isTestModeEnabled()) {
-        this.logger.log(`SMS test mode: ${JSON.stringify({ recipient: job.recipient, template: job.template, parameters })}`);
+        this.logger.log(`SMS test mode: ${JSON.stringify({ template: job.template, parameterNames: Object.keys(parameters) })}`);
       } else {
         await this.adapter.send(job.recipient, job.template as SmsTemplate, parameters);
       }

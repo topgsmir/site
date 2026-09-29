@@ -476,6 +476,14 @@ model users {
   approved_ai_tools            ai_tool_executions[]           @relation("ai_tool_approver")
   ai_audit_events              ai_audit_events[]              @relation("ai_audit_actor")
   payment_refunds              payment_refunds[]
+  wallet_account               wallet_accounts?
+  wallet_entries               wallet_entries[] @relation("wallet_owner")
+  performed_wallet_entries     wallet_entries[] @relation("wallet_actor")
+  wallet_topups                wallet_topups[]
+  club_member                  club_members?
+  club_order_earnings          club_order_earnings[]
+  club_wallet_credits          club_wallet_credits[]
+  club_admin_events            club_admin_events[]
   payment_config_events        payment_method_config_events[] @relation("payment_config_actor")
   sms_setting_events           sms_setting_events[]           @relation("sms_setting_actor")
   goghdi_setting_events        goghdi_setting_events[]         @relation("goghdi_setting_actor")
@@ -927,7 +935,7 @@ model seller_memberships {
 
 model coupons {
   id                   String               @id @default(uuid()) @map("id")
-  seller_id            String               @map("seller_id")
+  seller_id            String?              @map("seller_id")
   code                 String               @map("code") @db.VarChar(32)
   discount_type        coupon_discount_type @map("discount_type")
   discount_value       Decimal              @map("discount_value") @db.Decimal(21, 5)
@@ -940,7 +948,9 @@ model coupons {
   active               Boolean              @default(true) @map("active")
   created_at           DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
   updated_at           DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  seller               sellers              @relation(fields: [seller_id], references: [id], onDelete: Restrict)
+  seller               sellers?             @relation(fields: [seller_id], references: [id], onDelete: Restrict)
+  checkout_applications checkouts[]          @relation("checkout_coupon")
+  order_applications    orders[]             @relation("order_coupon")
 
   @@unique([seller_id, code])
   @@index([updated_at(sort: Desc), id(sort: Desc)])
@@ -1075,11 +1085,13 @@ model blog_revision_translations {
 
 model blog_categories {
   id           String                       @id @default(uuid()) @map("id")
+  position     Int                          @default(0)
   created_at   DateTime                     @default(now()) @map("created_at") @db.Timestamptz(3)
   updated_at   DateTime                     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   translations blog_category_translations[]
   revisions    blog_revisions[]
 
+  @@index([position, created_at, id])
   @@map("blog_categories")
 }
 
@@ -1088,6 +1100,9 @@ model blog_category_translations {
   locale      blog_locale     @map("locale")
   name        String          @map("name") @db.VarChar(100)
   slug        String          @map("slug") @db.VarChar(120)
+  description String?         @db.VarChar(4000)
+  meta_title String?          @db.VarChar(160)
+  meta_description String?    @db.VarChar(320)
   category    blog_categories @relation(fields: [category_id], references: [id], onDelete: Cascade)
 
   @@id([category_id, locale])
@@ -1097,11 +1112,13 @@ model blog_category_translations {
 
 model blog_tags {
   id           String                  @id @default(uuid()) @map("id")
+  position     Int                     @default(0)
   created_at   DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
   updated_at   DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   translations blog_tag_translations[]
   revisions    blog_revision_tags[]
 
+  @@index([position, created_at, id])
   @@map("blog_tags")
 }
 
@@ -1110,6 +1127,9 @@ model blog_tag_translations {
   locale blog_locale @map("locale")
   name   String      @map("name") @db.VarChar(80)
   slug   String      @map("slug") @db.VarChar(100)
+  description String? @db.VarChar(4000)
+  meta_title String? @db.VarChar(160)
+  meta_description String? @db.VarChar(320)
   tag    blog_tags   @relation(fields: [tag_id], references: [id], onDelete: Cascade)
 
   @@id([tag_id, locale])
@@ -1239,6 +1259,15 @@ model product_categories {
   id              String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name            String @db.VarChar(100)
   normalized_name String @unique @db.VarChar(100)
+  slug            String @unique @default(dbgenerated("('category-'::text || gen_random_uuid()::text)")) @db.VarChar(160)
+  description     String? @db.VarChar(4000)
+  meta_title      String? @db.VarChar(160)
+  meta_description String? @db.VarChar(320)
+  parent_id       String? @db.Uuid
+  parent          product_categories? @relation("product_category_tree", fields: [parent_id], references: [id], onDelete: Restrict)
+  children        product_categories[] @relation("product_category_tree")
+  image_data      Bytes? @db.ByteA
+  image_updated_at DateTime? @db.Timestamptz(3)
   created_at      DateTime @default(now()) @db.Timestamptz(3)
   updated_at      DateTime @default(now()) @updatedAt @db.Timestamptz(3)
   products        products[]
@@ -1246,6 +1275,7 @@ model product_categories {
   events          product_category_events[]
 
   @@index([name, id])
+  @@index([parent_id, name, id])
 }
 
 model product_category_translations {
@@ -1259,12 +1289,12 @@ model product_category_translations {
 
 model product_category_events {
   id            String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  category_id   String @db.Uuid
+  category_id   String? @db.Uuid
   actor_user_id String
   before_data   Json
   after_data    Json
   created_at    DateTime @default(now()) @db.Timestamptz(3)
-  category      product_categories @relation(fields: [category_id], references: [id], onDelete: Restrict)
+  category      product_categories? @relation(fields: [category_id], references: [id], onDelete: SetNull)
   actor         users @relation(fields: [actor_user_id], references: [id], onDelete: Restrict)
 
   @@index([category_id, created_at(sort: Desc), id(sort: Desc)])
@@ -1582,10 +1612,11 @@ model seller_offers {
   @@map("seller_offers")
 }
 
-model seller_offer_digital {
+  model seller_offer_digital {
   offer_id       String        @id @map("offer_id") @db.Uuid
   file_reference String        @map("file_reference") @db.VarChar(2048)
-  file_references String[] @default([])
+    file_references String[] @default([])
+    file_titles     String[] @default([])
   max_downloads  Int           @default(0) @map("max_downloads")
   offer          seller_offers @relation(fields: [offer_id], references: [id], onDelete: Cascade)
 
@@ -1595,6 +1626,9 @@ model seller_offer_digital {
 model seller_offer_physical {
   offer_id             String        @id @map("offer_id") @db.Uuid
   weight_grams         Int           @default(0) @map("weight_grams")
+  length_cm            Int?          @map("length_cm")
+  width_cm             Int?          @map("width_cm")
+  height_cm            Int?          @map("height_cm")
   stock                Int           @default(0) @map("stock")
   legacy_tracking_code String?       @map("legacy_tracking_code")
   legacy_delivered_at  DateTime?     @map("legacy_delivered_at") @db.Timestamptz(3)
@@ -1627,8 +1661,14 @@ model orders {
   buyer_id         String                          @map("buyer_id")
   seller_id        String                          @map("seller_id")
   status           order_status                    @default(pending) @map("status")
+  trashed_at       DateTime?                       @map("trashed_at") @db.Timestamptz(3)
   currency         String                          @map("currency") @db.VarChar(5)
   total_amount     Decimal                         @map("total_amount") @db.Decimal(20, 4)
+  shipping_cost    Decimal                         @default(0) @map("shipping_cost") @db.Decimal(20, 4)
+  shipping_fee     Decimal                         @default(0) @map("shipping_fee") @db.Decimal(20, 4)
+  shipping_payer   String?                         @map("shipping_payer") @db.VarChar(16)
+  discount_amount  Decimal                         @default(0) @map("discount_amount") @db.Decimal(20, 4)
+  coupon_id        String?                         @map("coupon_id")
   commission_rate  Decimal                         @map("commission_rate") @db.Decimal(9, 6)
   holdback_rate    Decimal                         @map("holdback_rate") @db.Decimal(9, 6)
   idempotency_key  String                          @map("idempotency_key") @db.Uuid
@@ -1643,10 +1683,14 @@ model orders {
   payout_records   payout_ledger[]
   payment_attempts payment_attempts[]
   checkout         checkouts?                      @relation(fields: [checkout_id], references: [id], onDelete: Restrict)
+  coupon           coupons?                        @relation("order_coupon", fields: [coupon_id], references: [id], onDelete: Restrict)
   payment_groups   checkout_payment_group_orders[]
   shipping_address order_shipping_addresses?
   shipment          order_shipments?
   shipping_dispatch shipping_dispatches?
+  club_earning     club_order_earnings?
+  club_discount    club_order_discounts?
+  club_wallet_refunds club_wallet_refund_allocations[]
 
   @@unique([buyer_id, idempotency_key])
   @@unique([id, seller_id])
@@ -1654,8 +1698,10 @@ model orders {
   @@index([seller_id, created_at, id])
   @@index([seller_id, buyer_id, created_at(sort: Desc), id(sort: Desc)], map: "orders_seller_buyer_created_idx")
   @@index([checkout_id, created_at, id])
+  @@index([coupon_id])
   @@index([created_at, id])
   @@index([status, created_at, id])
+  @@index([trashed_at, created_at(sort: Desc), id(sort: Desc)])
   @@map("orders")
 }
 
@@ -1693,6 +1739,10 @@ model order_items {
   product_type          product_type            @map("product_type")
   product_title         String                  @map("product_title") @db.VarChar(200)
   quantity              Int                     @map("quantity")
+  shipping_weight_grams Int?                    @map("shipping_weight_grams")
+  shipping_length_cm    Int?                    @map("shipping_length_cm")
+  shipping_width_cm     Int?                    @map("shipping_width_cm")
+  shipping_height_cm    Int?                    @map("shipping_height_cm")
   unit_price            Decimal                 @map("unit_price") @db.Decimal(20, 4)
   total_amount          Decimal                 @map("total_amount") @db.Decimal(20, 4)
   service_note          String?                 @map("service_note") @db.VarChar(2000)
@@ -1701,6 +1751,7 @@ model order_items {
   service_answers_key_id String?                @map("service_answers_key_id") @db.VarChar(32)
   digital_delivery_url  String?                 @map("digital_delivery_url") @db.VarChar(2048)
   digital_delivery_urls String[] @default([])
+  digital_delivery_titles String[] @default([])
   digital_max_downloads Int?                    @map("digital_max_downloads")
   order                 orders                  @relation(fields: [order_id], references: [id], onDelete: Restrict)
   offer                 seller_offers           @relation(fields: [offer_id], references: [id], onDelete: Restrict)
@@ -1719,6 +1770,7 @@ model order_events {
   actor_user_id   String        @map("actor_user_id")
   from_status     order_status? @map("from_status")
   to_status       order_status  @map("to_status")
+  action          String        @default("status_changed") @map("action") @db.VarChar(32)
   idempotency_key String        @map("idempotency_key") @db.Uuid
   request_hash    String        @map("request_hash") @db.Char(64)
   created_at      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -1737,6 +1789,7 @@ model payout_ledger {
   gross_amount      Decimal         @map("gross_amount") @db.Decimal(20, 4)
   commission_amount Decimal         @map("commission_amount") @db.Decimal(20, 4)
   holdback_amount   Decimal         @map("holdback_amount") @db.Decimal(20, 4)
+  shipping_cost_amount Decimal       @default(0) @map("shipping_cost_amount") @db.Decimal(20, 4)
   payable_amount    Decimal         @map("payable_amount") @db.Decimal(20, 4)
   currency          String          @map("currency") @db.VarChar(5)
   status            payout_status   @default(draft) @map("status")
@@ -1984,18 +2037,23 @@ model checkouts {
   status          checkout_status           @default(pending_payment) @map("status")
   currency        String                    @map("currency") @db.VarChar(5)
   total_amount    Decimal                   @map("total_amount") @db.Decimal(20, 4)
+  discount_amount Decimal                   @default(0) @map("discount_amount") @db.Decimal(20, 4)
+  coupon_id       String?                   @map("coupon_id")
+  coupon_released_at DateTime?              @map("coupon_released_at") @db.Timestamptz(3)
   idempotency_key String                    @map("idempotency_key") @db.Uuid
   request_hash    String                    @map("request_hash") @db.Char(64)
   expires_at      DateTime                  @map("expires_at") @db.Timestamptz(3)
   created_at      DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
   updated_at      DateTime                  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   buyer           users                     @relation("buyer_checkouts", fields: [buyer_id], references: [id], onDelete: Restrict)
+  coupon          coupons?                  @relation("checkout_coupon", fields: [coupon_id], references: [id], onDelete: Restrict)
   orders          orders[]
   payment_groups  checkout_payment_groups[]
 
   @@unique([buyer_id, idempotency_key])
   @@index([buyer_id, created_at(sort: Desc), id(sort: Desc)])
   @@index([status, expires_at])
+  @@index([coupon_id])
   @@map("checkouts")
 }
 
@@ -2005,6 +2063,7 @@ model checkout_payment_groups {
   provider    String                          @map("provider") @db.VarChar(32)
   status      checkout_payment_group_status   @default(pending) @map("status")
   amount      Decimal                         @map("amount") @db.Decimal(20, 4)
+  wallet_amount Decimal                       @default(0) @db.Decimal(20, 4)
   currency    String                          @map("currency") @db.VarChar(5)
   expires_at  DateTime                        @map("expires_at") @db.Timestamptz(3)
   created_at  DateTime                        @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -2209,6 +2268,8 @@ model sms_settings {
   seller_new_order_template_id Int?                 @map("seller_new_order_template_id")
   buyer_success_template_id    Int?                 @map("buyer_success_template_id")
   buyer_failure_template_id    Int?                 @map("buyer_failure_template_id")
+  club_redemption_template_id  Int?
+  club_expiry_template_id      Int?
   created_at                   DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updated_at                   DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   events                       sms_setting_events[]
@@ -2283,6 +2344,8 @@ model sms_setting_events {
   seller_new_order_template_id Int?         @map("seller_new_order_template_id")
   buyer_success_template_id    Int?         @map("buyer_success_template_id")
   buyer_failure_template_id    Int?         @map("buyer_failure_template_id")
+  club_redemption_template_id  Int?
+  club_expiry_template_id      Int?
   changed_at                   DateTime     @default(now()) @map("changed_at") @db.Timestamptz
   settings                     sms_settings @relation(fields: [settings_id], references: [id], onDelete: Restrict)
   actor                        users        @relation("sms_setting_actor", fields: [actor_user_id], references: [id], onDelete: Restrict)
@@ -2305,6 +2368,7 @@ model shipping_settings {
   sender_mobile         String?                   @map("sender_mobile") @db.VarChar(16)
   product_type          Int                       @default(1) @map("product_type")
   package_type          Int                       @default(1) @map("package_type")
+  policy                Json                      @default("{}") @map("policy")
   created_at            DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
   updated_at            DateTime                  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   events                shipping_setting_events[]
@@ -2326,6 +2390,7 @@ model shipping_setting_events {
   sender_mobile       String?           @map("sender_mobile") @db.VarChar(16)
   product_type        Int               @map("product_type")
   package_type        Int               @map("package_type")
+  policy              Json?             @map("policy")
   changed_at          DateTime          @default(now()) @map("changed_at") @db.Timestamptz(3)
   settings            shipping_settings @relation(fields: [settings_id], references: [id], onDelete: Restrict)
   actor               users             @relation("shipping_setting_actor", fields: [actor_user_id], references: [id], onDelete: Restrict)
@@ -2693,4 +2758,318 @@ model seo_setting_events {
   actor_user_id String   @db.Uuid
   configuration Json     @db.JsonB
   created_at    DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model wallet_accounts {
+  user_id    String   @id
+  currency   String   @default("TOMAN") @db.VarChar(5)
+  balance    Decimal  @default(0) @db.Decimal(20, 0)
+  created_at DateTime @default(now()) @db.Timestamptz(3)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  user       users    @relation(fields: [user_id], references: [id], onDelete: Restrict)
+
+  @@map("wallet_accounts")
+}
+
+model wallet_entries {
+  id            String   @id @default(uuid()) @db.Uuid
+  user_id       String
+  actor_user_id String?
+  amount        Decimal  @db.Decimal(20, 0)
+  balance_after Decimal  @db.Decimal(20, 0)
+  kind          String   @db.VarChar(32)
+  reason        String   @db.VarChar(500)
+  reference_type String  @db.VarChar(32)
+  reference_id  String   @db.VarChar(128)
+  operation_key String   @unique @db.VarChar(160)
+  created_at    DateTime @default(now()) @db.Timestamptz(3)
+  user          users    @relation("wallet_owner", fields: [user_id], references: [id], onDelete: Restrict)
+  actor         users?   @relation("wallet_actor", fields: [actor_user_id], references: [id], onDelete: Restrict)
+
+  @@index([user_id, created_at(sort: Desc), id(sort: Desc)])
+  @@index([reference_type, reference_id])
+  @@index([actor_user_id, created_at(sort: Desc)])
+  @@map("wallet_entries")
+}
+
+model wallet_topups {
+  id              String   @id @default(uuid()) @db.Uuid
+  user_id         String
+  provider        String   @db.VarChar(32)
+  amount          Decimal  @db.Decimal(20, 0)
+  currency        String   @default("TOMAN") @db.VarChar(5)
+  status          String   @default("created") @db.VarChar(24)
+  idempotency_key String   @db.Uuid
+  authority       String?  @db.VarChar(128)
+  provider_ref_id String?  @db.VarChar(100)
+  created_at      DateTime @default(now()) @db.Timestamptz(3)
+  updated_at      DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  verified_at     DateTime? @db.Timestamptz(3)
+  user            users    @relation(fields: [user_id], references: [id], onDelete: Restrict)
+
+  @@unique([user_id, idempotency_key])
+  @@unique([provider, authority])
+  @@unique([provider, provider_ref_id])
+  @@index([user_id, created_at(sort: Desc), id(sort: Desc)])
+  @@index([status, updated_at])
+  @@map("wallet_topups")
+}
+
+model club_settings {
+  id                    Int      @id @default(1)
+  enabled               Boolean  @default(false)
+  activated_at          DateTime? @db.Timestamptz(3)
+  enabled_since         DateTime? @db.Timestamptz(3)
+  points_per_1000_toman Int?
+  toman_per_point       Int?
+  signup_points         Int      @default(0)
+  first_purchase_points Int      @default(0)
+  min_redeem_points     Int?
+  max_redeem_points     Int?
+  expiry_days           Int      @default(365)
+  updated_at            DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+}
+
+model club_rule_versions {
+  id                    String @id @default(uuid()) @db.Uuid
+  effective_at          DateTime @default(now()) @db.Timestamptz(3)
+  enabled               Boolean
+  points_per_1000_toman Int?
+  first_purchase_points Int
+  expiry_days           Int
+  @@index([effective_at(sort: Desc), id(sort: Desc)])
+}
+
+model club_tiers {
+  id              String   @id @default(uuid()) @db.Uuid
+  name_fa         String
+  name_en         String
+  name_ar         String
+  threshold_toman Decimal  @db.Decimal(20, 0)
+  sort_order      Int
+  active          Boolean  @default(true)
+  created_at      DateTime @default(now()) @db.Timestamptz(3)
+  updated_at      DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  overrides       club_members[]
+  campaigns       club_campaigns[]
+  @@unique([sort_order])
+  @@index([active, threshold_toman])
+}
+
+model club_members {
+  user_id           String   @id
+  balance           Int      @default(0)
+  point_debt        Int      @default(0)
+  lifetime_earned   Int      @default(0)
+  tier_override_id  String?  @db.Uuid
+  override_until    DateTime? @db.Timestamptz(3)
+  override_reason   String?
+  created_at        DateTime @default(now()) @db.Timestamptz(3)
+  updated_at        DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  user              users    @relation(fields: [user_id], references: [id], onDelete: Restrict)
+  override_tier     club_tiers? @relation(fields: [tier_override_id], references: [id], onDelete: Restrict)
+  lots              club_point_lots[]
+  entries           club_point_entries[]
+  debt_events       club_point_debt_events[]
+  reservations      club_checkout_reservations[]
+  @@index([balance])
+  @@index([tier_override_id])
+}
+
+model club_point_lots {
+  id          String   @id @default(uuid()) @db.Uuid
+  user_id     String
+  source_key  String   @unique
+  reference_id String?
+  original    Int
+  remaining   Int
+  debt_paid   Int @default(0)
+  expires_at  DateTime @db.Timestamptz(3)
+  created_at  DateTime @default(now()) @db.Timestamptz(3)
+  member      club_members @relation(fields: [user_id], references: [user_id], onDelete: Restrict)
+  allocations club_point_allocations[]
+  @@index([user_id, expires_at, id])
+}
+
+model club_point_entries {
+  id            String   @id @default(uuid()) @db.Uuid
+  user_id       String
+  operation_key String   @unique
+  delta         Int
+  balance_after Int
+  kind          String
+  reference_id  String?
+  created_at    DateTime @default(now()) @db.Timestamptz(3)
+  member        club_members @relation(fields: [user_id], references: [user_id], onDelete: Restrict)
+  @@index([user_id, created_at(sort: Desc), id(sort: Desc)])
+}
+
+model club_point_debt_events {
+  id            String @id @default(uuid()) @db.Uuid
+  user_id       String
+  operation_key String @unique
+  delta         Int
+  debt_after    Int
+  kind          String
+  reference_id  String?
+  created_at    DateTime @default(now()) @db.Timestamptz(3)
+  member        club_members @relation(fields: [user_id], references: [user_id], onDelete: Restrict)
+  @@index([user_id, created_at(sort: Desc), id(sort: Desc)])
+}
+
+model club_point_allocations {
+  id             String @id @default(uuid()) @db.Uuid
+  reservation_id String? @db.Uuid
+  operation_key  String
+  lot_id         String @db.Uuid
+  points         Int
+  released_at    DateTime? @db.Timestamptz(3)
+  reservation    club_checkout_reservations? @relation(fields: [reservation_id], references: [id], onDelete: Restrict)
+  lot            club_point_lots @relation(fields: [lot_id], references: [id], onDelete: Restrict)
+  @@unique([operation_key, lot_id])
+  @@index([reservation_id])
+}
+
+model club_rewards {
+  id             String @id @default(uuid()) @db.Uuid
+  name_fa        String
+  name_en        String
+  name_ar        String
+  kind           String
+  points_cost    Int
+  value          Decimal @db.Decimal(20, 0)
+  max_discount   Decimal? @db.Decimal(20, 0)
+  min_order      Decimal? @db.Decimal(20, 0)
+  active         Boolean @default(true)
+  created_at     DateTime @default(now()) @db.Timestamptz(3)
+  updated_at     DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  reservations   club_checkout_reservations[]
+  @@index([active, kind])
+}
+
+model club_campaigns {
+  id             String @id @default(uuid()) @db.Uuid
+  name_fa        String
+  name_en        String
+  name_ar        String
+  kind           String
+  value          Decimal @db.Decimal(12, 2)
+  starts_at      DateTime @db.Timestamptz(3)
+  ends_at        DateTime @db.Timestamptz(3)
+  min_tier_id    String? @db.Uuid
+  min_tier       club_tiers? @relation(fields: [min_tier_id], references: [id], onDelete: Restrict)
+  active         Boolean @default(true)
+  created_at     DateTime @default(now()) @db.Timestamptz(3)
+  updated_at     DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  earnings       club_order_earnings[]
+  versions       club_campaign_versions[]
+  @@index([active, starts_at, ends_at])
+  @@index([min_tier_id])
+}
+
+model club_campaign_versions {
+  id            String @id @default(uuid()) @db.Uuid
+  campaign_id   String @db.Uuid
+  effective_at  DateTime @default(now()) @db.Timestamptz(3)
+  kind          String
+  value         Decimal @db.Decimal(12, 2)
+  starts_at     DateTime @db.Timestamptz(3)
+  ends_at       DateTime @db.Timestamptz(3)
+  min_tier_id   String? @db.Uuid
+  active        Boolean
+  campaign      club_campaigns @relation(fields: [campaign_id], references: [id], onDelete: Restrict)
+  @@index([campaign_id, effective_at(sort: Desc), id(sort: Desc)])
+}
+
+model club_order_earnings {
+  order_id       String @id
+  user_id        String
+  eligible_toman Decimal @db.Decimal(20, 0)
+  points         Int
+  campaign_id    String? @db.Uuid
+  campaign_points Int @default(0)
+  reversed_at    DateTime? @db.Timestamptz(3)
+  created_at     DateTime @default(now()) @db.Timestamptz(3)
+  order          orders @relation(fields: [order_id], references: [id], onDelete: Restrict)
+  user           users @relation(fields: [user_id], references: [id], onDelete: Restrict)
+  campaign       club_campaigns? @relation(fields: [campaign_id], references: [id], onDelete: Restrict)
+  @@index([user_id, created_at])
+  @@index([campaign_id])
+}
+
+model club_checkout_reservations {
+  id             String @id @default(uuid()) @db.Uuid
+  checkout_id    String @unique
+  user_id        String
+  reward_id      String? @db.Uuid
+  points         Int
+  discount_toman Decimal @db.Decimal(20, 0)
+  status         String @default("reserved")
+  created_at     DateTime @default(now()) @db.Timestamptz(3)
+  updated_at     DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  member         club_members @relation(fields: [user_id], references: [user_id], onDelete: Restrict)
+  reward         club_rewards? @relation(fields: [reward_id], references: [id], onDelete: Restrict)
+  allocations    club_point_allocations[]
+  orders         club_order_discounts[]
+  @@index([status, updated_at])
+}
+
+model club_order_discounts {
+  order_id        String @id
+  reservation_id  String @db.Uuid
+  points          Int
+  discount_toman  Decimal @db.Decimal(20, 0)
+  subsidy_toman   Decimal @db.Decimal(20, 0)
+  status          String @default("reserved")
+  order           orders @relation(fields: [order_id], references: [id], onDelete: Restrict)
+  reservation     club_checkout_reservations @relation(fields: [reservation_id], references: [id], onDelete: Restrict)
+  @@index([reservation_id])
+}
+
+model club_wallet_credits {
+  id             String @id @default(uuid()) @db.Uuid
+  user_id        String
+  source_key     String @unique
+  original_toman Decimal @db.Decimal(20, 0)
+  remaining_toman Decimal @db.Decimal(20, 0)
+  expires_at     DateTime @db.Timestamptz(3)
+  created_at     DateTime @default(now()) @db.Timestamptz(3)
+  user           users @relation(fields: [user_id], references: [id], onDelete: Restrict)
+  allocations    club_wallet_allocations[]
+  refund_allocations club_wallet_refund_allocations[]
+  @@index([user_id, expires_at, id])
+}
+
+model club_wallet_refund_allocations {
+  order_id       String
+  credit_id      String @db.Uuid
+  amount_toman   Decimal @db.Decimal(20, 0)
+  restored_toman Decimal @db.Decimal(20, 0)
+  created_at     DateTime @default(now()) @db.Timestamptz(3)
+  order          orders @relation(fields: [order_id], references: [id], onDelete: Restrict)
+  credit         club_wallet_credits @relation(fields: [credit_id], references: [id], onDelete: Restrict)
+  @@id([order_id, credit_id])
+  @@index([credit_id])
+}
+
+model club_wallet_allocations {
+  id             String @id @default(uuid()) @db.Uuid
+  credit_id      String @db.Uuid
+  operation_key  String
+  amount_toman   Decimal @db.Decimal(20, 0)
+  released_at    DateTime? @db.Timestamptz(3)
+  credit         club_wallet_credits @relation(fields: [credit_id], references: [id], onDelete: Restrict)
+  @@unique([credit_id, operation_key])
+  @@index([operation_key])
+}
+
+model club_admin_events {
+  id            String @id @default(uuid()) @db.Uuid
+  actor_user_id String
+  action        String
+  target_id     String?
+  detail        Json
+  created_at    DateTime @default(now()) @db.Timestamptz(3)
+  actor         users @relation(fields: [actor_user_id], references: [id], onDelete: Restrict)
+  @@index([actor_user_id, created_at(sort: Desc)])
 }

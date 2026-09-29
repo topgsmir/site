@@ -1,15 +1,16 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from "@nestjs/common";
 import { randomUUID, createHash } from "node:crypto";
 import { PaymentApplicationService } from "../../integrations/payments/payment-application.service";
 import { Prisma } from "../../prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { WalletLedgerService } from "../wallet/wallet-ledger.service";
 
 @Injectable()
 export class CheckoutExpiryService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(CheckoutExpiryService.name);
   private timer?: NodeJS.Timeout;
 
-  constructor(private readonly prisma: PrismaService, private readonly payments: PaymentApplicationService) {}
+  constructor(private readonly prisma: PrismaService, private readonly payments: PaymentApplicationService, @Optional() private readonly wallets?: WalletLedgerService) {}
 
   onModuleInit() {
     this.timer = setInterval(() => void this.tick(), 60_000);
@@ -46,13 +47,37 @@ export class CheckoutExpiryService implements OnModuleInit, OnModuleDestroy {
     await this.prisma.$transaction(async (tx) => {
       const group = await tx.checkout_payment_groups.findFirst({
         where: { id: groupId, status: { in: ["pending", "failed"] }, expires_at: { lt: new Date() }, attempts: { none: { status: { in: ["pending", "initiating", "initiation_unknown"] } } } },
-        select: { id: true, checkout_id: true, orders: { select: { order_id: true } } }
+        select: { id: true, checkout_id: true, wallet_amount: true, checkout: { select: { buyer_id: true } }, orders: { select: { order_id: true } } }
       });
       if (!group) return;
+      if (group.wallet_amount.greaterThan(0)) {
+        if (!this.wallets) throw new Error("Wallet ledger is unavailable for checkout release");
+        await this.wallets.releaseCheckoutAmount(tx, group.id, group.checkout.buyer_id, group.wallet_amount);
+      }
       await tx.checkout_payment_groups.update({ where: { id: group.id }, data: { status: "expired" } });
       for (const allocation of group.orders) await this.releaseOrderInTransaction(tx, allocation.order_id);
       const paid = await tx.checkout_payment_groups.count({ where: { checkout_id: group.checkout_id, status: "paid" } });
-      await tx.checkouts.update({ where: { id: group.checkout_id }, data: { status: paid > 0 ? "partially_paid" : "expired" } });
+      const open = await tx.checkout_payment_groups.count({ where: { checkout_id: group.checkout_id, status: { in: ["pending", "failed"] } } });
+      await tx.checkouts.update({ where: { id: group.checkout_id }, data: { status: paid > 0 ? "partially_paid" : open > 0 ? "pending_payment" : "expired" } });
+      const checkout = await tx.checkouts.findUnique({
+        where: { id: group.checkout_id },
+        select: { coupon_id: true, coupon_released_at: true }
+      });
+      if (checkout?.coupon_id && !checkout.coupon_released_at) {
+        const remaining = await tx.orders.count({
+          where: { checkout_id: group.checkout_id, coupon_id: checkout.coupon_id, status: { not: "cancelled" } }
+        });
+        if (remaining === 0) {
+          const released = await tx.checkouts.updateMany({
+            where: { id: group.checkout_id, coupon_released_at: null },
+            data: { coupon_released_at: new Date() }
+          });
+          if (released.count === 1) await tx.coupons.update({
+            where: { id: checkout.coupon_id },
+            data: { redeemed_count: { decrement: 1 } }
+          });
+        }
+      }
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 

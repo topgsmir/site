@@ -1,0 +1,15 @@
+.panel { border: 1px solid var(--line); border-radius: 10px; padding: 12px; background: #fff; }
+.panel summary { cursor: pointer; font-weight: 650; }
+.content { display: grid; gap: 12px; padding-top: 12px; font-size: 14px; }
+.content p, .content h3 { margin: 0; }
+.content h3 { font-size: 16px; }
+.content form { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
+.content label { display: grid; gap: 4px; }
+.content input { min-height: 38px; width: 100%; border: 1px solid var(--line); border-radius: 7px; padding: 6px 9px; font: inherit; }
+.content button { min-height: 38px; padding: 7px 12px; border: 0; border-radius: 7px; background: var(--ink, #222); color: white; cursor: pointer; font: inherit; }
+.content button:disabled { opacity: .55; }
+.history { display: grid; }
+.history > div { display: flex; justify-content: space-between; gap: 10px; border-top: 1px solid var(--line); padding: 8px 0; }
+.history span { display: grid; gap: 2px; overflow-wrap: anywhere; }
+.history small { color: var(--ink-soft); }
+.error { color: #a43737; }

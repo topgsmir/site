@@ -15,6 +15,7 @@ export type BuyerOrder = {
 
 export type OrderItem = {
   id: string;
+  productId?: string;
   productTitle: string;
   productType: string;
   quantity: number;
@@ -22,8 +23,8 @@ export type OrderItem = {
   totalAmount: string;
   serviceNote?: string | null;
   serviceInputs?: Array<{ key: string; label: string; type: "text" | "textarea" | "password"; value: string | null; sensitive: boolean }>;
-  digitalDeliveries?: Array<{ downloadUrl: string; destinationHost: string; maxDownloads: number; downloadCount: number }>;
-  digitalDelivery?: { downloadUrl: string; destinationHost: string; maxDownloads: number; downloadCount: number };
+  digitalDeliveries?: Array<{ downloadUrl: string; destinationHost: string; title?: string | null; maxDownloads: number; downloadCount: number }>;
+  digitalDelivery?: { downloadUrl: string; destinationHost: string; title?: string | null; maxDownloads: number; downloadCount: number };
   bridge?: {
     id: string;
     status: string;
@@ -45,4 +46,8 @@ export function canDownload(order: BuyerOrder, item: OrderItem) {
   const delivery = item.digitalDelivery;
   return Boolean(delivery && ["paid", "processing", "awaiting_confirmation", "delivered"].includes(order.status) &&
     (delivery.maxDownloads <= 0 || delivery.downloadCount < delivery.maxDownloads));
+}
+
+export function remainingDownloads(file: { maxDownloads: number; downloadCount: number }) {
+  return file.maxDownloads > 0 ? Math.max(0, file.maxDownloads - file.downloadCount) : null;
 }

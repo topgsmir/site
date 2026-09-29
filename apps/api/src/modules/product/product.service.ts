@@ -1,5 +1,5 @@
-import { categoryLabel, productCategorySelect, productCategoryUpdate, resolveProductCategory, type ProductCategoryRecord } from "./product-category";
-import type { ProductCategoriesQueryDto, UpdateProductCategoryDto } from "./dto/product-category.dto";
+import { categoryLabel, managedCategorySelect, productCategorySelect, productCategoryUpdate, resolveProductCategory, type ProductCategoryRecord } from "./product-category";
+import type { CreateProductCategoryDto, DeleteProductCategoryDto, ProductCategoriesQueryDto, UpdateProductCategoryDto } from "./dto/product-category.dto";
 import { legacySitemapRows } from "../seo/legacy-sitemap";
 import {
   BadRequestException,
@@ -18,6 +18,7 @@ import type {
   BulkUndoProductChangesDto,
   CreateProductDto,
   CreateProductOfferDto,
+  DigitalFulfillmentDto,
   ListProductsQueryDto,
   ManageProductsQueryDto,
   SellerProductsQueryDto,
@@ -30,6 +31,7 @@ import type {
 
 import { activeOfferWhere, publicProductWhere, publishedTranslationSelect } from "./product-visibility";
 import { normalizeProductDescription } from "./product-description";
+import { isAllowedUnsignedFileUrl } from "../order/upload-download-link";
 
 const variantOptionSelect = {
   option_value: {
@@ -100,9 +102,9 @@ const sellerListingSelect = {
         }
       },
       digital: {
-        select: { file_reference: true, file_references: true, max_downloads: true }
+        select: { file_reference: true, file_references: true, file_titles: true, max_downloads: true }
       },
-      physical: { select: { stock: true, weight_grams: true } },
+      physical: { select: { stock: true, weight_grams: true, length_cm: true, width_cm: true, height_cm: true } },
       service: {
         select: {
           service_type: true,
@@ -170,6 +172,7 @@ const productSnapshotSelect = {
   title: true,
   slug: true,
   description: true,
+  tags: true,
   category_record: { select: productCategorySelect },
   status: true
 } satisfies Prisma.productsSelect;
@@ -199,6 +202,7 @@ type ProductSnapshot = {
   title: string;
   slug?: string;
   description: string | null;
+  tags?: string[];
   category: string | null;
   categoryId?: string | null;
   status: "draft" | "pending_review" | "active" | "archived" | "trashed";
@@ -223,7 +227,7 @@ function searchVariants(term: string) {
   ])];
 }
 
-const productSnapshotFields = ["title", "slug", "description", "category", "status"] as const;
+const productSnapshotFields = ["title", "slug", "description", "tags", "category", "status"] as const;
 
 type AdminProductRecord = Prisma.productsGetPayload<{
   select: typeof adminProductSelect;
@@ -286,19 +290,89 @@ export class ProductService {
     return { items, nextCursor: rows.length > input.limit ? items.at(-1)!.id : null };
   }
 
+  async listManagedCategories(input: ProductCategoriesQueryDto) {
+    const rows = await this.prisma.product_categories.findMany({
+      where: input.search?.trim() ? { name: { contains: input.search.trim(), mode: "insensitive" } } : {},
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+      take: input.limit + 1,
+      select: managedCategorySelect
+    });
+    const items = rows.slice(0, input.limit).map((row) => this.mapManagedCategory(row));
+    return { items, nextCursor: rows.length > input.limit ? items.at(-1)!.id : null };
+  }
+
+  private mapManagedCategory(row: Prisma.product_categoriesGetPayload<{ select: typeof managedCategorySelect }>) {
+    return {
+      id: row.id, name: row.name, slug: row.slug, description: row.description,
+      metaTitle: row.meta_title, metaDescription: row.meta_description,
+      parentId: row.parent_id, parentName: row.parent?.name ?? null,
+      imageUrl: row.image_updated_at ? `/products/categories/${row.id}/image?v=${row.image_updated_at.getTime()}` : null,
+      productCount: row._count.products, childCount: row._count.children,
+      translations: row.translations, createdAt: row.created_at, updatedAt: row.updated_at
+    };
+  }
+
+  async createCategory(actorId: string, input: CreateProductCategoryDto) {
+    const name = input.name?.trim().replace(/\s+/gu, " ");
+    if (!name) throw new BadRequestException("Category name is required");
+    const slug = input.slug?.trim().toLowerCase() ?? name.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "");
+    if (!slug || slug.length > 160) throw new BadRequestException("A valid category slug is required");
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(420124, 1)`;
+        if (input.parentId && !await tx.product_categories.findUnique({ where: { id: input.parentId }, select: { id: true } })) {
+          throw new NotFoundException("Parent category was not found");
+        }
+        const [inserted] = await tx.$queryRaw<Array<{ id: string }>>`INSERT INTO product_categories
+          (name, normalized_name, slug, description, meta_title, meta_description, parent_id)
+          VALUES (${name}, normalize_product_category(${name}), ${slug}, ${input.description?.trim() || null},
+            ${input.metaTitle?.trim() || null}, ${input.metaDescription?.trim() || null}, ${input.parentId ?? null}::uuid)
+          RETURNING id`;
+        for (const translation of input.translations ?? []) {
+          await tx.product_category_translations.create({ data: { category_id: inserted!.id, locale: translation.locale, name: translation.name.trim() } });
+        }
+        const after = await tx.product_categories.findUniqueOrThrow({ where: { id: inserted!.id }, select: managedCategorySelect });
+        await tx.product_category_events.create({ data: { category_id: inserted!.id, actor_user_id: actorId, before_data: { created: true }, after_data: { id: after.id, name: after.name, slug: after.slug, parentId: after.parent_id } } });
+        return this.mapManagedCategory(after);
+      });
+    } catch (error) {
+      this.handleCategoryWriteError(error);
+    }
+  }
+
   async updateCategory(id: string, actorId: string, input: UpdateProductCategoryDto) {
     const name = input.name?.trim().replace(/\s+/gu," ");
-    if (name === "" || (name === undefined && !input.translations?.length) || input.translations?.some((item) => !item.name.trim())) {
+    if (name === "" || input.translations?.some((item) => !item.name.trim())) {
       throw new BadRequestException("A nonempty category name or translation is required");
     }
     try {
       return await this.prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(420124, 1)`;
         await tx.$queryRaw`SELECT id FROM product_categories WHERE id=${id}::uuid FOR UPDATE`;
-        const before = await tx.product_categories.findUnique({ where: { id }, select: productCategorySelect });
+        const before = await tx.product_categories.findUnique({ where: { id }, select: managedCategorySelect });
         if (!before) throw new NotFoundException("Product category was not found");
+        if (input.parentId !== undefined) {
+          if (input.parentId === id) throw new BadRequestException("A category cannot be its own parent");
+          if (input.parentId) {
+            const ancestors = await tx.$queryRaw<Array<{ id: string }>>`WITH RECURSIVE ancestors AS (
+              SELECT id, parent_id FROM product_categories WHERE id=${input.parentId}::uuid
+              UNION ALL SELECT p.id, p.parent_id FROM product_categories p JOIN ancestors a ON p.id=a.parent_id
+            ) SELECT id FROM ancestors`;
+            if (!ancestors.length) throw new NotFoundException("Parent category was not found");
+            if (ancestors.some((ancestor) => ancestor.id === id)) throw new BadRequestException("A category cannot be moved below its descendant");
+          }
+        }
         if (name !== undefined) await tx.$executeRaw`
           UPDATE product_categories SET name=${name},normalized_name=normalize_product_category(${name}),updated_at=now() WHERE id=${id}::uuid
         `;
+        await tx.product_categories.update({ where: { id }, data: {
+          ...(input.slug !== undefined ? { slug: input.slug.trim().toLowerCase() } : {}),
+          ...(input.description !== undefined ? { description: input.description?.trim() || null } : {}),
+          ...(input.metaTitle !== undefined ? { meta_title: input.metaTitle?.trim() || null } : {}),
+          ...(input.metaDescription !== undefined ? { meta_description: input.metaDescription?.trim() || null } : {}),
+          ...(input.parentId !== undefined ? { parent_id: input.parentId } : {})
+        } });
         for (const translation of input.translations ?? []) {
           await tx.product_category_translations.upsert({
             where: { category_id_locale: { category_id: id, locale: translation.locale } },
@@ -306,16 +380,68 @@ export class ProductService {
             update: { name: translation.name.trim() }
           });
         }
-        const after = await tx.product_categories.update({ where: { id }, data: { updated_at: new Date() }, select: productCategorySelect });
-        await tx.product_category_events.create({ data: { category_id: id, actor_user_id: actorId, before_data: before, after_data: after } });
-        return after;
+        const after = await tx.product_categories.findUniqueOrThrow({ where: { id }, select: managedCategorySelect });
+        await tx.product_category_events.create({ data: { category_id: id, actor_user_id: actorId, before_data: this.mapManagedCategory(before), after_data: this.mapManagedCategory(after) } });
+        return this.mapManagedCategory(after);
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2002" || (error.code === "P2010" && error.meta?.code === "23505"))) {
-        throw new ConflictException("A product category with this name already exists");
-      }
-      throw error;
+      this.handleCategoryWriteError(error);
     }
+  }
+
+  async deleteCategory(id: string, actorId: string, input: DeleteProductCategoryDto) {
+    if (input.productAction === "move" && (!input.replacementCategoryId || input.replacementCategoryId === id)) {
+      throw new BadRequestException("A different replacement category is required");
+    }
+    if (input.productAction === "uncategorize" && input.replacementCategoryId !== undefined) {
+      throw new BadRequestException("A replacement category is only valid for move");
+    }
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(420124, 1)`;
+        await tx.$queryRaw`SELECT id FROM product_categories WHERE id=${id}::uuid FOR UPDATE`;
+        const category = await tx.product_categories.findUnique({ where: { id }, select: managedCategorySelect });
+        if (!category) throw new NotFoundException("Product category was not found");
+        if (category._count.children) throw new ConflictException("Move child categories before deleting this category");
+        if (input.replacementCategoryId && !await tx.product_categories.findUnique({ where: { id: input.replacementCategoryId }, select: { id: true } })) {
+          throw new NotFoundException("Replacement category was not found");
+        }
+        const movedProducts = await tx.products.updateMany({ where: { category_id: id }, data: { category_id: input.replacementCategoryId ?? null } });
+        await tx.product_category_events.create({ data: {
+          category_id: id, actor_user_id: actorId, before_data: this.mapManagedCategory(category),
+          after_data: { deleted: true, productAction: input.productAction, replacementCategoryId: input.replacementCategoryId ?? null, movedProducts: movedProducts.count }
+        } });
+        await tx.product_categories.delete({ where: { id } });
+        return { deletedId: id, movedProducts: movedProducts.count };
+      });
+    } catch (error) {
+      this.handleCategoryWriteError(error);
+    }
+  }
+
+  async setCategoryImage(id: string, actorId: string, data: Buffer | null) {
+    return this.prisma.$transaction(async (tx) => {
+      const before = await tx.product_categories.findUnique({ where: { id }, select: managedCategorySelect });
+      if (!before) throw new NotFoundException("Product category was not found");
+      await tx.product_categories.update({ where: { id }, data: { image_data: data ? new Uint8Array(data) : null, image_updated_at: data ? new Date() : null }, select: { id: true } });
+      const after = await tx.product_categories.findUniqueOrThrow({ where: { id }, select: managedCategorySelect });
+      await tx.product_category_events.create({ data: { category_id: id, actor_user_id: actorId, before_data: { imageUrl: this.mapManagedCategory(before).imageUrl }, after_data: { imageUrl: this.mapManagedCategory(after).imageUrl } } });
+      return this.mapManagedCategory(after);
+    });
+  }
+
+  async getCategoryImage(id: string) {
+    const category = await this.prisma.product_categories.findUnique({ where: { id }, select: { image_data: true, image_updated_at: true } });
+    if (!category?.image_data || !category.image_updated_at) throw new NotFoundException("Category image was not found");
+    return { buffer: Buffer.from(category.image_data), etag: `"${id}-${category.image_updated_at.getTime()}"` };
+  }
+
+  private handleCategoryWriteError(error: unknown): never {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2002" || (error.code === "P2010" && error.meta?.code === "23505")) throw new ConflictException("Category name or slug already exists");
+      if (error.code === "P2003" || (error.code === "P2010" && error.meta?.code === "23503")) throw new ConflictException("The category is still referenced");
+    }
+    throw error;
   }
 
   sitemapProjection() {
@@ -502,7 +628,7 @@ export class ProductService {
                   }
                 },
                 digital: { select: { max_downloads: true } },
-                physical: { select: { stock: true, weight_grams: true } },
+                physical: { select: { stock: true, weight_grams: true, length_cm: true, width_cm: true, height_cm: true } },
                 service: {
                   select: { service_type: true, estimated_hours: true, input_schema: true }
                 }
@@ -565,7 +691,8 @@ export class ProductService {
             ? {
                 physical: {
                   inStock: offer.physical.stock > 0,
-                  weightGrams: offer.physical.weight_grams
+                  weightGrams: offer.physical.weight_grams,
+                  lengthCm: offer.physical.length_cm, widthCm: offer.physical.width_cm, heightCm: offer.physical.height_cm
                 }
               }
             : {}),
@@ -1012,10 +1139,12 @@ export class ProductService {
             id: true,
             price: true,
             currency: true,
+            digital: { select: { file_reference: true, file_references: true, file_titles: true } },
             listing: { select: { product: { select: { type: true, price_currency: true } } } }
           }
         });
         if (!offer) throw new NotFoundException("Seller offer was not found");
+        if (input.digital) this.assertImmutableDownloads(offer.digital, input.digital);
         if (input.currency !== undefined && input.currency !== offer.listing.product.price_currency) {
           throw new BadRequestException("Offer currency must match the product currency");
         }
@@ -1040,8 +1169,6 @@ export class ProductService {
           await transaction.seller_offer_digital.update({
             where: { offer_id: offer.id },
             data: {
-              file_reference: (input.digital.fileReferences ?? [input.digital.fileReference!])[0]!,
-              file_references: input.digital.fileReferences ?? [input.digital.fileReference!],
               max_downloads: input.digital.maxDownloads
             }
           });
@@ -1051,7 +1178,8 @@ export class ProductService {
             where: { offer_id: offer.id },
             data: {
               stock: input.physical.stock,
-              weight_grams: input.physical.weightGrams
+              weight_grams: input.physical.weightGrams,
+              length_cm: input.physical.lengthCm, width_cm: input.physical.widthCm, height_cm: input.physical.heightCm
             }
           });
         }
@@ -1117,7 +1245,9 @@ export class ProductService {
       }
       const updated = await tx.products.update({
         where: { id: productId },
-        data: await this.productFieldsFromSnapshot(tx,target,productSnapshotFields.filter((field) => field !== "slug" || target.slug)),
+        data: await this.productFieldsFromSnapshot(tx,target,productSnapshotFields.filter((field) =>
+          (field !== "slug" || target.slug) && (field !== "tags" || target.tags !== undefined)
+        )),
         select: adminProductSelect
       });
       await this.recordProductChange(
@@ -1472,10 +1602,12 @@ export class ProductService {
             price: true,
             currency: true,
             listing_id: true,
+            digital: { select: { file_reference: true, file_references: true, file_titles: true } },
             listing: { select: { product: { select: { type: true, price_currency: true } } } }
           }
         });
         if (!offer) throw new NotFoundException("Seller offer was not found");
+        if (input.digital) this.assertImmutableDownloads(offer.digital, input.digital);
         if (input.currency !== undefined && input.currency !== offer.listing.product.price_currency) {
           throw new BadRequestException("Offer currency must match the product currency");
         }
@@ -1513,8 +1645,6 @@ export class ProductService {
           await transaction.seller_offer_digital.update({
             where: { offer_id: offer.id },
             data: {
-              file_reference: (input.digital.fileReferences ?? [input.digital.fileReference!])[0]!,
-              file_references: input.digital.fileReferences ?? [input.digital.fileReference!],
               max_downloads: input.digital.maxDownloads
             }
           });
@@ -1524,7 +1654,8 @@ export class ProductService {
             where: { offer_id: offer.id },
             data: {
               stock: input.physical.stock,
-              weight_grams: input.physical.weightGrams
+              weight_grams: input.physical.weightGrams,
+              length_cm: input.physical.lengthCm, width_cm: input.physical.widthCm, height_cm: input.physical.heightCm
             }
           });
         }
@@ -1704,6 +1835,13 @@ export class ProductService {
     input: CreateProductOfferDto | AddSellerOfferDto
   ) {
     this.assertFulfillment(productType, input);
+    if (input.digital) {
+      const hosts = this.config.get<string>("UPLOAD_DOWNLOAD_HOSTS") ?? "";
+      const urls = input.digital.fileReferences ?? [input.digital.fileReference!];
+      if (hosts && !urls.every((url) => isAllowedUnsignedFileUrl(url, hosts))) {
+        throw new BadRequestException("Download links must be unsigned HTTPS file URLs on a configured upload host");
+      }
+    }
     this.assertOfferMoney(new Prisma.Decimal(input.price), input.currency);
     const offer = await transaction.seller_offers.create({
       data: {
@@ -1723,6 +1861,7 @@ export class ProductService {
           offer_id: offer.id,
           file_reference: (input.digital.fileReferences ?? [input.digital.fileReference!])[0]!,
           file_references: input.digital.fileReferences ?? [input.digital.fileReference!],
+          file_titles: this.downloadTitles(input.digital),
           max_downloads: input.digital.maxDownloads
         }
       });
@@ -1731,7 +1870,8 @@ export class ProductService {
         data: {
           offer_id: offer.id,
           stock: input.physical.stock,
-          weight_grams: input.physical.weightGrams
+          weight_grams: input.physical.weightGrams,
+          length_cm: input.physical.lengthCm ?? null, width_cm: input.physical.widthCm ?? null, height_cm: input.physical.heightCm ?? null
         }
       });
     } else if (input.service) {
@@ -1778,6 +1918,25 @@ export class ProductService {
       throw new BadRequestException(
         `Exactly one ${productType} fulfillment object is required`
       );
+    }
+    if (productType === "digital" && input.digital) this.downloadTitles(input.digital as DigitalFulfillmentDto);
+  }
+
+  private downloadTitles(input: DigitalFulfillmentDto): string[] {
+    const urls = input.fileReferences ?? [input.fileReference!];
+    if (input.fileTitles !== undefined && input.fileTitles.length !== urls.length) {
+      throw new BadRequestException("Each download URL must have one title");
+    }
+    return input.fileTitles?.map((title) => title.trim()) ?? urls.map(() => "");
+  }
+
+  private assertImmutableDownloads(current: { file_reference: string; file_references: string[]; file_titles: string[] } | null, input: DigitalFulfillmentDto) {
+    if (!current) throw new BadRequestException("This offer has no download links");
+    const urls = current.file_references.length ? current.file_references : [current.file_reference];
+    const submitted = input.fileReferences ?? [input.fileReference!];
+    if (JSON.stringify(urls) !== JSON.stringify(submitted) ||
+      (input.fileTitles !== undefined && JSON.stringify(current.file_titles) !== JSON.stringify(input.fileTitles.map((title) => title.trim())))) {
+      throw new BadRequestException("Download links cannot be changed after product creation");
     }
   }
 
@@ -1862,6 +2021,7 @@ export class ProductService {
               digital: {
                 fileReference: offer.digital.file_reference,
                 fileReferences: offer.digital.file_references.length ? offer.digital.file_references : [offer.digital.file_reference],
+                fileTitles: offer.digital.file_titles,
                 maxDownloads: offer.digital.max_downloads
               }
             }
@@ -1870,7 +2030,8 @@ export class ProductService {
           ? {
               physical: {
                 stock: offer.physical.stock,
-                weightGrams: offer.physical.weight_grams
+                weightGrams: offer.physical.weight_grams,
+                lengthCm: offer.physical.length_cm, widthCm: offer.physical.width_cm, heightCm: offer.physical.height_cm
               }
             }
           : {}),
@@ -1943,6 +2104,7 @@ export class ProductService {
       ...(input.description === undefined
         ? {}
         : { description: normalizeProductDescription(input.description) }),
+      ...(input.tags === undefined ? {} : { tags: [...new Set(input.tags.map((tag) => tag.trim()).filter(Boolean))] }),
       ...await productCategoryUpdate(tx,input),
       ...(input.status === undefined ? {} : { status: input.status })
     };
@@ -2007,6 +2169,7 @@ export class ProductService {
                 digital: {
                   fileReference: offer.digital.file_reference,
                   fileReferences: offer.digital.file_references.length ? offer.digital.file_references : [offer.digital.file_reference],
+                  fileTitles: offer.digital.file_titles,
                   maxDownloads: offer.digital.max_downloads
                 }
               }
@@ -2015,7 +2178,8 @@ export class ProductService {
             ? {
                 physical: {
                   stock: offer.physical.stock,
-                  weightGrams: offer.physical.weight_grams
+                  weightGrams: offer.physical.weight_grams,
+                  lengthCm: offer.physical.length_cm, widthCm: offer.physical.width_cm, heightCm: offer.physical.height_cm
                 }
               }
             : {}),
@@ -2054,7 +2218,7 @@ export class ProductService {
     const changedFields = before
       ? productSnapshotFields.filter((field) => field === "category" && before.categoryId !== undefined && after.categoryId !== undefined
         ? before.categoryId !== after.categoryId
-        : before[field] !== after[field])
+        : field === "tags" ? JSON.stringify(before.tags ?? []) !== JSON.stringify(after.tags ?? []) : before[field] !== after[field])
       : [...productSnapshotFields];
     await tx.product_change_events.create({
       data: {
@@ -2118,6 +2282,10 @@ export class ProductService {
       data.slug = snapshot.slug;
     }
     if (selected.has("description")) data.description = snapshot.description;
+    if (selected.has("tags")) {
+      if (!snapshot.tags) throw new ConflictException("The saved product tags are no longer restorable");
+      data.tags = snapshot.tags;
+    }
     if (selected.has("category")) Object.assign(data, await productCategoryUpdate(tx, snapshot.categoryId !== undefined ? { categoryId: snapshot.categoryId } : { category: snapshot.category }));
     if (selected.has("status")) data.status = snapshot.status;
     if (!Object.keys(data).length) {
@@ -2137,6 +2305,7 @@ export class ProductService {
       (!selected.has("title") || current.title === expected.title) &&
       (!selected.has("slug") || current.slug === expected.slug) &&
       (!selected.has("description") || current.description === expected.description) &&
+      (!selected.has("tags") || JSON.stringify(current.tags ?? []) === JSON.stringify(expected.tags ?? [])) &&
       (!selected.has("category") || (expected.categoryId !== undefined
         ? current.categoryId === expected.categoryId
         : current.category === expected.category)) &&
@@ -2149,6 +2318,7 @@ export class ProductService {
       title: record.title,
       ...(record.slug ? { slug: record.slug } : {}),
       description: record.description,
+      ...(record.tags !== undefined ? { tags: record.tags } : {}),
       category: "category_record" in record ? categoryLabel(record.category_record) : record.category,
       ...("category_record" in record ? { categoryId: record.category_record?.id ?? null } : record.categoryId !== undefined ? { categoryId: record.categoryId } : {}),
       status: record.status
@@ -2169,6 +2339,7 @@ export class ProductService {
           value.slug.length > 200 ||
           !/^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u.test(value.slug))) ||
       (value.description !== null && typeof value.description !== "string") ||
+      (value.tags !== undefined && (!Array.isArray(value.tags) || value.tags.length > 500 || !value.tags.every((tag) => typeof tag === "string" && tag.length <= 50))) ||
       (value.category !== null && typeof value.category !== "string") ||
       !["draft", "pending_review", "active", "archived"].includes(String(status))
     ) {
@@ -2178,6 +2349,7 @@ export class ProductService {
       title: value.title,
       ...(typeof value.slug === "string" ? { slug: value.slug } : {}),
       description: value.description as string | null,
+      ...(Array.isArray(value.tags) ? { tags: value.tags as string[] } : {}),
       category: value.category as string | null,
       ...(typeof value.categoryId === "string" || value.categoryId === null ? { categoryId: value.categoryId } : {}),
       status: status as ProductSnapshot["status"]

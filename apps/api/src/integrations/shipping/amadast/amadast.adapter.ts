@@ -1,5 +1,7 @@
 import { BadGatewayException, Injectable, UnprocessableEntityException } from "@nestjs/common";
 import { SafeHttpService } from "../../../common/http/safe-http.service";
+import { normalizeShippingPlace as normalizePlaceName } from "../shipping-place-name";
+export { normalizePlaceName };
 import type { AmadastConfig, AmadastLocationInput, AmadastOrderPayload, AmadastPlace, AmadastStoreInput, AmadastTenantConfig, AmadastTracking } from "./amadast.types";
 
 const BASE_URL = "https://shop-integration.amadast.com";
@@ -159,17 +161,6 @@ export class AmadastAdapter {
   private headers(config: Pick<AmadastConfig, "clientCode">) {
     return { Accept: "application/json", "X-Client-Code": config.clientCode };
   }
-}
-
-export function normalizePlaceName(value: string) {
-  return value.normalize("NFKC")
-    .replace(/[يى]/g, "ی")
-    .replace(/ك/g, "ک")
-    .replace(/[\u200c\u200f\u202a-\u202e]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/^(?:استان|شهر)\s+/u, "")
-    .toLocaleLowerCase("fa");
 }
 
 function record(value: unknown): Record<string, unknown> {

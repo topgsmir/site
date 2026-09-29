@@ -1,6 +1,10 @@
 /* Hallmark · pre-emit critique: P4 H5 E4 S5 R5 V4 · genre: modern-minimal · macrostructure: Order dossier · palette: TopGSM dashboard */
 .workspace { --surface: var(--color-dashboard-surface); --raised: var(--color-dashboard-surface-raised); --ink: var(--color-dashboard-ink); --muted: var(--color-dashboard-muted); --rule: var(--color-dashboard-rule); --accent: var(--color-dashboard-accent-strong); display: grid; min-width: 0; gap: var(--space-dashboard-lg); padding-block: var(--space-dashboard-xl) var(--space-dashboard-3xl); color: var(--ink); font-family: var(--font-dashboard-body); text-align: start; }
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-dashboard-md); }
+.toolbarActions { display: flex; flex-wrap: wrap; align-items: end; justify-content: flex-end; gap: 8px; }
+.statusPicker { display: grid; gap: 4px; color: var(--muted); font-size: var(--text-dashboard-xs); }
+.statusPicker select { min-height: 42px; min-width: 150px; padding-inline: 10px; border: 1px solid var(--rule); border-radius: 9px; color: var(--ink); background: var(--surface); font: inherit; }
+.statusPicker select:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
 .back { display: inline-flex; align-items: center; gap: var(--space-dashboard-xs); color: var(--accent); font-size: var(--text-dashboard-sm); font-weight: 650; }
 .back:hover { text-decoration: underline; text-underline-offset: 4px; }
 .toolbar button, .notice button { min-height: 42px; padding-inline: var(--space-dashboard-md); border: 1px solid var(--rule); border-radius: var(--radius-dashboard-control); color: var(--ink); background: var(--raised); font-size: var(--text-dashboard-sm); font-weight: 650; cursor: pointer; }
@@ -166,6 +170,9 @@
 .disclosureSummary:hover { background: var(--surface); }
 .disclosureMain, .disclosureSide { display: grid; min-width: 0; gap: 4px; }
 .disclosureMain > strong { overflow-wrap: anywhere; font-size: .88rem; }
+.productLink { color: inherit; text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+.productLink:hover { color: var(--accent); text-decoration-color: currentColor; }
+.productLink:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .disclosureSide { flex: none; text-align: end; }
 .disclosureSide strong { font-size: .82rem; font-variant-numeric: tabular-nums; }
 .recordPreview, .personSecondary { overflow: hidden; color: var(--muted); font-size: .76rem; line-height: 1.55; text-overflow: ellipsis; white-space: nowrap; }
@@ -181,4 +188,10 @@
 .metadata summary:hover { background: var(--surface); text-decoration: none; }
 .metadata > .fields { padding: 14px 16px; border-block-start: 1px solid var(--rule); background: var(--surface); }
 .disclosureHint { color: var(--muted); font-size: .73rem; font-weight: 400; }
+.toolbarActions { display: flex; flex-wrap: wrap; gap: 8px; }
+.toolbarActions .completeButton { border-color: var(--color-dashboard-success); color: var(--color-dashboard-success); }
+.paymentSummary { display: block; color: var(--muted); font-size: .75rem; line-height: 1.55; overflow-wrap: anywhere; }
+.actionError, .actionSuccess { margin: 0; padding: 10px 14px; border-radius: var(--radius-dashboard-control); font-size: .875rem; }
+.actionError { color: var(--color-dashboard-error); background: var(--color-dashboard-error-soft); }
+.actionSuccess { color: var(--color-dashboard-success); background: var(--color-dashboard-success-soft); }
 @media (max-width: 36rem) { .disclosureSummary { gap: 12px; } .disclosureSide strong { max-width: 125px; overflow-wrap: anywhere; } .recordPreview, .personSecondary { max-width: 100%; white-space: normal; } }

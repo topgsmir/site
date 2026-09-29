@@ -9,9 +9,10 @@ import { SmsWorkerService } from "./sms-worker.service";
 import { SmsOutboxConsumerService } from "./sms-outbox-consumer.service";
 import { SmsSettingsController } from "./sms-settings.controller";
 import { SmsSettingsService } from "./sms-settings.service";
+import { ClubCoreModule } from "../club/club-core.module";
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, ClubCoreModule],
   controllers: [OtpController, SmsSettingsController],
   providers: [CredentialCryptoService, OtpService, SmsService, SmsIrAdapter, SmsWorkerService, SmsOutboxConsumerService, SmsSettingsService],
   exports: [SmsService]

@@ -18,8 +18,8 @@ import styles from "./CouponWorkspace.module.css";
 const copy = {
   en: {
     eyebrow: "Sales service",
-    title: "Seller coupons",
-    intro: "Create and manage discount codes across every seller account.",
+    title: "Coupons",
+    intro: "Create codes for one seller or every seller.",
     createTitle: "New coupon",
     editTitle: "Edit coupon",
     seller: "Seller",
@@ -61,12 +61,12 @@ const copy = {
   },
   fa: {
     eyebrow: "سرویس فروش",
-    title: "کدهای تخفیف فروشندگان",
-    intro: "کدهای تخفیف همه فروشنده‌ها را از یک‌جا بسازید و مدیریت کنید.",
+    title: "کدهای تخفیف",
+    intro: "کد تخفیف را برای یک فروشنده یا همه فروشندگان بسازید.",
     createTitle: "کد تخفیف جدید",
     editTitle: "ویرایش کد تخفیف",
     seller: "فروشنده",
-    allSellers: "همه فروشنده‌ها",
+    allSellers: "همه فروشندگان",
     code: "کد تخفیف",
     type: "نوع تخفیف",
     percentage: "درصدی",
@@ -104,8 +104,8 @@ const copy = {
   },
   ar: {
     eyebrow: "خدمة المبيعات",
-    title: "قسائم البائعين",
-    intro: "أنشئ رموز الخصم وأدرها لجميع حسابات البائعين من مكان واحد.",
+    title: "قسائم الخصم",
+    intro: "أنشئ رمز خصم لبائع واحد أو لجميع البائعين.",
     createTitle: "قسيمة جديدة",
     editTitle: "تعديل القسيمة",
     seller: "البائع",
@@ -146,6 +146,8 @@ const copy = {
     more: "تحميل المزيد"
   }
 } as const;
+
+const ALL_SELLERS = "all";
 
 type CouponDraft = {
   sellerId: string;
@@ -253,7 +255,7 @@ export function CouponWorkspace({ locale }: { locale: Locale }) {
   function beginEdit(coupon: AdminSellerCoupon) {
     setEditingId(coupon.id);
     setDraft({
-      sellerId: coupon.seller.id,
+      sellerId: coupon.seller?.id ?? ALL_SELLERS,
       code: coupon.code,
       discountType: coupon.discountType,
       discountValue: coupon.discountValue,
@@ -273,6 +275,7 @@ export function CouponWorkspace({ locale }: { locale: Locale }) {
     setSubmitting(true);
     setFormError("");
     const values = {
+      sellerId: draft.sellerId === ALL_SELLERS ? null : draft.sellerId,
       code: draft.code.trim(),
       discountType: draft.discountType,
       discountValue: draft.discountValue.trim(),
@@ -288,7 +291,6 @@ export function CouponWorkspace({ locale }: { locale: Locale }) {
         ? await api.patch<AdminSellerCoupon>(`/coupons/admin/${editingId}`, values)
         : await api.post<AdminSellerCoupon>("/coupons/admin", {
             ...values,
-            sellerId: draft.sellerId,
             ...(values.minimumOrderAmount === null ? { minimumOrderAmount: undefined } : {}),
             ...(values.maximumRedemptions === null ? { maximumRedemptions: undefined } : {}),
             ...(values.startsAt === undefined ? { startsAt: undefined } : {}),
@@ -296,7 +298,7 @@ export function CouponWorkspace({ locale }: { locale: Locale }) {
           });
       setCoupons((current) => editingId
         ? current.map((coupon) => coupon.id === editingId ? response.data : coupon)
-        : sellerFilter && sellerFilter !== response.data.seller.id ? current : [response.data, ...current]);
+        : sellerFilter && sellerFilter !== response.data.seller?.id ? current : [response.data, ...current]);
       resetForm();
     } catch (error) {
       setFormError(errorMessage(error, c.saveError));
@@ -334,7 +336,7 @@ export function CouponWorkspace({ locale }: { locale: Locale }) {
           {editingId ? <button type="button" onClick={resetForm}>{c.cancel}</button> : null}
         </div>
         <div className={styles.fields}>
-          <label><span>{c.seller}</span><select required disabled={Boolean(editingId)} value={draft.sellerId} onChange={(event) => update("sellerId", event.target.value)}><option value="" disabled>{c.seller}</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.shopName}</option>)}</select></label>
+          <label><span>{c.seller}</span><select required value={draft.sellerId} onChange={(event) => update("sellerId", event.target.value)}><option value="" disabled>{c.seller}</option><option value={ALL_SELLERS}>{c.allSellers}</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.shopName}</option>)}</select></label>
           <label><span>{c.code}</span><input required minLength={3} maxLength={32} pattern="[A-Za-z0-9][A-Za-z0-9_-]{2,31}" value={draft.code} onChange={(event) => update("code", event.target.value.toUpperCase())} /></label>
           <label><span>{c.type}</span><select value={draft.discountType} onChange={(event) => update("discountType", event.target.value as CouponDiscountType)}><option value="percentage">{c.percentage}</option><option value="fixed">{c.fixed}</option></select></label>
           <label><span>{c.value}</span><input required inputMode="decimal" pattern="(?:0|[1-9][0-9]*)(?:\.[0-9]{1,4})?" value={draft.discountValue} onChange={(event) => update("discountValue", event.target.value)} /></label>
@@ -347,7 +349,7 @@ export function CouponWorkspace({ locale }: { locale: Locale }) {
         <div className={styles.formFooter}>
           <label className={styles.checkbox}><input type="checkbox" checked={draft.active} onChange={(event) => update("active", event.target.checked)} /><span>{c.active}</span></label>
           <p role="alert">{formError}</p>
-          <button className={styles.primary} type="submit" disabled={submitting || vendors.length === 0}>{submitting ? c.submitting : editingId ? c.save : c.create}</button>
+          <button className={styles.primary} type="submit" disabled={submitting || !draft.sellerId}>{submitting ? c.submitting : editingId ? c.save : c.create}</button>
         </div>
       </form>
 
@@ -361,7 +363,7 @@ export function CouponWorkspace({ locale }: { locale: Locale }) {
         {!listError && !loading && coupons.length === 0 ? <p className={styles.message}>{c.empty}</p> : null}
         {coupons.map((coupon) => (
           <article className={styles.coupon} key={coupon.id} data-admin-box-key={`coupon:${coupon.id}`}>
-            <div className={styles.couponLead}><small>{coupon.seller.shopName}</small><strong>{coupon.code}</strong><span>{coupon.discountType === "percentage" ? `${coupon.discountValue}%` : `${formatCurrencyAmount(coupon.discountValue, coupon.currency, locale)} ${currencyLabel(coupon.currency)}`}</span></div>
+            <div className={styles.couponLead}><small>{coupon.seller?.shopName ?? c.allSellers}</small><strong>{coupon.code}</strong><span>{coupon.discountType === "percentage" ? `${coupon.discountValue}%` : `${formatCurrencyAmount(coupon.discountValue, coupon.currency, locale)} ${currencyLabel(coupon.currency)}`}</span></div>
             <dl>
               <div><dt>{c.status}</dt><dd data-active={coupon.active}>{coupon.active ? c.enabled : c.disabled}</dd></div>
               <div><dt>{c.redemptions}</dt><dd>{coupon.redeemedCount} / {coupon.maximumRedemptions ?? c.noLimit}</dd></div>

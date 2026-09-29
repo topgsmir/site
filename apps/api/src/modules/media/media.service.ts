@@ -149,6 +149,15 @@ export class MediaService {
     }
   }
 
+  async prepareCategoryImage(file: Express.Multer.File | undefined): Promise<Buffer> {
+    const { buffer } = await this.validateImageUpload(file);
+    return sharp(buffer, { failOn: "error", animated: false, limitInputPixels: MAX_PIXELS })
+      .rotate()
+      .resize({ width: 960, height: 960, fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 80, effort: 4 })
+      .toBuffer();
+  }
+
   async uploadProductImage(
     productId: string,
     actorUserId: string,

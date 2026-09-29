@@ -10,6 +10,7 @@ import type { Locale } from "@/lib/i18n";
 import { ACCOUNT_COPY } from "./AccountCopy";
 import { WORKSPACE_COPY } from "./AccountWorkspaceCopy";
 import { AccountIcon } from "./AccountIcon";
+import { RelativeOrderTime } from "@/components/orders/RelativeOrderTime";
 import styles from "./AccountOrders.module.css";
 
 type OrderSummary = {
@@ -107,7 +108,7 @@ export function AccountOrders({ locale, view }: { locale: Locale; view: "overvie
       <div className={styles.tableHeading} aria-hidden="true"><span>{w.products}</span><span>{w.status}</span><span>{w.amount}</span><span /></div>
       {visibleOrders.map((order) => <article className={styles.order} key={order.id}>
         <div className={styles.orderRow}>
-          <div className={styles.orderProduct}><span className={styles.productIcon}><AccountIcon name={order.items.every((item) => item.productType === "digital") ? "file" : "orders"} /></span><div><h3><Link href={`/${locale}/orders/${order.id}` as Route}>{order.items[0]?.productTitle ?? w.order}{order.items.length > 1 ? <span className={styles.extraItems}> +{(order.items.length - 1).toLocaleString(locale)}</span> : null}</Link></h3><p><bdi>{order.seller.shopName}</bdi><span aria-hidden="true"> · </span><time dateTime={order.createdAt}>{new Date(order.createdAt).toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" })}</time></p></div></div>
+          <div className={styles.orderProduct}><span className={styles.productIcon}><AccountIcon name={order.items.every((item) => item.productType === "digital") ? "file" : "orders"} /></span><div><h3><Link href={`/${locale}/orders/${order.id}` as Route}>{order.items[0]?.productTitle ?? w.order}{order.items.length > 1 ? <span className={styles.extraItems}> +{(order.items.length - 1).toLocaleString(locale)}</span> : null}</Link></h3><p><bdi>{order.seller.shopName}</bdi><span aria-hidden="true"> · </span><RelativeOrderTime value={order.createdAt} locale={locale} /></p></div></div>
           <span className={styles.status} data-status={order.status}><span />{c.status[order.status as keyof typeof c.status] ?? order.status}</span>
           <strong className={styles.amount}>{formatCurrencyAmount(order.totalAmount, order.currency, locale)}<small>{currencyLabel(order.currency)}</small></strong>
           <div className={styles.orderActions}>

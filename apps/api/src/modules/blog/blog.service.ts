@@ -581,6 +581,9 @@ export class BlogService {
         id: term.id,
         kind,
         name: localized.name,
+        description: localized.description,
+        metaTitle: localized.meta_title,
+        metaDescription: localized.meta_description,
         alternateSlugs: Object.fromEntries(
           term.translations.map((translation) => [translation.locale, translation.slug])
         )
@@ -637,43 +640,105 @@ export class BlogService {
 
   async listTaxonomy() {
     const [categories, tags] = await Promise.all([
-      this.prisma.blog_categories.findMany({ include: { translations: true }, orderBy: { created_at: "asc" } }),
-      this.prisma.blog_tags.findMany({ include: { translations: true }, orderBy: { created_at: "asc" } })
+      this.prisma.blog_categories.findMany({ include: { translations: true }, orderBy: [{ position: "asc" }, { created_at: "asc" }, { id: "asc" }] }),
+      this.prisma.blog_tags.findMany({ include: { translations: true }, orderBy: [{ position: "asc" }, { created_at: "asc" }, { id: "asc" }] })
     ]);
     return { categories, tags };
   }
 
-  createTaxonomy(kind: "category" | "tag", input: TaxonomyDto) {
-    this.assertAllLocales(input.translations);
-    const translations = input.translations.map((item) => ({
-      locale: item.locale,
-      name: this.clean(item.name),
-      slug: this.slugify(item.slug)
-    }));
-    return kind === "category"
-      ? this.prisma.blog_categories.create({ data: { translations: { create: translations } }, include: { translations: true } })
-      : this.prisma.blog_tags.create({ data: { translations: { create: translations } }, include: { translations: true } });
+  async createTaxonomy(kind: "category" | "tag", input: TaxonomyDto) {
+    this.assertTaxonomyBounds(kind, input);
+    const translations = input.translations.map((item) => this.taxonomyTranslation(item));
+    try {
+      const last = kind === "category"
+        ? await this.prisma.blog_categories.findFirst({ orderBy: { position: "desc" }, select: { position: true } })
+        : await this.prisma.blog_tags.findFirst({ orderBy: { position: "desc" }, select: { position: true } });
+      const position = (last?.position ?? -1) + 1;
+      return kind === "category"
+        ? await this.prisma.blog_categories.create({ data: { position, translations: { create: translations } }, include: { translations: true } })
+        : await this.prisma.blog_tags.create({ data: { position, translations: { create: translations } }, include: { translations: true } });
+    } catch (error) {
+      this.rethrowTaxonomyConflict(error);
+    }
   }
 
   async updateTaxonomy(kind: "category" | "tag", id: string, input: TaxonomyDto) {
-    this.assertAllLocales(input.translations);
+    this.assertTaxonomyBounds(kind, input);
     const db = kind === "category" ? this.prisma.blog_categories : this.prisma.blog_tags;
     const found = await (db as typeof this.prisma.blog_categories).findUnique({ where: { id }, select: { id: true } });
     if (!found) throw new NotFoundException("Taxonomy term was not found");
-    await this.prisma.$transaction(async (tx) => {
-      if (kind === "category") {
-        await tx.blog_category_translations.deleteMany({ where: { category_id: id } });
-        await tx.blog_category_translations.createMany({
-          data: input.translations.map((item) => ({ category_id: id, locale: item.locale, name: this.clean(item.name), slug: this.slugify(item.slug) }))
-        });
-      } else {
-        await tx.blog_tag_translations.deleteMany({ where: { tag_id: id } });
-        await tx.blog_tag_translations.createMany({
-          data: input.translations.map((item) => ({ tag_id: id, locale: item.locale, name: this.clean(item.name), slug: this.slugify(item.slug) }))
-        });
-      }
-    });
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        if (kind === "category") {
+          await tx.blog_category_translations.deleteMany({ where: { category_id: id } });
+          await tx.blog_category_translations.createMany({
+            data: input.translations.map((item) => ({ category_id: id, ...this.taxonomyTranslation(item) }))
+          });
+          await tx.blog_categories.update({ where: { id }, data: { updated_at: new Date() } });
+        } else {
+          await tx.blog_tag_translations.deleteMany({ where: { tag_id: id } });
+          await tx.blog_tag_translations.createMany({
+            data: input.translations.map((item) => ({ tag_id: id, ...this.taxonomyTranslation(item) }))
+          });
+          await tx.blog_tags.update({ where: { id }, data: { updated_at: new Date() } });
+        }
+      });
+    } catch (error) {
+      this.rethrowTaxonomyConflict(error);
+    }
     return this.listTaxonomy();
+  }
+
+  async reorderTaxonomy(kind: "category" | "tag", ids: string[]) {
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const existing = kind === "category"
+          ? await tx.blog_categories.findMany({ select: { id: true } })
+          : await tx.blog_tags.findMany({ select: { id: true } });
+        const requested = new Set(ids);
+        if (existing.length !== ids.length || existing.some((term) => !requested.has(term.id))) {
+          throw new ConflictException("Taxonomy changed; reload before reordering");
+        }
+        for (const [position, id] of ids.entries()) {
+          if (kind === "category") await tx.blog_categories.update({ where: { id }, data: { position } });
+          else await tx.blog_tags.update({ where: { id }, data: { position } });
+        }
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") {
+        throw new ConflictException("Taxonomy changed; reload before reordering");
+      }
+      throw error;
+    }
+    return this.listTaxonomy();
+  }
+
+  private taxonomyTranslation(item: TaxonomyDto["translations"][number]) {
+    const name = this.clean(item.name);
+    const slug = this.slugify(item.slug);
+    if (!name || !slug) throw new BadRequestException("Taxonomy name and slug cannot be blank");
+    return {
+      locale: item.locale,
+      name,
+      slug,
+      description: item.description?.trim() || null,
+      meta_title: item.metaTitle?.trim() || null,
+      meta_description: item.metaDescription?.trim() || null
+    };
+  }
+
+  private assertTaxonomyBounds(kind: "category" | "tag", input: TaxonomyDto) {
+    this.assertAllLocales(input.translations);
+    if (kind === "tag" && input.translations.some((item) => this.clean(item.name).length > 80 || this.slugify(item.slug).length > 100)) {
+      throw new BadRequestException("Tag names must be at most 80 characters and slugs at most 100 characters");
+    }
+  }
+
+  private rethrowTaxonomyConflict(error: unknown): never {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new ConflictException("A taxonomy slug is already in use for this language");
+    }
+    throw error;
   }
 
   async deleteTaxonomy(kind: "category" | "tag", id: string) {
@@ -684,6 +749,9 @@ export class BlogService {
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
         throw new ConflictException("Taxonomy term is in use and cannot be deleted");
+      }
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+        throw new NotFoundException("Taxonomy term was not found");
       }
       throw error;
     }

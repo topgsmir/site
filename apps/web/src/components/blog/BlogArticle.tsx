@@ -68,7 +68,7 @@ export function BlogArticle({ locale, post, sidebar, storeProducts = [], editHre
             {cover ? <figure className={styles.cover}><Image unoptimized src={cover.url} alt={post.coverAltText} width={cover.width} height={cover.height} sizes="(max-width: 900px) 100vw, 800px" priority /></figure> : null}
             <ArticleContents locale={locale} headings={headings} />
             {showPromotion ? <a className={styles.mobileShopLink} href="#article-shop-title"><DesignIcon name="bag" /><span>{promotionTitle}</span><DesignIcon name="arrow" /></a> : null}
-            <div id="article-body" className={styles.body} tabIndex={-1}><RichText document={post.content} headingAnchors /></div>
+            <div id="article-body" className={styles.body} tabIndex={-1}><RichText document={post.content} headingAnchors language={locale} /></div>
             {post.tags?.length ? <nav className={styles.tags} aria-label={copy.tags}>{post.tags.map((tag) => <Link key={tag.id} href={`/${locale}/blog/tag/${encodeURIComponent(tag.slug)}` as Route}>{tag.name}</Link>)}</nav> : null}
             <footer className={styles.articleEnd}><div><h2>{copy.more}</h2><p>{copy.moreText}</p></div><Link href={`/${locale}/blog` as Route}>{copy.all}<DesignIcon name="arrow" /></Link></footer>
           </article>

@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
+import { ConflictException, Injectable, Optional, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Prisma } from "../../prisma/client";
 import { createHmac, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
@@ -9,10 +9,11 @@ import type { VerifyOtpDto } from "./dto/otp.dto";
 import { normalizeIranianPhone } from "./phone-number";
 import { SmsService } from "./sms.service";
 import { SmsSettingsService } from "./sms-settings.service";
+import { ClubService } from "../club/club.service";
 
 @Injectable()
 export class OtpService {
-  constructor(private readonly prisma: PrismaService, private readonly auth: AuthService, private readonly sms: SmsService, private readonly config: ConfigService, private readonly settings: SmsSettingsService, private readonly loginSettings: AuthLoginSettingsService) {}
+  constructor(private readonly prisma: PrismaService, private readonly auth: AuthService, private readonly sms: SmsService, private readonly config: ConfigService, private readonly settings: SmsSettingsService, private readonly loginSettings: AuthLoginSettingsService, @Optional() private readonly club?: ClubService) {}
 
   async request(rawPhone: string) {
     await this.assertEnabled();
@@ -66,6 +67,10 @@ export class OtpService {
       if (consumed.count !== 1) throw new ConflictException("OTP challenge was already used");
       if (byPhone) return { kind: "user" as const, userId: byPhone.id };
       const user = await transaction.users.create({ data: { full_name: input.fullName!.trim(), email: email ?? null, phone_number: phone, role: "buyer" } });
+      if (this.club) {
+        const clubSettings = await transaction.club_settings.findUnique({ where: { id: 1 } });
+        if (clubSettings?.enabled && clubSettings.signup_points > 0) await this.club.award(transaction, user.id, clubSettings.signup_points, `club-signup:${user.id}`, "signup", user.id);
+      }
       return { kind: "user" as const, userId: user.id };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     if (userId.kind === "registration-required") return { registrationRequired: true as const };

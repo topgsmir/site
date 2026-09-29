@@ -80,9 +80,16 @@
 .summaryTitle span { color: var(--muted); font-size: .7rem; }
 .summaryTitle > strong { font-size: clamp(1.65rem, 3vw, 2.25rem); font-weight: 550; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
 .summaryTitle > strong small { color: var(--muted); font-size: .65rem; font-weight: 500; letter-spacing: 0; }
+.couponControl { display: flex; align-items: end; flex-wrap: wrap; gap: 8px; }
+.couponControl label { flex: 1 1 150px; }
+.couponControl button { min-height: 40px; padding: 8px 12px; border: 1px solid var(--color-dashboard-rule-strong); border-radius: 10px; background: var(--paper-bright); color: var(--ink); cursor: pointer; }
+.couponControl button:disabled { cursor: not-allowed; opacity: .55; }
+.discountLine { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; color: var(--ink-soft); font-size: .78rem; }
 .pricePlaceholder { min-height: 34px; display: flex; align-items: center; }
 .updating { margin-top: -14px; color: var(--signal-dark); font-size: .66rem; }
 .paymentGroup { display: grid; gap: 13px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+.walletContribution { display: grid; gap: 6px; font-size: 13px; }
+.walletContribution input { min-height: 40px; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font: inherit; }
 .paymentGroup > div { display: flex; justify-content: space-between; gap: 16px; color: var(--ink-soft); font-size: .72rem; }
 .paymentGroup > div strong { font-weight: 550; font-variant-numeric: tabular-nums; }
 .summary fieldset { display: grid; min-width: 0; gap: 13px; margin: 0; padding: 20px 0 0; border: 0; border-top: 1px solid var(--line); }

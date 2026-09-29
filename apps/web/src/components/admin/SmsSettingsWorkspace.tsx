@@ -22,10 +22,12 @@ const copy = {
     sellerTemplate: "New-order seller template ID",
     buyerSuccessTemplate: "Buyer success template ID",
     buyerFailureTemplate: "Buyer failure template ID",
+    clubRedemptionTemplate: "Club redemption template ID",
+    clubExpiryTemplate: "Club expiry template ID",
     templateHint: "Use the numeric template IDs from your SMS.ir account.",
     otpTitle: "One-time password sign-in",
     testModeTitle: "SMS test mode",
-    testModeHint: "Print SMS details, including one-time codes, in the API console instead of sending them. Anyone with access to those logs can read the codes.",
+    testModeHint: "Record only the template and parameter names in API logs instead of sending messages. Message values and one-time codes are hidden.",
     testModeEnabled: "Test mode is on",
     testModeDisabled: "Test mode is off",
     otpHint: "Allow customers to request and verify a six-digit SMS code during checkout.",
@@ -56,10 +58,12 @@ const copy = {
     sellerTemplate: "شناسه قالب سفارش جدید برای فروشنده",
     buyerSuccessTemplate: "شناسه قالب موفقیت برای خریدار",
     buyerFailureTemplate: "شناسه قالب ناموفق برای خریدار",
+    clubRedemptionTemplate: "شناسه قالب تبدیل امتیاز باشگاه",
+    clubExpiryTemplate: "شناسه قالب انقضای امتیاز باشگاه",
     templateHint: "شناسه‌های عددی قالب را از حساب SMS.ir وارد کنید.",
     otpTitle: "ورود با رمز یک‌بارمصرف",
     testModeTitle: "حالت آزمایشی پیامک",
-    testModeHint: "جزئیات پیامک، از جمله کدهای یک‌بارمصرف، به‌جای ارسال در کنسول API چاپ می‌شود. افراد دارای دسترسی به گزارش‌ها می‌توانند کدها را بخوانند.",
+    testModeHint: "در حالت آزمایشی فقط نام قالب و پارامترها ثبت می‌شود و مقدار پیام و رمز یک‌بارمصرف در گزارش‌ها نمایش داده نمی‌شود.",
     testModeEnabled: "حالت آزمایشی روشن است",
     testModeDisabled: "حالت آزمایشی خاموش است",
     otpHint: "به مشتری اجازه دهید هنگام خرید کد شش‌رقمی پیامکی دریافت و تأیید کند.",
@@ -90,10 +94,12 @@ const copy = {
     sellerTemplate: "معرّف قالب الطلب الجديد للبائع",
     buyerSuccessTemplate: "معرّف قالب نجاح المشتري",
     buyerFailureTemplate: "معرّف قالب فشل المشتري",
+    clubRedemptionTemplate: "معرّف قالب استبدال نقاط النادي",
+    clubExpiryTemplate: "معرّف قالب انتهاء نقاط النادي",
     templateHint: "أدخل معرّفات القوالب الرقمية من حساب SMS.ir.",
     otpTitle: "تسجيل الدخول برمز لمرة واحدة",
     testModeTitle: "وضع اختبار الرسائل",
-    testModeHint: "تُطبع تفاصيل الرسائل، بما فيها رموز الدخول، في سجل API بدلاً من إرسالها. يمكن لمن يصل إلى السجل قراءة الرموز.",
+    testModeHint: "يسجل وضع الاختبار اسم القالب وأسماء المعاملات فقط، دون قيم الرسائل أو رموز الدخول.",
     testModeEnabled: "وضع الاختبار مفعّل",
     testModeDisabled: "وضع الاختبار معطّل",
     otpHint: "اسمح للعملاء بطلب رمز من ستة أرقام والتحقق منه أثناء الدفع.",
@@ -122,6 +128,8 @@ export function SmsSettingsWorkspace({ locale }: { locale: Locale }) {
     sellerNewOrder: "",
     buyerSuccess: "",
     buyerFailure: ""
+    ,clubRedemption: "",
+    clubExpiry: ""
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -148,7 +156,8 @@ export function SmsSettingsWorkspace({ locale }: { locale: Locale }) {
   }, [c.loadError]);
 
   useEffect(() => {
-    void load();
+    const frame = requestAnimationFrame(() => void load());
+    return () => cancelAnimationFrame(frame);
   }, [load]);
 
   const numberOrNull = (value: string) => value === "" ? null : Number(value);
@@ -175,7 +184,9 @@ export function SmsSettingsWorkspace({ locale }: { locale: Locale }) {
         otpTemplateId: numberOrNull(templateIds.otp),
         sellerNewOrderTemplateId: numberOrNull(templateIds.sellerNewOrder),
         buyerSuccessTemplateId: numberOrNull(templateIds.buyerSuccess),
-        buyerFailureTemplateId: numberOrNull(templateIds.buyerFailure)
+        buyerFailureTemplateId: numberOrNull(templateIds.buyerFailure),
+        clubRedemptionTemplateId: numberOrNull(templateIds.clubRedemption),
+        clubExpiryTemplateId: numberOrNull(templateIds.clubExpiry)
       });
       setSaved(response.data);
       setOtpEnabled(response.data.otpEnabled);
@@ -246,7 +257,9 @@ export function SmsSettingsWorkspace({ locale }: { locale: Locale }) {
                 ["otp", c.otpTemplate],
                 ["sellerNewOrder", c.sellerTemplate],
                 ["buyerSuccess", c.buyerSuccessTemplate],
-                ["buyerFailure", c.buyerFailureTemplate]
+                ["buyerFailure", c.buyerFailureTemplate],
+                ["clubRedemption", c.clubRedemptionTemplate],
+                ["clubExpiry", c.clubExpiryTemplate]
               ] as const).map(([key, label]) => (
                 <label key={key}>
                   <span>{label}</span>
