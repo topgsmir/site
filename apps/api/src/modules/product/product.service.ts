@@ -174,6 +174,7 @@ const productSnapshotSelect = {
   description: true,
   tags: true,
   category_record: { select: productCategorySelect },
+  type: true,
   status: true
 } satisfies Prisma.productsSelect;
 
@@ -200,6 +201,7 @@ const productChangeSelect = {
 
 type ProductSnapshot = {
   title: string;
+  type?: "digital" | "physical" | "service" | "bridge";
   slug?: string;
   description: string | null;
   tags?: string[];
@@ -227,7 +229,7 @@ function searchVariants(term: string) {
   ])];
 }
 
-const productSnapshotFields = ["title", "slug", "description", "tags", "category", "status"] as const;
+const productSnapshotFields = ["title", "slug", "description", "tags", "category", "status", "type"] as const;
 
 type AdminProductRecord = Prisma.productsGetPayload<{
   select: typeof adminProductSelect;
@@ -1016,17 +1018,20 @@ export class ProductService {
         if (input.status === "active" && current.bridge_binding?.schema_review_needed) {
           throw new ConflictException("The Bridge product requires schema review before it can become active");
         }
+        const typeChanged = await this.changeProductType(tx, productId, current.type, current.status, input);
         const updated = await tx.products.update({
           where: { id: productId },
           data: {
             ...await this.productUpdateData(tx,input),
-            ...(input.slug === undefined ? {} : { slug: this.slugify(input.slug) })
+            ...(input.slug === undefined ? {} : { slug: this.slugify(input.slug) }),
+            ...(typeChanged ? { status: "draft" } : {})
           },
           select: adminProductSelect
         });
+        if (typeChanged) await this.validateDeferredConstraints(tx);
         await this.recordProductChange(tx, productId, actorUserId, "update", current, updated);
         return updated;
-      });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
       return this.toAdminProduct(product);
     } catch (error) {
       if (
@@ -1034,6 +1039,9 @@ export class ProductService {
         error.code === "P2025"
       ) {
         throw new NotFoundException("Product was not found");
+      }
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") {
+        throw new ConflictException("The product changed during editing; reload and try again");
       }
       this.rethrowWriteError(error);
     }
@@ -1235,6 +1243,7 @@ export class ProductService {
       ]);
       if (!event || !current) throw new NotFoundException("Product change was not found");
       if (event.changed_fields.includes("seller")) throw new ConflictException("Seller transfers cannot be restored as catalog edits");
+      if (event.changed_fields.includes("type")) throw new ConflictException("A product type conversion cannot be restored without its original offer fulfillment details");
       const savedSnapshot = side === "before" ? event.before_snapshot : event.after_snapshot;
       if (!savedSnapshot) {
         throw new ConflictException("This change has no earlier product version");
@@ -1246,7 +1255,7 @@ export class ProductService {
       const updated = await tx.products.update({
         where: { id: productId },
         data: await this.productFieldsFromSnapshot(tx,target,productSnapshotFields.filter((field) =>
-          (field !== "slug" || target.slug) && (field !== "tags" || target.tags !== undefined)
+          field !== "type" && (field !== "slug" || target.slug) && (field !== "tags" || target.tags !== undefined)
         )),
         select: adminProductSelect
       });
@@ -1424,8 +1433,9 @@ export class ProductService {
         if (!product) throw new NotFoundException("Seller product was not found");
         if (product.status === "trashed") throw new ForbiddenException("Trashed products can only be restored by an administrator");
         if (input.status === "trashed") throw new ForbiddenException("Only an administrator can move products to trash");
+        const typeChanged = await this.changeProductType(tx, product.id, product.type, product.status, input);
         const requestedStatus = input.status;
-        const nextStatus = requestedStatus === undefined
+        const nextStatus = typeChanged ? "draft" : requestedStatus === undefined
           ? product.status === "active" && !mayPublish ? "pending_review" : undefined
           : requestedStatus === "active" && !mayPublish ? "pending_review" : requestedStatus;
         const updated = await tx.products.update({
@@ -1437,9 +1447,13 @@ export class ProductService {
           },
           select: productSnapshotSelect
         });
+        if (typeChanged) await this.validateDeferredConstraints(tx);
         await this.recordProductChange(tx, product.id, actorUserId, "update", product, updated);
-      });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") {
+        throw new ConflictException("The product changed during editing; reload and try again");
+      }
       this.rethrowWriteError(error);
     }
 
@@ -2093,9 +2107,81 @@ export class ProductService {
   }
 
   private assertProductUpdate(input: UpdateProductDto) {
-    if (!Object.values(input).some((value) => value !== undefined)) {
+    if (!input.type && (input.confirmTypeChange !== undefined || input.typeChangeDigital || input.typeChangePhysical || input.typeChangeService)) {
+      throw new BadRequestException("A product type is required when providing conversion details");
+    }
+    if (!Object.entries(input).some(([key, value]) => key !== "confirmTypeChange" && value !== undefined)) {
       throw new BadRequestException("At least one product field is required");
     }
+  }
+
+  private async changeProductType(
+    tx: Prisma.TransactionClient,
+    productId: string,
+    currentType: string,
+    currentStatus: string,
+    input: UpdateProductDto
+  ): Promise<boolean> {
+    const nextType = input.type;
+    if (!nextType || nextType === currentType) return false;
+    if (!input.confirmTypeChange) throw new BadRequestException("Confirm the product type change and loss of existing fulfillment details");
+    if (currentStatus === "trashed") throw new ConflictException("Restore the product before changing its type");
+    if (currentType === "bridge" || nextType === "bridge") {
+      throw new ConflictException("Bridge products require a provider binding and cannot be converted");
+    }
+
+    const offers = await tx.seller_offers.findMany({
+      where: { listing: { product_id: productId } },
+      select: {
+        id: true,
+        _count: { select: { order_items: true, inventory_reservations: true } },
+        listing: { select: { seller_id: true } }
+      }
+    });
+    if (offers.some((offer) => offer._count.order_items || offer._count.inventory_reservations)) {
+      throw new ConflictException("Products with sales or inventory reservations cannot change type");
+    }
+    if (nextType === "physical") {
+      const sellerIds = await tx.seller_listings.findMany({
+        where: { product_id: productId }, select: { seller_id: true }
+      });
+      const product = await tx.products.findUniqueOrThrow({
+        where: { id: productId }, select: { created_by_seller_id: true }
+      });
+      const required = new Set([product.created_by_seller_id, ...sellerIds.map((listing) => listing.seller_id)]);
+      const grants = await tx.seller_permissions.findMany({
+        where: { seller_id: { in: [...required] }, permission: "physical_products_manage" },
+        select: { seller_id: true }
+      });
+      if (grants.length !== required.size) throw new ForbiddenException("Every attached seller needs physical-product access");
+    }
+
+    const details = {
+      digital: input.typeChangeDigital,
+      physical: input.typeChangePhysical,
+      service: input.typeChangeService
+    };
+    if (Object.values(details).filter(Boolean).length !== Number(Boolean(details[nextType])) || (offers.length > 0 && !details[nextType])) {
+      throw new BadRequestException(`Exactly one ${nextType} fulfillment object is required for existing offers`);
+    }
+    const offerIds = offers.map((offer) => offer.id);
+    if (offerIds.length) {
+      const where = { offer_id: { in: offerIds } };
+      if (currentType === "digital") await tx.seller_offer_digital.deleteMany({ where });
+      if (currentType === "physical") await tx.seller_offer_physical.deleteMany({ where });
+      if (currentType === "service") await tx.seller_offer_service.deleteMany({ where });
+      for (const offer of offers) {
+        if (nextType === "digital" && input.typeChangeDigital) {
+          const urls = input.typeChangeDigital.fileReferences ?? [input.typeChangeDigital.fileReference!];
+          await tx.seller_offer_digital.create({ data: { offer_id: offer.id, file_reference: urls[0]!, file_references: urls, max_downloads: input.typeChangeDigital.maxDownloads } });
+        }
+        if (nextType === "physical" && input.typeChangePhysical) await tx.seller_offer_physical.create({ data: { offer_id: offer.id, stock: input.typeChangePhysical.stock, weight_grams: input.typeChangePhysical.weightGrams } });
+        if (nextType === "service" && input.typeChangeService) await tx.seller_offer_service.create({ data: { offer_id: offer.id, service_type: this.clean(input.typeChangeService.serviceType), estimated_hours: input.typeChangeService.estimatedHours, instructions: this.cleanOptional(input.typeChangeService.instructions), input_schema: this.serviceInputSchema(input.typeChangeService.inputs) } });
+      }
+      await tx.seller_offers.updateMany({ where: { id: { in: offerIds } }, data: { status: "draft" } });
+    }
+    await tx.seller_listings.updateMany({ where: { product_id: productId }, data: { status: "draft" } });
+    return true;
   }
 
   private async productUpdateData(tx: Prisma.TransactionClient, input: UpdateProductDto): Promise<Prisma.productsUpdateInput> {
@@ -2106,6 +2192,7 @@ export class ProductService {
         : { description: normalizeProductDescription(input.description) }),
       ...(input.tags === undefined ? {} : { tags: [...new Set(input.tags.map((tag) => tag.trim()).filter(Boolean))] }),
       ...await productCategoryUpdate(tx,input),
+      ...(input.type === undefined ? {} : { type: input.type }),
       ...(input.status === undefined ? {} : { status: input.status })
     };
   }
@@ -2218,7 +2305,9 @@ export class ProductService {
     const changedFields = before
       ? productSnapshotFields.filter((field) => field === "category" && before.categoryId !== undefined && after.categoryId !== undefined
         ? before.categoryId !== after.categoryId
-        : field === "tags" ? JSON.stringify(before.tags ?? []) !== JSON.stringify(after.tags ?? []) : before[field] !== after[field])
+        : field === "type" && (before.type === undefined || after.type === undefined)
+          ? false
+          : field === "tags" ? JSON.stringify(before.tags ?? []) !== JSON.stringify(after.tags ?? []) : before[field] !== after[field])
       : [...productSnapshotFields];
     await tx.product_change_events.create({
       data: {
@@ -2258,7 +2347,7 @@ export class ProductService {
       { bulk_operation_id: null },
       { before_snapshot: { not: Prisma.DbNull } },
       { changed_fields: { isEmpty: false } },
-      { NOT: { changed_fields: { has: "seller" } } },
+      { NOT: { changed_fields: { hasSome: ["seller", "type"] } } },
       ...(input.mode === "after_time" ? [{ created_at: { gt: new Date(input.after!) } }] : [])
     ];
     if (filters.length) {
@@ -2273,6 +2362,7 @@ export class ProductService {
     changedFields: string[]
   ): Promise<Prisma.productsUpdateInput> {
     const selected = new Set(changedFields);
+    if (selected.has("type")) throw new ConflictException("A product type conversion cannot be undone without restoring its offer fulfillment details");
     const data: Prisma.productsUpdateInput = {};
     if (selected.has("title")) data.title = snapshot.title;
     if (selected.has("slug")) {
@@ -2316,6 +2406,7 @@ export class ProductService {
   private productSnapshot(record: ProductSnapshot | ProductSnapshotRecord): ProductSnapshot {
     return {
       title: record.title,
+      ...(record.type ? { type: record.type } : {}),
       ...(record.slug ? { slug: record.slug } : {}),
       description: record.description,
       ...(record.tags !== undefined ? { tags: record.tags } : {}),
@@ -2340,6 +2431,7 @@ export class ProductService {
           !/^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u.test(value.slug))) ||
       (value.description !== null && typeof value.description !== "string") ||
       (value.tags !== undefined && (!Array.isArray(value.tags) || value.tags.length > 500 || !value.tags.every((tag) => typeof tag === "string" && tag.length <= 50))) ||
+      (value.type !== undefined && !["digital", "physical", "service", "bridge"].includes(String(value.type))) ||
       (value.category !== null && typeof value.category !== "string") ||
       !["draft", "pending_review", "active", "archived"].includes(String(status))
     ) {
@@ -2347,6 +2439,7 @@ export class ProductService {
     }
     return {
       title: value.title,
+      ...(typeof value.type === "string" ? { type: value.type as ProductSnapshot["type"] } : {}),
       ...(typeof value.slug === "string" ? { slug: value.slug } : {}),
       description: value.description as string | null,
       ...(Array.isArray(value.tags) ? { tags: value.tags as string[] } : {}),

@@ -20,6 +20,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { productPublicPath } from "@/components/product/ProductPublicUrl";
 import { ProductSlugEditor } from "@/components/product/ProductSlugEditor";
 import { api } from "@/lib/api/client";
+import { ProductTypeChange, type TypeChangePayload } from "@/components/product/ProductTypeChange";
 import type { Locale } from "@/lib/i18n";
 import { ProductTranslations } from "./ProductTranslations";
 import { ProductDescriptionEditor } from "@/components/product/ProductDescriptionEditor";
@@ -197,8 +198,10 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
       setProduct((current) => cursor && current ? { ...response.data, listings: [...current.listings, ...response.data.listings] } : response.data);
       if (!cursor) setDraft(coreDraft(response.data));
       setOffers((current) => ({ ...(cursor ? current : {}), ...Object.fromEntries(response.data.listings.flatMap((listing) => listing.offers.map((offer) => [offer.id, offerDraft(offer)]))) }));
+      return true;
     } catch (requestError) {
       setError(requestMessage(requestError, c.loadError));
+      return false;
     } finally { setLoading(false); }
   }, [c.loadError, productId]);
 
@@ -220,6 +223,27 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
       setDraft((current) => current ? { ...current, title: response.data.title, slug: response.data.slug, category: response.data.category ?? "", categoryId: response.data.categoryId ?? null, tags: response.data.tags, description: response.data.description ?? "", status: response.data.status } : current);
       setMessage(c.saved);
     } catch (requestError) { setError(requestMessage(requestError, c.saveError)); }
+    finally { setBusy(null); }
+  }
+
+  async function changeType(payload: TypeChangePayload) {
+    if (busy || !draft) return;
+    setBusy("type"); setError(""); setMessage("");
+    try {
+      await api.patch(`/products/admin/${productId}`, {
+        ...payload,
+        title: draft.title.trim(), slug: draft.slug.trim(), category: draft.category.trim() || null,
+        description: draft.description.trim() || null
+      });
+      if (!await load()) throw new Error(c.loadError);
+      setHistoryVersion((version) => version + 1);
+      setMessage(c.saved);
+    } catch (requestError) {
+      const detail = requestError instanceof Error && requestError.message === c.loadError
+        ? c.loadError : requestMessage(requestError, c.saveError);
+      setError(detail);
+      throw new Error(detail);
+    }
     finally { setBusy(null); }
   }
 
@@ -398,8 +422,9 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
           </section>
           <LiveSeoPanel locale={locale} input={{ kind: "product", title: draft.title, body: draft.description, hasCover: Boolean(product.image) }} />
           <section className={styles.panel}>
-            <header><h2>{sectionCopy.productState}</h2><p>{c.immutable}</p></header>
+            <header><h2>{sectionCopy.productState}</h2></header>
             <dl className={styles.facts}><div><dt>{c.kind}</dt><dd>{c[product.kind]}</dd></div><div><dt>{c.type}</dt><dd>{TYPE_COPY[locale][product.type]}</dd></div><div><dt>{c.owner}</dt><dd>{product.createdBy.shopName}</dd></div><div><dt>{c.variants}</dt><dd>{product.variants.length}</dd></div></dl>
+            <ProductTypeChange key={product.type} locale={locale} currentType={product.type} disabled={Boolean(busy)} onApply={changeType} />
             {product.options.map((option) => <div className={styles.option} key={option.id}><strong>{option.name}</strong><p>{option.values.map((value) => value.value).join(" · ")}</p></div>)}
           </section>
           <section className={styles.panel} aria-labelledby="product-comments-title">

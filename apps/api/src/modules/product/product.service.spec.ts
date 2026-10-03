@@ -277,6 +277,7 @@ describe("admin product editing", () => {
         },
         after_snapshot: {
           title: "Clean title",
+          type: "service",
           slug: "catalog-product",
           description: "Clean description",
           tags: ["new"],
@@ -474,6 +475,75 @@ describe("admin product editing", () => {
     await assert.rejects(
       () => service.updateAdminProduct(PRODUCT_ID, ACTOR_ID, {}),
       BadRequestException
+    );
+  });
+
+  it("requires explicit confirmation before changing a product type", async () => {
+    const service = serviceWith({
+      $transaction: async (callback: (tx: unknown) => unknown) => callback({
+        products: { findUnique: async () => ({ type: "digital", status: "active", bridge_binding: null }) }
+      })
+    });
+    await assert.rejects(
+      () => service.updateAdminProduct(PRODUCT_ID, ACTOR_ID, { type: "physical" }),
+      /Confirm the product type change/
+    );
+  });
+
+  it("converts unsold offers to draft with matching fulfillment in one transaction", async () => {
+    const offerId = "00000000-0000-4000-8000-000000000020";
+    const sellerId = "00000000-0000-4000-8000-000000000021";
+    const calls: string[] = [];
+    const current = { title: "Product", slug: "product", description: null, category_record: null, type: "digital", status: "active", bridge_binding: null };
+    const service = serviceWith({
+      $transaction: async (callback: (tx: unknown) => unknown) => callback({
+        products: {
+          findUnique: async () => current,
+          findUniqueOrThrow: async () => ({ created_by_seller_id: sellerId }),
+          update: async (input: { data: { type: string; status: string } }) => {
+            calls.push(`product:${input.data.type}:${input.data.status}`);
+            return { id: PRODUCT_ID, price_currency: "TOMAN", ...current, type: input.data.type, status: input.data.status,
+              kind: "simple", tags: [], created_at: new Date(), updated_at: new Date(), media: null,
+              created_by: { id: sellerId, shop_name: "Seller" }, _count: { listings: 1 } };
+          }
+        },
+        seller_offers: {
+          findMany: async () => [{ id: offerId, listing: { seller_id: sellerId }, _count: { order_items: 0, inventory_reservations: 0 } }],
+          updateMany: async () => { calls.push("offers:draft"); }
+        },
+        seller_listings: {
+          findMany: async () => [{ seller_id: sellerId }],
+          updateMany: async () => { calls.push("listings:draft"); }
+        },
+        seller_permissions: { findMany: async () => [{ seller_id: sellerId }] },
+        seller_offer_digital: { deleteMany: async () => { calls.push("digital:delete"); } },
+        seller_offer_physical: { create: async (input: { data: { stock: number; weight_grams: number } }) => {
+          assert.deepEqual(input.data, { offer_id: offerId, stock: 3, weight_grams: 250 });
+          calls.push("physical:create");
+        } },
+        $executeRawUnsafe: async () => { calls.push("constraints:validate"); },
+        product_change_events: { create: async (input: { data: { changed_fields: string[] } }) => {
+          assert.ok(input.data.changed_fields.includes("type"));
+        } }
+      })
+    });
+    const result = await service.updateAdminProduct(PRODUCT_ID, ACTOR_ID, {
+      type: "physical", confirmTypeChange: true, typeChangePhysical: { stock: 3, weightGrams: 250 }
+    });
+    assert.equal(result.type, "physical");
+    assert.deepEqual(calls, ["digital:delete", "physical:create", "offers:draft", "listings:draft", "product:physical:draft", "constraints:validate"]);
+  });
+
+  it("refuses conversion when an offer has order history", async () => {
+    const service = serviceWith({
+      $transaction: async (callback: (tx: unknown) => unknown) => callback({
+        products: { findUnique: async () => ({ type: "digital", status: "active", bridge_binding: null }) },
+        seller_offers: { findMany: async () => [{ id: "offer", _count: { order_items: 1, inventory_reservations: 0 } }] }
+      })
+    });
+    await assert.rejects(
+      () => service.updateAdminProduct(PRODUCT_ID, ACTOR_ID, { type: "physical", confirmTypeChange: true, typeChangePhysical: { stock: 0, weightGrams: 0 } }),
+      /sales or inventory reservations/
     );
   });
 

@@ -2,6 +2,7 @@
 import { ProductAiPanel } from "@/components/ai/ProductAiPanel";
 import { ProductDescriptionEditor } from "@/components/product/ProductDescriptionEditor";
 import { LiveSeoPanel } from "@/components/seo/LiveSeoPanel";
+import { ProductTypeChange, type TypeChangePayload } from "@/components/product/ProductTypeChange";
 import { mergeProductAiDescription, productDescriptionText } from "@/lib/product-description";
 import { validDownloadLinks, type DownloadLink } from "@/lib/download-links";
 import { DownloadLinkRows } from "@/components/product/DownloadLinkRows";
@@ -1014,6 +1015,26 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
     }
   }
 
+  async function changeProductType(payload: TypeChangePayload) {
+    if (!editingProduct || editState === "loading") return;
+    setEditState("loading"); setEditError("");
+    try {
+      const response = await api.patch<SellerListing>(`/products/${editingProduct.product.id}`, {
+        ...payload,
+        title: editDraft.title.trim(), slug: editDraft.slug.trim(), category: editDraft.category.trim() || null,
+        description: editDraft.description.trim() || null
+      });
+      setListings((current) => current.map((listing) => listing.product.id === response.data.product.id ? response.data : listing));
+      setEditingProduct(response.data);
+      setEditDraft((current) => ({ ...current, status: "draft" }));
+      setEditState("success");
+    } catch (error) {
+      const detail = requestError(error, copy.updateError);
+      setEditState("error"); setEditError(detail);
+      throw new Error(detail);
+    }
+  }
+
   async function uploadProductImage(file: File) {
     if (!editingProduct || editState === "loading") return;
     const body = new FormData();
@@ -1323,6 +1344,8 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
           <button className={styles.editorScrim} type="button" aria-label={copy.cancel} onClick={() => setEditingProduct(null)} />
           <section ref={productEditorRef} className={styles.productEditor} role="dialog" aria-modal="true" aria-labelledby="product-editor-title">
             <header><div><h2 id="product-editor-title">{copy.editProduct}</h2><p>{copy.editProductDescription}</p></div><button className={styles.textButton} type="button" onClick={() => setEditingProduct(null)}>{copy.cancel}</button></header>
+            {editError ? <p className={styles.inlineError} role="alert">{editError}</p> : null}
+            <ProductTypeChange key={`${editingProduct.product.id}:${editingProduct.product.type}`} locale={locale} currentType={editingProduct.product.type} disabled={editState === "loading"} physicalAllowed={Boolean(user.permissions?.includes("physical_products_manage"))} onApply={changeProductType} />
             <form onSubmit={updateProduct} aria-busy={editState === "loading"}>
               <ProductAiPanel key={editingProduct.product.id} locale={locale} disabled={editState === "loading"} value={{ title: editDraft.title, description: productDescriptionText(editDraft.description), category: editDraft.category }} onChange={(value) => setEditDraft((current) => mergeProductAiDescription(current, value))} />
               <section className={styles.productImageEditor}>
@@ -1343,7 +1366,6 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
               <div className={styles.field}><span>{copy.description}</span><ProductDescriptionEditor key={editingProduct.product.id} locale={locale} label={copy.description} value={editDraft.description} disabled={editState === "loading"} onChange={(description) => setEditDraft((current) => ({ ...current, description }))} /></div>
               <LiveSeoPanel key={editingProduct.product.id} locale={locale} input={{ kind: "product", title: editDraft.title, body: editDraft.description, hasCover: Boolean(editingProduct.product.image) }} />
               <label className={styles.field}><span>{copy.publishState}</span><select value={editDraft.status} onChange={(event) => setEditDraft((current) => ({ ...current, status: event.target.value as ProductStatus }))}><option value="draft">{copy.draft}</option><option value="active">{copy.active}</option><option value="pending_review">{copy.pending_review}</option><option value="archived">{copy.archived}</option></select></label>
-              {editError ? <p className={styles.inlineError} role="alert">{editError}</p> : null}
               <footer><button className={styles.secondaryButton} type="button" onClick={() => setEditingProduct(null)}>{copy.cancel}</button><button className={styles.primaryButton} type="submit" disabled={editState === "loading"}>{editState === "loading" ? copy.savingChanges : copy.saveChanges}</button></footer>
             </form>
           </section>
