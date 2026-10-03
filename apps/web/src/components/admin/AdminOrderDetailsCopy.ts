@@ -30,6 +30,8 @@ const fields: Record<string, { fa: string; ar: string }> = {
   totalAmount: { fa: "مبلغ کل", ar: "المبلغ الإجمالي" },
   grossAmount: { fa: "مبلغ ناخالص", ar: "المبلغ الإجمالي" },
   commissionAmount: { fa: "مبلغ کارمزد", ar: "مبلغ العمولة" },
+  marketingCommissionAmount: { fa: "پورسانت بازاریابی از سهم فروشنده", ar: "عمولة التسويق من حصة البائع" },
+  platformMarketingCommissionAmount: { fa: "پورسانت بازاریابی از سهم پلتفرم", ar: "عمولة التسويق من حصة المنصة" },
   holdbackAmount: { fa: "مبلغ ذخیره", ar: "المبلغ المحتجز" },
   shippingCostAmount: { fa: "هزینه ارسال از سهم فروشنده", ar: "تكلفة الشحن من حصة البائع" },
   payableAmount: { fa: "مبلغ قابل پرداخت", ar: "المبلغ المستحق" },

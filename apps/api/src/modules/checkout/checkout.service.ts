@@ -9,6 +9,7 @@ import {
   ServiceUnavailableException
 } from "@nestjs/common";
 import type { AppUser, ProductType, ServiceInputDefinition } from "@topgsm/shared-types";
+import { sellerCommissionRate } from "../seller/seller-commission";
 import { createHash, randomUUID } from "node:crypto";
 import { Prisma } from "../../prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -25,6 +26,7 @@ import { normalizeShippingPlace } from "../../integrations/shipping/shipping-pla
 import type { CheckoutShippingPlacesDto } from "./dto/checkout.dto";
 import { checkoutShippingSettlement } from "./checkout-shipping-settlement";
 import { ClubService } from "../club/club.service";
+import { MarketingService } from "../marketing/marketing.service";
 
 const RESERVATION_MS = 15 * 60 * 1000;
 const WALLET_METHOD = { code: "wallet", name: "Wallet" };
@@ -120,7 +122,8 @@ export class CheckoutService {
     private readonly shippingPolicy: ShippingPolicyService,
     private readonly shippingProviders: ShippingProviderRegistry,
     @Optional() private readonly crypto?: CredentialCryptoService,
-    @Optional() private readonly club?: ClubService
+    @Optional() private readonly club?: ClubService,
+    @Optional() private readonly marketing?: MarketingService
   ) {}
 
   async shippingPlaces(input: CheckoutShippingPlacesDto) {
@@ -283,7 +286,7 @@ export class CheckoutService {
             },
             select: { id: true, total_amount: true }
           });
-          await tx.order_items.createMany({ data: group.items.map((line) => {
+          const createdItems = group.items.map((line) => {
             const itemId = randomUUID();
             const encryptedAnswers = this.encryptServiceAnswers(itemId, line.serviceAnswers);
             return {
@@ -300,7 +303,15 @@ export class CheckoutService {
               service_answers_key_id: encryptedAnswers?.keyId ?? null,
               digital_delivery_url: line.digitalDeliveryUrl, digital_delivery_urls: line.digitalDeliveryUrls, digital_delivery_titles: line.digitalDeliveryTitles, digital_max_downloads: line.digitalMaxDownloads
             };
-          }) });
+          });
+          await tx.order_items.createMany({ data: createdItems });
+          if (input.items.some((item) => item.visitId)) {
+            if (!this.marketing) throw new ServiceUnavailableException("Referral service unavailable");
+            await this.marketing.reserve(tx, order.id, group.seller.id,
+              new Prisma.Decimal(group.totalAmount).minus(group.shippingFee),
+              createdItems.map((item, index) => ({ id: item.id, offerId: item.offer_id, productId: group.items[index].productId, totalAmount: item.total_amount.toString() })),
+              input.items);
+          }
           await tx.order_events.create({
             data: { order_id: order.id, actor_user_id: actor.id, from_status: null, to_status: "pending", idempotency_key: orderKey, request_hash: this.hash({ checkoutId: createdCheckout.id, group: group.key }) }
           });
@@ -384,7 +395,7 @@ export class CheckoutService {
         service: { select: { input_schema: true } },
         listing: {
           select: {
-            seller: { select: { id: true, shop_name: true, commission: true, permissions: { where: { permission: "physical_products_manage" }, select: { permission: true } }, shipping_profile: { select: { enabled: true, latitude: true, longitude: true } } } },
+            seller: { select: { id: true, shop_name: true, commission: true, commission_digital: true, commission_physical: true, commission_service: true, commission_bridge: true, permissions: { where: { permission: "physical_products_manage" }, select: { permission: true } }, shipping_profile: { select: { enabled: true, latitude: true, longitude: true } } } },
             product: {
               select: {
                 id: true,
@@ -483,7 +494,7 @@ export class CheckoutService {
       const key = `${offer.listing.seller.id}:${type}`;
       const group = groups.get(key) ?? {
         key, seller: { id: offer.listing.seller.id, shopName: offer.listing.seller.shop_name }, productType: type,
-        commissionRate: offer.listing.seller.commission.toString(), items: [], total: new Prisma.Decimal(0)
+        commissionRate: sellerCommissionRate(offer.listing.seller, type).toString(), items: [], total: new Prisma.Decimal(0)
       };
       const unitPrice = offerCurrency === "USD"
         ? offer.price.mul(tomanPerUsd!).toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP)

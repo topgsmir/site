@@ -9,9 +9,10 @@ import { CredentialCryptoService } from "../../common/security/credential-crypto
 import { ShippingModule } from "../../integrations/shipping/shipping.module";
 import { WalletCoreModule } from "../wallet/wallet-core.module";
 import { ClubCoreModule } from "../club/club-core.module";
+import { MarketingModule } from "../marketing/marketing.module";
 
 @Module({
-  imports: [AuthModule, PaymentsModule, ShippingModule, UsdRateModule, WalletCoreModule, ClubCoreModule],
+  imports: [AuthModule, PaymentsModule, ShippingModule, UsdRateModule, WalletCoreModule, ClubCoreModule, MarketingModule],
   controllers: [CheckoutController],
   providers: [CheckoutService, CheckoutExpiryService, CredentialCryptoService]
 })

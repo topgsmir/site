@@ -20,9 +20,11 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { productPublicPath } from "@/components/product/ProductPublicUrl";
 import { ProductSlugEditor } from "@/components/product/ProductSlugEditor";
 import { api } from "@/lib/api/client";
+import { ProductTypeChange, type TypeChangePayload } from "@/components/product/ProductTypeChange";
 import type { Locale } from "@/lib/i18n";
 import { ProductTranslations } from "./ProductTranslations";
 import { ProductDescriptionEditor } from "@/components/product/ProductDescriptionEditor";
+import { ProductDescriptionTemplatePicker } from "@/components/product/ProductDescriptionTemplatePicker";
 import { mergeProductAiDescription, productDescriptionText } from "@/lib/product-description";
 import { ProductChangesWorkspace } from "./ProductChangesWorkspace";
 import { LiveSeoPanel } from "@/components/seo/LiveSeoPanel";
@@ -60,25 +62,6 @@ const AUX_COPY = {
   fa: { commentsLoading: "در حال بارگذاری نظرات…", commentsError: "بارگذاری نظرات ممکن نبود.", categoriesError: "بارگذاری دسته‌بندی‌ها ممکن نبود.", descriptionTooLong: "توضیحات باید کمتر از ۱۰٬۰۰۰ نویسه باشد." },
   ar: { commentsLoading: "جارٍ تحميل التعليقات…", commentsError: "تعذر تحميل التعليقات.", categoriesError: "تعذر تحميل الفئات.", descriptionTooLong: "يجب ألا يتجاوز الوصف ١٠٬٠٠٠ حرف." }
 } as const;
-
-type TemplateKey = "general" | "technical" | "service";
-const DESCRIPTION_TEMPLATES: Record<Locale, Record<TemplateKey, (title: string) => string>> = {
-  en: {
-    general: (title) => `${title}\n\nOverview\nDescribe what this product is and who it is for.\n\nKey features\nAdd the verified features and benefits.\n\nWhat is included\nList the items or access included with the product.`,
-    technical: (title) => `${title}\n\nCompatibility\nList supported models and requirements.\n\nSpecifications\nAdd verified technical specifications.\n\nUsage notes\nExplain setup, care, and any limitations.`,
-    service: (title) => `${title}\n\nService overview\nExplain the service and its intended outcome.\n\nProcess\nDescribe the steps and expected timing.\n\nRequirements\nList what the customer should prepare.`
-  },
-  fa: {
-    general: (title) => `${title}\n\nمعرفی\nکاربرد محصول و مخاطب مناسب آن را توضیح دهید.\n\nویژگی‌های اصلی\nویژگی‌ها و مزایای تأییدشده را بنویسید.\n\nمحتویات\nاقلام یا دسترسی‌های همراه محصول را فهرست کنید.`,
-    technical: (title) => `${title}\n\nسازگاری\nمدل‌ها و پیش‌نیازهای پشتیبانی‌شده را بنویسید.\n\nمشخصات فنی\nمشخصات فنی تأییدشده را وارد کنید.\n\nنکات استفاده\nروش راه‌اندازی، نگهداری و محدودیت‌ها را توضیح دهید.`,
-    service: (title) => `${title}\n\nمعرفی خدمت\nخدمت و نتیجهٔ مورد انتظار را توضیح دهید.\n\nمراحل انجام\nمراحل و زمان تقریبی را بنویسید.\n\nپیش‌نیازها\nمواردی را که مشتری باید آماده کند فهرست کنید.`
-  },
-  ar: {
-    general: (title) => `${title}\n\nنظرة عامة\nاشرح استخدام المنتج والفئة المناسبة له.\n\nالميزات الرئيسية\nأضف الميزات والفوائد المؤكدة.\n\nالمحتويات\nاذكر العناصر أو الصلاحيات المضمنة.`,
-    technical: (title) => `${title}\n\nالتوافق\nاذكر الأجهزة والمتطلبات المدعومة.\n\nالمواصفات الفنية\nأضف المواصفات الفنية المؤكدة.\n\nملاحظات الاستخدام\nاشرح الإعداد والعناية والقيود.`,
-    service: (title) => `${title}\n\nنظرة عامة على الخدمة\nاشرح الخدمة والنتيجة المتوقعة.\n\nالخطوات\nصف الخطوات والوقت المتوقع.\n\nالمتطلبات\nاذكر ما ينبغي للعميل تحضيره.`
-  }
-};
 
 type CategoryChoice = { id: string; name: string };
 
@@ -163,8 +146,6 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
   const [categoryError, setCategoryError] = useState(false);
   const [categoryRefresh, setCategoryRefresh] = useState(0);
   const [tagInput, setTagInput] = useState("");
-  const [templateOpen, setTemplateOpen] = useState(false);
-  const [templateKey, setTemplateKey] = useState<TemplateKey>("general");
   const [comments, setComments] = useState<ProductComment[] | null>(null);
   const [commentError, setCommentError] = useState(false);
   const [commentRefresh, setCommentRefresh] = useState(0);
@@ -197,8 +178,10 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
       setProduct((current) => cursor && current ? { ...response.data, listings: [...current.listings, ...response.data.listings] } : response.data);
       if (!cursor) setDraft(coreDraft(response.data));
       setOffers((current) => ({ ...(cursor ? current : {}), ...Object.fromEntries(response.data.listings.flatMap((listing) => listing.offers.map((offer) => [offer.id, offerDraft(offer)]))) }));
+      return true;
     } catch (requestError) {
       setError(requestMessage(requestError, c.loadError));
+      return false;
     } finally { setLoading(false); }
   }, [c.loadError, productId]);
 
@@ -220,6 +203,27 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
       setDraft((current) => current ? { ...current, title: response.data.title, slug: response.data.slug, category: response.data.category ?? "", categoryId: response.data.categoryId ?? null, tags: response.data.tags, description: response.data.description ?? "", status: response.data.status } : current);
       setMessage(c.saved);
     } catch (requestError) { setError(requestMessage(requestError, c.saveError)); }
+    finally { setBusy(null); }
+  }
+
+  async function changeType(payload: TypeChangePayload) {
+    if (busy || !draft) return;
+    setBusy("type"); setError(""); setMessage("");
+    try {
+      await api.patch(`/products/admin/${productId}`, {
+        ...payload,
+        title: draft.title.trim(), slug: draft.slug.trim(), category: draft.category.trim() || null,
+        description: draft.description.trim() || null
+      });
+      if (!await load()) throw new Error(c.loadError);
+      setHistoryVersion((version) => version + 1);
+      setMessage(c.saved);
+    } catch (requestError) {
+      const detail = requestError instanceof Error && requestError.message === c.loadError
+        ? c.loadError : requestMessage(requestError, c.saveError);
+      setError(detail);
+      throw new Error(detail, { cause: requestError });
+    }
     finally { setBusy(null); }
   }
 
@@ -336,13 +340,8 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
             <div className={styles.formGrid}>
               <label className={styles.titleField}><span>{c.productTitle}</span><input required minLength={2} maxLength={200} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></label>
               <div className={styles.wide}>
-                <div className={styles.descriptionHeading}><span>{c.description}</span><button className={styles.secondaryButton} type="button" disabled={Boolean(busy)} aria-expanded={templateOpen} aria-controls="product-description-templates" onClick={() => setTemplateOpen((open) => !open)}>{sectionCopy.templates}</button></div>
-                {templateOpen ? <div id="product-description-templates" className={styles.templatePicker}>
-                  <label><span>{sectionCopy.templateChoice}</span><select value={templateKey} onChange={(event) => setTemplateKey(event.target.value as TemplateKey)}><option value="general">{sectionCopy.templateGeneral}</option><option value="technical">{sectionCopy.templateTechnical}</option><option value="service">{sectionCopy.templateService}</option></select></label>
-                  <div className={styles.templatePreview}>{DESCRIPTION_TEMPLATES[locale][templateKey](draft.title.trim() || c.productTitle)}</div>
-                  <p>{sectionCopy.templateReplace}</p>
-                  <div><button className={styles.primaryButton} type="button" onClick={() => { setDraft((current) => current ? { ...current, description: DESCRIPTION_TEMPLATES[locale][templateKey](current.title.trim() || c.productTitle) } : current); setTemplateOpen(false); }}>{sectionCopy.applyTemplate}</button><button className={styles.secondaryButton} type="button" onClick={() => setTemplateOpen(false)}>{sectionCopy.templateCancel}</button></div>
-                </div> : null}
+                <span>{c.description}</span>
+                <ProductDescriptionTemplatePicker locale={locale} title={draft.title} hasDescription={Boolean(draft.description.trim())} disabled={Boolean(busy)} admin onApply={(description) => setDraft((current) => current ? { ...current, description } : current)} />
                 <ProductDescriptionEditor locale={locale} label={c.description} value={draft.description} onChange={(description) => setDraft((current) => current ? { ...current, description } : current)} disabled={Boolean(busy)} />
               </div>
             </div>
@@ -398,8 +397,9 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
           </section>
           <LiveSeoPanel locale={locale} input={{ kind: "product", title: draft.title, body: draft.description, hasCover: Boolean(product.image) }} />
           <section className={styles.panel}>
-            <header><h2>{sectionCopy.productState}</h2><p>{c.immutable}</p></header>
+            <header><h2>{sectionCopy.productState}</h2></header>
             <dl className={styles.facts}><div><dt>{c.kind}</dt><dd>{c[product.kind]}</dd></div><div><dt>{c.type}</dt><dd>{TYPE_COPY[locale][product.type]}</dd></div><div><dt>{c.owner}</dt><dd>{product.createdBy.shopName}</dd></div><div><dt>{c.variants}</dt><dd>{product.variants.length}</dd></div></dl>
+            <ProductTypeChange key={product.type} locale={locale} currentType={product.type} disabled={Boolean(busy)} onApply={changeType} />
             {product.options.map((option) => <div className={styles.option} key={option.id}><strong>{option.name}</strong><p>{option.values.map((value) => value.value).join(" · ")}</p></div>)}
           </section>
           <section className={styles.panel} aria-labelledby="product-comments-title">

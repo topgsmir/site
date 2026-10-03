@@ -54,6 +54,7 @@ type Evidence = {
   executionId?: string;
   purpose?: string;
   approvalType?: "continuation" | "sql" | "browser_tool";
+  approvedAt?: string | null;
   request?: BrowserToolRequest;
   rowCount?: number;
   durationMs?: number;
@@ -68,6 +69,9 @@ type BrowserToolRequest = {
   idempotencyKey?: string;
   responseMode?: "json" | "download";
 };
+function canRetryRead(evidence: Evidence | null): evidence is Evidence & { executionId: string; request: BrowserToolRequest } {
+  return Boolean(evidence?.executionId && evidence.status === "running" && evidence.approvalType === "browser_tool" && !evidence.approvedAt && evidence.request?.risk === "read" && evidence.request.method === "GET" && evidence.request.responseMode === "json");
+}
 type FileInputSpec = { label: string; accept: string; maxBytes: number };
 type ToolResult = {
   tool: string;
@@ -150,7 +154,7 @@ const copy = {
     send: "Send",
     working: "Working…",
     empty: "Choose or start a conversation, then ask an operational question or request an admin action.",
-    disclosure: "Masked reporting data and approved, redacted tool results are sent to the selected provider. API actions run in this browser under your current permissions.",
+    disclosure: "Masked reporting data and redacted tool results are sent to the selected provider. Read-only requests run in this browser; changes and downloads ask for approval first.",
     toolsAvailable: "allowlisted tools available across",
     toolDomains: "feature areas",
     approve: "Approve and run",
@@ -158,6 +162,11 @@ const copy = {
     sqlTitle: "SQL approval required",
     toolTitle: "Tool approval required",
     toolRunningTitle: "Tool result pending",
+    readRetryTitle: "Read interrupted",
+    retryRead: "Retry read",
+    retryReport: "Send result again",
+    resultPendingHint: "The action may already have run. Sending its saved result will not repeat it; Stop only ends this assistant run.",
+    resultLostHint: "This action may already have run. Check its current state before requesting it again; Stop only ends the assistant run.",
     continuationTitle: "Continue this analysis?",
     rows: "Supporting rows",
     noRows: "No supporting rows were returned.",
@@ -166,6 +175,10 @@ const copy = {
     profileHint:
       "Keys are encrypted and never shown again. Custom URLs must be public HTTPS endpoints on port 443.",
     delete: "Delete conversation",
+    deleteConfirm: "Delete this conversation and its messages permanently?",
+    confirmDelete: "Delete permanently",
+    requestDetails: "Request details",
+    risk: { read: "Read", write: "Change", destructive: "Delete", critical: "Critical change" },
     noProfiles: "No model has been saved yet.",
     activityTitle: "Agent activity",
     activityLive: "Live",
@@ -224,7 +237,7 @@ const copy = {
     working: "در حال انجام…",
     empty: "یک گفت‌وگو را انتخاب یا ایجاد کنید؛ سپس سؤال عملیاتی بپرسید یا یک اقدام مدیریتی درخواست کنید.",
     disclosure:
-      "داده‌های گزارش و نتیجهٔ پالایش‌شدهٔ ابزارهای تأییدشده برای مدل فرستاده می‌شود. هر درخواست API در همین مرورگر و با دسترسی فعلی شما اجرا می‌شود.",
+      "داده‌های گزارش و نتیجهٔ پالایش‌شدهٔ ابزارها برای مدل فرستاده می‌شود. خواندن اطلاعات در همین مرورگر انجام می‌شود؛ تغییرها و دانلودها ابتدا به تأیید شما نیاز دارند.",
     toolsAvailable: "ابزار مجاز در",
     toolDomains: "حوزه قابلیت در دسترس است",
     approve: "تأیید و اجرا",
@@ -232,6 +245,11 @@ const copy = {
     sqlTitle: "تأیید SQL لازم است",
     toolTitle: "تأیید ابزار لازم است",
     toolRunningTitle: "نتیجهٔ ابزار هنوز نرسیده است",
+    readRetryTitle: "خواندن اطلاعات ناتمام ماند",
+    retryRead: "تلاش دوباره برای خواندن",
+    retryReport: "ارسال دوبارهٔ نتیجه",
+    resultPendingHint: "ممکن است اقدام انجام شده باشد. ارسال نتیجهٔ ذخیره‌شده آن را تکرار نمی‌کند؛ «توقف» فقط اجرای دستیار را پایان می‌دهد.",
+    resultLostHint: "ممکن است اقدام انجام شده باشد. پیش از درخواست دوباره، وضعیت فعلی آن را بررسی کنید؛ «توقف» فقط اجرای دستیار را پایان می‌دهد.",
     continuationTitle: "تحلیل ادامه پیدا کند؟",
     rows: "ردیف‌های پشتیبان",
     noRows: "داده پشتیبانی برنگشت.",
@@ -240,6 +258,10 @@ const copy = {
     profileHint:
       "کلید رمزنگاری می‌شود و دوباره نمایش داده نخواهد شد. نشانی سفارشی باید HTTPS عمومی روی درگاه ۴۴۳ باشد.",
     delete: "حذف گفت‌وگو",
+    deleteConfirm: "این گفت‌وگو و پیام‌هایش برای همیشه حذف شوند؟",
+    confirmDelete: "حذف همیشگی",
+    requestDetails: "جزئیات درخواست",
+    risk: { read: "خواندن", write: "تغییر", destructive: "حذف", critical: "تغییر حساس" },
     noProfiles: "هنوز مدلی ذخیره نشده است.",
     activityTitle: "فعالیت دستیار",
     activityLive: "زنده",
@@ -297,7 +319,7 @@ const copy = {
     send: "إرسال",
     working: "جارٍ العمل…",
     empty: "اختر محادثة أو ابدأ واحدة، ثم اطرح سؤالاً تشغيلياً أو اطلب إجراءً إدارياً.",
-    disclosure: "تُرسل بيانات التقارير المخفية ونتائج الأدوات الموافق عليها بعد تنقيحها إلى المزود المحدد. تُنفذ عمليات API في هذا المتصفح وفق صلاحياتك الحالية.",
+    disclosure: "تُرسل بيانات التقارير ونتائج الأدوات المنقحة إلى المزود المحدد. تُنفذ طلبات القراءة في هذا المتصفح؛ وتتطلب التغييرات والتنزيلات موافقتك أولاً.",
     toolsAvailable: "أداة مسموحة متاحة عبر",
     toolDomains: "مجالات للميزات",
     approve: "موافقة وتنفيذ",
@@ -305,6 +327,11 @@ const copy = {
     sqlTitle: "موافقة SQL مطلوبة",
     toolTitle: "موافقة الأداة مطلوبة",
     toolRunningTitle: "نتيجة الأداة معلّقة",
+    readRetryTitle: "انقطعت القراءة",
+    retryRead: "إعادة محاولة القراءة",
+    retryReport: "إعادة إرسال النتيجة",
+    resultPendingHint: "ربما نُفذ الإجراء بالفعل. إعادة إرسال نتيجته المحفوظة لا تكرر الإجراء؛ الإيقاف ينهي تشغيل المساعد فقط.",
+    resultLostHint: "ربما نُفذ الإجراء بالفعل. تحقق من حالته قبل طلبه مرة أخرى؛ الإيقاف ينهي تشغيل المساعد فقط.",
     continuationTitle: "متابعة هذا التحليل؟",
     rows: "الصفوف الداعمة",
     noRows: "لم تُرجع صفوف داعمة.",
@@ -313,6 +340,10 @@ const copy = {
     profileHint:
       "يُشفّر المفتاح ولن يظهر مرة أخرى. يجب أن يكون العنوان المخصص HTTPS عاماً على المنفذ 443.",
     delete: "حذف المحادثة",
+    deleteConfirm: "هل تريد حذف هذه المحادثة ورسائلها نهائياً؟",
+    confirmDelete: "حذف نهائي",
+    requestDetails: "تفاصيل الطلب",
+    risk: { read: "قراءة", write: "تغيير", destructive: "حذف", critical: "تغيير حساس" },
     noProfiles: "لم يُحفظ أي نموذج بعد.",
     activityTitle: "نشاط المساعد",
     activityLive: "مباشر",
@@ -584,7 +615,7 @@ async function executeBrowserTool(request: BrowserToolRequest, secureValues: Rec
     const code = data && typeof data === "object" && !Array.isArray(data) && typeof (data as { code?: unknown }).code === "string" ? (data as { code: string }).code : undefined;
     return { ok: response.ok, status: response.status, data, ...(code ? { errorCode: code.slice(0, 100) } : {}), durationMs: Math.round(performance.now() - started) };
   } catch {
-    return { ok: false, status: 502, data: { message: "The browser could not reach the approved API tool." }, errorCode: "BROWSER_TOOL_NETWORK_ERROR", durationMs: Math.round(performance.now() - started) };
+    return { ok: false, status: 502, data: { message: "The browser could not reach the API tool." }, errorCode: "BROWSER_TOOL_NETWORK_ERROR", durationMs: Math.round(performance.now() - started) };
   }
 }
 
@@ -639,9 +670,13 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
   const [historySearch, setHistorySearch] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyBusy, setHistoryBusy] = useState(false);
+  const [confirmingConversationDelete, setConfirmingConversationDelete] = useState(false);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const historyToggleRef = useRef<HTMLButtonElement>(null);
   const historySearchRef = useRef<HTMLInputElement>(null);
+  const deleteConversationButtonRef = useRef<HTMLButtonElement>(null);
+  const cancelConversationDeleteRef = useRef<HTMLButtonElement>(null);
+  const approvalHeadingRef = useRef<HTMLHeadingElement>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [defaultProfileId, setDefaultProfileId] = useState("");
   const [selectedProfileId, setSelectedProfileId] = useState("");
@@ -673,6 +708,8 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
   );
   const [confirmingDeleteId, setConfirmingDeleteId] = useState("");
   const messagesRef = useRef<HTMLDivElement>(null);
+  const followMessagesRef = useRef(true);
+  const unreportedBrowserResultsRef = useRef(new Map<string, Awaited<ReturnType<typeof executeBrowserTool>>>());
 
   async function navigateConversation(action: () => Promise<void>) {
     if (busy || historyBusy) return;
@@ -728,23 +765,32 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
   }, [c.error, load]);
   useEffect(() => {
     const messageList = messagesRef.current;
-    if (messageList) messageList.scrollTop = messageList.scrollHeight;
+    if (messageList && followMessagesRef.current) messageList.scrollTop = messageList.scrollHeight;
   }, [activity, evidence, messages]);
+  useEffect(() => {
+    if (confirmingConversationDelete) cancelConversationDeleteRef.current?.focus();
+  }, [confirmingConversationDelete]);
+  useEffect(() => {
+    if (pending?.status === "proposed") approvalHeadingRef.current?.focus();
+  }, [pending?.executionId, pending?.status]);
 
   async function openConversation(id: string, preserveActivity = false) {
+    const response = await api.get<{
+      messages: Message[];
+      runs: Array<RunMeta & { tools: Evidence[] }>;
+      estimatedCostUsd: string | null;
+    }>(`/ai/data/conversations/${id}`);
+    followMessagesRef.current = true;
     setConversationId(id);
+    setConfirmingConversationDelete(false);
     setPending(null);
     setSecureValues({});
     setFileValues({});
     setEvidence([]);
     if (!preserveActivity) setActivity([]);
     setError("");
-    const response = await api.get<{
-      messages: Message[];
-      runs: Array<RunMeta & { tools: Evidence[] }>;
-      estimatedCostUsd: string | null;
-    }>(`/ai/data/conversations/${id}`);
     const tools = response.data.runs.flatMap((run) => run.tools);
+    for (const tool of tools) if (tool.id && ["completed", "failed", "rejected"].includes(tool.status ?? "")) unreportedBrowserResultsRef.current.delete(tool.id);
     setMessages(response.data.messages);
     setRuns(response.data.runs);
     setConversationCostUsd(response.data.estimatedCostUsd);
@@ -760,18 +806,27 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
       }
     }
   }
-  async function createConversation() {
-    const response = await api.post<ConversationSummary>(
-      "/ai/data/conversations",
-      { title: c.newChat },
-    );
-    await load();
-    await openConversation(response.data.id);
+  async function startNewConversation() {
+    followMessagesRef.current = true;
+    setConversationId("");
+    setConfirmingConversationDelete(false);
+    setMessages([]);
+    setRuns([]);
+    setConversationCostUsd("0");
+    setEvidence([]);
+    setActivity([]);
+    setRunMeta(null);
+    setPending(null);
+    setSecureValues({});
+    setFileValues({});
+    setQuestion("");
+    setError("");
   }
   async function deleteConversation() {
     if (!conversationId) return;
     await api.delete(`/ai/data/conversations/${conversationId}`);
     setConversationId("");
+    setConfirmingConversationDelete(false);
     setMessages([]);
     setRuns([]);
     setConversationCostUsd("0");
@@ -950,6 +1005,7 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
         }
         if (event === "tool_result") {
           const id = String(data.executionId ?? "");
+          unreportedBrowserResultsRef.current.delete(id);
           const tool = String(data.tool ?? "tool");
           setEvidence((current) => [
             ...current.filter(
@@ -1029,6 +1085,7 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
     if (browserTool) {
       const approvedTool = browserTool as { executionId: string; request: BrowserToolRequest };
       const result = await executeBrowserTool(approvedTool.request, approvedSecureValues, approvedFiles);
+      unreportedBrowserResultsRef.current.set(approvedTool.executionId, result);
       await consumeStream(
         `/ai/data/query-executions/${approvedTool.executionId}/result`,
         result,
@@ -1047,8 +1104,8 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
     if (!text || busy || historyBusy || pending || !selectedProfileId) return;
     setBusy(true);
     setError("");
+    let id = conversationId;
     try {
-      let id = conversationId;
       if (!id) {
         const response = await api.post<ConversationSummary>(
           "/ai/data/conversations",
@@ -1064,14 +1121,19 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
       setEvidence([]);
       setActivity([]);
       setRunMeta(null);
+      followMessagesRef.current = true;
       setQuestion("");
-        await consumeStream(
+      await consumeStream(
         `/ai/data/conversations/${id}/messages`,
         { question: text, profileId: selectedProfileId },
         id,
       );
       await load();
     } catch (caught) {
+      if (id) {
+        try { await openConversation(id, true); }
+        catch { /* Keep the stream error visible if recovery is unavailable. */ }
+      }
       setActivity((current) =>
         current.map((item) =>
           item.status === "running" ? { ...item, status: "failed" } : item,
@@ -1089,6 +1151,7 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
   }
   async function approve() {
     if (!pending?.executionId) return;
+    const previousPending = pending;
     const executionId = pending.executionId;
     const approvedSecureValues = secureValues;
     const approvedFiles = fileValues;
@@ -1106,6 +1169,12 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
         approvedFiles,
       );
     } catch (caught) {
+      try {
+        if (conversationId) await openConversation(conversationId);
+        else setPending(previousPending);
+      } catch {
+        setPending(previousPending);
+      }
       setActivity((current) =>
         current.map((item) =>
           item.status === "running" ? { ...item, status: "failed" } : item,
@@ -1123,11 +1192,57 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
   }
   async function reject() {
     if (!pending?.executionId) return;
-    await api.post(`/ai/data/query-executions/${pending.executionId}/reject`);
-    setPending(null);
-    setSecureValues({});
-    setFileValues({});
-    if (conversationId) await openConversation(conversationId);
+    setBusy(true);
+    setError("");
+    try {
+      await api.post(`/ai/data/query-executions/${pending.executionId}/reject`);
+      setPending(null);
+      setSecureValues({});
+      setFileValues({});
+      if (conversationId) await openConversation(conversationId);
+    } catch (caught) {
+      setError(requestError(locale, caught, c.error));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function retryRead() {
+    if (!canRetryRead(pending) || busy) return;
+    const current = pending;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await executeBrowserTool(current.request, {}, {});
+      unreportedBrowserResultsRef.current.set(current.executionId, result);
+      await consumeStream(`/ai/data/query-executions/${current.executionId}/result`, result, conversationId);
+    } catch (caught) {
+      if (conversationId) {
+        try { await openConversation(conversationId); }
+        catch { setPending(current); }
+      }
+      setError(aiRunErrorMessage(caught, locale, c.error));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function retryReport() {
+    if (!pending?.executionId || busy) return;
+    const executionId = pending.executionId;
+    const result = unreportedBrowserResultsRef.current.get(executionId);
+    if (!result) return;
+    setBusy(true);
+    setError("");
+    try {
+      await consumeStream(`/ai/data/query-executions/${executionId}/result`, result, conversationId);
+    } catch (caught) {
+      if (conversationId) {
+        try { await openConversation(conversationId); }
+        catch { /* Keep the current pending action visible. */ }
+      }
+      setError(aiRunErrorMessage(caught, locale, c.error));
+    } finally {
+      setBusy(false);
+    }
   }
   const activeProfiles = useMemo(
     () => profiles.filter((profile) => profile.status === "active"),
@@ -1311,7 +1426,7 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
         <aside className={styles.history} data-open={historyOpen} id="assistant-history" onKeyDown={(event) => { if (event.key === "Escape" && historyOpen) { setHistoryOpen(false); requestAnimationFrame(() => historyToggleRef.current?.focus()); } }}>
           <div className={styles.asideTitle}>
             <div className={styles.historyHeading}><h2>{c.history}</h2><button className={styles.closeHistory} type="button" onClick={() => { setHistoryOpen(false); requestAnimationFrame(() => historyToggleRef.current?.focus()); }} aria-label={ui.close}>×</button></div>
-            <button type="button" disabled={busy || historyBusy} onClick={() => navigateConversation(createConversation)}>
+            <button type="button" disabled={busy || historyBusy} onClick={() => navigateConversation(startNewConversation)}>
               <AssistantIcon name="plus" /> {ui.newChat}
             </button>
           </div>
@@ -1338,14 +1453,19 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
             ))}
           </nav>
           {conversationId ? (
-            <button
-              className={styles.delete}
-              type="button"
-              disabled={busy || historyBusy}
-              onClick={() => navigateConversation(deleteConversation)}
-            >
-              {c.delete}
-            </button>
+            <div className={styles.conversationDelete}>
+              {confirmingConversationDelete ? (
+                <div className={styles.conversationDeleteConfirm} role="group" aria-label={c.deleteConfirm}>
+                  <p>{c.deleteConfirm}</p>
+                  <div>
+                    <button ref={cancelConversationDeleteRef} type="button" disabled={busy || historyBusy} onClick={() => { setConfirmingConversationDelete(false); requestAnimationFrame(() => deleteConversationButtonRef.current?.focus()); }}>{c.cancel}</button>
+                    <button className={styles.delete} type="button" disabled={busy || historyBusy} onClick={() => navigateConversation(deleteConversation)}>{c.confirmDelete}</button>
+                  </div>
+                </div>
+              ) : (
+                <button ref={deleteConversationButtonRef} className={styles.delete} type="button" disabled={busy || historyBusy} onClick={() => setConfirmingConversationDelete(true)}>{c.delete}</button>
+              )}
+            </div>
           ) : null}
         </aside>
         <main className={styles.chat} aria-busy={busy}>
@@ -1354,7 +1474,7 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
             <button ref={historyToggleRef} className={styles.historyToggle} type="button" aria-expanded={historyOpen} aria-controls="assistant-history" onClick={() => { setHistoryOpen(true); requestAnimationFrame(() => historySearchRef.current?.focus()); }}><AssistantIcon name="chat" /><span>{c.history}</span></button>
             <a className={styles.settingsLink} href={`/${locale}/admin/ai/models`}>{ui.settings}<span aria-hidden="true">↗</span></a>
           </header>
-          <div className={styles.messages} ref={messagesRef}>
+          <div className={styles.messages} ref={messagesRef} onScroll={(event) => { const node = event.currentTarget; followMessagesRef.current = node.scrollHeight - node.clientHeight - node.scrollTop < 80; }}>
             {runMeta ? (
               <div className={styles.runMeta}>
                 <strong>
@@ -1408,12 +1528,13 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
                         <MessageResults
                           content={message.structuredContent}
                           title={c.rows}
-                          empty={c.noRows}
+                          locale={locale}
                         />
                         {message.structuredContent?.chart ? (
                           <AccessibleChart
                             rows={message.structuredContent.rows ?? []}
                             spec={message.structuredContent.chart}
+                            locale={locale}
                           />
                         ) : null}
                         {responseRun ? (
@@ -1459,8 +1580,10 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
             {error ? <p className={styles.error} role="alert">{error}</p> : null}
             {pending ? (
               <section className={styles.approval}>
-                <h2>
-                  {pending.status === "running" && pending.approvalType === "browser_tool"
+                <h2 ref={approvalHeadingRef} tabIndex={-1}>
+                  {canRetryRead(pending)
+                    ? c.readRetryTitle
+                    : pending.status === "running" && pending.approvalType === "browser_tool"
                     ? c.toolRunningTitle
                     : pending.approvalType === "continuation"
                     ? c.continuationTitle
@@ -1470,21 +1593,18 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
                 </h2>
                 <div className={styles.approvalDetails}>
                   <p>{pending.purpose}</p>
+                  {pending.executionId && unreportedBrowserResultsRef.current.has(pending.executionId) ? <p>{c.resultPendingHint}</p> : null}
+                  {pending.status === "running" && pending.request?.risk !== "read" && (!pending.executionId || !unreportedBrowserResultsRef.current.has(pending.executionId)) ? <p>{c.resultLostHint}</p> : null}
                   {pending.sql ? <pre dir="ltr">{pending.sql}</pre> : null}
                   {pending.request ? (
-                    <pre dir="ltr">
-                      {JSON.stringify(
-                        {
-                          risk: pending.request.risk,
-                          method: pending.request.method,
-                          path: pending.request.path,
-                          query: pending.request.query,
-                          body: pending.request.body,
-                        },
-                        null,
-                        2,
-                      )}
-                    </pre>
+                    <div className={styles.approvalRequest}>
+                      <strong>{c.risk[pending.request.risk]} · {pending.request.description}</strong>
+                      <code dir="ltr">{pending.request.method} {pending.request.path}</code>
+                      <details>
+                        <summary>{c.requestDetails}</summary>
+                        <pre dir="ltr">{JSON.stringify({ query: pending.request.query, body: pending.request.body }, null, 2)}</pre>
+                      </details>
+                    </div>
                   ) : null}
                   {Object.keys(secureValues).map((label) => (
                     <label className={styles.secureInput} key={label}>
@@ -1500,6 +1620,8 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
                   ))}
                 </div>
                 <div className={styles.approvalActions}>
+                  {canRetryRead(pending) && !unreportedBrowserResultsRef.current.has(pending.executionId) ? <button type="button" onClick={retryRead} disabled={busy}>{c.retryRead}</button> : null}
+                  {pending.executionId && unreportedBrowserResultsRef.current.has(pending.executionId) ? <button type="button" onClick={retryReport} disabled={busy}>{c.retryReport}</button> : null}
                   {pending.status !== "running" ? (
                     <button type="button" onClick={approve} disabled={busy || Object.values(secureValues).some((value) => !value) || fileInputSpecs(pending.request?.body).some((spec) => !fileValues[spec.label] || fileValues[spec.label]!.size > spec.maxBytes)}>
                       {c.approve}
@@ -1756,9 +1878,8 @@ function AgentTrace({
           .replaceAll("_", " ")
           .replace(/^\w/, (letter) => letter.toUpperCase())
       : c.toolCall;
-  const awaitingApproval =
-    tools.some((item) => item.status === "proposed") ||
-    run?.status === "awaiting_approval";
+  const awaitingApproval = tools.some((item) => item.status === "proposed");
+  const awaitingTool = tools.some((item) => item.status === "running");
   const failed =
     run?.status === "failed" ||
     activity.some((item) => item.status === "failed") ||
@@ -1767,6 +1888,8 @@ function AgentTrace({
     ? c.activityLive
     : awaitingApproval
       ? c.status.proposed
+      : awaitingTool
+        ? c.toolRunningTitle
       : failed
         ? c.status.failed
         : `${c.activityComplete}${run?.durationMs ? ` · ${(run.durationMs / 1000).toLocaleString(locale, { maximumFractionDigits: 1 })}s` : ""}`;
@@ -1786,7 +1909,7 @@ function AgentTrace({
   return (
     <details
       className={styles.activity}
-      open={busy || awaitingApproval || undefined}
+      open={busy || awaitingApproval || awaitingTool || undefined}
     >
       <summary aria-label={`${c.activityTitle}: ${summary}`}>
         <span className={styles.traceChevron} aria-hidden="true" />
@@ -2150,46 +2273,48 @@ function PricingFields({
 function ResultTable({
   rows,
   title,
-  empty,
+  locale,
 }: {
   rows: Record<string, unknown>[];
   title: string;
-  empty: string;
+  locale: Locale;
 }) {
-  if (!rows.length) return <p>{empty}</p>;
-  const columns = Object.keys(rows[0] ?? {});
+  if (!rows.length) return null;
+  const columns = [...new Set(rows.slice(0, 200).flatMap((row) => Object.keys(row)))];
   return (
-    <div className={styles.tableWrap}>
-      <table>
-        <caption>{title}</caption>
-        <thead>
-          <tr>
-            {columns.map((column) => (
-              <th key={column}>{column}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.slice(0, 200).map((row, index) => (
-            <tr key={index}>
-              {columns.map((column) => (
-                <td key={column}>{String(row[column] ?? "—")}</td>
-              ))}
+    <details className={styles.resultDetails}>
+      <summary>{title} · {Math.min(rows.length, 200).toLocaleString(locale)}{rows.length > 200 ? ` / ${rows.length.toLocaleString(locale)}` : ""}</summary>
+      <div className={styles.tableWrap}>
+        <table>
+          <caption className={styles.resultCaption}>{title}</caption>
+          <thead>
+            <tr>
+              {columns.map((column) => <th key={column} scope="col">{column}</th>)}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {rows.slice(0, 200).map((row, index) => (
+              <tr key={index}>
+                {columns.map((column) => {
+                  const value = row[column];
+                  return <td key={column}>{value !== null && typeof value === "object" ? <pre>{JSON.stringify(value, null, 2)}</pre> : String(value ?? "—")}</td>;
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
   );
 }
 function MessageResults({
   content,
   title,
-  empty,
+  locale,
 }: {
   content: Message["structuredContent"];
   title: string;
-  empty: string;
+  locale: Locale;
 }) {
   if (content?.toolResults?.length)
     return (
@@ -2199,21 +2324,23 @@ function MessageResults({
             key={`${result.tool}-${index}`}
             rows={result.rows}
             title={`${title} · ${result.tool.replaceAll("_", " ")}`}
-            empty={empty}
+            locale={locale}
           />
         ))}
       </>
     );
   return content?.rows ? (
-    <ResultTable rows={content.rows} title={title} empty={empty} />
+    <ResultTable rows={content.rows} title={title} locale={locale} />
   ) : null;
 }
 function AccessibleChart({
   rows,
   spec,
+  locale,
 }: {
   rows: Record<string, unknown>[];
   spec: ChartSpec;
+  locale: Locale;
 }) {
   const values = rows.flatMap((row) =>
     spec.yKeys.map((key) => Number(row[key]) || 0),
@@ -2251,7 +2378,7 @@ function AccessibleChart({
             </polyline>
           ))}
         </svg>
-        <ResultTable rows={rows} title={spec.title} empty="" />
+        <ResultTable rows={rows} title={spec.title} locale={locale} />
       </figure>
     );
   return (
@@ -2285,7 +2412,7 @@ function AccessibleChart({
           });
         })}
       </svg>
-      <ResultTable rows={rows} title={spec.title} empty="" />
+      <ResultTable rows={rows} title={spec.title} locale={locale} />
     </figure>
   );
 }

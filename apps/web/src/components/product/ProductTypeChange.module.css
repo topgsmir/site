@@ -1,0 +1,16 @@
+.form { display: grid; gap: 10px; margin-top: 12px; }
+.field { display: grid; gap: 5px; min-width: 0; font-size: 14px; }
+.field select, .field input, .field textarea { width: 100%; min-width: 0; min-height: 40px; padding: 7px 10px; color: var(--color-dashboard-ink); background: var(--color-dashboard-surface); border: 1px solid var(--color-dashboard-rule-strong); border-radius: 8px; font: inherit; }
+.field textarea { resize: vertical; }
+.field :is(select, input, textarea):focus-visible, .button:focus-visible, .cancel:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.fields { display: grid; gap: 10px; }
+.hint { margin: 0; font-size: 13px; line-height: 1.6; color: var(--color-dashboard-muted); }
+.error { margin: 0; color: var(--color-dashboard-error); }
+.confirm { padding: 12px; border: 1px solid var(--color-dashboard-warning); border-radius: 8px; background: var(--color-dashboard-warning-soft); color: var(--color-dashboard-ink); font-size: 14px; line-height: 1.7; }
+.confirm p { margin: 0 0 10px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.button, .cancel { min-height: 38px; padding: 7px 12px; border-radius: 8px; cursor: pointer; font: inherit; }
+.button { border: 1px solid var(--color-dashboard-accent); background: var(--color-dashboard-accent); color: var(--color-dashboard-accent-ink); justify-self: start; }
+.cancel { border: 1px solid var(--color-dashboard-rule-strong); background: transparent; color: inherit; }
+@media (max-width: 40rem) { .field select, .field input, .field textarea, .button, .cancel { min-height: 44px; } }
+.button:disabled, .cancel:disabled { opacity: .55; cursor: not-allowed; }

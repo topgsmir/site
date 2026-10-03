@@ -1,7 +1,9 @@
 "use client";
 import { ProductAiPanel } from "@/components/ai/ProductAiPanel";
 import { ProductDescriptionEditor } from "@/components/product/ProductDescriptionEditor";
+import { ProductDescriptionTemplatePicker } from "@/components/product/ProductDescriptionTemplatePicker";
 import { LiveSeoPanel } from "@/components/seo/LiveSeoPanel";
+import { ProductTypeChange, type TypeChangePayload } from "@/components/product/ProductTypeChange";
 import { mergeProductAiDescription, productDescriptionText } from "@/lib/product-description";
 import { validDownloadLinks, type DownloadLink } from "@/lib/download-links";
 import { DownloadLinkRows } from "@/components/product/DownloadLinkRows";
@@ -38,6 +40,7 @@ import { SellerCustomers } from "@/components/seller/SellerCustomers";
 import { SellerShippingProfileWorkspace } from "@/components/seller/SellerShippingProfileWorkspace";
 import { SellerExpertProfileWorkspace } from "@/components/seller/SellerExpertProfileWorkspace";
 import { SellerCoupons } from "./SellerCoupons";
+import { MarketingWorkspace } from "@/components/marketing/MarketingWorkspace";
 import { SellerUploads } from "./SellerUploads";
 import { SellerBlogPanel } from "./SellerBlogPanel";
 import { DesignIcon } from "@/components/DesignIcon";
@@ -52,7 +55,7 @@ import { useNewOrderCount } from "@/components/dashboard/useNewOrderCount";
 import { DashboardMobileNavigation } from "@/components/dashboard/DashboardMobileNavigation";
 import { UploadCenterNavigation } from "@/components/dashboard/UploadCenterNavigation";
 
-type DashboardSection = "overview" | "statistics" | "products" | "uploads" | "profile" | "blog" | "coupons" | "orders" | "customers" | "shipping" | "payouts" | "bridge";
+type DashboardSection = "overview" | "statistics" | "products" | "uploads" | "profile" | "blog" | "coupons" | "marketing" | "orders" | "customers" | "shipping" | "payouts" | "bridge";
 type RequestState = "idle" | "loading" | "error" | "success";
 
 const FILTER_COPY = {
@@ -127,6 +130,7 @@ type DashboardCopy = {
   uploads: string;
   blog: string;
   coupons: string;
+  marketing: string;
   orders: string;
   customers: string;
   newOrders: string;
@@ -246,6 +250,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     uploads: "Uploads",
     blog: "Blog",
     coupons: "Coupons",
+    marketing: "Marketing",
     orders: "Orders",
     customers: "Customer lookup",
     newOrders: "new orders",
@@ -356,6 +361,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     uploads: "بارگذاری‌ها",
     blog: "وبلاگ",
     coupons: "کدهای تخفیف",
+    marketing: "بازاریابی",
     orders: "سفارش‌ها",
     customers: "جستجوی مشتری",
     newOrders: "سفارش جدید",
@@ -466,6 +472,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     uploads: "الملفات المرفوعة",
     blog: "المدونة",
     coupons: "القسائم",
+    marketing: "التسويق",
     orders: "الطلبات",
     customers: "البحث عن عميل",
     newOrders: "طلبات جديدة",
@@ -619,6 +626,7 @@ function Icon({ name }: { name: DashboardSection | "sales" | "plus" | "search" |
     blog: <><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></>,
     uploads: <><path d="M12 16V3m0 0-4 4m4-4 4 4"/><path d="M4 16v4h16v-4"/></>,
     coupons: <><path d="M4 7a3 3 0 0 0 3-3h13v6a2 2 0 0 0 0 4v6H7a3 3 0 0 0-3-3z"/><path d="M12 7v2M12 11v2M12 15v2"/></>,
+    marketing: <><circle cx="7" cy="12" r="3"/><circle cx="17" cy="7" r="3"/><path d="M10 11l4-3M9 14l6 5M15 19h5"/></>,
     orders: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></>,
     customers: <><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 8a3 3 0 0 1 0 6M18 16a4 4 0 0 1 3 4"/></>,
     shipping: <><path d="M3 6h11v10H3z"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></>,
@@ -1014,6 +1022,26 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
     }
   }
 
+  async function changeProductType(payload: TypeChangePayload) {
+    if (!editingProduct || editState === "loading") return;
+    setEditState("loading"); setEditError("");
+    try {
+      const response = await api.patch<SellerListing>(`/products/${editingProduct.product.id}`, {
+        ...payload,
+        title: editDraft.title.trim(), slug: editDraft.slug.trim(), category: editDraft.category.trim() || null,
+        description: editDraft.description.trim() || null
+      });
+      setListings((current) => current.map((listing) => listing.product.id === response.data.product.id ? response.data : listing));
+      setEditingProduct(response.data);
+      setEditDraft((current) => ({ ...current, status: "draft" }));
+      setEditState("success");
+    } catch (error) {
+      const detail = requestError(error, copy.updateError);
+      setEditState("error"); setEditError(detail);
+      throw new Error(detail, { cause: error });
+    }
+  }
+
   async function uploadProductImage(file: File) {
     if (!editingProduct || editState === "loading") return;
     const body = new FormData();
@@ -1051,6 +1079,9 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
       : []),
     ...(user.permissions?.includes("coupons_manage")
       ? [{ id: "coupons" as const, label: copy.coupons }]
+      : []),
+    ...(user.permissions?.includes("products_manage")
+      ? [{ id: "marketing" as const, label: copy.marketing }]
       : []),
     ...(canManageOrders
       ? [{ id: "orders" as const, label: copy.orders }, { id: "customers" as const, label: copy.customers }]
@@ -1286,6 +1317,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
           ) : null}
 
           {section === "coupons" ? <SellerCoupons locale={locale} /> : null}
+          {section === "marketing" ? <MarketingWorkspace locale={locale} admin={false} /> : null}
 
           {section === "blog" ? <SellerBlogPanel locale={locale} /> : null}
           {section === "uploads" ? <SellerUploads locale={locale} /> : null}
@@ -1323,6 +1355,8 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
           <button className={styles.editorScrim} type="button" aria-label={copy.cancel} onClick={() => setEditingProduct(null)} />
           <section ref={productEditorRef} className={styles.productEditor} role="dialog" aria-modal="true" aria-labelledby="product-editor-title">
             <header><div><h2 id="product-editor-title">{copy.editProduct}</h2><p>{copy.editProductDescription}</p></div><button className={styles.textButton} type="button" onClick={() => setEditingProduct(null)}>{copy.cancel}</button></header>
+            {editError ? <p className={styles.inlineError} role="alert">{editError}</p> : null}
+            <ProductTypeChange key={`${editingProduct.product.id}:${editingProduct.product.type}`} locale={locale} currentType={editingProduct.product.type} disabled={editState === "loading"} physicalAllowed={Boolean(user.permissions?.includes("physical_products_manage"))} onApply={changeProductType} />
             <form onSubmit={updateProduct} aria-busy={editState === "loading"}>
               <ProductAiPanel key={editingProduct.product.id} locale={locale} disabled={editState === "loading"} value={{ title: editDraft.title, description: productDescriptionText(editDraft.description), category: editDraft.category }} onChange={(value) => setEditDraft((current) => mergeProductAiDescription(current, value))} />
               <section className={styles.productImageEditor}>
@@ -1341,9 +1375,9 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
               <ProductSlugEditor locale={locale} mode="seller" currentProductId={editingProduct.product.id} slug={editDraft.slug} onChange={(slug) => setEditDraft((current) => ({ ...current, slug }))} />
               <label className={styles.field}><span>{copy.category}</span><input maxLength={100} value={editDraft.category} onChange={(event) => setEditDraft((current) => ({ ...current, category: event.target.value }))} /></label>
               <div className={styles.field}><span>{copy.description}</span><ProductDescriptionEditor key={editingProduct.product.id} locale={locale} label={copy.description} value={editDraft.description} disabled={editState === "loading"} onChange={(description) => setEditDraft((current) => ({ ...current, description }))} /></div>
+              <ProductDescriptionTemplatePicker locale={locale} title={editDraft.title} hasDescription={Boolean(editDraft.description.trim())} disabled={editState === "loading"} onApply={(description) => setEditDraft((current) => ({ ...current, description }))} />
               <LiveSeoPanel key={editingProduct.product.id} locale={locale} input={{ kind: "product", title: editDraft.title, body: editDraft.description, hasCover: Boolean(editingProduct.product.image) }} />
               <label className={styles.field}><span>{copy.publishState}</span><select value={editDraft.status} onChange={(event) => setEditDraft((current) => ({ ...current, status: event.target.value as ProductStatus }))}><option value="draft">{copy.draft}</option><option value="active">{copy.active}</option><option value="pending_review">{copy.pending_review}</option><option value="archived">{copy.archived}</option></select></label>
-              {editError ? <p className={styles.inlineError} role="alert">{editError}</p> : null}
               <footer><button className={styles.secondaryButton} type="button" onClick={() => setEditingProduct(null)}>{copy.cancel}</button><button className={styles.primaryButton} type="submit" disabled={editState === "loading"}>{editState === "loading" ? copy.savingChanges : copy.saveChanges}</button></footer>
             </form>
           </section>
@@ -1553,6 +1587,7 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
               <label className={`${styles.field} ${creation.titleField}`}><span>{copy.title}</span><input required minLength={2} maxLength={200} placeholder={formCopy.titlePlaceholder} value={draft.title} onChange={(event) => updateDraft("title", event.target.value)} /></label>
               <ProductSlugEditor className={creation.slugField} locale={locale} mode="seller" slug={draft.slug} onChange={(slug) => { if (slug !== draft.slug) setSlugTouched(true); updateDraft("slug", slug); }} />
               <div className={styles.field}><span>{copy.description}<small>{formCopy.optional}</small></span><ProductDescriptionEditor locale={locale} label={copy.description} value={draft.description} disabled={submitState === "loading"} onChange={(description) => updateDraft("description", description)} /></div>
+              <ProductDescriptionTemplatePicker locale={locale} title={draft.title} hasDescription={Boolean(draft.description.trim())} disabled={submitState === "loading"} onApply={(description) => updateDraft("description", description)} />
               <label className={styles.field}><span>{copy.category}<small>{formCopy.optional}</small></span><input maxLength={100} value={draft.category} onChange={(event) => updateDraft("category", event.target.value)} /></label>
               <div className={creation.imageField}>
                 <div className={creation.imagePreview}>{imagePreview ? <Image unoptimized src={imagePreview} alt="" width={120} height={120} /> : <DesignIcon name="layers" />}</div>

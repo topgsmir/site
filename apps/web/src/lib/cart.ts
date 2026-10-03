@@ -4,7 +4,7 @@ export const CART_KEY = "topgsm-cart-v1";
 export const CART_EVENT = "topgsm:cart-updated";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export type CartItem = CheckoutCartLine & { productId: string; productName?: string };
+export type CartItem = CheckoutCartLine & { productId: string; productName?: string; visitId?: string };
 
 export function isCartItem(value: unknown): value is CartItem {
   if (typeof value !== "object" || value === null) return false;
@@ -13,7 +13,8 @@ export function isCartItem(value: unknown): value is CartItem {
     typeof item.offerId === "string" && UUID_PATTERN.test(item.offerId) &&
     Number.isInteger(item.quantity) && Number(item.quantity) > 0 && Number(item.quantity) <= 100 &&
     (item.productName === undefined || (typeof item.productName === "string" && item.productName.length > 0 && item.productName.length <= 200)) &&
-    (item.serviceNote === undefined || (typeof item.serviceNote === "string" && item.serviceNote.length <= 2000));
+    (item.serviceNote === undefined || (typeof item.serviceNote === "string" && item.serviceNote.length <= 2000)) &&
+    (item.visitId === undefined || (typeof item.visitId === "string" && UUID_PATTERN.test(item.visitId)));
 }
 
 export function readCart(): CartItem[] {

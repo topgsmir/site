@@ -48,11 +48,11 @@ export function DigitalDownloadGuide({ locale }: { locale: Locale }) {
   </section>;
 }
 
-export function DigitalDownloadQuestions({ locale }: { locale: Locale }) {
+export function DigitalDownloadQuestions({ locale, free }: { locale: Locale; free: boolean }) {
   const c = digitalProductCopy[locale];
   return <section className={styles.questions} aria-labelledby="download-questions-title">
     <h2 id="download-questions-title">{c.questions}</h2>
-    <div>{[[c.accessQuestion, c.accessAnswer], [c.limitQuestion, c.limitAnswer], [c.compatibilityQuestion, c.compatibilityAnswer]].map(([question, answer]) => <details key={question}>
+    <div>{[[c.accessQuestion, c.accessAnswer], [c.limitQuestion, free ? c.freeLimitAnswer : c.limitAnswer], [c.compatibilityQuestion, c.compatibilityAnswer]].map(([question, answer]) => <details key={question}>
       <summary>{question}<span aria-hidden="true">+</span></summary><p>{answer}</p>
     </details>)}</div>
   </section>;

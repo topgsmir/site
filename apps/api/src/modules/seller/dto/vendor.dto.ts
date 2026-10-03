@@ -6,7 +6,10 @@ import {
   IsEmail,
   IsEnum,
   IsNumber,
+  IsObject,
   IsOptional,
+  ValidateIf,
+  ValidateNested,
   Matches,
   IsString,
   Max,
@@ -33,6 +36,36 @@ export const vendorStatuses = ["invited", "active", "suspended"] as const;
 
 type VendorPermission = (typeof vendorPermissions)[number];
 type VendorStatus = (typeof vendorStatuses)[number];
+
+export class VendorCommissionRatesDto {
+  @ValidateIf((_object, value) => value !== null && value !== undefined)
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(0)
+  @Max(1)
+  digital?: number | null;
+
+  @ValidateIf((_object, value) => value !== null && value !== undefined)
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(0)
+  @Max(1)
+  physical?: number | null;
+
+  @ValidateIf((_object, value) => value !== null && value !== undefined)
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(0)
+  @Max(1)
+  service?: number | null;
+
+  @ValidateIf((_object, value) => value !== null && value !== undefined)
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(0)
+  @Max(1)
+  bridge?: number | null;
+}
 
 export class CreateVendorDto {
   @IsString()
@@ -68,6 +101,11 @@ export class CreateVendorDto {
   @Max(1)
   commission!: number;
 
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => VendorCommissionRatesDto)
+  commissionRates?: VendorCommissionRatesDto;
   @IsArray()
   @ArrayUnique()
   @IsEnum(vendorPermissions, { each: true })
@@ -122,6 +160,12 @@ export class UpdateVendorDto {
   @Min(0)
   @Max(1)
   commission?: number;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => VendorCommissionRatesDto)
+  commissionRates?: VendorCommissionRatesDto;
 
   @IsOptional()
   @IsArray()

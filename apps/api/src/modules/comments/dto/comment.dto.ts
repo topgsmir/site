@@ -10,6 +10,20 @@ export class CreateCommentDto {
 
   @IsOptional() @IsString() @Matches(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.[0-9]{1,10}$/i)
   captchaToken?: string;
+
+  @IsOptional() @IsString() @Matches(/^(?:\+98|0098|98|0)?9\d{9}$/)
+  guestPhoneNumber?: string;
+
+  @IsOptional() @IsUUID("4")
+  guestChallengeId?: string;
+
+  @IsOptional() @IsString() @Matches(/^\d{6}$/)
+  guestCode?: string;
+}
+
+export class RequestGuestCommentCodeDto {
+  @IsString() @Matches(/^(?:\+98|0098|98|0)?9\d{9}$/)
+  phoneNumber!: string;
 }
 
 export class ReplyCommentDto {

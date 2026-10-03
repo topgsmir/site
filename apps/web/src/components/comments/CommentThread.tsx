@@ -22,6 +22,17 @@ const copy = {
   }
 } as const;
 
+const verificationCopy = {
+  en: { phone: "Mobile number", code: "SMS code", request: "Send code", sending: "Sending code…", sent: "Code sent. It expires in 5 minutes.", error: "Could not send a code. Check the number and try again." },
+  fa: { phone: "شماره موبایل", code: "کد پیامکی", request: "ارسال کد", sending: "در حال ارسال کد…", sent: "کد ارسال شد و تا ۵ دقیقه معتبر است.", error: "کد ارسال نشد. شماره را بررسی کنید و دوباره تلاش کنید." },
+  ar: { phone: "رقم الهاتف", code: "رمز الرسالة", request: "إرسال الرمز", sending: "جار إرسال الرمز…", sent: "أُرسل الرمز وهو صالح لمدة ٥ دقائق.", error: "تعذر إرسال الرمز. تحقق من الرقم وحاول مرة أخرى." }
+} as const;
+
+const asciiDigits = (value: string) => value.replace(/[۰-۹٠-٩]/g, (digit) => {
+  const code = digit.charCodeAt(0);
+  return String(code >= 0x06F0 ? code - 0x06F0 : code - 0x0660);
+});
+
 export function CommentThread({ targetType, targetId, locale }: { targetType: "product" | "blog"; targetId: string; locale: Locale }) {
   const c = copy[targetType][locale];
   const endpoint = targetType === "product" ? `/comments/products/${targetId}` : `/comments/blog-posts/${targetId}`;
@@ -30,6 +41,11 @@ export function CommentThread({ targetType, targetId, locale }: { targetType: "p
   const [items, setItems] = useState<ProductComment[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [policy, setPolicy] = useState<CommentPostingPolicy>("purchasers");
+  const [guestSmsRequired, setGuestSmsRequired] = useState(false);
+  const [guestPhone, setGuestPhone] = useState("");
+  const [guestCode, setGuestCode] = useState("");
+  const [guestChallengeId, setGuestChallengeId] = useState("");
+  const [requestingCode, setRequestingCode] = useState(false);
   const [user, setUser] = useState<AppUser | null>(null);
   const [ready, setReady] = useState(false);
   const [name, setName] = useState("");
@@ -50,20 +66,32 @@ export function CommentThread({ targetType, targetId, locale }: { targetType: "p
   }, [endpoint, c.error]);
 
   useEffect(() => {
-    void load();
-    void Promise.allSettled([api.get<{ postingPolicy: CommentPostingPolicy }>("/comments/settings"), api.get<AppUser>("/auth/me")]).then(([settings, account]) => {
-      if (settings.status === "fulfilled") setPolicy(settings.value.data.postingPolicy);
+    const timer = setTimeout(() => void load(), 0);
+    void Promise.allSettled([api.get<{ postingPolicy: CommentPostingPolicy; guestSmsRequired: boolean }>("/comments/settings"), api.get<AppUser>("/auth/me")]).then(([settings, account]) => {
+      if (settings.status === "fulfilled") { setPolicy(settings.value.data.postingPolicy); setGuestSmsRequired(settings.value.data.guestSmsRequired); }
       if (account.status === "fulfilled") setUser(account.value.data);
       setReady(true);
     });
+    return () => clearTimeout(timer);
   }, [load]);
+
+  async function requestCode() {
+    setRequestingCode(true); setError(""); setMessage("");
+    try {
+      const response = await api.post<{ challengeId: string }>("/comments/guest-verification", { phoneNumber: guestPhone.trim() });
+      setGuestChallengeId(response.data.challengeId);
+      setGuestCode("");
+      setMessage(verificationCopy[locale].sent);
+    } catch { setError(verificationCopy[locale].error); }
+    finally { setRequestingCode(false); }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setSending(true); setError(""); setMessage("");
     try {
-      const captchaToken = user ? undefined : await captchaTokenFor("comment_submit_guest");
-      const response = await api.post<{ status: string }>(endpoint, { body: body.trim(), ...(user ? {} : { guestName: name.trim(), ...(captchaToken ? { captchaToken } : {}) }) });
-      setBody(""); setName(""); setMessage(response.data.status === "approved" ? c.approved : c.pending);
+      const captchaToken = user || guestSmsRequired ? undefined : await captchaTokenFor("comment_submit_guest");
+      const response = await api.post<{ status: string }>(endpoint, { body: body.trim(), ...(user ? {} : { guestName: name.trim(), ...(guestSmsRequired ? { guestPhoneNumber: guestPhone.trim(), guestChallengeId, guestCode } : captchaToken ? { captchaToken } : {}) }) });
+      setBody(""); setName(""); setGuestCode(""); setGuestChallengeId(""); setMessage(response.data.status === "approved" ? c.approved : c.pending);
       if (response.data.status === "approved") await load();
     } catch { setError(c.submitError); }
     finally { setSending(false); }
@@ -74,9 +102,15 @@ export function CommentThread({ targetType, targetId, locale }: { targetType: "p
     <header className={styles.header}><h2 id={headingId}>{c.title}</h2><p>{c.intro}</p></header>
     {ready && canPost ? <form className={styles.card} onSubmit={submit}>
       {!user ? <div className={styles.guest}><label htmlFor={`${targetType}-comment-guest-name`}>{c.name}</label><input id={`${targetType}-comment-guest-name`} required maxLength={100} value={name} onChange={(event) => setName(event.target.value)} /></div> : null}
+      {!user && guestSmsRequired ? <div className={styles.guest}>
+        <label htmlFor={`${targetType}-comment-phone`}>{verificationCopy[locale].phone}</label>
+        <input id={`${targetType}-comment-phone`} type="tel" inputMode="tel" autoComplete="tel" required value={guestPhone} onChange={(event) => { setGuestPhone(asciiDigits(event.target.value)); setGuestChallengeId(""); }} />
+        <button type="button" onClick={() => void requestCode()} disabled={requestingCode || !/^(?:\+98|0098|98|0)?9\d{9}$/.test(guestPhone.trim())}>{requestingCode ? verificationCopy[locale].sending : verificationCopy[locale].request}</button>
+        {guestChallengeId ? <><label htmlFor={`${targetType}-comment-code`}>{verificationCopy[locale].code}</label><input id={`${targetType}-comment-code`} inputMode="numeric" autoComplete="one-time-code" required maxLength={6} pattern="[0-9]{6}" value={guestCode} onChange={(event) => setGuestCode(asciiDigits(event.target.value))} /></> : null}
+      </div> : null}
       <label htmlFor={bodyId}>{c.body}</label><textarea id={bodyId} required maxLength={2000} value={body} onChange={(event) => setBody(event.target.value)} />
-      <div><button className={styles.primary} type="submit" disabled={sending || !body.trim()}>{sending ? c.sending : c.submit}</button></div>
-    </form> : ready && !user ? <p><Link href={`/${locale}/login` as Route}>{c.signIn}</Link></p> : ready && targetType === "product" && policy === "purchasers" && user ? <p>{c.purchase}</p> : null}
+      <div><button className={styles.primary} type="submit" disabled={sending || !body.trim() || (!user && guestSmsRequired && (!guestChallengeId || !/^\d{6}$/.test(guestCode)))}>{sending ? c.sending : c.submit}</button></div>
+    </form> : ready && !user ? <p><Link href={`/${locale}/login` as Route}>{c.signIn}</Link></p> : ready && targetType === "product" && policy === "purchasers" && user?.role === "buyer" ? <p>{c.purchase}</p> : null}
     {error ? <p className={styles.error} role="alert">{error}</p> : null}{message ? <p className={styles.success} role="status">{message}</p> : null}
     {!loading && !items.length ? <p className={styles.empty}>{c.empty}</p> : <div className={styles.list}>{items.map((item) => <article className={styles.card} key={item.id}><div className={styles.meta}><strong>{item.authorName}</strong><time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleDateString(locale)}</time></div><p>{item.body}</p>{item.replies.map((reply, index) => <div className={styles.reply} key={index}><strong>{c.reply} · {reply.authorName ?? reply.sellerName}</strong><p>{reply.body}</p></div>)}</article>)}</div>}
     {cursor && !loading ? <button className={styles.more} type="button" onClick={() => void load(cursor)}>{c.more}</button> : null}

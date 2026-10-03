@@ -7,18 +7,28 @@ import { readSessionToken } from "../auth/session-token";
 import { CommentsService } from "./comments.service";
 import { SecurityPolicyService } from "../auth/security-policy.service";
 import { CaptchaService } from "../captcha/captcha.service";
-import { AdminListCommentsDto, CreateCommentDto, ListCommentsDto, ReplyCommentDto, SellerListCommentsDto, UpdateCommentSettingsDto } from "./dto/comment.dto";
+import { AdminListCommentsDto, CreateCommentDto, ListCommentsDto, ReplyCommentDto, SellerListCommentsDto, UpdateCommentSettingsDto, RequestGuestCommentCodeDto } from "./dto/comment.dto";
+import { GuestCommentVerificationService } from "../sms/guest-comment-verification.service";
+import { normalizeIranianPhone } from "../sms/phone-number";
 
 const uuid = new ParseUUIDPipe({ version: "4" });
 
 @Controller("comments")
 export class CommentsController {
-  constructor(private readonly comments: CommentsService, private readonly auth: AuthService, private readonly limits: AuthRateLimitService, private readonly policies: SecurityPolicyService, private readonly captcha: CaptchaService) {}
+  constructor(private readonly comments: CommentsService, private readonly auth: AuthService, private readonly limits: AuthRateLimitService, private readonly policies: SecurityPolicyService, private readonly captcha: CaptchaService, private readonly guestSms: GuestCommentVerificationService) {}
 
   @Get("settings")
   async publicSettings() {
     const { postingPolicy, publicationPolicy } = await this.comments.getSettings();
-    return { postingPolicy, publicationPolicy };
+    return { postingPolicy, publicationPolicy, guestSmsRequired: await this.guestSms.enabled() };
+  }
+
+  @Post("guest-verification")
+  async requestGuestVerification(@Body() body: RequestGuestCommentCodeDto, @Ip() ip: string) {
+    if ((await this.comments.getSettings()).postingPolicy !== "guests") throw new ForbiddenException("Guest comments are disabled");
+    const phone = normalizeIranianPhone(body.phoneNumber);
+    await this.limits.consumeOtp(phone, ip);
+    return this.guestSms.request(phone);
   }
 
   @Get("products/:productId")
@@ -45,7 +55,10 @@ export class CommentsController {
     const token = readSessionToken(request.headers.cookie, request.headers.authorization);
     const user = token ? await this.auth.getUserFromToken(token) : null;
     await this.limits.consumeCommentSubmit(user?.id ?? null, `${target}:${targetId}`, ip);
-    if (!user && (await this.policies.get("comment_submit_guest")).captchaEnabled) {
+    if (!user && await this.guestSms.enabled()) {
+      if (!body.guestPhoneNumber || !body.guestChallengeId || !body.guestCode) throw new ForbiddenException("SMS verification required");
+      await this.guestSms.consume(body.guestChallengeId, body.guestPhoneNumber, body.guestCode);
+    } else if (!user && (await this.policies.get("comment_submit_guest")).captchaEnabled) {
       if (!body.captchaToken) throw new ForbiddenException("Captcha verification required");
       await this.captcha.verify(body.captchaToken, "comment_submit_guest");
     }

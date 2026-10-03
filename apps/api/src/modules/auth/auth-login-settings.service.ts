@@ -12,7 +12,13 @@ export class AuthLoginSettingsService {
 
   async getPublic(): Promise<AuthLoginMethods> {
     const row = await this.read();
-    return row ? { emailPasswordEnabled: row.email_password_enabled, phoneOtpEnabled: row.phone_otp_enabled } : DEFAULTS;
+    const methods = row ? { emailPasswordEnabled: row.email_password_enabled, phoneOtpEnabled: row.phone_otp_enabled } : DEFAULTS;
+    if (!methods.phoneOtpEnabled) return methods;
+    const [smsSettings, loginRule] = await Promise.all([
+      this.prisma.sms_settings.findUnique({ where: { id: 1 }, select: { otp_enabled: true } }),
+      this.prisma.sms_event_rules.findFirst({ where: { event_key: "login_otp", recipient_kind: "requester", enabled: true }, select: { id: true } })
+    ]);
+    return { ...methods, phoneOtpEnabled: (smsSettings?.otp_enabled ?? true) && Boolean(loginRule) };
   }
 
   async getAdmin(): Promise<AdminAuthLoginSettings> {
@@ -21,7 +27,7 @@ export class AuthLoginSettingsService {
   }
 
   async assertEmailPasswordEnabled() {
-    if (!(await this.getPublic()).emailPasswordEnabled) throw new ServiceUnavailableException("Email and password sign-in is disabled");
+    if ((await this.read())?.email_password_enabled === false) throw new ServiceUnavailableException("Email and password sign-in is disabled");
   }
 
   async assertPhoneOtpEnabled() {
@@ -31,6 +37,13 @@ export class AuthLoginSettingsService {
   async update(input: UpdateAuthLoginSettingsDto, actorUserId: string): Promise<AdminAuthLoginSettings> {
     if (!input.emailPasswordEnabled && !input.phoneOtpEnabled) {
       throw new BadRequestException("At least one sign-in method must stay enabled");
+    }
+    if (!input.emailPasswordEnabled) {
+      const [smsSettings, loginRule] = await Promise.all([
+        this.prisma.sms_settings.findUnique({ where: { id: 1 }, select: { otp_enabled: true } }),
+        this.prisma.sms_event_rules.findFirst({ where: { event_key: "login_otp", recipient_kind: "requester", enabled: true }, select: { id: true } })
+      ]);
+      if (smsSettings?.otp_enabled === false || !loginRule) throw new BadRequestException("Enable SMS login before disabling password login");
     }
     const row = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.auth_login_settings.upsert({

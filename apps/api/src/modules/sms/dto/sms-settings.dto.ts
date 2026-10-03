@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from "class-validator";
+import { IsBoolean, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from "class-validator";
 
 export class UpdateSmsSettingsDto {
   @IsBoolean()
@@ -13,6 +13,18 @@ export class UpdateSmsSettingsDto {
   @MinLength(8)
   @MaxLength(2000)
   apiKey?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(15)
+  @Matches(/^[0-9]{1,15}$/)
+  lineNumber?: string | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(1440)
+  pendingCheckMinutes?: number;
 
   @IsOptional()
   @IsInt()

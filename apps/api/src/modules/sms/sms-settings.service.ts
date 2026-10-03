@@ -14,6 +14,8 @@ const SETTINGS_SELECT = {
   encrypted_api_key: true,
   encryption_key_id: true,
   api_key_hint: true,
+  line_number: true,
+  pending_check_minutes: true,
   otp_template_id: true,
   seller_new_order_template_id: true,
   buyer_success_template_id: true,
@@ -29,6 +31,8 @@ type SettingsRecord = {
   encrypted_api_key: string | null;
   encryption_key_id: string | null;
   api_key_hint: string | null;
+  line_number?: string | null;
+  pending_check_minutes?: number;
   otp_template_id: number | null;
   seller_new_order_template_id: number | null;
   buyer_success_template_id: number | null;
@@ -70,11 +74,11 @@ export class SmsSettingsService {
   }
 
   async isOtpEnabled() {
-    const settings = await this.prisma.sms_settings.findUnique({
-      where: { id: SETTINGS_ID },
-      select: { otp_enabled: true }
-    });
-    return settings?.otp_enabled ?? true;
+    const [settings, rule] = await Promise.all([
+      this.prisma.sms_settings.findUnique({ where: { id: SETTINGS_ID }, select: { otp_enabled: true } }),
+      this.prisma.sms_event_rules.findFirst({ where: { event_key: "login_otp", recipient_kind: "requester", enabled: true }, select: { id: true } })
+    ]);
+    return (settings?.otp_enabled ?? true) && Boolean(rule);
   }
 
   async isTestModeEnabled(): Promise<boolean> {
@@ -95,7 +99,18 @@ export class SmsSettingsService {
     return { apiKey, templateId };
   }
 
+  async providerCredentials() {
+    const settings = await this.read();
+    const apiKey = this.databaseApiKey(settings) ?? this.environmentApiKey();
+    if (!apiKey) throw new ServiceUnavailableException("SMS.ir API key is not configured");
+    return { apiKey, lineNumber: settings?.line_number ?? this.config.get<string>("SMS_IR_LINE_NUMBER")?.trim() ?? null };
+  }
+
   async update(input: UpdateSmsSettingsDto, actorUserId: string): Promise<AdminSmsSettings> {
+    if (!input.otpEnabled) {
+      const methods = await this.prisma.auth_login_settings.findUnique({ where: { id: 1 }, select: { email_password_enabled: true } });
+      if (methods?.email_password_enabled === false) throw new BadRequestException("Keep at least one usable login method enabled");
+    }
     const current = await this.read();
     const testModeEnabled = input.testModeEnabled ?? current?.test_mode_enabled ?? false;
     const apiKey = input.apiKey?.trim();
@@ -109,6 +124,8 @@ export class SmsSettingsService {
     const data = {
       otp_enabled: input.otpEnabled,
       test_mode_enabled: testModeEnabled,
+      ...(Object.hasOwn(input, "lineNumber") ? { line_number: input.lineNumber?.trim() || null } : {}),
+      ...(Object.hasOwn(input, "pendingCheckMinutes") ? { pending_check_minutes: input.pendingCheckMinutes } : {}),
       ...(encrypted ? {
         encrypted_api_key: encrypted.ciphertext,
         encryption_key_id: encrypted.keyId,
@@ -123,9 +140,12 @@ export class SmsSettingsService {
     };
 
     const effectiveApiKey = apiKey ?? this.databaseApiKey(current) ?? this.environmentApiKey();
-    const effectiveOtpTemplateId = Object.hasOwn(input, "otpTemplateId")
+    const configuredOtpTemplateId = Object.hasOwn(input, "otpTemplateId")
       ? input.otpTemplateId ?? this.environmentTemplateId("otp")
       : current?.otp_template_id ?? this.environmentTemplateId("otp");
+    const effectiveOtpTemplateId = configuredOtpTemplateId ?? (input.otpEnabled && !testModeEnabled
+      ? (await this.prisma.sms_event_rules.findFirst({ where: { event_key: "login_otp", enabled: true, recipient_kind: "requester" }, select: { template_id: true } }))?.template_id
+      : null);
     if (input.otpEnabled && !testModeEnabled && (!effectiveApiKey || !effectiveOtpTemplateId)) {
       throw new BadRequestException("Configure the SMS.ir API key and OTP template before enabling OTP");
     }
@@ -146,6 +166,8 @@ export class SmsSettingsService {
           test_mode_enabled: updated.test_mode_enabled,
           credentials_changed: Boolean(encrypted),
           api_key_hint: updated.api_key_hint,
+          line_number: updated.line_number ?? null,
+          pending_check_minutes: updated.pending_check_minutes ?? 10,
           otp_template_id: updated.otp_template_id,
           seller_new_order_template_id: updated.seller_new_order_template_id,
           buyer_success_template_id: updated.buyer_success_template_id,
@@ -174,6 +196,8 @@ export class SmsSettingsService {
       otpEnabled: settings?.otp_enabled ?? true,
       testModeEnabled: settings?.test_mode_enabled ?? false,
       provider: "sms_ir",
+      lineNumber: settings?.line_number ?? this.config.get<string>("SMS_IR_LINE_NUMBER")?.trim() ?? null,
+      pendingCheckMinutes: settings?.pending_check_minutes ?? 10,
       apiKeyConfigured: databaseConfigured || Boolean(environmentApiKey),
       apiKeyHint: databaseConfigured ? settings?.api_key_hint ?? null : environmentApiKey?.slice(-4) ?? null,
       credentialSource: databaseConfigured ? "database" : environmentApiKey ? "environment" : "none",

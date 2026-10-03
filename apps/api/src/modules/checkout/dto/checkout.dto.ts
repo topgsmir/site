@@ -20,6 +20,8 @@ export class CheckoutLineDto {
   @IsUUID("4")
   offerId!: string;
 
+  @IsOptional() @IsUUID("4") visitId?: string;
+
   @Type(() => Number)
   @IsInt()
   @Min(1)

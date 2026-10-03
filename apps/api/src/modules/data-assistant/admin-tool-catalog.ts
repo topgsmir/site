@@ -47,6 +47,31 @@ const tool = (
   responseMode: "json" | "download" = "json"
 ): AdminToolDefinition => ({ name, domain, method, path, risk, description, inputHint, ...(idempotent ? { idempotent: true } : {}), ...(responseMode === "download" ? { responseMode } : {}) });
 
+// Match common Persian and Arabic admin terms before asking the model to discover
+// English-only catalog names. These aliases affect ranking only, never authority.
+const SEARCH_ALIASES: ReadonlyArray<{ pattern: RegExp; terms: readonly string[] }> = [
+  { pattern: /محصول|کالا|منتج|سلعة/u, terms: ["product", "catalog"] },
+  { pattern: /عنوان|تیتر|اسم/u, terms: ["title", "translation"] },
+  { pattern: /ترجم|زبان|لغة/u, terms: ["translation", "locale"] },
+  { pattern: /سفارش|طلب/u, terms: ["order"] },
+  { pattern: /ارسال|حمل|شحن/u, terms: ["shipping", "shipment"] },
+  { pattern: /فروشنده|بائع/u, terms: ["seller"] },
+  { pattern: /کاربر|مستخدم/u, terms: ["user"] },
+  { pattern: /موجودی|مخزون/u, terms: ["stock", "inventory"] },
+  { pattern: /قیمت|هزینه|سعر/u, terms: ["price", "pricing"] },
+  { pattern: /پرداخت|دفع/u, terms: ["payment"] },
+  { pattern: /بازگشت وجه|استرداد/u, terms: ["refund"] },
+  { pattern: /فهرست|لیست|نمایش|اعرض|قائمة/u, terms: ["list", "search"] },
+  { pattern: /جستجو|جست‌وجو|بحث/u, terms: ["search"] },
+  { pattern: /ویرایش|تغییر|بروزرسانی|به‌روزرسانی|تعدیل|تحدیث/u, terms: ["update"] },
+  { pattern: /ایجاد|ساخت|ثبت|إنشاء|إضافة|اضافة/u, terms: ["create", "register"] },
+  { pattern: /تأیید|تایید|تصویب|موافقة/u, terms: ["approve", "review"] },
+  { pattern: /حذف|پاک|إزالة/u, terms: ["delete", "remove"] },
+  { pattern: /کوپن|قسیمة|قسيمة/u, terms: ["coupon"] },
+  { pattern: /وبلاگ|مقاله|مدونة/u, terms: ["blog"] },
+  { pattern: /سئو|تحسين محركات/u, terms: ["seo"] }
+];
+
 /**
  * API operations exposed to the owner-only admin assistant. Local file inputs and
  * downloads are browser-mediated; login/logout session flows, one-time restore
@@ -152,8 +177,8 @@ export const ADMIN_TOOL_CATALOG: readonly AdminToolDefinition[] = [
   tool("admin_staff_revoke", "staff", "DELETE", "/admin/staff/:id", "destructive", "Revoke a pending staff invitation. Existing staff roles must be changed with admin_user_role and a reason.", "path: invitation UUID or staff user UUID or support code."),
 
   tool("admin_sellers_list", "sellers", "GET", "/seller/vendors", "read", "List seller organizations available to platform administration."),
-  tool("admin_seller_create", "sellers", "POST", "/seller/vendors", "write", "Create a seller organization with a commission rate and no holdback deduction.", "body: owner identity, shop name, status, commission (0..1) and permission fields."),
-  tool("admin_seller_update", "sellers", "PATCH", "/seller/vendors/:id", "write", "Update a seller organization and its platform-managed state, including commission but not holdback.", "path: id; body: allowlisted seller fields, including optional commission (0..1)."),
+  tool("admin_seller_create", "sellers", "POST", "/seller/vendors", "write", "Create a seller organization with default and optional product-type commission rates.", "body: owner identity, shop name, status, commission (0..1), optional commissionRates {digital,physical,service,bridge} (each null or 0..1), and permissions."),
+  tool("admin_seller_update", "sellers", "PATCH", "/seller/vendors/:id", "write", "Update a seller organization and its default or product-type commission rates.", "path: id; body: allowlisted seller fields, optional commission (0..1), commissionRates {digital,physical,service,bridge} (each null or 0..1)."),
   tool("admin_seller_picture_upload", "sellers", "POST", "/seller/vendors/:id/picture", "write", "Upload or replace a seller's public profile picture.", "path: id=seller UUID; body: {file:{\"$fileInput\":{\"label\":\"Seller profile picture\",\"accept\":\"image/webp\",\"maxBytes\":8388608}}}."),
   tool("admin_seller_picture_remove", "sellers", "DELETE", "/seller/vendors/:id/picture", "destructive", "Remove a seller's public profile picture.", "path: id=seller UUID."),
   tool("admin_seller_agents", "sellers", "GET", "/seller/agents", "read", "List seller agents."),
@@ -168,6 +193,10 @@ export const ADMIN_TOOL_CATALOG: readonly AdminToolDefinition[] = [
   tool("seller_profile_picture_remove", "sellers", "DELETE", "/seller/profile/picture", "destructive", "Remove the current seller's public profile picture.", "requires seller-admin context."),
 
   tool("admin_products_list", "catalog", "GET", "/products/admin", "read", "Search and paginate the administrative product catalog, including counts for each product status under the other active filters.", "query: search, category, seller, status, stock (physical active offers), dateField (created or updated), dateFrom (inclusive UTC ISO instant) and dateTo (exclusive UTC ISO instant), type, kind, sort, cursor, limit."),
+  tool("seller_product_description_templates", "catalog", "GET", "/products/templates", "read", "List active product description templates available to the authenticated seller.", "query: locale=fa|en|ar, optional cursor UUID and limit 1..50."),
+  tool("admin_product_description_templates", "catalog", "GET", "/products/admin/templates", "read", "List product description templates, including inactive ones.", "query: locale=fa|en|ar, optional cursor UUID and limit 1..50."),
+  tool("admin_product_description_template_create", "catalog", "POST", "/products/admin/templates", "write", "Create a localized product description template that sellers can apply to drafts.", "body: locale=fa|en|ar, name 1..100 characters, content 1..10000 characters, optional active boolean."),
+  tool("admin_product_description_template_update", "catalog", "PATCH", "/products/admin/templates/:templateId", "write", "Edit or activate/deactivate a product description template.", "path: templateId UUID; body: optional name, content and active boolean."),
   tool("admin_products_bulk_edit_preview", "catalog", "POST", "/products/admin/bulk-edit/preview", "write", "Preview a bounded selection of product and offer edits, including before and after values and a revision.", "body: 1-50 productIds and one action with its bounded value."),
   tool("admin_products_bulk_edit_apply", "catalog", "POST", "/products/admin/bulk-edit", "destructive", "Apply a previewed product bulk edit atomically with an operation ID and exact revision.", "body: 1-50 productIds, one action and value, UUID operationId, and 64-character preview revision."),
   tool("admin_product_get", "catalog", "GET", "/products/admin/:productId", "read", "Read complete administrative product details.", "path: productId."),
@@ -176,7 +205,7 @@ export const ADMIN_TOOL_CATALOG: readonly AdminToolDefinition[] = [
   tool("admin_product_slug_availability", "catalog", "GET", "/products/admin/slug-availability", "read", "Check whether a product slug is available, including historic reserved slugs.", "query: slug and optional currentProductId UUID."),
   tool("admin_product_review", "catalog", "PATCH", "/products/admin/:productId/review", "write", "Approve, reject, archive, or otherwise review a product transition.", "path: productId; body: review status and optional reason."),
   tool("admin_product_translations", "catalog", "GET", "/products/admin/:productId/translations", "read", "List all translations for a product.", "path: productId."),
-  tool("admin_product_translation_update", "catalog", "PATCH", "/products/admin/:productId/translations/:locale", "write", "Update a product translation draft with plain or formatted description.", "path: productId and locale; body: localized title, description (plain text or versioned rich-text document string up to 10000 characters), and category."),
+  tool("admin_product_translation_update", "catalog", "PATCH", "/products/admin/:productId/translations/:locale", "write", "Update an English or Arabic product translation draft with plain or formatted description.", "path: productId UUID, locale=en|ar; body: localized title and description (plain text or versioned rich-text document string up to 10000 characters), optional category. Both title and description are required."),
   tool("admin_product_translation_publish", "catalog", "POST", "/products/admin/:productId/translations/:locale/publish", "write", "Publish a product translation.", "path: productId and locale."),
   tool("admin_product_translation_unpublish", "catalog", "POST", "/products/admin/:productId/translations/:locale/unpublish", "destructive", "Unpublish a product translation.", "path: productId and locale."),
   tool("admin_product_changes", "catalog", "GET", "/products/admin/changes", "read", "List audited product changes.", "query: sellerId, action, cursor, limit."),
@@ -212,6 +241,8 @@ export const ADMIN_TOOL_CATALOG: readonly AdminToolDefinition[] = [
   tool("admin_orders_mark_seen", "orders", "POST", "/orders/seen", "write", "Advance the current actor's order-seen timestamp."),
   tool("admin_order_get", "orders", "GET", "/orders/admin/:id", "read", "Read comprehensive administrative order details, including each item's product ID.", "path: id."),
   tool("order_get", "orders", "GET", "/orders/:id", "read", "Read one order through the current actor's buyer or seller scope, including each item's product ID.", "path: id."),
+  tool("buyer_digital_access", "orders", "GET", "/orders/digital-access/:offerId", "read", "Find the current buyer's latest downloadable purchase for an offer, including per-file limits.", "path: offerId UUID."),
+  tool("buyer_free_download", "orders", "GET", "/orders/free-download/:offerId", "read", "Redirect an authenticated buyer to a signed file URL only when the active offer is free.", "path: offerId UUID; query: fileIndex 0-49.", false, "download"),
   tool("order_create", "orders", "POST", "/orders", "critical", "Create a personal order through the authenticated actor's supported legacy order flow.", "body: validated authoritative offer and fulfillment inputs.", true),
   tool("admin_order_status", "orders", "PATCH", "/orders/:id/status", "critical", "Perform an authorized order status transition, including completion from a fulfillment-ready state, with explicit admin confirmation.", "path: id UUID; body: {status, confirmSensitive?: true}; transition and payout rules remain enforced.", true),
   tool("admin_order_trash", "orders", "PATCH", "/orders/admin/:id/trash", "critical", "Move an order to trash or restore it while preserving financial records and audit history.", "path: id UUID; body: {trashed: boolean, confirm: true}.", true),
@@ -271,6 +302,21 @@ export const ADMIN_TOOL_CATALOG: readonly AdminToolDefinition[] = [
   tool("admin_coupon_delete", "coupons", "DELETE", "/coupons/admin/:id", "destructive", "Delete an unused seller or all-sellers coupon.", "path: id."),
   tool("seller_coupons_list", "coupons", "GET", "/coupons/mine", "read", "List coupons for the current seller context.", "query: cursor, limit."),
   tool("seller_coupon_create", "coupons", "POST", "/coupons", "write", "Create a coupon for the current seller context.", "body: code, discount, currency, limits and validity window."),
+
+  tool("site_marketing_visit", "marketing", "POST", "/marketing/visit", "write", "Record a visit to an active product referral link and return its product slug and visit ID.", "body: {code: 16–32 character referral code}."),
+  tool("seller_marketing_list", "marketing", "GET", "/marketing/seller", "read", "List the current seller's product referral links and performance.", "query: cursor (UUID)."),
+  tool("seller_marketing_options", "marketing", "GET", "/marketing/seller/options", "read", "Find eligible products for the current seller's referral links.", "query: search (up to 80 characters)."),
+  tool("seller_marketing_create", "marketing", "POST", "/marketing/seller", "write", "Create a seller funded product referral link for a named recipient.", "body: productId, recipientName, recipientContact?, percentage (1–30), expiresAt?."),
+  tool("seller_marketing_update", "marketing", "PATCH", "/marketing/seller/:id", "write", "Activate, deactivate, or update the recipient for an owned referral link.", "path: id; body: active?, recipientName?, recipientContact?."),
+  tool("seller_marketing_earnings", "marketing", "GET", "/marketing/seller/:id/earnings", "read", "List attributed purchases and commission status for an owned link.", "path: id; query: cursor."),
+  tool("seller_marketing_events", "marketing", "GET", "/marketing/seller/:id/events", "read", "List the audit history for an owned referral link.", "path: id; query: cursor."),
+  tool("admin_marketing_list", "marketing", "GET", "/marketing/admin", "read", "List referral links across sellers with visit, purchase, and commission totals.", "query: sellerId?, cursor?."),
+  tool("admin_marketing_options", "marketing", "GET", "/marketing/admin/options", "read", "Find eligible seller product listings for a referral link.", "query: search (up to 80 characters)."),
+  tool("admin_marketing_create", "marketing", "POST", "/marketing/admin", "write", "Create a seller or platform funded product referral link.", "body: sellerId, productId, recipientName, recipientContact?, percentage (1–30), fundingSource?, expiresAt?."),
+  tool("admin_marketing_update", "marketing", "PATCH", "/marketing/admin/:id", "write", "Activate, deactivate, or update a referral recipient.", "path: id; body: active?, recipientName?, recipientContact?."),
+  tool("admin_marketing_earnings", "marketing", "GET", "/marketing/admin/:id/earnings", "read", "List attributed purchases and commission states for a referral link.", "path: id; query: cursor."),
+  tool("admin_marketing_events", "marketing", "GET", "/marketing/admin/:id/events", "read", "List the actor audit history for a referral link.", "path: id; query: cursor."),
+  tool("admin_marketing_pay", "marketing", "POST", "/marketing/admin/earnings/:id/pay", "critical", "Record an externally completed commission payout after delivery, with a transfer reference.", "path: id; body: {reference: external payout reference}."),
 
   tool("admin_comments_list", "comments", "GET", "/admin/settings/comments", "read", "Search and paginate comments for moderation.", "query: status, target, search, locale, cursor, limit."),
   tool("admin_notification_counts", "notifications", "GET", "/admin/notifications/counts", "read", "Read exact pending request counts for all six administrator review queues."),
@@ -334,7 +380,12 @@ export const ADMIN_TOOL_CATALOG: readonly AdminToolDefinition[] = [
   tool("admin_security_policies", "security", "GET", "/admin/security/policies", "read", "List rate-limit and abuse-control policies."),
   tool("admin_security_policy_update", "security", "PATCH", "/admin/security/policies/:action", "critical", "Update one bounded security policy.", "path: action; body: subject/ip limits and window values."),
   tool("admin_sms_settings", "settings", "GET", "/admin/settings/sms", "read", "Read SMS provider settings with credentials redacted."),
-  tool("admin_sms_settings_update", "settings", "PATCH", "/admin/settings/sms", "critical", "Update SMS provider settings and encrypted credentials.", "body: provider configuration; omit unchanged secrets."),
+  tool("admin_sms_settings_update", "settings", "PATCH", "/admin/settings/sms", "critical", "Update SMS provider, sender line, scan interval, and encrypted credentials.", "body: provider configuration, optional lineNumber and pendingCheckMinutes; omit unchanged secrets."),
+  tool("admin_sms_rules", "settings", "GET", "/admin/settings/sms/rules", "read", "List SMS event and recipient rules."),
+  tool("admin_sms_rule_create", "settings", "POST", "/admin/settings/sms/rules", "critical", "Create a validated SMS event and recipient rule.", "body: eventKey, productType, recipientKind, optional role or phone, enabled, templateId or messageText."),
+  tool("admin_sms_rule_update", "settings", "PATCH", "/admin/settings/sms/rules/:id", "critical", "Update an SMS event and recipient rule.", "path: id; body: complete validated rule."),
+  tool("admin_sms_rule_delete", "settings", "DELETE", "/admin/settings/sms/rules/:id", "critical", "Delete an SMS rule.", "path: id."),
+  tool("admin_sms_deliveries", "settings", "GET", "/admin/settings/sms/deliveries", "read", "List masked SMS delivery and error records.", "query: optional eventKey, status and cursor."),
   tool("admin_goghdi_settings", "settings", "GET", "/admin/settings/goghdi", "read", "Read Goghdi integration settings with credentials redacted."),
   tool("admin_goghdi_settings_update", "settings", "PATCH", "/admin/settings/goghdi", "critical", "Update Goghdi integration settings and encrypted credentials.", "body: validated connection configuration; omit unchanged secrets."),
   tool("admin_shipping_settings", "settings", "GET", "/admin/settings/shipping", "read", "Read global shipping settings with secrets redacted."),
@@ -408,7 +459,7 @@ export class AdminToolCatalogService {
   }
 
   list() {
-    return ADMIN_TOOL_CATALOG.map((entry) => ({ ...entry, requiresApproval: true }));
+    return ADMIN_TOOL_CATALOG.map((entry) => ({ ...entry, requiresApproval: !this.canAutoExecute(entry.name) }));
   }
 
   domainSummary() {
@@ -429,34 +480,40 @@ export class AdminToolCatalogService {
         write: entries.filter((entry) => entry.risk === "write").length,
         destructive: entries.filter((entry) => entry.risk === "destructive").length,
         critical: entries.filter((entry) => entry.risk === "critical").length,
-        examples: entries.slice(0, 6).map((entry) => ({ name: entry.name, description: entry.description }))
+        examples: entries.slice(0, 2).map((entry) => ({ name: entry.name, description: entry.description }))
       }));
   }
 
   search(query = "", domain?: string, limit = 40) {
-    const normalizedQuery = query.trim().toLowerCase().slice(0, 200);
+    const normalizedQuery = query.trim().toLowerCase().replaceAll("ي", "ی").replaceAll("ك", "ک").slice(0, 200);
     const tokens = normalizedQuery.split(/[^\p{L}\p{N}_-]+/u).filter((token) => token.length >= 2).slice(0, 12);
+    const searchTerms = [...new Set([...tokens, ...SEARCH_ALIASES.filter(({ pattern }) => pattern.test(normalizedQuery)).flatMap(({ terms }) => terms)])];
     const boundedLimit = Math.min(Math.max(Math.trunc(limit), 1), 100);
     return ADMIN_TOOL_CATALOG
       .filter((entry) => !domain || entry.domain === domain)
       .map((entry) => {
         const haystack = `${entry.name} ${entry.domain} ${entry.method} ${entry.path} ${entry.description} ${entry.inputHint}`.toLowerCase();
-        const score = (normalizedQuery && haystack.includes(normalizedQuery) ? 20 : 0) + tokens.reduce((sum, token) => sum + (haystack.includes(token) ? 3 : 0), 0);
+        const score = (normalizedQuery && haystack.includes(normalizedQuery) ? 20 : 0) + searchTerms.reduce((sum, token) => sum + (haystack.includes(token) ? 3 : 0), 0);
         return { entry, score };
       })
       .filter(({ score }) => !normalizedQuery || score > 0)
       .sort((left, right) => right.score - left.score || left.entry.name.localeCompare(right.entry.name))
       .slice(0, boundedLimit)
-      .map(({ entry }) => ({ ...entry, requiresApproval: true }));
+      .map(({ entry }) => ({ ...entry, requiresApproval: !this.canAutoExecute(entry.name) }));
   }
 
   compactPrompt(query: string) {
-    const shortlist = this.search(query, undefined, 30);
+    const shortlist = this.search(query, undefined, 16);
     return `Domains: ${this.domainSummary()}\nLikely tools for the current request:\n${shortlist.map((entry) => `- ${entry.name} [${entry.risk}] ${entry.method} ${entry.path}: ${entry.description} Input: ${entry.inputHint}`).join("\n") || "- No lexical match. Use tool discovery with English keywords."}`;
   }
 
   has(name: string): boolean {
     return this.byName.has(name);
+  }
+
+  canAutoExecute(name: string): boolean {
+    const definition = this.byName.get(name);
+    return definition?.risk === "read" && definition.method === "GET" && (definition.responseMode ?? "json") === "json";
   }
 
   prepare(name: string, rawInput: unknown): PreparedAdminTool {

@@ -32,9 +32,11 @@ import { AdminOrderDetails } from "@/components/admin/AdminOrderDetails";
 import { PaymentServiceWorkspace } from "@/components/admin/PaymentServiceWorkspace";
 import { ProductChangesWorkspace } from "@/components/admin/ProductChangesWorkspace";
 import { ProductCategoriesWorkspace } from "@/components/admin/ProductCategoriesWorkspace";
+import { ProductDescriptionTemplatesWorkspace } from "@/components/admin/ProductDescriptionTemplatesWorkspace";
 import { ProductBulkEdit } from "@/components/admin/ProductBulkEdit";
 import { AiWorkspace } from "@/components/admin/AiWorkspace";
 import { CouponWorkspace } from "@/components/admin/CouponWorkspace";
+import { MarketingWorkspace } from "@/components/marketing/MarketingWorkspace";
 import { ClubWorkspace } from "@/components/admin/ClubWorkspace";
 import { SmsSettingsWorkspace } from "@/components/admin/SmsSettingsWorkspace";
 import { GoghdiSettingsWorkspace } from "@/components/admin/GoghdiSettingsWorkspace";
@@ -132,8 +134,10 @@ const copy = {
     empty: "No vendors match this search.",
     products: "Products",
     productCategories: "Categories",
+    productTemplates: "Templates",
     productChanges: "Product changes",
     coupons: "Coupons",
+    marketing: "Marketing",
     orders: "Orders",
     newOrders: "new orders",
     permissions: "Permissions",
@@ -154,6 +158,8 @@ const copy = {
     optionalPassword: "New password (optional)",
     status: "Account status",
     commission: "Commission",
+    commissionRatesTitle: "Commission by product type",
+    commissionRatesHint: "Leave a rate blank to use the default commission above.",
     accessTitle: "Vendor access",
     accessHint:
       "Permissions apply to this vendor account immediately after saving.",
@@ -303,8 +309,10 @@ const copy = {
     empty: "فروشنده‌ای با این جست‌وجو پیدا نشد.",
     products: "محصول",
     productCategories: "دسته‌بندی‌ها",
+    productTemplates: "قالب‌های آماده",
     productChanges: "تغییرات محصولات",
     coupons: "کدهای تخفیف",
+    marketing: "بازاریابی",
     orders: "سفارش",
     newOrders: "سفارش جدید",
     permissions: "دسترسی‌ها",
@@ -325,6 +333,8 @@ const copy = {
     optionalPassword: "رمز عبور جدید (اختیاری)",
     status: "وضعیت حساب",
     commission: "کمیسیون",
+    commissionRatesTitle: "کمیسیون بر اساس نوع محصول",
+    commissionRatesHint: "نرخ خالی از کمیسیون پیش‌فرض بالا استفاده می‌کند.",
     accessTitle: "دسترسی فروشنده",
     accessHint:
       "دسترسی‌ها بلافاصله پس از ذخیره برای این فروشنده اعمال می‌شوند.",
@@ -474,8 +484,10 @@ const copy = {
     empty: "لا يوجد بائع يطابق هذا البحث.",
     products: "المنتجات",
     productCategories: "الفئات",
+    productTemplates: "القوالب الجاهزة",
     productChanges: "تغييرات المنتجات",
     coupons: "القسائم",
+    marketing: "التسويق",
     orders: "الطلبات",
     newOrders: "طلبات جديدة",
     permissions: "الصلاحيات",
@@ -496,6 +508,8 @@ const copy = {
     optionalPassword: "كلمة مرور جديدة (اختياري)",
     status: "حالة الحساب",
     commission: "العمولة",
+    commissionRatesTitle: "العمولة حسب نوع المنتج",
+    commissionRatesHint: "اترك النسبة فارغة لاستخدام العمولة الافتراضية أعلاه.",
     accessTitle: "صلاحيات البائع",
     accessHint: "تطبق الصلاحيات على حساب البائع فور الحفظ.",
     cancel: "إلغاء",
@@ -603,6 +617,7 @@ type VendorFormState = {
   password: string;
   status: VendorStatus;
   commission: string;
+  commissionRates: Record<ProductType, string>;
   blogReviewRequired: boolean;
   permissions: VendorPermission[];
 };
@@ -616,6 +631,7 @@ const emptyForm: VendorFormState = {
   password: "",
   status: "active",
   commission: "10",
+  commissionRates: { digital: "", physical: "", service: "", bridge: "" },
   blogReviewRequired: true,
   permissions: [
     "products_manage",
@@ -657,6 +673,12 @@ function formFromVendor(vendor: Vendor): VendorFormState {
     password: "",
     status: vendor.status,
     commission: String(vendor.commission * 100),
+    commissionRates: {
+      digital: vendor.commissionRates.digital === null ? "" : String(vendor.commissionRates.digital * 100),
+      physical: vendor.commissionRates.physical === null ? "" : String(vendor.commissionRates.physical * 100),
+      service: vendor.commissionRates.service === null ? "" : String(vendor.commissionRates.service * 100),
+      bridge: vendor.commissionRates.bridge === null ? "" : String(vendor.commissionRates.bridge * 100)
+    },
     blogReviewRequired: vendor.blogReviewRequired,
     permissions: [...vendor.permissions],
   };
@@ -799,11 +821,13 @@ export function VendorManagement({
   const isProductServiceSection =
     section === "products" ||
     section === "product-categories" ||
+    section === "product-templates" ||
     section === "product-changes";
   const productServiceExpanded = isProductServiceSection || productServiceOpen;
   const isSalesServiceSection =
     section === "statistics" ||
     section === "coupons" ||
+    section === "marketing" ||
     section === "club" ||
     section === "orders" ||
     section === "order-detail";
@@ -850,8 +874,10 @@ export function VendorManagement({
       users: c.users,
       products: c.products,
       "product-categories": c.productCategories,
+      "product-templates": c.productTemplates,
       "product-changes": c.productChanges,
       coupons: c.coupons,
+      marketing: c.marketing,
       club:
         locale === "fa"
           ? "باشگاه مشتریان"
@@ -1195,6 +1221,11 @@ export function VendorManagement({
       ...(form.password ? { password: form.password } : {}),
       status: form.status,
       commission: Number(form.commission) / 100,
+      commissionRates: Object.fromEntries(
+        (["digital", "physical", "service", "bridge"] as const).map((type) => [
+          type, form.commissionRates[type].trim() === "" ? null : Number(form.commissionRates[type]) / 100
+        ])
+      ),
       blogReviewRequired: form.blogReviewRequired,
       permissions: form.permissions,
     };
@@ -1426,6 +1457,14 @@ export function VendorManagement({
                     </Link>
                     <Link
                       className={navigationStyles.item}
+                      href={`/${locale}/admin/product-templates` as Route}
+                      aria-current={section === "product-templates" ? "page" : undefined}
+                    >
+                      <ProductsIcon />
+                      <span>{c.productTemplates}</span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
                       href={`/${locale}/admin/product-changes` as Route}
                       aria-current={
                         section === "product-changes" ? "page" : undefined
@@ -1478,6 +1517,14 @@ export function VendorManagement({
                     >
                       <CouponIcon />
                       <span>{c.coupons}</span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/marketing` as Route}
+                      aria-current={section === "marketing" ? "page" : undefined}
+                    >
+                      <CouponIcon />
+                      <span>{c.marketing}</span>
                     </Link>
                     <Link
                       className={navigationStyles.item}
@@ -2159,6 +2206,9 @@ export function VendorManagement({
         {section === "product-categories" ? (
           <ProductCategoriesWorkspace locale={locale} />
         ) : null}
+        {section === "product-templates" ? (
+          <ProductDescriptionTemplatesWorkspace locale={locale} />
+        ) : null}
         {section === "products" ? (
           <section
             className="admin-product-catalog"
@@ -2537,6 +2587,7 @@ export function VendorManagement({
         ) : null}
 
         {section === "coupons" ? <CouponWorkspace locale={locale} /> : null}
+        {section === "marketing" ? <MarketingWorkspace locale={locale} admin /> : null}
         {section === "club" ? <ClubWorkspace locale={locale} /> : null}
 
         {section === "orders" ? <AdminOrdersWorkspace locale={locale} /> : null}
@@ -2740,6 +2791,23 @@ export function VendorManagement({
                   />
                 </div>
 
+                <fieldset className="permission-fieldset vendor-commission-fieldset">
+                  <legend>{c.commissionRatesTitle}</legend>
+                  <p>{c.commissionRatesHint}</p>
+                  <div className="vendor-commission-grid">
+                    {(["digital", "physical", "service", "bridge"] as const).map((type) => (
+                      <PercentField
+                        key={type}
+                        name={`commission-${type}`}
+                        label={c[type]}
+                        value={form.commissionRates[type]}
+                        onChange={(value) => setForm((current) => ({ ...current, commissionRates: { ...current.commissionRates, [type]: value } }))}
+                        required={false}
+                      />
+                    ))}
+                  </div>
+                </fieldset>
+
                 <p className="vendor-form-hint">{c.goghdiAgentHint}</p>
 
                 <fieldset className="permission-fieldset">
@@ -2888,11 +2956,13 @@ function PercentField({
   label,
   value,
   onChange,
+  required = true,
 }: {
   name: string;
   label: string;
   value: string;
   onChange(value: string): void;
+  required?: boolean;
 }) {
   return (
     <label className="vendor-field vendor-percent-field">
@@ -2906,7 +2976,7 @@ function PercentField({
         step="0.01"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        required
+        required={required}
         autoComplete="off"
       />
       <b aria-hidden="true">%</b>

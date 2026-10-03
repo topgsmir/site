@@ -1,0 +1,31 @@
+.selector { display: flex; flex-wrap: wrap; gap: .4rem; margin-block-start: .75rem; }
+.selector button { display: inline-flex; align-items: center; gap: .4rem; min-height: 2.25rem; padding: .3rem .65rem; border: 1px solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-round); color: var(--color-dashboard-muted); background: var(--color-dashboard-surface); font: inherit; font-size: var(--text-dashboard-xs); cursor: pointer; }
+.selector button[aria-pressed="true"] { color: var(--color-dashboard-ink); border-color: var(--series-color); background: var(--color-dashboard-surface-raised); font-weight: 650; }
+.selector button:focus-visible, .chart:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
+.selector i, .tooltip i { display: inline-block; flex: none; width: .55rem; height: .55rem; border-radius: 50%; background: var(--series-color); }
+.selector button:not([aria-pressed="true"]) i { opacity: .4; }
+.selector [data-series="grossSales"], .plot [data-series="grossSales"] { --series-color: var(--color-dashboard-accent); }
+.selector [data-series="netSales"], .plot [data-series="netSales"] { --series-color: var(--color-dashboard-warning); }
+.selector [data-series="income"], .plot [data-series="income"] { --series-color: var(--color-dashboard-success); }
+.selector [data-series="refunds"], .plot [data-series="refunds"] { --series-color: var(--color-dashboard-error); }
+.plot { position: relative; min-width: 0; }
+.chart { display: block; width: 100%; height: 12rem; margin-block-start: .5rem; overflow: visible; }
+.grid { fill: none; stroke: var(--color-dashboard-rule); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.baseline { fill: none; stroke: var(--color-dashboard-muted); stroke-width: 1.5; stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; }
+.chart polyline { fill: none; stroke: var(--series-color); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.chart polyline[data-series="grossSales"] { --series-color: var(--color-dashboard-accent); }
+.chart polyline[data-series="netSales"] { --series-color: var(--color-dashboard-warning); }
+.chart polyline[data-series="income"] { --series-color: var(--color-dashboard-success); }
+.chart polyline[data-series="refunds"] { --series-color: var(--color-dashboard-error); }
+.point { cursor: pointer; }
+.hit { fill: transparent; }
+.dot { fill: var(--color-dashboard-surface); stroke: var(--series-color); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.point[data-active="true"] .dot { fill: var(--series-color); }
+.tooltip { position: absolute; z-index: 1; top: .75rem; left: var(--tooltip-left); display: grid; gap: .35rem; min-width: 11rem; max-width: min(18rem, 90%); padding: .65rem .75rem; border: 1px solid var(--color-dashboard-rule-strong); border-radius: var(--radius-dashboard-control); color: var(--color-dashboard-ink); background: var(--color-dashboard-surface); box-shadow: var(--shadow-dashboard-card); font-size: var(--text-dashboard-xs); transform: translateX(-50%); pointer-events: none; }
+.tooltip strong { font-size: var(--text-dashboard-sm); }
+.tooltip span { display: flex; align-items: center; gap: .4rem; }
+.tooltip span b { margin-inline-start: auto; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.empty { margin: 1rem 0 0; color: var(--color-dashboard-muted); text-align: center; }
+.srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (min-width: 72rem) { :global([data-audience="admin"]) .chart { height: 10rem; } }
+@media (max-width: 30rem) { .chart { height: 11rem; } .selector button { min-height: 2.75rem; } .tooltip { position: static; max-width: none; min-width: 0; margin-block-start: .5rem; transform: none; } }

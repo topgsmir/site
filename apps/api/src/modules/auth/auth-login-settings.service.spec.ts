@@ -6,13 +6,13 @@ import { AuthService } from "./auth.service";
 
 describe("AuthLoginSettingsService", () => {
   it("keeps both methods available before an administrator saves settings", async () => {
-    const prisma = { auth_login_settings: { findUnique: async () => null } } as unknown as PrismaService;
+    const prisma = { auth_login_settings: { findUnique: async () => null }, sms_settings: { findUnique: async () => null }, sms_event_rules: { findFirst: async () => ({ id: "login-rule" }) } } as unknown as PrismaService;
     const settings = new AuthLoginSettingsService(prisma);
     assert.deepEqual(await settings.getPublic(), { emailPasswordEnabled: true, phoneOtpEnabled: true });
   });
 
   it("blocks a disabled method and prevents disabling both methods", async () => {
-    const prisma = { auth_login_settings: { findUnique: async () => ({ email_password_enabled: false, phone_otp_enabled: true, updated_at: new Date() }) } } as unknown as PrismaService;
+    const prisma = { auth_login_settings: { findUnique: async () => ({ email_password_enabled: false, phone_otp_enabled: true, updated_at: new Date() }) }, sms_settings: { findUnique: async () => null }, sms_event_rules: { findFirst: async () => ({ id: "login-rule" }) } } as unknown as PrismaService;
     const settings = new AuthLoginSettingsService(prisma);
     await assert.rejects(() => settings.assertEmailPasswordEnabled(), { status: 503 });
     await settings.assertPhoneOtpEnabled();
@@ -45,5 +45,13 @@ describe("AuthLoginSettingsService", () => {
       emailPasswordEnabled: true, phoneOtpEnabled: false, updatedAt: updatedAt.toISOString()
     });
     assert.deepEqual(events, [{ actor_user_id: "admin-id", email_password_enabled: true, phone_otp_enabled: false }]);
+  });
+
+  it("does not disable password login while the SMS login rule is off", async () => {
+    const prisma = {
+      sms_settings: { findUnique: async () => ({ otp_enabled: true }) },
+      sms_event_rules: { findFirst: async () => null }
+    } as unknown as PrismaService;
+    await assert.rejects(() => new AuthLoginSettingsService(prisma).update({ emailPasswordEnabled: false, phoneOtpEnabled: true }, "admin-id"), /Enable SMS login/);
   });
 });

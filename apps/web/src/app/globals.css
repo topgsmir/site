@@ -398,6 +398,8 @@ html[data-theme="dark"] .theme-icon-moon { opacity: 1; transform: rotate(0); }
 .vendor-percent-field input { padding-inline-end: 34px; }
 .vendor-percent-field b { position: absolute; inset-inline-end: 13px; bottom: 12px; color: var(--muted); }
 .permission-fieldset { min-width: 0; margin: 24px 0 0; padding: 0; border: 0; }
+.vendor-commission-fieldset { margin-top: 16px; }
+.vendor-commission-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
 .permission-fieldset legend { padding: 0; font-size: 1rem; font-weight: 600; }
 .permission-fieldset > p { margin-top: 7px; color: var(--muted); font-size: 0.68rem; line-height: 1.5; }
 .permission-list { margin-top: 14px; padding-inline: 14px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--field-surface) 86%, transparent); }
@@ -538,6 +540,7 @@ html[data-theme="dark"] .theme-icon-moon { opacity: 1; transform: rotate(0); }
   .vendor-panel > header { padding: 20px 16px 16px; }
   .vendor-panel form { padding: 4px 16px 28px; }
   .vendor-form-grid { grid-template-columns: 1fr; }
+  .vendor-commission-grid { grid-template-columns: 1fr; }
   .vendor-panel form > footer { bottom: -28px; margin: 22px -16px -28px; padding: 12px 16px; }
   .vendor-panel form > footer .admin-primary-button { width: auto; flex: 1; }
 }

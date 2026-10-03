@@ -533,6 +533,8 @@ export interface AdminSmsSettings {
   otpEnabled: boolean;
   testModeEnabled: boolean;
   provider: "sms_ir";
+  lineNumber: string | null;
+  pendingCheckMinutes: number;
   apiKeyConfigured: boolean;
   apiKeyHint: string | null;
   credentialSource: "database" | "environment" | "none";
@@ -545,6 +547,28 @@ export interface AdminSmsSettings {
     clubExpiry: number | null;
   };
   updatedAt: string | null;
+}
+
+export type SmsEventKey = "login_otp" | "guest_comment_verification" | "pending_product" | "product_sold" | "physical_order_shipped" | "search_empty" | "bridge_success" | "bridge_failure";
+export type SmsRecipientKind = "requester" | "buyer" | "seller" | "phone" | "role" | "all";
+export type SmsProductType = "any" | "digital" | "physical" | "service" | "bridge";
+
+export interface AdminSmsRule {
+  id: string;
+  eventKey: SmsEventKey;
+  productType: SmsProductType;
+  recipientKind: SmsRecipientKind;
+  recipientRole: string | null;
+  phoneNumber: string | null;
+  enabled: boolean;
+  templateId: number | null;
+  messageText: string | null;
+  updatedAt: string;
+}
+
+export interface AdminSmsDeliveryPage {
+  items: Array<{ id: string; eventKey: SmsEventKey | null; recipient: string; status: string; testMode: boolean; attempts: number; error: string | null; createdAt: string; sentAt: string | null }>;
+  nextCursor: string | null;
 }
 
 export interface GoghdiPublicConfig {
@@ -1317,6 +1341,7 @@ export interface Vendor {
   phoneNumber: string | null;
   status: VendorStatus;
   commission: number;
+  commissionRates: Record<ProductType, number | null>;
   blogReviewRequired: boolean;
   goghdiAgentId: string | null;
   permissions: VendorPermission[];

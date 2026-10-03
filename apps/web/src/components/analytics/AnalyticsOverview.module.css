@@ -30,14 +30,6 @@
 .chartCard, .breakdown, .ranking, .activity { min-width: 0; padding: var(--space-dashboard-lg); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-card); background: var(--color-dashboard-surface); box-shadow: var(--shadow-dashboard-card); }
 .cardHead h2, .breakdown h2 { font-size: var(--text-dashboard-md); }
 .cardHead a { color: var(--color-dashboard-accent); font-size: var(--text-dashboard-sm); text-decoration: none; white-space: nowrap; }
-.legend { display: flex; flex-wrap: wrap; gap: var(--space-dashboard-md); color: var(--color-dashboard-muted); font-size: var(--text-dashboard-xs); }
-.legend span::before { display: inline-block; width: .6rem; height: .6rem; margin-inline-end: var(--space-dashboard-xs); border-radius: 50%; background: var(--color-dashboard-accent); content: ""; }
-.legend span[data-series="income"]::before { background: var(--color-dashboard-success); }
-.chart { width: 100%; min-height: 15rem; margin-block-start: var(--space-dashboard-lg); overflow: visible; }
-.chart path { fill: none; stroke: var(--color-dashboard-rule); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.chart polyline { fill: none; stroke: var(--color-dashboard-accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.chart polyline[data-series="income"] { stroke: var(--color-dashboard-success); }
-.chart circle { fill: var(--color-dashboard-surface); stroke: var(--color-dashboard-accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .detailGrid, .rankGrid { display: grid; gap: var(--space-dashboard-sm); }
 .breakdown ul, .ranking ol, .activity ul { display: grid; gap: 0; margin: var(--space-dashboard-md) 0 0; padding: 0; list-style: none; }
 .breakdown li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-dashboard-xs); padding-block: var(--space-dashboard-sm); border-block-start: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
@@ -61,7 +53,6 @@
 .skeleton { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-dashboard-sm); color: var(--color-dashboard-muted); }
 .skeleton span { grid-column: 1 / -1; }
 .skeleton i { min-height: 9rem; border-radius: var(--radius-dashboard-card); background: var(--color-dashboard-surface-raised); animation: pulse var(--dur-dashboard-loader) var(--ease-dashboard-in-out) infinite alternate; }
-.srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @keyframes pulse { to { opacity: .45; } }
 @media (hover: hover) and (pointer: fine) { .refresh:hover, .customRange button:hover { transform: translateY(-1px); } .presets button:hover { color: var(--color-dashboard-ink); background: var(--color-dashboard-surface-raised); } .cardHead a:hover { text-decoration: underline; } }
 @media (min-width: 42rem) { .customRange { grid-template-columns: repeat(2, minmax(0, 1fr)) auto; align-items: end; } .customRange button { grid-column: auto; } .metrics, .workspace[data-compact="true"] .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } .detailGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -83,7 +74,6 @@
 .workspace[data-compact="false"][data-audience="admin"] .activity { padding: .875rem; }
 .workspace[data-compact="false"][data-audience="admin"] .cardHead { align-items: center; }
 .workspace[data-compact="false"][data-audience="admin"] .cardHead p { margin-block-start: .125rem; line-height: 1.3; }
-.workspace[data-compact="false"][data-audience="admin"] .chart { display: block; height: 10rem; min-height: 10rem; margin-block-start: .5rem; }
 .workspace[data-compact="false"][data-audience="admin"] .breakdown ul,
 .workspace[data-compact="false"][data-audience="admin"] .ranking ol,
 .workspace[data-compact="false"][data-audience="admin"] .activity ul { margin-block-start: .5rem; }

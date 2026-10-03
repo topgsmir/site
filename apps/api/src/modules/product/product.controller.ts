@@ -1,4 +1,6 @@
 import { ProductTranslationsService } from "./product-translations.service";
+import { ProductDescriptionTemplatesService } from "./product-description-templates.service";
+import { CreateProductDescriptionTemplateDto, ProductDescriptionTemplatesQueryDto, UpdateProductDescriptionTemplateDto } from "./dto/product-description-template.dto";
 import { CreateProductCategoryDto, DeleteProductCategoryDto, ProductCategoriesQueryDto, UpdateProductCategoryDto } from "./dto/product-category.dto";
 import { BrowserSessionMutation } from "../auth/browser-session-mutation.decorator";
 import { ParseConstrainedStringPipe, ROUTE_SLUG_PATTERN } from "../../common/http/parse-constrained-string.pipe";
@@ -59,7 +61,8 @@ export class ProductController {
     private readonly rateLimits: AuthRateLimitService,
     private readonly translations: ProductTranslationsService,
     private readonly media: MediaService,
-    private readonly uploads: AdminUploadsService
+    private readonly uploads: AdminUploadsService,
+    private readonly descriptionTemplates: ProductDescriptionTemplatesService
   ) {}
 
   @Post("admin/bulk-edit/preview")
@@ -112,6 +115,39 @@ export class ProductController {
   @UseGuards(PlatformAdminGuard)
   listManagedCategories(@Query() query: ProductCategoriesQueryDto) {
     return this.productService.listManagedCategories(query);
+  }
+
+  @Get("templates")
+  @UseGuards(SellerProductsGuard)
+  listSellerDescriptionTemplates(@Query() query: ProductDescriptionTemplatesQueryDto) {
+    return this.descriptionTemplates.list(query, true);
+  }
+
+  @Get("admin/templates")
+  @UseGuards(PlatformAdminGuard)
+  listAdminDescriptionTemplates(@Query() query: ProductDescriptionTemplatesQueryDto) {
+    return this.descriptionTemplates.list(query, false);
+  }
+
+  @Post("admin/templates")
+  @BrowserSessionMutation()
+  @UseGuards(PlatformAdminGuard)
+  async createDescriptionTemplate(@Body() body: CreateProductDescriptionTemplateDto, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
+    return this.descriptionTemplates.create(body, request.authenticatedUser!.id);
+  }
+
+  @Patch("admin/templates/:templateId")
+  @BrowserSessionMutation()
+  @UseGuards(PlatformAdminGuard)
+  async updateDescriptionTemplate(
+    @Param("templateId", new ParseUUIDPipe({ version: "4" })) templateId: string,
+    @Body() body: UpdateProductDescriptionTemplateDto,
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
+  ) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
+    return this.descriptionTemplates.update(templateId, body, request.authenticatedUser!.id);
   }
 
   @Post("admin/categories")

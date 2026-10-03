@@ -15,6 +15,7 @@ import type {
 } from "@topgsm/shared-types";
 import { AuthService } from "../auth/auth.service";
 import { PrismaService } from "../../prisma/prisma.service";
+import { assertSellerCommissionRates } from "./seller-commission";
 import type { CreateVendorDto, UpdateVendorDto } from "./dto/vendor.dto";
 import type {
   CreateSellerAgentDto,
@@ -271,6 +272,13 @@ export class SellerService {
   }
 
   async createVendor(input: CreateVendorDto, adminUserId: string) {
+    assertSellerCommissionRates({
+      commission: new Prisma.Decimal(input.commission),
+      commission_digital: input.commissionRates?.digital == null ? null : new Prisma.Decimal(input.commissionRates.digital),
+      commission_physical: input.commissionRates?.physical == null ? null : new Prisma.Decimal(input.commissionRates.physical),
+      commission_service: input.commissionRates?.service == null ? null : new Prisma.Decimal(input.commissionRates.service),
+      commission_bridge: input.commissionRates?.bridge == null ? null : new Prisma.Decimal(input.commissionRates.bridge)
+    });
     const email = input.ownerEmail.trim().toLowerCase();
     const passwordHash = await this.authService.createPasswordHash(input.password);
     const status = this.statusData(input.status);
@@ -291,6 +299,10 @@ export class SellerService {
             shop_name: input.shopName.trim(),
             phone_number: input.phoneNumber?.trim() || null,
             commission: input.commission,
+            commission_digital: input.commissionRates?.digital ?? null,
+            commission_physical: input.commissionRates?.physical ?? null,
+            commission_service: input.commissionRates?.service ?? null,
+            commission_bridge: input.commissionRates?.bridge ?? null,
             blog_review_required: input.blogReviewRequired ?? true,
             goghdi_agent_id: input.goghdiAgentId?.trim().toLowerCase() || null,
             ...status
@@ -334,9 +346,17 @@ export class SellerService {
   ) {
     const current = await this.prisma.sellers.findUnique({
       where: { id: sellerId },
-      select: { id: true, user_id: true, permissions: { select: { permission: true } } }
+      select: { id: true, user_id: true, commission: true, commission_digital: true, commission_physical: true, commission_service: true, commission_bridge: true, permissions: { select: { permission: true } } }
     });
     if (!current) throw new NotFoundException("Vendor was not found");
+
+    assertSellerCommissionRates({
+      commission: input.commission === undefined ? current.commission : new Prisma.Decimal(input.commission),
+      commission_digital: input.commissionRates?.digital === undefined ? current.commission_digital : input.commissionRates.digital === null ? null : new Prisma.Decimal(input.commissionRates.digital),
+      commission_physical: input.commissionRates?.physical === undefined ? current.commission_physical : input.commissionRates.physical === null ? null : new Prisma.Decimal(input.commissionRates.physical),
+      commission_service: input.commissionRates?.service === undefined ? current.commission_service : input.commissionRates.service === null ? null : new Prisma.Decimal(input.commissionRates.service),
+      commission_bridge: input.commissionRates?.bridge === undefined ? current.commission_bridge : input.commissionRates.bridge === null ? null : new Prisma.Decimal(input.commissionRates.bridge)
+    });
 
     const passwordHash = input.password
       ? await this.authService.createPasswordHash(input.password)
@@ -371,6 +391,10 @@ export class SellerService {
             ...(input.commission !== undefined
               ? { commission: input.commission }
               : {}),
+            ...(input.commissionRates?.digital !== undefined ? { commission_digital: input.commissionRates.digital } : {}),
+            ...(input.commissionRates?.physical !== undefined ? { commission_physical: input.commissionRates.physical } : {}),
+            ...(input.commissionRates?.service !== undefined ? { commission_service: input.commissionRates.service } : {}),
+            ...(input.commissionRates?.bridge !== undefined ? { commission_bridge: input.commissionRates.bridge } : {}),
             ...(input.blogReviewRequired !== undefined
               ? { blog_review_required: input.blogReviewRequired }
               : {}),
@@ -501,6 +525,10 @@ export class SellerService {
     approved: boolean;
     suspended_at: Date | null;
     commission: Prisma.Decimal;
+    commission_digital: Prisma.Decimal | null;
+    commission_physical: Prisma.Decimal | null;
+    commission_service: Prisma.Decimal | null;
+    commission_bridge: Prisma.Decimal | null;
     blog_review_required: boolean;
     goghdi_agent_id: string | null;
     created_at: Date;
@@ -525,6 +553,12 @@ export class SellerService {
       profilePicture: this.toProfilePicture(seller.profile_media),
       status,
       commission: Number(seller.commission),
+      commissionRates: {
+        digital: seller.commission_digital === null ? null : Number(seller.commission_digital),
+        physical: seller.commission_physical === null ? null : Number(seller.commission_physical),
+        service: seller.commission_service === null ? null : Number(seller.commission_service),
+        bridge: seller.commission_bridge === null ? null : Number(seller.commission_bridge)
+      },
       blogReviewRequired: seller.blog_review_required,
       goghdiAgentId: seller.goghdi_agent_id,
       permissions: seller.permissions.map((item) => item.permission),

@@ -191,6 +191,10 @@ export class AuthRateLimitService {
     );
   }
 
+  async consumeMarketingVisit(code: string, clientIp: string) {
+    await this.consumePublicOperation("marketing_visit", "referral", code, clientIp);
+  }
+
   async consumePaymentRefund(userId: string, clientIp: string) {
     await this.consumeSensitiveMutation("payment_refund", userId, clientIp);
   }
@@ -327,7 +331,7 @@ export class AuthRateLimitService {
   }
 
   private async consumePublicOperation(
-    action: "payment_callback" | "staff_setup" | "checkout_quote" | "comment_submit",
+    action: "payment_callback" | "staff_setup" | "checkout_quote" | "marketing_visit" | "comment_submit",
     subjectScope: string,
     subjectValue: string,
     clientIp: string,

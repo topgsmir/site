@@ -71,7 +71,9 @@ test("catalog covers every ordinary controller route and documents security-flow
     "POST /auth/otp/request-pending-phone",
     "POST /auth/otp/verify",
     "POST /auth/register",
-    "POST /captcha/challenge"
+    "POST /captcha/challenge",
+    // A public OTP endpoint is excluded for the same reason as auth/otp.
+    "POST /comments/guest-verification"
   ];
   const uncovered = applicationRoutes().filter((route) => !route.includes(" /ai/data/") && !catalogRoutes.has(route));
   assert.deepEqual(uncovered, excluded);
@@ -126,4 +128,30 @@ test("searches the catalog with bounded progressive discovery", () => {
   const capabilities = catalog.capabilitySummary();
   assert.equal(capabilities.reduce((sum, domain) => sum + domain.toolCount, 0), ADMIN_TOOL_CATALOG.length);
   assert.ok(capabilities.some((domain) => domain.domain === "catalog" && domain.examples.length > 0));
+  assert.ok(capabilities.every((domain) => domain.examples.length <= 2));
+});
+
+test("finds product title tools from Persian and Arabic requests with accurate input hints", () => {
+  const catalog = new AdminToolCatalogService();
+  for (const query of ["عنوان محصول را تغییر بده", "تغيير عنوان المنتج"]) {
+    const matches = catalog.search(query, "catalog", 30);
+    assert.ok(matches.some((entry) => entry.name === "admin_product_update"));
+    assert.match(catalog.compactPrompt(query), /admin_product_update/);
+  }
+  const translation = catalog.search("ترجمه عنوان محصول", "catalog", 30).find((entry) => entry.name === "admin_product_translation_update");
+  assert.match(translation?.inputHint ?? "", /Both title and description are required/);
+  assert.doesNotMatch(translation?.inputHint ?? "", /SEO fields|slug/);
+  assert.ok(catalog.search("سفارش ارسال نشده", "orders", 16).some((entry) => entry.name === "admin_order_shipping_update"));
+});
+
+test("only read-only JSON GET tools can execute without a separate approval", () => {
+  const catalog = new AdminToolCatalogService();
+  assert.equal(catalog.canAutoExecute("admin_user_get"), true);
+  assert.equal(catalog.canAutoExecute("admin_user_update"), false);
+  assert.equal(catalog.canAutoExecute("site_homepage_image_download"), false);
+  assert.equal(catalog.canAutoExecute("not_allowlisted"), false);
+  const listed = catalog.list();
+  assert.equal(listed.find((entry) => entry.name === "admin_user_get")?.requiresApproval, false);
+  assert.equal(listed.find((entry) => entry.name === "admin_user_update")?.requiresApproval, true);
+  assert.equal(listed.find((entry) => entry.name === "site_homepage_image_download")?.requiresApproval, true);
 });

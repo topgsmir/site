@@ -4,6 +4,7 @@ import type { AuthRateLimitService } from "../auth/auth-rate-limit.service";
 import type { AuthenticatedRequest } from "../auth/platform-admin.guard";
 import { SmsSettingsController } from "./sms-settings.controller";
 import type { SmsSettingsService } from "./sms-settings.service";
+import type { SmsRulesService } from "./sms-rules.service";
 
 describe("SmsSettingsController", () => {
   it("rate-limits a credential update before persisting it", async () => {
@@ -28,7 +29,7 @@ describe("SmsSettingsController", () => {
         calls.push(`limit:${userId}:${ip}`);
       }
     } as AuthRateLimitService;
-    const controller = new SmsSettingsController(settings, rateLimits);
+    const controller = new SmsSettingsController(settings, rateLimits, {} as SmsRulesService);
 
     await controller.update(
       { authenticatedUser: { id: "admin-id" } } as AuthenticatedRequest,

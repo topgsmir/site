@@ -10,11 +10,14 @@ import { SmsOutboxConsumerService } from "./sms-outbox-consumer.service";
 import { SmsSettingsController } from "./sms-settings.controller";
 import { SmsSettingsService } from "./sms-settings.service";
 import { ClubCoreModule } from "../club/club-core.module";
+import { SmsRulesService } from "./sms-rules.service";
+import { SmsPendingProductsService } from "./sms-pending-products.service";
+import { GuestCommentVerificationService } from "./guest-comment-verification.service";
 
 @Module({
   imports: [AuthModule, ClubCoreModule],
   controllers: [OtpController, SmsSettingsController],
-  providers: [CredentialCryptoService, OtpService, SmsService, SmsIrAdapter, SmsWorkerService, SmsOutboxConsumerService, SmsSettingsService],
-  exports: [SmsService]
+  providers: [CredentialCryptoService, OtpService, SmsService, SmsIrAdapter, SmsWorkerService, SmsOutboxConsumerService, SmsPendingProductsService, SmsSettingsService, SmsRulesService, GuestCommentVerificationService],
+  exports: [SmsService, SmsRulesService, GuestCommentVerificationService]
 })
 export class SmsModule {}

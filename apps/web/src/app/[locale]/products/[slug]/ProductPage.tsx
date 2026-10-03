@@ -1,6 +1,7 @@
 "use client";
 
 import type { Route } from "next";
+import axios from "axios";
 import { DesignIcon } from "@/components/DesignIcon";
 import Link from "next/link";
 import Image from "next/image";
@@ -11,6 +12,8 @@ import { currencyLabel, formatCurrencyAmount, multiplyCurrencyAmount } from "@/l
 import type { PublicProduct, PublicProductOffer, PublicProductVariant } from "./product.server";
 import styles from "./ProductPage.module.css";
 import { readCart, writeCart } from "@/lib/cart";
+import { api, API_BASE } from "@/lib/api/client";
+import { marketingVisitFor, rememberMarketingVisit } from "@/lib/marketing-attribution";
 import { ProductComments } from "@/components/comments/ProductComments";
 import { OfferPicker } from "@/components/product/OfferPicker";
 import { PublicHeader } from "@/components/PublicHeader";
@@ -21,6 +24,10 @@ import { ProductDescription } from "@/components/product/ProductDescription";
 
 type ProductCopy = ReturnType<typeof getDictionary>["product"];
 type ButtonState = "idle" | "loading" | "success" | "error";
+type DigitalAccess = {
+  orderId: string | null;
+  files: Array<{ downloadUrl: string; maxDownloads: number; downloadCount: number }>;
+};
 
 type SelectableOffer = PublicProductOffer & {
   variantId: string;
@@ -71,7 +78,9 @@ export function ProductPage({
   copy,
   editHref,
   bridgeCheckout,
-  accountHref
+  accountHref,
+  signedInBuyer = false,
+  visitId
 }: {
   product: PublicProduct;
   locale: Locale;
@@ -79,6 +88,8 @@ export function ProductPage({
   editHref?: Route;
   bridgeCheckout?: ReactNode;
   accountHref?: string | null;
+  signedInBuyer?: boolean;
+  visitId?: string;
 }) {
   const c = productPageCopy[locale];
   const d = digitalProductCopy[locale];
@@ -93,13 +104,24 @@ export function ProductPage({
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
   const [quantity, setQuantity] = useState(1);
   const [cartError, setCartError] = useState("");
+  const [downloadChoices, setDownloadChoices] = useState<Array<{ href: string; available: boolean }>>([]);
+  const [accessOrderId, setAccessOrderId] = useState<string | null>(null);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!visitId) return;
+    rememberMarketingVisit(product.id, visitId);
+    const items = readCart();
+    let changed = false;
+    for (const item of items) if (item.productId === product.id && item.visitId !== visitId) { item.visitId = visitId; changed = true; }
+    if (changed) writeCart(items);
+  }, [product.id, visitId]);
   const selectedOffer = offers.find((offer) => offer.id === selectedOfferId) ?? firstAvailableOffer;
   const unavailable = !selectedOffer || selectedOffer.physical?.inStock === false;
+  const isFreeDigital = isDigital && Boolean(selectedOffer && /^0(?:\.0+)?$/.test(selectedOffer.price));
   const productImage = product.image?.variants.find((item) => item.name === "large") ?? product.image?.variants[0];
   const requirements = isBridge ? product.bridge?.fields ?? [] : selectedOffer?.service?.inputs ?? [];
-  const total = selectedOffer ? formatPrice(multiplyCurrencyAmount(selectedOffer.price, quantity), selectedOffer.currency, locale) : "";
-  const actionLabel = buttonState === "success" ? c.viewCart : buttonState === "idle" && isService
+  const total = selectedOffer ? isFreeDigital ? d.free : formatPrice(multiplyCurrencyAmount(selectedOffer.price, quantity), selectedOffer.currency, locale) : "";
+  const actionLabel = isDigital ? buttonState === "loading" ? d.checking : d.download : buttonState === "success" ? c.viewCart : buttonState === "idle" && isService
     ? unavailable ? c.unavailable : c.orderService : buttonLabel(buttonState, unavailable, copy);
 
   function selectOffer(id: string) {
@@ -107,40 +129,52 @@ export function ProductPage({
     setSelectedOfferId(id);
     setButtonState("idle");
     setCartError("");
+    setDownloadChoices([]);
+    setAccessOrderId(null);
   }
 
   useEffect(() => {
     return () => { if (resetTimer.current) clearTimeout(resetTimer.current); };
   }, []);
 
-  function addToCart() {
+  useEffect(() => {
+    if (downloadChoices.length > 1) document.getElementById("download-choices")?.focus();
+  }, [downloadChoices]);
+
+  function addToCart(goToCart = false) {
     if (buttonState === "success") {
       router.push(`/${locale}/cart`);
       return;
     }
-    if (!selectedOffer || unavailable || isBridge || buttonState === "loading") return;
+    if (!selectedOffer || unavailable || isBridge || (buttonState === "loading" && !goToCart)) return;
     setButtonState("loading");
     setCartError("");
 
     try {
       const items = readCart();
       const existing = items.find((item) => item.offerId === selectedOffer.id);
-      if ((existing?.quantity ?? 0) + quantity > 100) {
+      if ((existing?.quantity ?? 0) + (isDigital && existing ? 0 : quantity) > 100) {
         setCartError(c.limit);
         setButtonState("error");
         return;
       }
+      const attribution = (visitId && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(visitId) ? visitId : undefined) ?? marketingVisitFor(product.id);
       if (existing) {
-        existing.quantity += quantity;
+        if (!isDigital) existing.quantity += quantity;
         existing.productName = product.title;
+        if (attribution) existing.visitId = attribution;
       } else {
         if (items.length >= 50) {
           setButtonState("error");
           return;
         }
-        items.push({ productId: product.id, productName: product.title, offerId: selectedOffer.id, quantity });
+        items.push({ productId: product.id, productName: product.title, offerId: selectedOffer.id, quantity, ...(attribution ? { visitId: attribution } : {}) });
       }
       writeCart(items);
+      if (goToCart) {
+        router.push(`/${locale}/cart`);
+        return;
+      }
       setButtonState("success");
       if (resetTimer.current) clearTimeout(resetTimer.current);
       resetTimer.current = setTimeout(() => setButtonState("idle"), 2500);
@@ -149,10 +183,80 @@ export function ProductPage({
     }
   }
 
+  async function downloadDigital() {
+    if (!selectedOffer || unavailable || buttonState === "loading") return;
+    const returnPath = `/${locale}/products/${encodeURIComponent(product.slug)}`;
+    if (!signedInBuyer) {
+      if (accountHref) {
+        setCartError(d.buyerOnly);
+        setButtonState("error");
+      } else {
+        router.push(`/${locale}/login?next=${encodeURIComponent(returnPath)}`);
+      }
+      return;
+    }
+    setButtonState("loading");
+    setCartError("");
+    setDownloadChoices([]);
+    setAccessOrderId(null);
+    if (isFreeDigital) {
+      try {
+        await api.get("/auth/me");
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 401) {
+          setButtonState("idle");
+          router.push(`/${locale}/login?next=${encodeURIComponent(returnPath)}`);
+        } else {
+          setCartError(d.accessFailed);
+          setButtonState("error");
+        }
+        return;
+      }
+      const files = Array.from({ length: selectedOffer.digital?.fileCount ?? 1 }, (_, index) => ({
+        href: `${API_BASE}/orders/free-download/${selectedOffer.id}?fileIndex=${index}`,
+        available: true
+      }));
+      if (files.length === 1) window.location.assign(files[0]!.href);
+      else setDownloadChoices(files);
+      setButtonState("idle");
+      return;
+    }
+    try {
+      const { data } = await api.get<DigitalAccess>(`/orders/digital-access/${selectedOffer.id}`);
+      if (!data.orderId) {
+        addToCart(true);
+        return;
+      }
+      setAccessOrderId(data.orderId);
+      const files = data.files.map((file) => ({
+        href: `${API_BASE}${file.downloadUrl}`,
+        available: file.maxDownloads <= 0 || file.downloadCount < file.maxDownloads
+      }));
+      if (files.length === 1 && files[0]!.available) {
+        window.location.assign(files[0]!.href);
+      } else if (files.some((file) => file.available)) {
+        setDownloadChoices(files);
+      } else {
+        setCartError(d.limitReached);
+        setButtonState("error");
+        return;
+      }
+      setButtonState("idle");
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        setButtonState("idle");
+        router.push(`/${locale}/login?next=${encodeURIComponent(returnPath)}`);
+      } else {
+        setCartError(d.accessFailed);
+        setButtonState("error");
+      }
+    }
+  }
+
   const typeLabel = isBridge ? c.bridge : copy[product.type as Exclude<PublicProduct["type"], "bridge">];
   const category = product.category ?? copy.uncategorized;
   const fulfilmentRows: Array<{ label: string; value: string }> = [];
-  if (selectedOffer?.digital) {
+  if (selectedOffer?.digital && !isFreeDigital) {
     fulfilmentRows.push({
       label: d.allowance,
       value: downloadAllowance(selectedOffer.digital.maxDownloads, locale)
@@ -247,11 +351,11 @@ export function ProductPage({
             <div className={isDigital ? styles.digitalPurchaseAction : styles.purchaseContents}>
             {selectedOffer ? (
               <div className={styles.offerSummary}>
-                <div><span>{copy.availability}</span><strong className={styles.availability} data-available={!unavailable}>{unavailable ? c.unavailable : isDigital ? d.ready : isService ? c.ready : copy.inStock}</strong></div>
-                {isDigital && selectedOffer.digital ? <div aria-live="polite"><span>{d.allowance}</span><strong>{downloadAllowance(selectedOffer.digital.maxDownloads, locale)}</strong></div> : null}
+                <div><span>{copy.availability}</span><strong className={styles.availability} data-available={!unavailable}>{unavailable ? c.unavailable : isFreeDigital ? d.freeReady : isDigital ? d.ready : isService ? c.ready : copy.inStock}</strong></div>
+                {isDigital && selectedOffer.digital && !isFreeDigital ? <div aria-live="polite"><span>{d.allowance}</span><strong>{downloadAllowance(selectedOffer.digital.maxDownloads, locale)}</strong></div> : null}
                 {selectedOffer.service ? <div><span>{c.turnaround}</span><strong>{new Intl.NumberFormat(locale).format(selectedOffer.service.estimatedHours)} {copy.hours}</strong></div> : null}
                 <span>{isService ? c.orderPrice : c.unitPrice}</span>
-                <p className={styles.price}>{formatPrice(selectedOffer.price, selectedOffer.currency, locale)}</p>
+                <p className={styles.price}>{isFreeDigital ? d.free : formatPrice(selectedOffer.price, selectedOffer.currency, locale)}</p>
               </div>
             ) : <p className={styles.emptyOffers}>{c.empty}</p>}
 
@@ -265,7 +369,7 @@ export function ProductPage({
             <button
               className={styles.addButton}
               type="button"
-              onClick={addToCart}
+              onClick={isDigital ? () => { void downloadDigital(); } : () => addToCart()}
               disabled={unavailable || buttonState === "loading"}
               data-state={buttonState}
               aria-busy={buttonState === "loading"}
@@ -279,8 +383,15 @@ export function ProductPage({
               role={buttonState === "error" ? "alert" : "status"}
               aria-live="polite"
             >
-              {buttonState === "error" ? cartError || copy.addFailed : buttonState === "success" ? c.added : copy.priceAvailability}
+              {buttonState === "error" ? cartError || copy.addFailed : isDigital ? d.downloadHint : buttonState === "success" ? c.added : copy.priceAvailability}
             </p>
+            {isDigital && accessOrderId && buttonState === "error" ? <Link href={`/${locale}/orders/${accessOrderId}` as Route}>{d.viewOrder}</Link> : null}
+            {isDigital && downloadChoices.length > 1 ? <div id="download-choices" className={styles.downloadChoices} role="group" aria-label={d.chooseFile} tabIndex={-1}>
+              <span>{d.chooseFile}</span>
+              {downloadChoices.map((file, index) => file.available
+                ? <a key={file.href} href={file.href} target="_blank" rel="noopener noreferrer">{d.file} {new Intl.NumberFormat(locale).format(index + 1)}</a>
+                : <span key={file.href}>{d.file} {new Intl.NumberFormat(locale).format(index + 1)} · {d.limitReached}</span>)}
+            </div> : null}
             {isPhysical ? <div className={styles.deliveryNote}><DesignIcon name="bag" /><div><strong>{c.shipping}</strong><p>{c.shippingBody}</p></div></div> : selectedOffer?.service ? <p className={styles.purchaseNote}>{c.estimateNote}</p> : null}
             </div>
             </div>
@@ -315,7 +426,7 @@ export function ProductPage({
           </div>
         </section>
 
-        {isDigital ? <DigitalDownloadQuestions locale={locale} /> : null}
+        {isDigital ? <DigitalDownloadQuestions locale={locale} free={isFreeDigital} /> : null}
         {isPhysical || isService ? <section className={styles.questions} aria-labelledby="questions-title"><h2 id="questions-title">{c.questions}</h2>
           <div><details><summary>{isPhysical ? c.shipping : c.preparation}</summary><p>{isPhysical ? c.shippingBody : c.serviceFaq}</p></details>
           <details><summary>{isPhysical ? c.compatibility : c.timeFaq}</summary><p>{isPhysical ? c.compatibilityBody : c.timeAnswer}</p></details></div>
@@ -350,7 +461,7 @@ export function ProductPage({
         <span>{selectedOffer ? total : copy.outOfStock}</span>
         <button
           type="button"
-          onClick={addToCart}
+          onClick={() => addToCart()}
           disabled={unavailable || buttonState === "loading"}
           data-state={buttonState}
         >

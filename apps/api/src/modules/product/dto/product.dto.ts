@@ -390,6 +390,29 @@ export class UpdateProductDto {
   @Matches(/\S/u, { each: true })
   tags?: string[];
 
+  @ValidateIf((_request, value) => value !== undefined)
+  @IsIn(productTypes)
+  type?: ProductType;
+
+  @IsOptional()
+  @IsBoolean()
+  confirmTypeChange?: boolean;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => DigitalFulfillmentDto)
+  typeChangeDigital?: DigitalFulfillmentDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PhysicalFulfillmentDto)
+  typeChangePhysical?: PhysicalFulfillmentDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ServiceFulfillmentDto)
+  typeChangeService?: ServiceFulfillmentDto;
+
   @IsOptional()
   @IsUUID("4")
   categoryId?: string | null;

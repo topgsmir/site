@@ -28,6 +28,7 @@ import { ShippingProviderRegistry } from "../../integrations/shipping/shipping-p
 import { SellerShippingProfileService } from "../../integrations/shipping/seller-shipping-profile.service";
 import { signUploadDownloadLink } from "./upload-download-link";
 import { buildOrderCsv } from "./order-export";
+import { sellerCommissionRate } from "../seller/seller-commission";
 
 const orderSelect = {
   id: true,
@@ -435,6 +436,10 @@ export class OrderService {
                     id: true,
                     shop_name: true,
                     commission: true,
+                    commission_digital: true,
+                    commission_physical: true,
+                    commission_service: true,
+                    commission_bridge: true,
                   }
                 },
                 product: {
@@ -504,8 +509,9 @@ export class OrderService {
           : offer.price;
         const currency = "TOMAN";
         const gross = unitPrice.mul(input.quantity);
+        const commissionRate = sellerCommissionRate(offer.listing.seller, offer.listing.product.type);
         const commission = gross
-          .mul(offer.listing.seller.commission)
+          .mul(commissionRate)
           .toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP);
         const payable = gross.minus(commission);
         if (payable.isNegative()) {
@@ -520,7 +526,7 @@ export class OrderService {
             status: "pending",
             currency,
             total_amount: gross,
-            commission_rate: offer.listing.seller.commission,
+            commission_rate: commissionRate,
             idempotency_key: idempotencyKey,
             request_hash: requestHash,
             items: {
@@ -690,6 +696,7 @@ export class OrderService {
         if (changed.count !== 1) {
           throw new ConflictException("The order changed; reload and try again");
         }
+        if (input.status === "cancelled") await transaction.marketing_earnings.updateMany({ where: { order_id: orderId, status: { in: ["pending", "payable"] } }, data: { status: "reversed" } });
         if (current.status === "pending" && input.status === "delivered") {
           for (const item of current.items) {
             if (item.product_type !== "physical") continue;
@@ -875,6 +882,79 @@ export class OrderService {
       if (claimed.count !== 1) throw new ConflictException("The download limit has been reached");
       return signedUrl;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }
+
+  async digitalAccess(actor: AppUser, offerId: string) {
+    if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can access purchases");
+    const itemWhere = {
+      offer_id: offerId,
+      product_type: "digital" as const,
+      digital_entitlement: { some: { buyer_id: actor.id } }
+    };
+    const order = await this.prisma.orders.findFirst({
+      where: {
+        buyer_id: actor.id,
+        status: { in: ["paid", "processing", "awaiting_confirmation", "delivered"] },
+        items: { some: itemWhere }
+      },
+      orderBy: [{ created_at: "desc" }, { id: "desc" }],
+      select: {
+        id: true,
+        items: {
+          where: itemWhere,
+          orderBy: { id: "desc" },
+          take: 1,
+          select: {
+            id: true,
+            digital_entitlement: {
+              where: { buyer_id: actor.id },
+              orderBy: { file_index: "asc" },
+              select: { file_index: true, delivery_url: true, max_downloads: true, download_count: true }
+            }
+          }
+        }
+      }
+    });
+    const item = order?.items[0];
+    return item ? {
+      orderId: order.id,
+      itemId: item.id,
+      files: mapDigitalDeliveries(order.id, item.id, item.digital_entitlement)
+    } : { orderId: null, itemId: null, files: [] };
+  }
+
+  async freeDigitalDownload(actor: AppUser, offerId: string, clientIp: string, fileIndex = 0) {
+    if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can download files");
+    const offer = await this.prisma.seller_offers.findFirst({
+      where: {
+        id: offerId,
+        status: "active",
+        price: new Prisma.Decimal(0),
+        listing: {
+          status: "active",
+          seller: { invited: false, approved: true, suspended_at: null },
+          product: { status: "active", type: "digital" }
+        }
+      },
+      select: {
+        currency: true,
+        listing: { select: { product: { select: { price_currency: true } } } },
+        digital: { select: { file_reference: true, file_references: true } }
+      }
+    });
+    const file = offer?.digital && offer.currency.trim() === offer.listing.product.price_currency
+      ? digitalFileReferences(offer.digital)[fileIndex] : undefined;
+    if (!file) throw new NotFoundException("Free download was not found");
+    try {
+      return signUploadDownloadLink(
+        file,
+        clientIp,
+        this.config?.get<string>("UPLOAD_DOWNLOAD_HOSTS") ?? "",
+        this.config?.get<string>("UPLOAD_DOWNLOAD_SECRET") ?? ""
+      );
+    } catch {
+      throw new ServiceUnavailableException("Digital delivery is not configured");
+    }
   }
 
   private async scope(actor: AppUser): Promise<Prisma.ordersWhereInput> {

@@ -111,6 +111,25 @@ export class OrderController {
     return this.orders.transitionPurchase(request.authenticatedUser!, id, body, idempotencyKey);
   }
 
+  @Get("digital-access/:offerId")
+  @Header("Cache-Control", "private, no-store")
+  digitalAccess(@Req() request: AuthenticatedRequest, @Param("offerId", new ParseUUIDPipe({ version: "4" })) offerId: string) {
+    return this.orders.digitalAccess(request.authenticatedUser!, offerId);
+  }
+
+  @Get("free-download/:offerId")
+  @Header("Cache-Control", "private, no-store")
+  async freeDownload(
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string,
+    @Param("offerId", new ParseUUIDPipe({ version: "4" })) offerId: string,
+    @Query() query: DigitalDownloadQueryDto,
+    @Res() response: { redirect(url: string): void }
+  ) {
+    await this.rateLimits.consumeDigitalDownload(request.authenticatedUser!.id, clientIp);
+    response.redirect(await this.orders.freeDigitalDownload(request.authenticatedUser!, offerId, clientIp, query.fileIndex));
+  }
+
   @Get(":id")
   @Header("Cache-Control", "private, no-store")
   get(@Req() request: AuthenticatedRequest, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string) {
@@ -209,6 +228,7 @@ export class OrderController {
   }
 
   @Post(":orderId/items/:itemId/download")
+  @Header("Cache-Control", "private, no-store")
   async download(
     @Query() query: DigitalDownloadQueryDto,
     @Req() request: AuthenticatedRequest,
