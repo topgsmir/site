@@ -282,3 +282,32 @@
 .empty { padding-block: var(--space-dashboard-xs); }
 .chatFooter > .error { margin-block: var(--space-dashboard-xs); border-radius: var(--radius-dashboard-xs); font-size: var(--text-dashboard-sm); }
 .chatFooter > .approval { max-height: 28svh; overflow: auto; }
+
+/* Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4 */
+.conversationDelete { min-width: 0; }
+.conversationDeleteConfirm { display: grid; gap: var(--space-dashboard-xs); padding: var(--space-dashboard-sm); border-block-start: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
+.conversationDeleteConfirm p { margin: 0; color: var(--color-dashboard-ink-soft); font-size: var(--text-dashboard-xs); line-height: 1.6; }
+.conversationDeleteConfirm > div { display: flex; flex-wrap: wrap; gap: var(--space-dashboard-xs); }
+.conversationDeleteConfirm button { min-height: 40px; padding-inline: var(--space-dashboard-sm); border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-xs); color: var(--color-dashboard-ink); background: var(--color-dashboard-surface); cursor: pointer; }
+.conversationDeleteConfirm .delete { width: auto; border-color: var(--color-dashboard-error); color: var(--color-dashboard-error); }
+.resultDetails { min-width: 0; max-width: 100%; margin-block-start: var(--space-dashboard-xs); color: var(--color-dashboard-muted); font-size: var(--text-dashboard-xs); }
+.resultDetails > summary { width: fit-content; min-height: 36px; padding-block: var(--space-dashboard-xs); cursor: pointer; }
+.resultDetails[open] > summary { color: var(--color-dashboard-ink-soft); }
+.resultDetails .tableWrap { margin-block-start: var(--space-dashboard-xs); }
+.resultCaption { position: absolute; width: 1px; height: 1px; padding: 0 !important; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+.resultDetails td { max-width: 28rem; vertical-align: top; white-space: normal; overflow-wrap: anywhere; }
+.resultDetails td pre { max-width: 28rem; max-height: 18rem; margin: 0; overflow: auto; font-family: var(--font-product-mono); font-size: inherit; line-height: 1.5; text-align: start; white-space: pre-wrap; }
+.resultDetails > summary:focus-visible, .conversationDeleteConfirm button:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
+.approvalRequest { display: grid; min-width: 0; gap: var(--space-dashboard-xs); color: var(--color-dashboard-ink-soft); font-size: var(--text-dashboard-xs); }
+.approvalRequest strong { font-weight: 650; line-height: 1.5; }
+.approvalRequest code { width: fit-content; max-width: 100%; padding: var(--space-dashboard-2xs) var(--space-dashboard-xs); overflow: auto; border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-xs); background: var(--color-dashboard-surface); font-family: var(--font-product-mono); font-size: inherit; white-space: nowrap; }
+.approvalRequest details { min-width: 0; }
+.approvalRequest summary { width: fit-content; min-height: 36px; padding-block: var(--space-dashboard-xs); cursor: pointer; }
+.approvalRequest summary:focus-visible, .approval h2:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
+.approvalRequest pre { margin-block-start: var(--space-dashboard-xs); }
+.messages:has(.empty) { align-content: start; }
+.empty { justify-self: stretch; align-self: start; max-width: 52rem; padding: var(--space-dashboard-md) 0; }
+.welcomeMark { display: none; }
+.empty h2 { font-size: var(--text-dashboard-xl); font-weight: 600; line-height: 1.4; }
+.empty > p { max-width: 65ch; margin-block-start: var(--space-dashboard-xs); font-size: var(--text-dashboard-sm); line-height: 1.7; }
+.suggestions { margin-block-start: var(--space-dashboard-md); }

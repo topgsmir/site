@@ -4,11 +4,13 @@ import { DataAssistantService } from "./data-assistant.service";
 
 type Execution = { id: string; run_id: string; name: string; kind: "tool" | "sql"; status: "proposed" | "running" | "completed" | "failed" | "rejected"; input: Record<string, unknown>; result: Record<string, unknown> | null; row_count: number | null; duration_ms: number | null; approved_by_id?: string | null; approved_at?: Date | null; completed_at?: Date | null; sql_text?: string | null; sql_hash?: string | null; created_at: Date };
 
-function harness(plans: Array<Record<string, unknown>>, initialExecutions: Execution[] = [], messageCount = 1, withAdminTools = false) {
+function harness(plans: Array<Record<string, unknown>>, initialExecutions: Execution[] = [], messageCount = 1, withAdminTools = false, history: Array<{ role: string; content: string }> = []) {
   const executions = [...initialExecutions];
   const runUpdates: Array<Record<string, unknown>> = [];
   const conversationUpdates: Array<Record<string, unknown>> = [];
   const events: Array<{ event: string; data: unknown }> = [];
+  const completePrompts: string[] = [];
+  const streamPrompts: string[] = [];
   let outputMessage = 0;
   const run = { id: "run-1", conversation_id: "conversation-1", requester_id: "owner-1", profile_id: "profile-1", status: "running", started_at: new Date(), input_tokens: null as number | null, output_tokens: null as number | null, input_price_per_million_usd_snapshot: null, output_price_per_million_usd_snapshot: null };
   const transactionClient = {
@@ -16,18 +18,18 @@ function harness(plans: Array<Record<string, unknown>>, initialExecutions: Execu
     ai_runs: { create: async () => ({ id: "run-1" }), update: async (args: { data: Record<string, unknown> }) => { runUpdates.push(args.data); Object.assign(run, args.data); return run; } },
     ai_audit_events: { create: async () => ({ id: "audit-start" }) },
     ai_conversations: { update: async (args: { data: Record<string, unknown> }) => { conversationUpdates.push(args.data); return { id: "conversation-1" }; } },
-    ai_tool_executions: { create: async (args: { data: Omit<Execution, "id" | "created_at" | "result" | "row_count" | "duration_ms"> }) => { const item = { ...args.data, id: `execution-${executions.length + 1}`, created_at: new Date(), result: null, row_count: null, duration_ms: null } as Execution; executions.push(item); return item; } }
+    ai_tool_executions: { create: async (args: { data: Omit<Execution, "id" | "created_at" | "result" | "row_count" | "duration_ms"> }) => { const item = { approved_by_id: null, approved_at: null, ...args.data, id: `execution-${executions.length + 1}`, created_at: new Date(), result: null, row_count: null, duration_ms: null } as Execution; executions.push(item); return item; } }
   };
   const prisma = {
     $transaction: async (operation: ((tx: typeof transactionClient) => Promise<unknown>) | unknown[]) => Array.isArray(operation) ? Promise.all(operation) : operation(transactionClient),
     ai_conversations: { findFirst: async () => ({ id: "conversation-1", _count: { messages: messageCount } }) },
-    ai_messages: { findMany: async () => [], create: async () => ({ id: `message-output-${++outputMessage}` }) },
+    ai_messages: { findMany: async () => [...history].reverse(), create: async () => ({ id: `message-output-${++outputMessage}` }) },
     ai_tool_executions: {
       findMany: async () => executions,
       findFirst: async (args: { where: { id: string; status: string } }) => { const item = executions.find((candidate) => candidate.id === args.where.id && candidate.status === args.where.status); return item ? { ...item, run: { ...run, profile, input_message: { content: "Show user user-1" } } } : null; },
       create: transactionClient.ai_tool_executions.create,
       update: async (args: { where: { id: string }; data: Partial<Execution> }) => { const item = executions.find((candidate) => candidate.id === args.where.id)!; Object.assign(item, args.data); return item; },
-      updateMany: async (args: { where: { id: string; status: string }; data: Partial<Execution> }) => { const item = executions.find((candidate) => candidate.id === args.where.id && candidate.status === args.where.status); if (!item) return { count: 0 }; Object.assign(item, args.data); return { count: 1 }; }
+      updateMany: async (args: { where: { id: string; status: string; approved_by_id?: string | null }; data: Partial<Execution> }) => { const item = executions.find((candidate) => candidate.id === args.where.id && candidate.status === args.where.status && (!("approved_by_id" in args.where) || (candidate.approved_by_id ?? null) === args.where.approved_by_id)); if (!item) return { count: 0 }; Object.assign(item, args.data); return { count: 1 }; }
     },
     ai_runs: {
       findFirst: async () => null,
@@ -39,8 +41,8 @@ function harness(plans: Array<Record<string, unknown>>, initialExecutions: Execu
   };
   const profile = { id: "profile-1", provider: "openai", model_id: "gpt-test", base_url: "https://api.openai.com/v1", encrypted_api_key: "encrypted", encryption_key_id: "key-1", input_price_per_million_usd: null, output_price_per_million_usd: null };
   const models = {
-    complete: async () => ({ text: JSON.stringify(plans.shift() ?? { mode: "answer" }), inputTokens: 5, outputTokens: 2, providerRequestId: null }),
-    stream: async (_profile: unknown, _system: string, prompt: string, onText: (text: string) => void) => { if (prompt.includes("seller_performance")) { assert.match(prompt, /seller_performance/); assert.match(prompt, /seller_products/); } onText("Done"); return { text: "Done", inputTokens: 10, outputTokens: 2, providerRequestId: "request-1" }; }
+    complete: async (_profile?: unknown, _system?: string, prompt = "") => { completePrompts.push(prompt); return { text: JSON.stringify(plans.shift() ?? { mode: "answer" }), inputTokens: 5, outputTokens: 2, providerRequestId: null }; },
+    stream: async (_profile: unknown, _system: string, prompt: string, onText: (text: string) => void) => { streamPrompts.push(prompt); if (prompt.includes("seller_performance")) { assert.match(prompt, /seller_performance/); assert.match(prompt, /seller_products/); } onText("Done"); return { text: "Done", inputTokens: 10, outputTokens: 2, providerRequestId: "request-1" }; }
   };
   const tools = { execute: async (name: string) => ({ rows: name === "seller_performance" ? [{ seller_id: "2eeda1d3-cdd1-4708-9903-70db7436ebdc", shop_name: "morteza" }] : [{ seller_id: "2eeda1d3-cdd1-4708-9903-70db7436ebdc", product_title: "Product" }], rowCount: 1, truncated: false, durationMs: 3 }) };
   const queries = { validate: (sql: string) => sql, execute: async () => ({ rows: [], rowCount: 0, truncated: false, durationMs: 1 }) };
@@ -48,14 +50,55 @@ function harness(plans: Array<Record<string, unknown>>, initialExecutions: Execu
     compactPrompt: () => withAdminTools ? "- admin_user_get [read] GET /admin/users/:id" : "",
     list: () => [],
     capabilitySummary: () => withAdminTools ? [{ domain: "users", toolCount: 1, read: 1, write: 0, destructive: 0, critical: 0, examples: [{ name: "admin_user_get", description: "Read a user" }] }] : [],
-    search: (query: string) => withAdminTools ? [{ name: "admin_user_get", domain: "users", method: "GET", path: "/admin/users/:id", risk: "read", description: `Match for ${query}`, inputHint: "path: id", requiresApproval: true }] : [],
-    has: (name: string) => withAdminTools && name === "admin_user_get",
-    prepare: (name: string, input: unknown) => ({ name, domain: "users", method: "GET", path: `/admin/users/${(input as { path: { id: string } }).path.id}`, query: {}, risk: "read", description: "Read a user" }),
+    search: (query: string) => withAdminTools ? [{ name: "admin_user_get", domain: "users", method: "GET", path: "/admin/users/:id", risk: "read", description: `Match for ${query}`, inputHint: "path: id", requiresApproval: false }] : [],
+    has: (name: string) => withAdminTools && ["admin_user_get", "admin_user_update"].includes(name),
+    canAutoExecute: (name: string) => withAdminTools && name === "admin_user_get",
+    prepare: (name: string, input: unknown) => ({ name, domain: "users", method: name === "admin_user_get" ? "GET" : "PATCH", path: `/admin/users/${(input as { path: { id: string } }).path.id}`, query: {}, ...(name === "admin_user_update" ? { body: (input as { body?: unknown }).body } : {}), risk: name === "admin_user_get" ? "read" : "write", description: name === "admin_user_get" ? "Read a user" : "Update a user", responseMode: "json" }),
     sanitizeResult: (value: unknown) => ({ value, truncated: false })
   };
   const service = new DataAssistantService(prisma as never, { activeById: async () => profile } as never, models as never, tools as never, queries as never, adminTools as never);
-  return { service, models, profile, executions, runUpdates, conversationUpdates, events, emit: (event: string, data: unknown) => events.push({ event, data }) };
+  return { service, models, profile, executions, runUpdates, conversationUpdates, completePrompts, streamPrompts, events, emit: (event: string, data: unknown) => events.push({ event, data }) };
 }
+
+test("uses prior conversation in the final answer prompt", async () => {
+  const state = harness([{ mode: "answer" }], [], 2, false, [
+    { role: "user", content: "Compare the last two weeks" },
+    { role: "assistant", content: "The first week was stronger." },
+    { role: "user", content: "Why was that?" },
+  ]);
+  await state.service.ask("conversation-1", { profileId: "profile-1", question: "Why was that?" }, "owner-1", state.emit);
+  assert.match(state.streamPrompts[0], /user: Compare the last two weeks/);
+  assert.match(state.streamPrompts[0], /assistant: The first week was stronger/);
+  assert.match(state.streamPrompts[0], /Current question: Why was that\?/);
+});
+
+test("answers simple guidance in one model call without a tool or second generation", async () => {
+  const state = harness([{ mode: "answer", text: "Provide the product UUID and its new title." }]);
+  await state.service.ask("conversation-1", { profileId: "profile-1", question: "What do you need to rename a product? Do not read or change anything." }, "owner-1", state.emit);
+  assert.equal(state.executions.length, 0);
+  assert.equal(state.streamPrompts.length, 0);
+  assert.ok(state.events.some(({ event, data }) => event === "text_delta" && (data as { text?: string }).text === "Provide the product UUID and its new title."));
+  assert.ok(state.events.some(({ event }) => event === "completed"));
+});
+
+test("synthesizes complete tool evidence even when the planner supplies a short answer", async () => {
+  const state = harness([
+    { mode: "tool", tool: "daily_sales", input: {} },
+    { mode: "answer", text: "An incomplete planner summary" },
+  ]);
+  await state.service.ask("conversation-1", { profileId: "profile-1", question: "Summarize sales" }, "owner-1", state.emit);
+  assert.equal(state.streamPrompts.length, 1);
+  assert.ok(state.events.some(({ event, data }) => event === "text_delta" && (data as { text?: string }).text === "Done"));
+  assert.ok(!state.events.some(({ event, data }) => event === "text_delta" && (data as { text?: string }).text === "An incomplete planner summary"));
+});
+
+test("an invalid planner response never triggers an unrelated sales query", async () => {
+  const state = harness([]);
+  state.models.complete = async () => ({ text: "not JSON", inputTokens: 5, outputTokens: 2, providerRequestId: null });
+  await state.service.ask("conversation-1", { profileId: "profile-1", question: "How can I edit a product?" }, "owner-1", state.emit);
+  assert.equal(state.executions.length, 0);
+  assert.ok(state.events.some(({ event }) => event === "completed"));
+});
 
 test("persists and emits a safe timeout category after successful discovery", async () => {
   const state = harness([{ mode: "discover", query: "inspect user" }], [], 1, true);
@@ -113,18 +156,20 @@ test("requires admin continuation approval after each ten completed tool calls",
   assert.ok(state.events.some(({ event }) => event === "continuation_approval_required"));
 });
 
-test("proposes an allowlisted admin API tool and pauses for owner approval", async () => {
+test("starts an allowlisted read in the owner's browser without an approval stop", async () => {
   const state = harness([
     { mode: "api", tool: "admin_user_get", purpose: "Inspect the requested user", input: { path: { id: "user-1" } } }
   ], [], 1, true);
 
   await state.service.ask("conversation-1", { profileId: "profile-1", question: "Show user user-1" }, "owner-1", state.emit);
 
-  const proposal = state.executions.find((item) => item.name === "admin_user_get");
-  assert.equal(proposal?.status, "proposed");
-  assert.equal((proposal?.input as { request?: { path?: string } }).request?.path, "/admin/users/user-1");
+  const read = state.executions.find((item) => item.name === "admin_user_get");
+  assert.equal(read?.status, "running");
+  assert.equal((read?.input as { request?: { path?: string } }).request?.path, "/admin/users/user-1");
+  assert.equal(read?.approved_by_id ?? null, null);
   assert.ok(state.runUpdates.some(({ status }) => status === "awaiting_approval"));
-  assert.ok(state.events.some(({ event }) => event === "tool_approval_required"));
+  assert.ok(state.events.some(({ event }) => event === "browser_tool_request"));
+  assert.ok(!state.events.some(({ event }) => event === "tool_approval_required"));
   assert.ok(!state.events.some(({ event }) => event === "completed"));
 });
 
@@ -140,7 +185,7 @@ test("discovers API tools without approval before planning the exact operation",
   assert.equal(discovery?.status, "completed");
   assert.equal(discovery?.row_count, 1);
   assert.ok(state.events.some(({ event, data }) => event === "tool_result" && (data as { tool?: string }).tool === "discover_admin_tools"));
-  assert.equal(state.executions.find((item) => item.name === "admin_user_get")?.status, "proposed");
+  assert.equal(state.executions.find((item) => item.name === "admin_user_get")?.status, "running");
 });
 
 test("describes the live capability catalog before answering what the assistant can do", async () => {
@@ -150,28 +195,55 @@ test("describes the live capability catalog before answering what the assistant 
   assert.equal(execution?.status, "completed");
   assert.equal(execution?.row_count, 1);
   assert.ok(Array.isArray(((execution?.result as { rows?: Array<{ featureAreas?: unknown }> } | null)?.rows?.[0])?.featureAreas));
+  assert.match(String(((execution?.result as { rows?: Array<{ approvalPolicy?: unknown }> } | null)?.rows?.[0])?.approvalPolicy), /Read-only JSON GET requests run/);
   assert.ok(state.events.some(({ event, data }) => event === "tool_result" && (data as { tool?: string }).tool === "describe_admin_capabilities"));
   assert.ok(state.events.some(({ event }) => event === "completed"));
 });
 
-test("executes an approved admin tool in the browser and resumes from its bounded result", async () => {
+test("reads a record, then pauses for approval before changing it", async () => {
   const state = harness([
     { mode: "api", tool: "admin_user_get", purpose: "Inspect the requested user", input: { path: { id: "user-1" } } },
+    { mode: "api", tool: "admin_user_update", purpose: "Rename the inspected user", input: { path: { id: "user-1" }, body: { fullName: "Updated" } } },
     { mode: "answer" }
   ], [], 1, true);
-  await state.service.ask("conversation-1", { profileId: "profile-1", question: "Show user user-1" }, "owner-1", state.emit);
-  const proposal = state.executions.find((item) => item.name === "admin_user_get")!;
+  await state.service.ask("conversation-1", { profileId: "profile-1", question: "Find user user-1 and rename them Updated" }, "owner-1", state.emit);
+  const read = state.executions.find((item) => item.name === "admin_user_get")!;
+  assert.equal(read.status, "running");
+  assert.equal(read.approved_by_id ?? null, null);
+  await state.service.submitAdminToolResult(read.id, { ok: true, status: 200, data: { id: "user-1", fullName: "Example" }, durationMs: 12 }, "owner-1", state.emit);
+  assert.equal(read.status, "completed");
+  const proposal = state.executions.find((item) => item.name === "admin_user_update")!;
+  assert.equal(proposal.status, "proposed");
+  assert.equal((proposal.input as { request: { body: { fullName: string } } }).request.body.fullName, "Updated");
+  assert.ok(state.events.some(({ event }) => event === "tool_approval_required"));
+  assert.ok(!state.events.some(({ event }) => event === "completed"));
 
   await state.service.approve(proposal.id, "owner-1", state.emit);
   assert.equal(proposal.status, "running");
   assert.equal(proposal.approved_by_id, "owner-1");
   assert.ok(state.events.some(({ event }) => event === "browser_tool_request"));
 
-  await state.service.submitAdminToolResult(proposal.id, { ok: true, status: 200, data: { id: "user-1", fullName: "Example" }, durationMs: 12 }, "owner-1", state.emit);
+  await state.service.submitAdminToolResult(proposal.id, { ok: true, status: 200, data: { id: "user-1", fullName: "Updated" }, durationMs: 12 }, "owner-1", state.emit);
   assert.equal(proposal.status, "completed");
   assert.equal(proposal.row_count, 1);
   assert.ok(state.events.some(({ event }) => event === "tool_result"));
   assert.ok(state.events.some(({ event }) => event === "completed"));
+});
+
+test("answers a capability-only request after one planning call", async () => {
+  const state = harness([{ mode: "capabilities", answerAfter: true }], [], 1, true);
+  await state.service.ask("conversation-1", { profileId: "profile-1", question: "What can you do and what needs approval?" }, "owner-1", state.emit);
+  assert.equal(state.completePrompts.length, 1);
+  assert.equal(state.streamPrompts.length, 1);
+  assert.match(state.streamPrompts[0] ?? "", /Read-only JSON GET requests run/);
+  assert.ok(state.events.some(({ event }) => event === "completed"));
+});
+
+test("rejects a browser result for a write that was never approved", async () => {
+  const pending: Execution = { id: "execution-unapproved", run_id: "run-1", name: "admin_user_update", kind: "tool", status: "running", input: { request: { method: "PATCH", risk: "write", responseMode: "json", path: "/admin/users/user-1" } }, result: null, row_count: null, duration_ms: null, approved_by_id: null, created_at: new Date() };
+  const state = harness([], [pending], 1, true);
+  await assert.rejects(state.service.submitAdminToolResult(pending.id, { ok: true, status: 200, data: {} }, "owner-1", state.emit), { name: "NotFoundException" });
+  assert.equal(pending.status, "running");
 });
 
 test("lets the owner stop a browser tool left waiting after approval", async () => {

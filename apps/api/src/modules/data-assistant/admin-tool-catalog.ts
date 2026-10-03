@@ -47,6 +47,31 @@ const tool = (
   responseMode: "json" | "download" = "json"
 ): AdminToolDefinition => ({ name, domain, method, path, risk, description, inputHint, ...(idempotent ? { idempotent: true } : {}), ...(responseMode === "download" ? { responseMode } : {}) });
 
+// Match common Persian and Arabic admin terms before asking the model to discover
+// English-only catalog names. These aliases affect ranking only, never authority.
+const SEARCH_ALIASES: ReadonlyArray<{ pattern: RegExp; terms: readonly string[] }> = [
+  { pattern: /محصول|کالا|منتج|سلعة/u, terms: ["product", "catalog"] },
+  { pattern: /عنوان|تیتر|اسم/u, terms: ["title", "translation"] },
+  { pattern: /ترجم|زبان|لغة/u, terms: ["translation", "locale"] },
+  { pattern: /سفارش|طلب/u, terms: ["order"] },
+  { pattern: /ارسال|حمل|شحن/u, terms: ["shipping", "shipment"] },
+  { pattern: /فروشنده|بائع/u, terms: ["seller"] },
+  { pattern: /کاربر|مستخدم/u, terms: ["user"] },
+  { pattern: /موجودی|مخزون/u, terms: ["stock", "inventory"] },
+  { pattern: /قیمت|هزینه|سعر/u, terms: ["price", "pricing"] },
+  { pattern: /پرداخت|دفع/u, terms: ["payment"] },
+  { pattern: /بازگشت وجه|استرداد/u, terms: ["refund"] },
+  { pattern: /فهرست|لیست|نمایش|اعرض|قائمة/u, terms: ["list", "search"] },
+  { pattern: /جستجو|جست‌وجو|بحث/u, terms: ["search"] },
+  { pattern: /ویرایش|تغییر|بروزرسانی|به‌روزرسانی|تعدیل|تحدیث/u, terms: ["update"] },
+  { pattern: /ایجاد|ساخت|ثبت|إنشاء|إضافة|اضافة/u, terms: ["create", "register"] },
+  { pattern: /تأیید|تایید|تصویب|موافقة/u, terms: ["approve", "review"] },
+  { pattern: /حذف|پاک|إزالة/u, terms: ["delete", "remove"] },
+  { pattern: /کوپن|قسیمة|قسيمة/u, terms: ["coupon"] },
+  { pattern: /وبلاگ|مقاله|مدونة/u, terms: ["blog"] },
+  { pattern: /سئو|تحسين محركات/u, terms: ["seo"] }
+];
+
 /**
  * API operations exposed to the owner-only admin assistant. Local file inputs and
  * downloads are browser-mediated; login/logout session flows, one-time restore
@@ -408,7 +433,7 @@ export class AdminToolCatalogService {
   }
 
   list() {
-    return ADMIN_TOOL_CATALOG.map((entry) => ({ ...entry, requiresApproval: true }));
+    return ADMIN_TOOL_CATALOG.map((entry) => ({ ...entry, requiresApproval: !this.canAutoExecute(entry.name) }));
   }
 
   domainSummary() {
@@ -429,34 +454,40 @@ export class AdminToolCatalogService {
         write: entries.filter((entry) => entry.risk === "write").length,
         destructive: entries.filter((entry) => entry.risk === "destructive").length,
         critical: entries.filter((entry) => entry.risk === "critical").length,
-        examples: entries.slice(0, 6).map((entry) => ({ name: entry.name, description: entry.description }))
+        examples: entries.slice(0, 2).map((entry) => ({ name: entry.name, description: entry.description }))
       }));
   }
 
   search(query = "", domain?: string, limit = 40) {
-    const normalizedQuery = query.trim().toLowerCase().slice(0, 200);
+    const normalizedQuery = query.trim().toLowerCase().replaceAll("ي", "ی").replaceAll("ك", "ک").slice(0, 200);
     const tokens = normalizedQuery.split(/[^\p{L}\p{N}_-]+/u).filter((token) => token.length >= 2).slice(0, 12);
+    const searchTerms = [...new Set([...tokens, ...SEARCH_ALIASES.filter(({ pattern }) => pattern.test(normalizedQuery)).flatMap(({ terms }) => terms)])];
     const boundedLimit = Math.min(Math.max(Math.trunc(limit), 1), 100);
     return ADMIN_TOOL_CATALOG
       .filter((entry) => !domain || entry.domain === domain)
       .map((entry) => {
         const haystack = `${entry.name} ${entry.domain} ${entry.method} ${entry.path} ${entry.description} ${entry.inputHint}`.toLowerCase();
-        const score = (normalizedQuery && haystack.includes(normalizedQuery) ? 20 : 0) + tokens.reduce((sum, token) => sum + (haystack.includes(token) ? 3 : 0), 0);
+        const score = (normalizedQuery && haystack.includes(normalizedQuery) ? 20 : 0) + searchTerms.reduce((sum, token) => sum + (haystack.includes(token) ? 3 : 0), 0);
         return { entry, score };
       })
       .filter(({ score }) => !normalizedQuery || score > 0)
       .sort((left, right) => right.score - left.score || left.entry.name.localeCompare(right.entry.name))
       .slice(0, boundedLimit)
-      .map(({ entry }) => ({ ...entry, requiresApproval: true }));
+      .map(({ entry }) => ({ ...entry, requiresApproval: !this.canAutoExecute(entry.name) }));
   }
 
   compactPrompt(query: string) {
-    const shortlist = this.search(query, undefined, 30);
+    const shortlist = this.search(query, undefined, 16);
     return `Domains: ${this.domainSummary()}\nLikely tools for the current request:\n${shortlist.map((entry) => `- ${entry.name} [${entry.risk}] ${entry.method} ${entry.path}: ${entry.description} Input: ${entry.inputHint}`).join("\n") || "- No lexical match. Use tool discovery with English keywords."}`;
   }
 
   has(name: string): boolean {
     return this.byName.has(name);
+  }
+
+  canAutoExecute(name: string): boolean {
+    const definition = this.byName.get(name);
+    return definition?.risk === "read" && definition.method === "GET" && (definition.responseMode ?? "json") === "json";
   }
 
   prepare(name: string, rawInput: unknown): PreparedAdminTool {
