@@ -434,6 +434,8 @@ model users {
   requested_deletion_jobs      user_deletion_jobs[]           @relation("deletion_actor")
   received_deletion_jobs       user_deletion_jobs[]           @relation("deletion_recipient")
   product_category_events product_category_events[]
+  created_product_description_templates product_description_templates[] @relation("product_template_creator")
+  updated_product_description_templates product_description_templates[] @relation("product_template_updater")
   id                           String                         @id @default(uuid()) @map("id")
   full_name                    String                         @map("full_name")
   username                     String?                        @unique @map("username")
@@ -1349,6 +1351,24 @@ model products {
   @@index([title, id])
   @@index([created_by_seller_id, id], map: "lifecycle_products_cursor")
   @@map("products")
+}
+
+model product_description_templates {
+  id            String      @id @default(uuid()) @db.Uuid
+  locale        blog_locale
+  name          String      @db.VarChar(100)
+  content       String      @db.Text
+  active        Boolean     @default(true)
+  created_by_id String?
+  updated_by_id String?
+  created_at    DateTime    @default(now()) @db.Timestamptz(3)
+  updated_at    DateTime    @default(now()) @updatedAt @db.Timestamptz(3)
+  created_by    users?      @relation("product_template_creator", fields: [created_by_id], references: [id], onDelete: SetNull)
+  updated_by    users?      @relation("product_template_updater", fields: [updated_by_id], references: [id], onDelete: SetNull)
+
+  @@index([locale, active, name, id])
+  @@index([created_by_id])
+  @@index([updated_by_id])
 }
 
 model product_bulk_operations {

@@ -11,6 +11,7 @@ export type AdminSection =
   | "users"
   | "products"
   | "product-categories"
+  | "product-templates"
   | "product-changes"
   | "coupons"
   | "club"

@@ -32,6 +32,7 @@ import { AdminOrderDetails } from "@/components/admin/AdminOrderDetails";
 import { PaymentServiceWorkspace } from "@/components/admin/PaymentServiceWorkspace";
 import { ProductChangesWorkspace } from "@/components/admin/ProductChangesWorkspace";
 import { ProductCategoriesWorkspace } from "@/components/admin/ProductCategoriesWorkspace";
+import { ProductDescriptionTemplatesWorkspace } from "@/components/admin/ProductDescriptionTemplatesWorkspace";
 import { ProductBulkEdit } from "@/components/admin/ProductBulkEdit";
 import { AiWorkspace } from "@/components/admin/AiWorkspace";
 import { CouponWorkspace } from "@/components/admin/CouponWorkspace";
@@ -132,6 +133,7 @@ const copy = {
     empty: "No vendors match this search.",
     products: "Products",
     productCategories: "Categories",
+    productTemplates: "Templates",
     productChanges: "Product changes",
     coupons: "Coupons",
     orders: "Orders",
@@ -303,6 +305,7 @@ const copy = {
     empty: "فروشنده‌ای با این جست‌وجو پیدا نشد.",
     products: "محصول",
     productCategories: "دسته‌بندی‌ها",
+    productTemplates: "قالب‌های آماده",
     productChanges: "تغییرات محصولات",
     coupons: "کدهای تخفیف",
     orders: "سفارش",
@@ -474,6 +477,7 @@ const copy = {
     empty: "لا يوجد بائع يطابق هذا البحث.",
     products: "المنتجات",
     productCategories: "الفئات",
+    productTemplates: "القوالب الجاهزة",
     productChanges: "تغييرات المنتجات",
     coupons: "القسائم",
     orders: "الطلبات",
@@ -799,6 +803,7 @@ export function VendorManagement({
   const isProductServiceSection =
     section === "products" ||
     section === "product-categories" ||
+    section === "product-templates" ||
     section === "product-changes";
   const productServiceExpanded = isProductServiceSection || productServiceOpen;
   const isSalesServiceSection =
@@ -850,6 +855,7 @@ export function VendorManagement({
       users: c.users,
       products: c.products,
       "product-categories": c.productCategories,
+      "product-templates": c.productTemplates,
       "product-changes": c.productChanges,
       coupons: c.coupons,
       club:
@@ -1423,6 +1429,14 @@ export function VendorManagement({
                     >
                       <ProductsIcon />
                       <span>{c.productCategories}</span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/product-templates` as Route}
+                      aria-current={section === "product-templates" ? "page" : undefined}
+                    >
+                      <ProductsIcon />
+                      <span>{c.productTemplates}</span>
                     </Link>
                     <Link
                       className={navigationStyles.item}
@@ -2158,6 +2172,9 @@ export function VendorManagement({
 
         {section === "product-categories" ? (
           <ProductCategoriesWorkspace locale={locale} />
+        ) : null}
+        {section === "product-templates" ? (
+          <ProductDescriptionTemplatesWorkspace locale={locale} />
         ) : null}
         {section === "products" ? (
           <section

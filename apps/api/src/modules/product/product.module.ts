@@ -1,4 +1,5 @@
 import { ProductTranslationsService } from "./product-translations.service";
+import { ProductDescriptionTemplatesService } from "./product-description-templates.service";
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { MediaModule } from "../media/media.module";
@@ -10,6 +11,6 @@ import { SellerProductsGuard } from "./seller-products.guard";
 @Module({
   imports: [AuthModule, MediaModule],
   controllers: [ProductController],
-  providers: [ProductTranslationsService, ProductService, ProductBulkService, SellerProductsGuard]
+  providers: [ProductTranslationsService, ProductDescriptionTemplatesService, ProductService, ProductBulkService, SellerProductsGuard]
 })
 export class ProductModule {}

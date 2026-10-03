@@ -1,6 +1,7 @@
 "use client";
 import { ProductAiPanel } from "@/components/ai/ProductAiPanel";
 import { ProductDescriptionEditor } from "@/components/product/ProductDescriptionEditor";
+import { ProductDescriptionTemplatePicker } from "@/components/product/ProductDescriptionTemplatePicker";
 import { LiveSeoPanel } from "@/components/seo/LiveSeoPanel";
 import { ProductTypeChange, type TypeChangePayload } from "@/components/product/ProductTypeChange";
 import { mergeProductAiDescription, productDescriptionText } from "@/lib/product-description";
@@ -1364,6 +1365,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
               <ProductSlugEditor locale={locale} mode="seller" currentProductId={editingProduct.product.id} slug={editDraft.slug} onChange={(slug) => setEditDraft((current) => ({ ...current, slug }))} />
               <label className={styles.field}><span>{copy.category}</span><input maxLength={100} value={editDraft.category} onChange={(event) => setEditDraft((current) => ({ ...current, category: event.target.value }))} /></label>
               <div className={styles.field}><span>{copy.description}</span><ProductDescriptionEditor key={editingProduct.product.id} locale={locale} label={copy.description} value={editDraft.description} disabled={editState === "loading"} onChange={(description) => setEditDraft((current) => ({ ...current, description }))} /></div>
+              <ProductDescriptionTemplatePicker locale={locale} title={editDraft.title} hasDescription={Boolean(editDraft.description.trim())} disabled={editState === "loading"} onApply={(description) => setEditDraft((current) => ({ ...current, description }))} />
               <LiveSeoPanel key={editingProduct.product.id} locale={locale} input={{ kind: "product", title: editDraft.title, body: editDraft.description, hasCover: Boolean(editingProduct.product.image) }} />
               <label className={styles.field}><span>{copy.publishState}</span><select value={editDraft.status} onChange={(event) => setEditDraft((current) => ({ ...current, status: event.target.value as ProductStatus }))}><option value="draft">{copy.draft}</option><option value="active">{copy.active}</option><option value="pending_review">{copy.pending_review}</option><option value="archived">{copy.archived}</option></select></label>
               <footer><button className={styles.secondaryButton} type="button" onClick={() => setEditingProduct(null)}>{copy.cancel}</button><button className={styles.primaryButton} type="submit" disabled={editState === "loading"}>{editState === "loading" ? copy.savingChanges : copy.saveChanges}</button></footer>
@@ -1575,6 +1577,7 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
               <label className={`${styles.field} ${creation.titleField}`}><span>{copy.title}</span><input required minLength={2} maxLength={200} placeholder={formCopy.titlePlaceholder} value={draft.title} onChange={(event) => updateDraft("title", event.target.value)} /></label>
               <ProductSlugEditor className={creation.slugField} locale={locale} mode="seller" slug={draft.slug} onChange={(slug) => { if (slug !== draft.slug) setSlugTouched(true); updateDraft("slug", slug); }} />
               <div className={styles.field}><span>{copy.description}<small>{formCopy.optional}</small></span><ProductDescriptionEditor locale={locale} label={copy.description} value={draft.description} disabled={submitState === "loading"} onChange={(description) => updateDraft("description", description)} /></div>
+              <ProductDescriptionTemplatePicker locale={locale} title={draft.title} hasDescription={Boolean(draft.description.trim())} disabled={submitState === "loading"} onApply={(description) => updateDraft("description", description)} />
               <label className={styles.field}><span>{copy.category}<small>{formCopy.optional}</small></span><input maxLength={100} value={draft.category} onChange={(event) => updateDraft("category", event.target.value)} /></label>
               <div className={creation.imageField}>
                 <div className={creation.imagePreview}>{imagePreview ? <Image unoptimized src={imagePreview} alt="" width={120} height={120} /> : <DesignIcon name="layers" />}</div>
