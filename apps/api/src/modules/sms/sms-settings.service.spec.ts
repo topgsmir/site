@@ -15,7 +15,8 @@ const crypto = new CredentialCryptoService(config);
 describe("SmsSettingsService", () => {
   it("returns a secret-safe default when the singleton row is not present", async () => {
     const prisma = {
-      sms_settings: { findUnique: async () => null }
+      sms_settings: { findUnique: async () => null },
+      sms_event_rules: { findFirst: async () => null }
     } as unknown as PrismaService;
 
     const settings = await new SmsSettingsService(prisma, crypto, config).get();
@@ -24,6 +25,8 @@ describe("SmsSettingsService", () => {
       otpEnabled: true,
       testModeEnabled: false,
       provider: "sms_ir",
+      lineNumber: null,
+      pendingCheckMinutes: 10,
       apiKeyConfigured: false,
       apiKeyHint: null,
       credentialSource: "none",
@@ -100,6 +103,8 @@ describe("SmsSettingsService", () => {
       test_mode_enabled: false,
       credentials_changed: true,
       api_key_hint: "-key",
+      line_number: null,
+      pending_check_minutes: 10,
       otp_template_id: 123,
       seller_new_order_template_id: 234,
       buyer_success_template_id: 345,
@@ -114,7 +119,8 @@ describe("SmsSettingsService", () => {
 
   it("does not enable OTP until the API key and OTP template are usable", async () => {
     const prisma = {
-      sms_settings: { findUnique: async () => null }
+      sms_settings: { findUnique: async () => null },
+      sms_event_rules: { findFirst: async () => null }
     } as unknown as PrismaService;
 
     await assert.rejects(

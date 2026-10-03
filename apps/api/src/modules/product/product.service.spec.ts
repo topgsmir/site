@@ -79,7 +79,7 @@ describe("product slug availability", () => {
 describe("public product search", () => {
   it("matches multiple terms and Persian digit variants while retaining public visibility rules", async () => {
     let query: { where: { status: string; type: unknown; variants: unknown; AND: Array<{ OR: Array<{ title?: { contains: string }; slug?: { contains: string }; category?: { contains: string } }> }> } } | undefined;
-    const service = serviceWith({ products: { findMany: async (input: typeof query) => { query = input; return []; } } });
+    const service = serviceWith({ products: { findMany: async (input: typeof query) => { query = input; return []; } }, sms_event_rules: { findFirst: async () => null } });
 
     assert.deepEqual(await service.listPublic({ search: "آیفون ۱۵", limit: 8 }), []);
     assert.equal(query?.where.status, "active");

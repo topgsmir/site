@@ -498,6 +498,7 @@ model users {
   club_admin_events            club_admin_events[]
   payment_config_events        payment_method_config_events[] @relation("payment_config_actor")
   sms_setting_events           sms_setting_events[]           @relation("sms_setting_actor")
+  sms_rule_events              sms_rule_events[]              @relation("sms_rule_actor")
   goghdi_setting_events        goghdi_setting_events[]         @relation("goghdi_setting_actor")
   shipping_setting_events      shipping_setting_events[]      @relation("shipping_setting_actor")
   updated_shipping_profiles    seller_shipping_profiles[]      @relation("seller_shipping_profile_updater")
@@ -2356,6 +2357,10 @@ model sms_deliveries {
   dedupe_key      String              @unique @map("dedupe_key") @db.VarChar(160)
   recipient       String              @map("recipient") @db.VarChar(16)
   template        String              @map("template") @db.VarChar(64)
+  event_key       String?             @db.VarChar(64)
+  template_id     Int?
+  message_text    String?             @db.Text
+  test_mode       Boolean             @default(false)
   parameters      Json                @map("parameters")
   status          notification_status @default(pending) @map("status")
   attempts        Int                 @default(0) @map("attempts")
@@ -2367,7 +2372,54 @@ model sms_deliveries {
   updated_at      DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@index([status, next_attempt_at, locked_at])
+  @@index([event_key, created_at(sort: Desc), id(sort: Desc)])
   @@map("sms_deliveries")
+}
+
+model sms_event_rules {
+  id             String   @id @default(uuid()) @db.Uuid
+  event_key      String   @db.VarChar(64)
+  product_type   String   @default("any") @db.VarChar(16)
+  recipient_kind String   @db.VarChar(16)
+  recipient_role String?  @db.VarChar(32)
+  phone_number   String?  @db.VarChar(16)
+  enabled        Boolean  @default(false)
+  template_id    Int?
+  message_text   String?  @db.Text
+  created_at     DateTime @default(now()) @db.Timestamptz(3)
+  updated_at     DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@index([event_key, product_type, enabled])
+  @@map("sms_event_rules")
+}
+
+model sms_rule_events {
+  id            String   @id @default(uuid()) @db.Uuid
+  rule_id       String   @db.Uuid
+  actor_user_id String
+  action        String   @db.VarChar(16)
+  event_key     String   @db.VarChar(64)
+  enabled       Boolean
+  created_at    DateTime @default(now()) @db.Timestamptz(3)
+  actor         users    @relation("sms_rule_actor", fields: [actor_user_id], references: [id], onDelete: Restrict)
+
+  @@index([rule_id, created_at(sort: Desc)])
+  @@index([actor_user_id, created_at(sort: Desc)])
+  @@map("sms_rule_events")
+}
+
+model sms_guest_challenges {
+  id         String   @id @default(uuid()) @db.Uuid
+  phone      String   @db.VarChar(16)
+  code_hash  String   @db.Char(64)
+  status     String   @default("pending") @db.VarChar(16)
+  attempts   Int      @default(0)
+  expires_at DateTime @db.Timestamptz(3)
+  created_at DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([phone, status, created_at(sort: Desc)])
+  @@index([expires_at])
+  @@map("sms_guest_challenges")
 }
 
 model sms_settings {
@@ -2377,6 +2429,8 @@ model sms_settings {
   encrypted_api_key            String?              @map("encrypted_api_key") @db.Text
   encryption_key_id            String?              @map("encryption_key_id")
   api_key_hint                 String?              @map("api_key_hint")
+  line_number                  String?              @db.VarChar(24)
+  pending_check_minutes        Int                  @default(10)
   otp_template_id              Int?                 @map("otp_template_id")
   seller_new_order_template_id Int?                 @map("seller_new_order_template_id")
   buyer_success_template_id    Int?                 @map("buyer_success_template_id")
@@ -2453,6 +2507,8 @@ model sms_setting_events {
   test_mode_enabled            Boolean      @default(false) @map("test_mode_enabled")
   credentials_changed          Boolean      @default(false) @map("credentials_changed")
   api_key_hint                 String?      @map("api_key_hint")
+  line_number                  String?      @db.VarChar(24)
+  pending_check_minutes        Int          @default(10)
   otp_template_id              Int?         @map("otp_template_id")
   seller_new_order_template_id Int?         @map("seller_new_order_template_id")
   buyer_success_template_id    Int?         @map("buyer_success_template_id")

@@ -5,6 +5,7 @@ import type { AdminSmsSettings } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
 import styles from "./SmsSettingsWorkspace.module.css";
+import { SmsRulesPanel } from "./SmsRulesPanel";
 
 const copy = {
   en: {
@@ -41,7 +42,8 @@ const copy = {
     retry: "Try again",
     loadError: "SMS settings could not be loaded. Refresh and try again.",
     saveError: "SMS settings could not be saved. Try again.",
-    updated: "Last changed {date}"
+    updated: "Last changed {date}",
+    providerTab: "Provider & login", rulesTab: "Scenarios & deliveries", lineNumber: "SMS sender line", pendingMinutes: "Pending product check (minutes)"
   },
   fa: {
     eyebrow: "تنظیمات پلتفرم / پیامک",
@@ -77,7 +79,8 @@ const copy = {
     retry: "تلاش دوباره",
     loadError: "تنظیمات پیامک بارگذاری نشد. صفحه را تازه کنید.",
     saveError: "تنظیمات پیامک ذخیره نشد. دوباره تلاش کنید.",
-    updated: "آخرین تغییر: {date}"
+    updated: "آخرین تغییر: {date}",
+    providerTab: "اتصال و ورود", rulesTab: "سناریوها و گزارش ارسال", lineNumber: "خط ارسال پیامک", pendingMinutes: "فاصله بررسی محصولات در انتظار (دقیقه)"
   },
   ar: {
     eyebrow: "إعدادات المنصة / الرسائل النصية",
@@ -113,7 +116,8 @@ const copy = {
     retry: "حاول مجدداً",
     loadError: "تعذر تحميل إعدادات الرسائل. حدّث الصفحة وحاول مجدداً.",
     saveError: "تعذر حفظ إعدادات الرسائل. حاول مجدداً.",
-    updated: "آخر تغيير: {date}"
+    updated: "آخر تغيير: {date}",
+    providerTab: "الاتصال والدخول", rulesTab: "السيناريوهات وسجل الإرسال", lineNumber: "خط إرسال الرسائل", pendingMinutes: "فاصل فحص المنتجات المعلقة (دقائق)"
   }
 } as const;
 
@@ -123,6 +127,9 @@ export function SmsSettingsWorkspace({ locale }: { locale: Locale }) {
   const [otpEnabled, setOtpEnabled] = useState(true);
   const [testModeEnabled, setTestModeEnabled] = useState(false);
   const [apiKey, setApiKey] = useState("");
+  const [lineNumber, setLineNumber] = useState("");
+  const [pendingCheckMinutes, setPendingCheckMinutes] = useState("10");
+  const [tab, setTab] = useState<"provider" | "rules">("rules");
   const [templateIds, setTemplateIds] = useState({
     otp: "",
     sellerNewOrder: "",
@@ -145,6 +152,8 @@ export function SmsSettingsWorkspace({ locale }: { locale: Locale }) {
       setOtpEnabled(response.data.otpEnabled);
       setTestModeEnabled(response.data.testModeEnabled);
       setApiKey("");
+      setLineNumber(response.data.lineNumber ?? "");
+      setPendingCheckMinutes(String(response.data.pendingCheckMinutes));
       setTemplateIds(Object.fromEntries(
         Object.entries(response.data.templateIds).map(([key, value]) => [key, value?.toString() ?? ""])
       ) as typeof templateIds);
@@ -165,6 +174,8 @@ export function SmsSettingsWorkspace({ locale }: { locale: Locale }) {
     saved.otpEnabled !== otpEnabled ||
     saved.testModeEnabled !== testModeEnabled ||
     apiKey.trim().length > 0 ||
+    (saved.lineNumber ?? "") !== lineNumber.trim() ||
+    saved.pendingCheckMinutes !== Number(pendingCheckMinutes) ||
     (Object.keys(templateIds) as Array<keyof typeof templateIds>).some(
       (key) => saved.templateIds[key] !== numberOrNull(templateIds[key])
     )
@@ -181,6 +192,8 @@ export function SmsSettingsWorkspace({ locale }: { locale: Locale }) {
         otpEnabled,
         testModeEnabled,
         ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
+        lineNumber: lineNumber.trim() || null,
+        pendingCheckMinutes: Number(pendingCheckMinutes),
         otpTemplateId: numberOrNull(templateIds.otp),
         sellerNewOrderTemplateId: numberOrNull(templateIds.sellerNewOrder),
         buyerSuccessTemplateId: numberOrNull(templateIds.buyerSuccess),
@@ -192,6 +205,8 @@ export function SmsSettingsWorkspace({ locale }: { locale: Locale }) {
       setOtpEnabled(response.data.otpEnabled);
       setTestModeEnabled(response.data.testModeEnabled);
       setApiKey("");
+      setLineNumber(response.data.lineNumber ?? "");
+      setPendingCheckMinutes(String(response.data.pendingCheckMinutes));
       setTemplateIds(Object.fromEntries(
         Object.entries(response.data.templateIds).map(([key, value]) => [key, value?.toString() ?? ""])
       ) as typeof templateIds);
@@ -215,7 +230,14 @@ export function SmsSettingsWorkspace({ locale }: { locale: Locale }) {
         <p>{c.intro}</p>
       </header>
 
-      {loading ? (
+      <div className={styles.smsTabs} role="group" aria-label={c.title}>
+        <button type="button" aria-pressed={tab === "rules"} onClick={() => setTab("rules")}>{c.rulesTab}</button>
+        <button type="button" aria-pressed={tab === "provider"} onClick={() => setTab("provider")}>{c.providerTab}</button>
+      </div>
+
+      {tab === "rules" ? <SmsRulesPanel locale={locale} /> : null}
+
+      {tab !== "provider" ? null : loading ? (
         <div className={styles.skeleton} aria-label={c.intro} aria-busy="true"><i /><i /></div>
       ) : error && !saved ? (
         <div className={styles.error} role="alert"><p>{error}</p><button type="button" onClick={() => void load()}>{c.retry}</button></div>
@@ -251,6 +273,8 @@ export function SmsSettingsWorkspace({ locale }: { locale: Locale }) {
                 }}
               />
             </label>
+            <label><span>{c.lineNumber}</span><input type="text" inputMode="numeric" maxLength={24} value={lineNumber} disabled={saving} onChange={(event) => setLineNumber(event.target.value)} /></label>
+            <label><span>{c.pendingMinutes}</span><input type="number" min={1} max={1440} value={pendingCheckMinutes} disabled={saving} onChange={(event) => setPendingCheckMinutes(event.target.value)} /></label>
             <fieldset>
               <legend>{c.templateHint}</legend>
               {([

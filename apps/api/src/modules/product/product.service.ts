@@ -502,7 +502,17 @@ export class ProductService {
 
     const products = rows.slice(0, input.limit);
     if (!products.length && input.cursor) throw new NotFoundException("Page was not found");
-    if (!products.length) return { items: [], nextCursor: null };
+    if (!products.length) {
+      const query = input.search?.trim();
+      if (query && !input.cursor && query.length >= 2 && await this.prisma.sms_event_rules.findFirst({ where: { event_key: "search_empty", enabled: true }, select: { id: true } })) {
+        const bucket = Math.floor(Date.now() / 600_000);
+        await this.prisma.outbox_events.createMany({ skipDuplicates: true, data: [{
+          aggregate: "search", aggregate_id: String(bucket), event_type: "search.empty",
+          dedupe_key: `search.empty:${bucket}`, payload: { query: query.slice(0, 100) }
+        }] });
+      }
+      return { items: [], nextCursor: null };
+    }
 
     const prices = await this.prisma.$queryRaw<
       Array<{ product_id: string; currency: string; price: Prisma.Decimal }>

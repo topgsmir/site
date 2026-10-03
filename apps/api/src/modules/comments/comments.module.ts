@@ -4,9 +4,10 @@ import { AuthModule } from "../auth/auth.module";
 import { CommentsController, AdminCommentsController } from "./comments.controller";
 import { CommentsService } from "./comments.service";
 import { SellerCommentLockGuard } from "./seller-comment-lock.guard";
+import { SmsModule } from "../sms/sms.module";
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, SmsModule],
   controllers: [CommentsController, AdminCommentsController],
   providers: [CommentsService, SellerCommentLockGuard, { provide: APP_GUARD, useExisting: SellerCommentLockGuard }],
   exports: [CommentsService]

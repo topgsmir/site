@@ -71,7 +71,9 @@ test("catalog covers every ordinary controller route and documents security-flow
     "POST /auth/otp/request-pending-phone",
     "POST /auth/otp/verify",
     "POST /auth/register",
-    "POST /captcha/challenge"
+    "POST /captcha/challenge",
+    // A public OTP endpoint is excluded for the same reason as auth/otp.
+    "POST /comments/guest-verification"
   ];
   const uncovered = applicationRoutes().filter((route) => !route.includes(" /ai/data/") && !catalogRoutes.has(route));
   assert.deepEqual(uncovered, excluded);

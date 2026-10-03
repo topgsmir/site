@@ -31,7 +31,7 @@ it("requires CAPTCHA before creating a guest comment when enabled", async () => 
   const limits = { consumeCommentSubmit: async () => { calls.push("limit"); } } as unknown as AuthRateLimitService;
   const policies = { get: async () => ({ captchaEnabled: true }) } as unknown as SecurityPolicyService;
   const captcha = { verify: async () => { calls.push("captcha"); } } as unknown as CaptchaService;
-  const controller = new CommentsController(comments, auth, limits, policies, captcha);
+  const controller = new CommentsController(comments, auth, limits, policies, captcha, { enabled: async () => false } as never);
   const request = { headers: {} } as AuthenticatedRequest;
   await assert.rejects(() => controller.create("product-id", { body: "Hello", guestName: "Guest" }, request, "127.0.0.1"), { status: 403 });
   assert.deepEqual(calls, ["limit"]);
