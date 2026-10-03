@@ -303,6 +303,29 @@
   padding-inline: var(--space-product-lg);
 }
 
+.downloadChoices {
+  display: grid;
+  gap: var(--space-product-xs);
+  padding-block: var(--space-product-sm);
+}
+
+.downloadChoices > span:first-child {
+  font-weight: 700;
+}
+
+.downloadChoices a,
+.downloadChoices > span:not(:first-child) {
+  display: block;
+  padding: var(--space-product-sm) var(--space-product-md);
+  border: var(--rule-product-thin) solid var(--color-product-rule);
+  border-radius: var(--radius-product-sm);
+}
+
+.downloadChoices a:focus-visible {
+  outline: calc(var(--rule-product-thin) * 2) solid var(--color-product-focus);
+  outline-offset: var(--space-product-2xs);
+}
+
 .addButton:focus-visible,
 .mobileCart button:focus-visible,
 .languages a:focus-visible,

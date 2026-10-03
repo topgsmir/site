@@ -195,7 +195,7 @@ export default async function ProductRoute({ params }: ProductRouteProps) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
         />
-        <ProductPage key={product.id} product={product} locale={localeParam} copy={getDictionary(localeParam).product} editHref={editHref} accountHref={accountHref}
+        <ProductPage key={product.id} product={product} locale={localeParam} copy={getDictionary(localeParam).product} editHref={editHref} accountHref={accountHref} signedInBuyer={user?.role === "buyer"}
           bridgeCheckout={<BridgeCheckout locale={localeParam} product={product} signedInUser={Boolean(user)} embedded />} />
       </>
     );
@@ -209,7 +209,7 @@ export default async function ProductRoute({ params }: ProductRouteProps) {
           __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c")
         }}
       />
-      <ProductPage key={product.id} product={product} locale={localeParam} copy={getDictionary(localeParam).product} editHref={editHref} accountHref={accountHref} />
+      <ProductPage key={product.id} product={product} locale={localeParam} copy={getDictionary(localeParam).product} editHref={editHref} accountHref={accountHref} signedInBuyer={user?.role === "buyer"} />
     </>
   );
 }

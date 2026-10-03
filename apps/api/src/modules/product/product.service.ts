@@ -629,7 +629,7 @@ export class ProductService {
                     seller: { select: { id: true, shop_name: true } }
                   }
                 },
-                digital: { select: { max_downloads: true } },
+                digital: { select: { max_downloads: true, file_references: true } },
                 physical: { select: { stock: true, weight_grams: true, length_cm: true, width_cm: true, height_cm: true } },
                 service: {
                   select: { service_type: true, estimated_hours: true, input_schema: true }
@@ -687,7 +687,7 @@ export class ProductService {
             shopName: offer.listing.seller.shop_name
           },
           ...(offer.digital
-            ? { digital: { maxDownloads: offer.digital.max_downloads } }
+            ? { digital: { maxDownloads: offer.digital.max_downloads, fileCount: Math.max(1, offer.digital.file_references.length) } }
             : {}),
           ...(offer.physical
             ? {

@@ -7,7 +7,7 @@ export type PublicProductOffer = {
   price: string;
   currency: string;
   seller: { id: string; shopName: string };
-  digital?: { maxDownloads: number };
+  digital?: { maxDownloads: number; fileCount: number };
   physical?: { inStock: boolean; weightGrams: number };
   service?: {
     serviceType: string;
@@ -115,7 +115,9 @@ function isProductOption(value: unknown): value is PublicProduct["options"][numb
 function hasValidFulfillment(value: Record<string, unknown>): boolean {
   if (
     value.digital !== undefined &&
-    (!isRecord(value.digital) || !isFiniteNumber(value.digital.maxDownloads))
+    (!isRecord(value.digital) || !isFiniteNumber(value.digital.maxDownloads) ||
+      !isFiniteNumber(value.digital.fileCount) || !Number.isInteger(value.digital.fileCount) ||
+      value.digital.fileCount < 1 || value.digital.fileCount > 50)
   ) {
     return false;
   }

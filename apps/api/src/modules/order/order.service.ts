@@ -877,6 +877,79 @@ export class OrderService {
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
+  async digitalAccess(actor: AppUser, offerId: string) {
+    if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can access purchases");
+    const itemWhere = {
+      offer_id: offerId,
+      product_type: "digital" as const,
+      digital_entitlement: { some: { buyer_id: actor.id } }
+    };
+    const order = await this.prisma.orders.findFirst({
+      where: {
+        buyer_id: actor.id,
+        status: { in: ["paid", "processing", "awaiting_confirmation", "delivered"] },
+        items: { some: itemWhere }
+      },
+      orderBy: [{ created_at: "desc" }, { id: "desc" }],
+      select: {
+        id: true,
+        items: {
+          where: itemWhere,
+          orderBy: { id: "desc" },
+          take: 1,
+          select: {
+            id: true,
+            digital_entitlement: {
+              where: { buyer_id: actor.id },
+              orderBy: { file_index: "asc" },
+              select: { file_index: true, delivery_url: true, max_downloads: true, download_count: true }
+            }
+          }
+        }
+      }
+    });
+    const item = order?.items[0];
+    return item ? {
+      orderId: order.id,
+      itemId: item.id,
+      files: mapDigitalDeliveries(order.id, item.id, item.digital_entitlement)
+    } : { orderId: null, itemId: null, files: [] };
+  }
+
+  async freeDigitalDownload(actor: AppUser, offerId: string, clientIp: string, fileIndex = 0) {
+    if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can download files");
+    const offer = await this.prisma.seller_offers.findFirst({
+      where: {
+        id: offerId,
+        status: "active",
+        price: new Prisma.Decimal(0),
+        listing: {
+          status: "active",
+          seller: { invited: false, approved: true, suspended_at: null },
+          product: { status: "active", type: "digital" }
+        }
+      },
+      select: {
+        currency: true,
+        listing: { select: { product: { select: { price_currency: true } } } },
+        digital: { select: { file_reference: true, file_references: true } }
+      }
+    });
+    const file = offer?.digital && offer.currency.trim() === offer.listing.product.price_currency
+      ? digitalFileReferences(offer.digital)[fileIndex] : undefined;
+    if (!file) throw new NotFoundException("Free download was not found");
+    try {
+      return signUploadDownloadLink(
+        file,
+        clientIp,
+        this.config?.get<string>("UPLOAD_DOWNLOAD_HOSTS") ?? "",
+        this.config?.get<string>("UPLOAD_DOWNLOAD_SECRET") ?? ""
+      );
+    } catch {
+      throw new ServiceUnavailableException("Digital delivery is not configured");
+    }
+  }
+
   private async scope(actor: AppUser): Promise<Prisma.ordersWhereInput> {
     if (this.hasPlatformPermission(actor, "orders_manage")) return {};
     if (actor.role === "buyer") return { buyer_id: actor.id };
