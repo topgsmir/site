@@ -15,7 +15,7 @@ import { ProductComments } from "@/components/comments/ProductComments";
 import { OfferPicker } from "@/components/product/OfferPicker";
 import { PublicHeader } from "@/components/PublicHeader";
 import { productPageCopy } from "./product-copy";
-import { DigitalProductHeading, DigitalProductPreview, DigitalDownloadGuide, DigitalDownloadQuestions } from "@/components/product/DigitalProductDetails";
+import { DigitalProductHeading, DigitalProductPreview, DigitalProductDescription, DigitalDownloadGuide, DigitalDownloadQuestions } from "@/components/product/DigitalProductDetails";
 import { digitalProductCopy, downloadAllowance } from "@/components/product/digital-product-copy";
 import { ProductDescription } from "@/components/product/ProductDescription";
 
@@ -226,7 +226,7 @@ export function ProductPage({
             </div> : null}
           </div>
 
-          <aside className={styles.purchasePanel} id="purchase" aria-labelledby="purchase-title">
+          <aside className={styles.purchasePanel} id="purchase" aria-labelledby="purchase-title" tabIndex={-1}>
             <h2 id="purchase-title">{isDigital ? d.purchase : isService ? c.orderService : copy.chooseOffer}</h2>
             {isBridge ? bridgeCheckout : <>
             <p>{isDigital ? d.offerHelp : copy.offerHelp}</p>
@@ -279,6 +279,7 @@ export function ProductPage({
             {isPhysical ? <div className={styles.deliveryNote}><DesignIcon name="bag" /><div><strong>{c.shipping}</strong><p>{c.shippingBody}</p></div></div> : selectedOffer?.service ? <p className={styles.purchaseNote}>{c.estimateNote}</p> : null}
             </>}
           </aside>
+          {isDigital ? <DigitalProductDescription description={product.description} locale={locale} /> : null}
         </section>
 
         {isService ? <section className={styles.requirements} aria-labelledby="requirements-title">

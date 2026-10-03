@@ -83,7 +83,6 @@ export class CommentsService {
 
   async create(targetType: CommentTargetType, targetId: string, body: CreateCommentDto, user: AppUser | null) {
     const settings = await this.getSettings();
-    if (user && user.role !== "buyer") throw new ForbiddenException("Only buyers may comment");
     if (!user && settings.postingPolicy !== "guests") throw new ForbiddenException("Sign in to comment");
     if (user && body.guestName !== undefined) throw new BadRequestException("Guest name is not allowed for signed-in comments");
     if (!user && !body.guestName?.trim()) throw new BadRequestException("Guest name is required");

@@ -21,6 +21,7 @@ import {
 const TIME_PATTERN = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
 const HOST_PATTERN = /^(?=.{1,253}$)(?!-)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.(?!-)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/i;
 const FINGERPRINT_PATTERN = /^SHA256:[A-Za-z0-9+/]{43}=?$/;
+const FTP_SAFE_TEXT = /^(?![\s\S]*[\r\n\0])/;
 
 export class UpdateBackupSettingsDto {
   @IsBoolean() automationEnabled!: boolean;
@@ -38,13 +39,13 @@ export class CreateBackupDestinationDto {
   @IsIn(["sftp", "ftps", "ftp"]) protocol!: "sftp" | "ftps" | "ftp";
   @IsString() @Matches(HOST_PATTERN) host!: string;
   @Type(() => Number) @IsInt() @Min(1) @Max(65535) port!: number;
-  @IsString() @MinLength(1) @MaxLength(200) username!: string;
-  @IsString() @MinLength(1) @MaxLength(1000) remotePath!: string;
+  @IsString() @MinLength(1) @MaxLength(200) @Matches(FTP_SAFE_TEXT) username!: string;
+  @IsString() @MinLength(1) @MaxLength(1000) @Matches(FTP_SAFE_TEXT) remotePath!: string;
   @Type(() => Number) @IsInt() @Min(1) @Max(365) retentionCount = 30;
   @IsBoolean() allowInsecure = false;
-  @IsOptional() @IsString() @MaxLength(4096) password?: string;
+  @IsOptional() @IsString() @MaxLength(4096) @Matches(FTP_SAFE_TEXT) password?: string;
   @IsOptional() @IsString() @MaxLength(32768) privateKey?: string;
-  @IsOptional() @IsString() @MaxLength(4096) privateKeyPassphrase?: string;
+  @IsOptional() @IsString() @MaxLength(4096) @Matches(FTP_SAFE_TEXT) privateKeyPassphrase?: string;
   @ValidateIf((value: CreateBackupDestinationDto) => value.protocol === "sftp")
   @IsString() @Matches(FINGERPRINT_PATTERN) hostKeyFingerprint?: string;
 }
@@ -54,14 +55,14 @@ export class UpdateBackupDestinationDto {
   @IsOptional() @IsIn(["sftp", "ftps", "ftp"]) protocol?: "sftp" | "ftps" | "ftp";
   @IsOptional() @IsString() @Matches(HOST_PATTERN) host?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(65535) port?: number;
-  @IsOptional() @IsString() @MinLength(1) @MaxLength(200) username?: string;
-  @IsOptional() @IsString() @MinLength(1) @MaxLength(1000) remotePath?: string;
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(200) @Matches(FTP_SAFE_TEXT) username?: string;
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(1000) @Matches(FTP_SAFE_TEXT) remotePath?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(365) retentionCount?: number;
   @IsOptional() @IsBoolean() enabled?: boolean;
   @IsOptional() @IsBoolean() allowInsecure?: boolean;
-  @IsOptional() @IsString() @MaxLength(4096) password?: string;
+  @IsOptional() @IsString() @MaxLength(4096) @Matches(FTP_SAFE_TEXT) password?: string;
   @IsOptional() @IsString() @MaxLength(32768) privateKey?: string;
-  @IsOptional() @IsString() @MaxLength(4096) privateKeyPassphrase?: string;
+  @IsOptional() @IsString() @MaxLength(4096) @Matches(FTP_SAFE_TEXT) privateKeyPassphrase?: string;
   @IsOptional() @IsString() @Matches(FINGERPRINT_PATTERN) hostKeyFingerprint?: string;
 }
 

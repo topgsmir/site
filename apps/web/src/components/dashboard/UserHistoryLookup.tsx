@@ -65,9 +65,11 @@ type Result = {
 export function UserHistoryLookup({
   locale,
   audience,
+  wide = false,
 }: {
   locale: Locale;
   audience: "admin" | "seller";
+  wide?: boolean;
 }) {
   const c = copy[locale];
   const router = useRouter();
@@ -140,7 +142,7 @@ export function UserHistoryLookup({
 
   return (
     <section
-      className={styles.lookup}
+      className={`${styles.lookup} ${wide ? styles.wide : ""}`}
       aria-labelledby={`user-history-lookup-${audience}`}
     >
       <div className={styles.heading}>

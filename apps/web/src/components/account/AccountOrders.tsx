@@ -47,7 +47,7 @@ export function AccountOrders({ locale, view }: { locale: Locale; view: "overvie
     setError("");
     failedCursor.current = next;
     try {
-      const response = await api.get<OrderPage>("/orders", { signal: controller.signal, params: { limit: view === "overview" ? 5 : 20, ...(next ? { cursor: next } : {}) } });
+      const response = await api.get<OrderPage>("/orders/purchases", { signal: controller.signal, params: { limit: view === "overview" ? 5 : 20, ...(next ? { cursor: next } : {}) } });
       if (controller.signal.aborted) return;
       setOrders((current) => next ? [...current, ...response.data.items.filter((item) => !current.some((existing) => existing.id === item.id))] : response.data.items);
       setCursor(response.data.nextCursor);

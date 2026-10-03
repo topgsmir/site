@@ -58,7 +58,7 @@ describe("Zibal payment adapter", () => {
     globalThis.fetch = async () => new Response(JSON.stringify({ result: 100, amount: 9999 }), { status: 200 });
     await assert.rejects(() => adapter.verify("1234567890123", "1000"), /different payment amount/);
     globalThis.fetch = async () => new Response(JSON.stringify({ result: 201, amount: 10000 }), { status: 200 });
-    await assert.rejects(() => adapter.verify("1234567890123", "1000"), /reconciliation is required/);
+    await assert.rejects(() => adapter.verify("1234567890123", "1000"), /inquiry was not successful/);
   });
 
   it("rejects inexact amounts and malformed provider responses", async () => {
@@ -71,4 +71,17 @@ describe("Zibal payment adapter", () => {
     assert.equal((await adapter.availability()).available, true);
     assert.equal(adapter.supportsRefunds, false);
   });
+});
+
+for (const [status, expected] of [[1, true], [2, true], [3, false], [15, false], [18, false], [-1, null], [-2, null], [4, null], [16, null], [999, null]] as const) {
+  it(`classifies Zibal payment status ${status} without treating inquiry success as payment success`, async () => {
+    globalThis.fetch = async () => new Response(JSON.stringify({ result: 100, status, amount: 10000 }));
+    assert.equal(await new ZibalAdapter(credentials as never).inquiry("12345", "1000"), expected);
+  });
+}
+it("recovers an already-verified Zibal payment only with matching inquiry amount and status", async () => {
+  globalThis.fetch = async (url) => new Response(JSON.stringify(String(url).endsWith("/verify")
+    ? { result: 201 } : { result: 100, status: 1, amount: 10000, refNumber: 123 }));
+  assert.deepEqual(await new ZibalAdapter(credentials as never).verify("12345", "1000"), { verified: true, referenceId: "123" });
+  await assert.rejects(() => new ZibalAdapter(credentials as never).verify("12345", "2000"), /different payment amount/);
 });

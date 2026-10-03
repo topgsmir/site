@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { notFound, permanentRedirect } from "next/navigation";
 import { BridgeCheckout } from "@/components/bridge/BridgeCheckout";
 import { SERVER_API_BASE } from "@/lib/api/server";
-import { dashboardFor, getCurrentUser } from "@/lib/auth/server";
+import { getCurrentUser } from "@/lib/auth/server";
 import { getDictionary, isLocale, type Locale } from "@/lib/i18n";
 import { ProductPage } from "./ProductPage";
 import { getPublicProduct, type PublicProduct } from "./product.server";
@@ -178,7 +178,7 @@ export default async function ProductRoute({ params }: ProductRouteProps) {
   if (!product) notFound();
 
   const user = await getCurrentUser();
-  const accountHref = user ? dashboardFor(user, localeParam) : null;
+  const accountHref = user ? `/${localeParam}/account` : null;
   const sellerCanEdit = (user?.role === "seller-admin" || user?.role === "seller-staff") && user.permissions?.includes("products_manage")
     ? await canSellerEditProduct(product.id, product.slug)
     : false;
@@ -196,7 +196,7 @@ export default async function ProductRoute({ params }: ProductRouteProps) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
         />
         <ProductPage key={product.id} product={product} locale={localeParam} copy={getDictionary(localeParam).product} editHref={editHref} accountHref={accountHref}
-          bridgeCheckout={<BridgeCheckout locale={localeParam} product={product} signedInBuyer={user?.role === "buyer"} embedded />} />
+          bridgeCheckout={<BridgeCheckout locale={localeParam} product={product} signedInUser={Boolean(user)} embedded />} />
       </>
     );
   }

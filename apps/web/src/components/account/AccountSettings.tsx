@@ -1,7 +1,7 @@
 "use client";
 
 import axios from "axios";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { AppUser } from "@topgsm/shared-types";
 import { api } from "@/lib/api/client";
 import type { Locale } from "@/lib/i18n";
@@ -13,6 +13,12 @@ const COPY = {
   ar: { title: "البيانات الشخصية", name: "الاسم الكامل", email: "البريد الإلكتروني", username: "اسم المستخدم", usernameHint: "من 3 إلى 32 حرفًا إنجليزيًا صغيرًا أو رقمًا أو شرطة سفلية. اتركه فارغًا إذا لم يكن لديك اسم مستخدم.", save: "حفظ التغييرات", saving: "جارٍ الحفظ…", saved: "تم حفظ بيانات حسابك.", error: "تعذر حفظ البيانات. حاول مجددًا.", conflict: "البريد الإلكتروني أو اسم المستخدم مستخدم بالفعل.", invalidEmail: "أدخل بريدًا جديدًا لتغيير البريد الحالي.", invalidUsername: "لا يمكن ترك اسم المستخدم فارغًا. استخدم 3 إلى 32 حرفًا إنجليزيًا صغيرًا أو رقمًا أو شرطة سفلية.", limited: "أُجريت تغييرات كثيرة. حاول مجددًا لاحقًا." }
 } as const;
 
+const PHONE_COPY = {
+  en: { title: "Confirm your mobile number", pending: "An administrator added this number. Confirm it to use it for sign-in and account messages.", send: "Send verification code", sent: "A code was sent to your phone.", code: "Six-digit code", confirm: "Confirm number", done: "Your mobile number is confirmed.", error: "Could not verify the number. Check the code or try again.", busy: "Please wait…" },
+  fa: { title: "تأیید شماره موبایل", pending: "مدیر این شماره را ثبت کرده است. برای ورود و دریافت پیام‌های حساب، آن را تأیید کنید.", send: "ارسال کد تأیید", sent: "کد برای شماره شما ارسال شد.", code: "کد شش‌رقمی", confirm: "تأیید شماره", done: "شماره موبایل شما تأیید شد.", error: "شماره تأیید نشد. کد را بررسی کنید یا دوباره تلاش کنید.", busy: "لطفاً صبر کنید…" },
+  ar: { title: "تأكيد رقم الهاتف", pending: "أضاف المدير هذا الرقم. أكده لاستخدامه لتسجيل الدخول ورسائل الحساب.", send: "إرسال رمز التأكيد", sent: "أُرسل الرمز إلى هاتفك.", code: "الرمز المكون من ستة أرقام", confirm: "تأكيد الرقم", done: "تم تأكيد رقم هاتفك.", error: "تعذر تأكيد الرقم. تحقق من الرمز أو حاول مرة أخرى.", busy: "يرجى الانتظار…" }
+} as const;
+
 export function AccountSettings({ locale, user, onUpdated }: { locale: Locale; user: AppUser; onUpdated: (user: AppUser) => void }) {
   const c = COPY[locale];
   const [name, setName] = useState(user.fullName);
@@ -21,6 +27,46 @@ export function AccountSettings({ locale, user, onUpdated }: { locale: Locale; u
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [pendingPhone, setPendingPhone] = useState<string | null>(null);
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [phoneCode, setPhoneCode] = useState("");
+  const [phoneBusy, setPhoneBusy] = useState(false);
+  const [phoneStatus, setPhoneStatus] = useState("");
+  const pc = PHONE_COPY[locale];
+  useEffect(() => {
+    if (user.role !== "buyer") return;
+    const controller = new AbortController();
+    void api.get<{ pendingPhoneNumber: string | null }>("/auth/otp/pending-phone", { signal: controller.signal })
+      .then(({ data }) => setPendingPhone(data.pendingPhoneNumber))
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [user.role]);
+
+  async function requestPhoneCode() {
+    setPhoneBusy(true);
+    setPhoneStatus("");
+    try {
+      const { data } = await api.post<{ challengeId: string }>("/auth/otp/request-pending-phone");
+      setChallengeId(data.challengeId);
+      setPhoneStatus(pc.sent);
+    } catch { setPhoneStatus(pc.error); }
+    finally { setPhoneBusy(false); }
+  }
+
+  async function confirmPhone(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!pendingPhone || !challengeId) return;
+    setPhoneBusy(true);
+    setPhoneStatus("");
+    try {
+      await api.post("/auth/otp/confirm-pending-phone", { phoneNumber: pendingPhone, challengeId, code: phoneCode });
+      setPendingPhone(null);
+      setChallengeId(null);
+      setPhoneCode("");
+      setPhoneStatus(pc.done);
+    } catch { setPhoneStatus(pc.error); }
+    finally { setPhoneBusy(false); }
+  }
   const dirty = name.trim() !== user.fullName || email.trim().toLowerCase() !== (user.email ?? "") || username.trim() !== (user.username ?? "");
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -54,7 +100,7 @@ export function AccountSettings({ locale, user, onUpdated }: { locale: Locale; u
     }
   }
 
-  return <section className={styles.card} aria-labelledby="personal-details">
+  return <><section className={styles.card} aria-labelledby="personal-details">
     <h2 id="personal-details">{c.title}</h2>
     <form onSubmit={(event) => void save(event)}>
       <div className={styles.field}><label htmlFor="profile-name">{c.name}</label>
@@ -68,5 +114,17 @@ export function AccountSettings({ locale, user, onUpdated }: { locale: Locale; u
       {message ? <p className={styles.success} role="status">{message}</p> : null}
       <div className={styles.actions}><button type="submit" disabled={saving || !dirty}>{saving ? c.saving : c.save}</button></div>
     </form>
-  </section>;
+  </section>
+  {pendingPhone ? <section className={styles.card} aria-labelledby="pending-phone-title">
+    <h2 id="pending-phone-title">{pc.title}</h2>
+    <p>{pc.pending}</p>
+    <p dir="ltr">{pendingPhone}</p>
+    {!challengeId ? <div className={styles.actions}><button type="button" disabled={phoneBusy} onClick={() => void requestPhoneCode()}>{phoneBusy ? pc.busy : pc.send}</button></div> :
+      <form onSubmit={(event) => void confirmPhone(event)}>
+        <div className={styles.field}><label htmlFor="pending-phone-code">{pc.code}</label>
+          <input id="pending-phone-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} minLength={6} required autoComplete="one-time-code" dir="ltr" value={phoneCode} onChange={(event) => setPhoneCode(event.target.value.replace(/\D/g, "").slice(0, 6))} disabled={phoneBusy} /></div>
+        <div className={styles.actions}><button type="submit" disabled={phoneBusy || phoneCode.length !== 6}>{phoneBusy ? pc.busy : pc.confirm}</button></div>
+      </form>}
+    {phoneStatus ? <p role="status">{phoneStatus}</p> : null}
+  </section> : phoneStatus ? <p role="status">{phoneStatus}</p> : null}</>;
 }

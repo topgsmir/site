@@ -28,7 +28,7 @@
 .listToolbar strong { font-size: var(--text-dashboard-md); }
 .listToolbar span { color: var(--color-dashboard-muted); font-size: .8rem; }
 .list { overflow: hidden; border: 1px solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-control); background: var(--color-dashboard-surface-raised); }
-.listHead, .userRow { display: grid; grid-template-columns: minmax(160px, 1.2fr) minmax(180px, 1.3fr) minmax(65px, .4fr) minmax(100px, .6fr) 24px; align-items: center; gap: var(--space-dashboard-md); }
+.listHead, .userRow { display: grid; grid-template-columns: minmax(160px, 1.2fr) minmax(180px, 1.3fr) minmax(65px, .4fr) minmax(120px, .7fr) minmax(100px, .6fr) 24px; align-items: center; gap: var(--space-dashboard-md); }
 .listHead { padding: 8px .75rem; border-bottom: 1px solid var(--color-dashboard-rule); color: var(--color-dashboard-muted); background: var(--color-dashboard-surface); font-size: .72rem; font-weight: 600; }
 .list > div + div { border-top: 1px solid var(--color-dashboard-rule); }
 .userRow { width: 100%; min-height: 54px; padding: 7px .75rem; border: 0; color: var(--color-dashboard-ink); background: transparent; text-align: start; font: inherit; cursor: pointer; }
@@ -47,6 +47,7 @@
 .roleLabel[data-role="platform_staff"] { --user-role-color: var(--color-user-role-platform-staff); }
 .roleLabel[data-role="platform_admin"] { --user-role-color: var(--color-user-role-platform-admin); }
 .rowCount { font-weight: 600; }
+.rowBalance { overflow-wrap: anywhere; font-size: .8rem; font-weight: 600; }
 .mobileLabel { display: none; }
 .rowArrow { color: var(--color-dashboard-accent-strong); font-size: 1.5rem; line-height: 1; }
 .pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; color: var(--color-dashboard-muted); font-size: .82rem; }
@@ -149,7 +150,7 @@
 .workspace button:focus-visible, .workspace input:focus-visible, .workspace select:focus-visible, .workspace summary:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
 @media (max-width: 70rem) { .advancedGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 55rem) { .factGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .factGrid > div { border-top: 1px solid var(--color-dashboard-rule); } .factGrid > div:nth-child(-n+2) { border-top: 0; } .factGrid > div:not(:first-child) { border-inline-start: 0; } .factGrid > div:nth-child(even) { border-inline-start: 1px solid var(--color-dashboard-rule); } }
-@media (max-width: 42rem) { .filterTop { grid-template-columns: 1fr; } .advancedGrid { grid-template-columns: 1fr 1fr; } .listHead { display: none; } .userRow { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; } .rowIdentity, .rowContact { grid-column: 1; } .rowCount, .userRow time { grid-column: 1; font-size: .76rem; } .mobileLabel { display: inline; color: var(--color-dashboard-muted); font-weight: 400; } .rowArrow { grid-column: 2; grid-row: 1 / 4; align-self: center; } .recordSummary { align-items: start; flex-direction: column; gap: 8px; } .recordSide { display: flex; width: 100%; justify-content: space-between; text-align: start; } .recordFields { grid-template-columns: 1fr; } }
+@media (max-width: 42rem) { .filterTop { grid-template-columns: 1fr; } .advancedGrid { grid-template-columns: 1fr 1fr; } .listHead { display: none; } .userRow { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; } .rowIdentity, .rowContact { grid-column: 1; } .rowCount, .rowBalance, .userRow time { grid-column: 1; font-size: .76rem; } .mobileLabel { display: inline; color: var(--color-dashboard-muted); font-weight: 400; } .rowArrow { grid-column: 2; grid-row: 1 / 5; align-self: center; } .recordSummary { align-items: start; flex-direction: column; gap: 8px; } .recordSide { display: flex; width: 100%; justify-content: space-between; text-align: start; } .recordFields { grid-template-columns: 1fr; } }
 @media (max-width: 32rem) { .advancedGrid, .editFields { grid-template-columns: 1fr; } .personHeader { align-items: stretch; } .personHeader > button { width: 100%; } .changeHeader { display: none; } .change { grid-template-columns: 1fr; } .change > span { display: none; } .changeValue small { display: block; } }
 @media (max-width: 32rem) { .createFields { grid-template-columns: 1fr; } }
 

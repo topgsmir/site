@@ -22,10 +22,10 @@ const COPY = {
   ar: { paymentMethod: "طريقة الدفع", paymentUnavailable: "لا تتوفر طريقة دفع", retry: "إعادة محاولة الدفع", saved: "تم حفظ طلبك. أعد محاولة الدفع للطلب نفسه؛ لا يمكن تعديل تفاصيله هنا.", pending: "تعذر تأكيد الطلب. أعد المحاولة بالمعلومات نفسها لاستعادة حالته بأمان.", orders: "عرض الطلبات", back: "TopGSM", service: "شراء خدمة آمن", sold: "البائع", variant: "العرض", qty: "الكمية", buyer: "المعلومات المطلوبة", buy: "اشتر الآن", signin: "تحقق من رقم الجوال", phone: "رقم جوال إيراني", fullName: "الاسم", code: "الرمز المكوّن من ستة أرقام", send: "إرسال الرمز", verify: "تحقق وتابع", sending: "يرجى الانتظار…", total: "الإجمالي", protected: "تُشفّر بياناتك ولا تُستخدم إلا لتنفيذ هذا الطلب.", error: "تعذر متابعة الدفع. راجع المعلومات وحاول مجدداً.", unavailable: "هذا المنتج غير متاح حالياً." }
 } as const;
 
-export function BridgeCheckout({ locale, product, signedInBuyer, embedded = false }: { locale: Locale; product: StoreProduct; signedInBuyer: boolean; embedded?: boolean }) {
+export function BridgeCheckout({ locale, product, signedInUser, embedded = false }: { locale: Locale; product: StoreProduct; signedInUser: boolean; embedded?: boolean }) {
   const c=COPY[locale]; const offers=product.variants.flatMap((variant)=>variant.offers.map((offer)=>({...offer,variantName:variant.name})));
   const [offerId,setOfferId]=useState(offers[0]?.id ?? ""); const [quantity,setQuantity]=useState(product.bridge?.minimumQuantity ?? 1); const [fields,setFields]=useState<Record<string,string>>({});
-  const [otp,setOtp]=useState(signedInBuyer); const [challenge,setChallenge]=useState(""); const [phone,setPhone]=useState(""); const [busy,setBusy]=useState(false); const [error,setError]=useState("");
+  const [otp,setOtp]=useState(signedInUser); const [challenge,setChallenge]=useState(""); const [phone,setPhone]=useState(""); const [busy,setBusy]=useState(false); const [error,setError]=useState("");
   const offer=offers.find((item)=>item.id===offerId); const total=offer ? formatCurrencyAmount(multiplyCurrencyAmount(offer.price, Number.isSafeInteger(quantity) && quantity > 0 ? quantity : 0), offer.currency, locale) : "—";
   const attempt = useRef<ReturnType<typeof createBridgeCheckoutAttempt> | null>(null);
   const submitting = useRef(false);

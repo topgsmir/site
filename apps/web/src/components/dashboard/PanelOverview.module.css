@@ -24,6 +24,7 @@
 .overview :is(a, button, summary):focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 4px; }
 .overview :is(a, button):active { opacity: .75; }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: .875rem; }
+.reviewSlot { min-width: 0; }
 .performance { min-width: 0; display: grid; align-content: start; gap: .875rem; }
 .hero { padding: 1rem; border-radius: .75rem; background: var(--color-brand-navy); color: var(--color-brand-off-white); }
 .heroTop { display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
@@ -106,24 +107,28 @@
 @keyframes pulse { to { opacity: .45; } }
 @media (hover: hover) and (pointer: fine) { .textLink:hover { text-decoration: underline; text-underline-offset: .25rem; } .primary:hover { opacity: .9; } .refresh:hover, .periods button:hover { background: var(--color-dashboard-surface-raised); } }
 @media (min-width: 75rem) {
-  .performance { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .hero { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.4fr); gap: .125rem .875rem; align-content: center; }
-  .heroTop { grid-column: 1; grid-row: 1; align-items: start; flex-direction: column; gap: .125rem; }
-  .total { grid-column: 1; grid-row: 2; }
-  .hero > .change { grid-column: 1; grid-row: 3; }
-  .metrics { grid-column: 2; grid-row: 1 / 4; align-content: center; gap: .5rem; margin: 0; padding: 0 0 0 0; padding-inline-start: .875rem; border-block-start: 0; border-inline-start: 1px solid var(--color-dashboard-muted); }
-  .operations { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(14rem, .36fr); gap: .75rem; align-items: center; }
-  .operations > .sectionHead { grid-column: 1; }
-  .operations > .sectionHead p { display: none; }
-  .actions { grid-column: 2; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; align-items: center; margin: 0; }
-  .action { min-width: 0; border: 0; }
-  .action p { display: none; }
-  .settlement { grid-column: 3; grid-row: 1; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0 .375rem; margin: 0; padding: .375rem .5rem; }
-  .settlement h2 { grid-column: 1; grid-row: 1; font-size: .8125rem; }
-  .settlement > p { grid-column: 1; grid-row: 2; margin: 0; font-size: .6875rem; }
-  .settlement > strong { grid-column: 2; grid-row: 1 / 3; font-size: .875rem; }
-  .settlementDetails { grid-column: 1 / -1; margin: 0; }
-  .settlementDetails summary { min-height: 1.375rem; }
+  .sellerLayout .performance { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sellerLayout .hero { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.4fr); gap: .125rem .875rem; align-content: center; }
+  .sellerLayout .heroTop { grid-column: 1; grid-row: 1; align-items: start; flex-direction: column; gap: .125rem; }
+  .sellerLayout .total { grid-column: 1; grid-row: 2; }
+  .sellerLayout .hero > .change { grid-column: 1; grid-row: 3; }
+  .sellerLayout .metrics { grid-column: 2; grid-row: 1 / 4; align-content: center; gap: .5rem; margin: 0; padding: 0 0 0 0; padding-inline-start: .875rem; border-block-start: 0; border-inline-start: 1px solid var(--color-dashboard-muted); }
+  .sellerLayout .operations { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(14rem, .36fr); gap: .75rem; align-items: center; }
+  .sellerLayout .operations > .sectionHead { grid-column: 1; }
+  .sellerLayout .operations > .sectionHead p { display: none; }
+  .sellerLayout .actions { grid-column: 2; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; align-items: center; margin: 0; }
+  .sellerLayout .action { min-width: 0; border: 0; }
+  .sellerLayout .action p { display: none; }
+  .sellerLayout .settlement { grid-column: 3; grid-row: 1; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0 .375rem; margin: 0; padding: .375rem .5rem; }
+  .sellerLayout .settlement h2 { grid-column: 1; grid-row: 1; font-size: .8125rem; }
+  .sellerLayout .settlement > p { grid-column: 1; grid-row: 2; margin: 0; font-size: .6875rem; }
+  .sellerLayout .settlement > strong { grid-column: 2; grid-row: 1 / 3; font-size: .875rem; }
+  .sellerLayout .settlementDetails { grid-column: 1 / -1; margin: 0; }
+  .sellerLayout .settlementDetails summary { min-height: 1.375rem; }
+  .adminLayout { grid-template-columns: minmax(0, 1fr) minmax(15.5rem, 18rem); align-items: start; }
+  .adminLayout .reviewSlot { grid-column: 2; grid-row: 1; }
+  .adminLayout .performance { grid-column: 1; grid-row: 1 / span 2; }
+  .adminLayout .operations { grid-column: 2; grid-row: 2; }
   .bottomGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 42rem) { .heading, .toolbar, .sectionHead { align-items: start; flex-direction: column; } .heading { gap: 1rem; } .headingActions { width: 100%; margin-inline-start: 0; } .toolbar { gap: .65rem; } .tools { width: 100%; justify-content: space-between; } .heroTop { align-items: start; flex-direction: column; gap: .5rem; } .metrics { grid-template-columns: minmax(0, 1fr); gap: 1rem; } .metrics > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: .25rem .75rem; } .metrics strong { justify-content: end; margin: 0; } .metrics h3 { align-self: center; margin: 0; } .metrics .change { grid-column: 1 / -1; } .chartCard, .listCard, .operations { padding: 1.15rem; } .activity li, .ranking li { grid-template-columns: auto minmax(0, 1fr); } .activity b, .ranking b { grid-column: 2; text-align: start; } .activity b small, .ranking b small { display: inline; margin-inline-start: .4rem; } .periods { width: 100%; } .periods button { flex: 1; padding-inline: .65rem; } }

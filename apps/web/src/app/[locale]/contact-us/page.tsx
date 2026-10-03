@@ -2,11 +2,11 @@ import type { Metadata, Route } from "next";
 import { managedSeoMetadata } from "@/lib/seo-settings-server";
 import type { PublicExpertSummary } from "@topgsm/shared-types";
 import Link from "next/link";
-import Image from "next/image";
+import { SellerAvatar } from "@/components/seller/SellerAvatar";
 import { notFound } from "next/navigation";
 import { PublicHeader } from "@/components/PublicHeader";
 import { getDirection, isLocale } from "@/lib/i18n";
-import { dashboardFor, getCurrentUser } from "@/lib/auth/server";
+import { getCurrentUser } from "@/lib/auth/server";
 import { SERVER_API_BASE } from "@/lib/api/server";
 import { ContactChat } from "./ContactChat";
 import { contactCopy, contactEmail, telephoneHref } from "./contact-copy";
@@ -57,7 +57,7 @@ export default async function ContactPage({ params }: Props) {
   const [user, experts] = await Promise.all([getCurrentUser(), fetchExperts()]);
   return <div className={styles.page} dir={getDirection(locale)}>
     <a className="skip-link" href="#contact-main">{c.skip}</a>
-    <PublicHeader locale={locale} accountHref={user ? dashboardFor(user, locale) : null} current="contact" />
+    <PublicHeader locale={locale} accountHref={user ? `/${locale}/account` : null} current="contact" />
     <main id="contact-main" className={styles.main}>
       <nav className={styles.breadcrumb} aria-label={c.title}><Link href={`/${locale}` as Route}>{c.home}</Link><span aria-hidden="true">/</span><span aria-current="page">{c.title}</span></nav>
       <section className={styles.hero} aria-labelledby="contact-title">
@@ -77,7 +77,7 @@ export default async function ContactPage({ params }: Props) {
         {experts?.length ? <ul className={styles.experts}>{experts.map((expert) => {
           return <li key={expert.id} className={styles.expert}>
             <div className={styles.expertIdentity}>
-              <div className={styles.avatar} aria-hidden="true">{expert.profilePicture ? <Image src={expert.profilePicture.url} alt="" width={42} height={42} /> : expert.name.trim().split(/\s+/).slice(0, 2).map((part) => part.charAt(0)).join(" ")}</div>
+              <SellerAvatar className={styles.avatar} name={expert.name} picture={expert.profilePicture} locale={locale} size={42} />
               <div><h3>{expert.name}</h3><p>{expert.specialty || c.expertFallback}</p></div>
             </div>
             <Link className={styles.profileLink} href={`/${locale}/experts/${expert.id}` as Route} aria-label={`${c.viewProfile}: ${expert.name}`}>{c.viewProfile}<span aria-hidden="true">↗</span></Link>

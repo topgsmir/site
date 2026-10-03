@@ -6,6 +6,7 @@ import type { Locale } from "@/lib/i18n";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import { DesignIcon } from "@/components/DesignIcon";
 import { BlogComments } from "@/components/comments/BlogComments";
+import { SellerAvatar } from "@/components/seller/SellerAvatar";
 import { BlogFooter, BlogHeader } from "./BlogChrome";
 import { RichText } from "./RichText";
 import { articleHeadings, articleText } from "./article-content";
@@ -56,7 +57,9 @@ export function BlogArticle({ locale, post, sidebar, storeProducts = [], editHre
               {post.excerpt ? <p className={styles.deck}>{post.excerpt}</p> : null}
               <div className={styles.metadata}>
                 <div className={styles.byline}>
-                  <span className={styles.avatar} aria-hidden="true">{post.author.type === "editorial" ? "TG" : post.author.name.slice(0, 1)}</span>
+                  {post.author.type === "seller"
+                    ? <SellerAvatar className={styles.avatar} name={post.author.name} picture={post.author.profilePicture} locale={locale} size={40} />
+                    : <span className={styles.avatar} aria-hidden="true">TG</span>}
                   <div><span className={styles.author}>{post.author.name}</span>{date ? <time dateTime={post.publishedAt ?? undefined}>{date}</time> : <span>{copy.author}</span>}</div>
                 </div>
                 <div className={styles.articleActions}>

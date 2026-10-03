@@ -5,7 +5,7 @@ import type { AuthService } from "../auth/auth.service";
 import { AdminUsersService } from "./admin-users.service";
 
 const date = new Date("2026-09-13T08:00:00.000Z");
-const user = { id: "3dd30b78-d1dc-44e0-a420-798e474b7a0a", support_code: "7K4P9", full_name: "Customer One", username: "customer", email: "customer@example.com", phone_number: "+989121234567", role: "buyer", created_at: date, updated_at: date, _count: { orders: 3 } };
+const user = { id: "3dd30b78-d1dc-44e0-a420-798e474b7a0a", support_code: "7K4P9", full_name: "Customer One", username: "customer", email: "customer@example.com", phone_number: "+989121234567", pending_phone_number: null, role: "buyer", created_at: date, updated_at: date, _count: { orders: 3 }, wallet_account: { balance: { toString: () => "12345" } } };
 const auth = { createPasswordHash: async () => "scrypt$hash" } as unknown as AuthService;
 
 describe("AdminUsersService", () => {
@@ -13,9 +13,9 @@ describe("AdminUsersService", () => {
     let createData: Record<string, unknown> | undefined;
     let auditData: Record<string, unknown> | undefined;
     const tx = {
-      users: { create: async (input: { data: Record<string, unknown> }) => {
+      users: { findFirst: async () => null, create: async (input: { data: Record<string, unknown> }) => {
         createData = input.data;
-        return { ...user, role: "buyer", username: "new_buyer", phone_number: "+989172732188" };
+        return { ...user, role: "buyer", username: "new_buyer", phone_number: null, pending_phone_number: "+989172732188" };
       } },
       admin_user_profile_changes: { create: async (input: { data: Record<string, unknown> }) => { auditData = input.data; } }
     };
@@ -23,7 +23,9 @@ describe("AdminUsersService", () => {
     const created = await new AdminUsersService(prisma, auth).create("owner-id", {
       fullName: " New Buyer ", email: " NEW@example.com ", username: "new_buyer", phoneNumber: "09172732188", password: "initial-password"
     });
-    assert.deepEqual(createData, { full_name: "New Buyer", email: "new@example.com", username: "new_buyer", phone_number: "+989172732188", password_hash: "scrypt$hash", role: "buyer" });
+    assert.deepEqual(createData, { full_name: "New Buyer", email: "new@example.com", username: "new_buyer", pending_phone_number: "+989172732188", password_hash: "scrypt$hash", role: "buyer" });
+    assert.equal(created.phoneNumber, null);
+    assert.equal(created.pendingPhoneNumber, "+989172732188");
     assert.equal(auditData?.actor_user_id, "owner-id");
     assert.equal((auditData?.after_data as { accountCreated: boolean }).accountCreated, true);
     assert.equal(JSON.stringify(auditData).includes("initial-password"), false);
@@ -45,19 +47,21 @@ describe("AdminUsersService", () => {
         { full_name: { contains: "customer", mode: "insensitive" } },
         { username: { contains: "customer", mode: "insensitive" } },
         { email: { contains: "customer", mode: "insensitive" } },
-        { phone_number: { contains: "customer" } }
+        { phone_number: { contains: "customer" } },
+        { pending_phone_number: { contains: "customer" } }
       ],
-      orders: { some: {} }, phone_number: { not: null }
+      orders: { some: {} }, AND: [{ OR: [{ phone_number: { not: null } }, { pending_phone_number: { not: null } }] }]
     });
     assert.deepEqual(query?.orderBy, [{ created_at: "desc" }, { id: "desc" }]);
     assert.equal(query?.skip, 1);
     assert.equal(query?.take, 1);
     assert.deepEqual(query?.select, {
-      id: true, support_code: true, full_name: true, username: true, email: true, phone_number: true,
+      id: true, support_code: true, full_name: true, username: true, email: true, phone_number: true, pending_phone_number: true,
       role: true, account_status: true, blocked_at: true, deleted_at: true, created_at: true, updated_at: true,
-      _count: { select: { orders: true } }
+      _count: { select: { orders: true } },
+      wallet_account: { select: { balance: true } }
     });
-    assert.deepEqual(result, { items: [{ id: user.id, supportCode: user.support_code, fullName: user.full_name, username: user.username, email: user.email, phoneNumber: user.phone_number, role: user.role, accountStatus: undefined, blockedAt: null, deletedAt: null, orderCount: 3, createdAt: date.toISOString(), updatedAt: date.toISOString() }], page: 2, pageSize: 1, total: 1 });
+    assert.deepEqual(result, { items: [{ id: user.id, supportCode: user.support_code, fullName: user.full_name, username: user.username, email: user.email, phoneNumber: user.phone_number, pendingPhoneNumber: null, role: user.role, accountStatus: undefined, blockedAt: null, deletedAt: null, orderCount: 3, walletBalance: "12345", createdAt: date.toISOString(), updatedAt: date.toISOString() }], page: 2, pageSize: 1, total: 1 });
   });
 
   it("finds a support code regardless of letter case", async () => {
@@ -72,6 +76,15 @@ describe("AdminUsersService", () => {
     assert.deepEqual(codeLookup, { support_code: "7K4P9" });
     assert.deepEqual(where, { id: user.id });
     assert.equal(result.items[0]?.supportCode, "7K4P9");
+  });
+
+  it("shows zero when a user has no wallet account", async () => {
+    const prisma = { users: {
+      count: async () => 1,
+      findMany: async () => [{ ...user, wallet_account: null }]
+    } } as unknown as PrismaService;
+    const result = await new AdminUsersService(prisma, auth).list({ page: 1, limit: 20, role: "all", sort: "newest", hasOrders: "all", hasPhone: "all" });
+    assert.equal(result.items[0]?.walletBalance, "0");
   });
 
   it("resolves a support code before reading the administrative user detail", async () => {
@@ -115,12 +128,27 @@ describe("AdminUsersService", () => {
     assert.equal((auditData?.before_data as { fullName: string }).fullName, "Customer One");
   });
 
-  it("stores an admin-edited phone in the format used by OTP login", async () => {
+  it("keeps the active phone while an admin-edited replacement awaits verification", async () => {
     let updateData: Record<string, unknown> | undefined;
-    const tx = { $queryRaw: async () => [{ id: user.id }], users: { findUnique: async () => user, update: async (input: { data: Record<string, unknown> }) => { updateData = input.data; return { ...user, phone_number: String(input.data.phone_number) }; } }, admin_user_profile_changes: { create: async () => undefined } };
+    const tx = { $queryRaw: async () => [{ id: user.id }], users: { findUnique: async () => user, findFirst: async () => null, update: async (input: { data: Record<string, unknown> }) => { updateData = input.data; return { ...user, pending_phone_number: String(input.data.pending_phone_number) }; } }, admin_user_profile_changes: { create: async () => undefined } };
     const prisma = { $transaction: async (callback: (value: typeof tx) => unknown) => callback(tx) } as unknown as PrismaService;
-    await new AdminUsersService(prisma, auth).update(user.id, user.id, { phoneNumber: "09172732188" });
-    assert.deepEqual(updateData, { phone_number: "+989172732188" });
+    const updated = await new AdminUsersService(prisma, auth).update(user.id, user.id, { phoneNumber: "09172732188" });
+    assert.deepEqual(updateData, { pending_phone_number: "+989172732188" });
+    assert.equal(updated.phoneNumber, user.phone_number);
+    assert.equal(updated.pendingPhoneNumber, "+989172732188");
+  });
+
+  it("clears both active and pending phones when an admin explicitly removes the number", async () => {
+    let updateData: Record<string, unknown> | undefined;
+    const tx = { $queryRaw: async () => [{ id: user.id }], users: {
+      findUnique: async () => ({ ...user, pending_phone_number: "+989172732188" }),
+      update: async (input: { data: Record<string, unknown> }) => { updateData = input.data; return { ...user, phone_number: null, pending_phone_number: null }; }
+    }, admin_user_profile_changes: { create: async () => undefined } };
+    const prisma = { $transaction: async (callback: (value: typeof tx) => unknown) => callback(tx) } as unknown as PrismaService;
+    const updated = await new AdminUsersService(prisma, auth).update(user.id, user.id, { phoneNumber: null });
+    assert.deepEqual(updateData, { phone_number: null, pending_phone_number: null });
+    assert.equal(updated.phoneNumber, null);
+    assert.equal(updated.pendingPhoneNumber, null);
   });
 
   it("changes the password, revokes active sessions, and records only safe audit metadata atomically", async () => {

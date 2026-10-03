@@ -15,6 +15,7 @@ import {
   PaymentProviderParamDto,
   ZibalCallbackQueryDto,
   RefundPaymentDto,
+  ResolvePaymentAttemptDto,
   UpdatePaymentMethodDto
 } from "./dto/payment.dto";
 import { PaymentApplicationService } from "./payment-application.service";
@@ -148,6 +149,19 @@ export class PaymentController {
   @UseGuards(PlatformAdminGuard)
   transactions(@Query() query: ListAdminPaymentTransactionsQueryDto) {
     return this.application.listTransactions(query);
+  }
+
+  @Post("admin/:attemptId/resolve")
+  @UseGuards(PlatformAdminGuard)
+  async resolveAttempt(
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string,
+    @Param("attemptId", new ParseUUIDPipe({ version: "4" })) attemptId: string,
+    @Body() body: ResolvePaymentAttemptDto,
+    @IdempotencyKey() idempotencyKey: string
+  ) {
+    await this.rateLimits.consumePaymentRefund(request.authenticatedUser!.id, clientIp);
+    return this.application.resolveAttempt(request.authenticatedUser!, attemptId, body, idempotencyKey);
   }
 
   @Post("admin/:attemptId/refund")

@@ -62,7 +62,7 @@ export function DashboardMobileNavigation({ locale, title, currentLabel, shortcu
     {!mobile ? <div className={styles.desktop}>{children}</div> : null}
     <nav className={styles.dock} data-navigation-surface aria-label={title}>
       {shortcuts.map((item) => {
-        const content = <><span className={styles.icon}>{item.icon}{item.count ? <b>{item.count > 99 ? "99+" : item.count.toLocaleString(locale)}</b> : null}</span><span>{item.label}</span></>;
+        const content = <><span className={styles.icon}>{item.icon}{item.count !== undefined ? <b>{item.count > 99 ? "99+" : item.count.toLocaleString(locale)}</b> : null}</span><span>{item.label}</span></>;
         const props = { className: styles.tab, "aria-current": item.active ? "page" as const : undefined };
         return item.href ? <Link key={item.label} href={item.href} {...props}>{content}</Link>
           : <button key={item.label} type="button" onClick={item.onClick} {...props}>{content}</button>;

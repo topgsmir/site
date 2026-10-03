@@ -100,7 +100,7 @@ export function PurchasedItem({ item, order, locale, c, refresh }: { item: Order
       <header className={s.itemHeader}><span className={s.itemIcon}><AccountIcon name={item.productType === "digital" ? "file" : "orders"} width={26} height={26} /></span><div><span className={s.eyebrow}>{c.types[item.productType as keyof OrderCopy["types"]] ?? c.order}</span><h3 id={`item-${item.id}`}>{item.productId ? <Link className={s.productLink} href={`/${locale}/products/${item.productId}` as Route}>{item.productTitle}</Link> : item.productTitle}</h3></div>{bridge ? <StatusBadge status={bridge.status} c={c} /> : null}</header>
       {item.productType === "digital" && files.length > 0 ? <div className={s.downloadActions}>
         <button type="button" className={s.primary} aria-haspopup="dialog" onClick={() => setDownloadsOpen(true)}>{c.download}<AccountIcon name="arrow" width={17} height={17} /></button>
-        {downloadsOpen ? <DownloadFilesModal item={item} order={order} locale={locale} c={c} onClose={() => setDownloadsOpen(false)} /> : null}
+        {downloadsOpen ? <DownloadFilesModal item={item} order={order} locale={locale} c={c} onClose={() => setDownloadsOpen(false)} refresh={refresh} /> : null}
       </div> : null}
     </div>
     <dl className={s.itemPricing}><div><dt>{c.quantity}</dt><dd>{item.quantity.toLocaleString(locale)}</dd></div><div><dt>{c.unit}</dt><dd><Money amount={item.unitPrice} currency={order.currency} locale={locale} /></dd></div><div><dt>{c.itemTotal}</dt><dd><Money amount={item.totalAmount} currency={order.currency} locale={locale} /></dd></div></dl>

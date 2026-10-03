@@ -94,6 +94,11 @@ export class UpdateOrderStatusDto {
   @IsOptional() @IsBoolean() confirmSensitive?: boolean;
 }
 
+export class UpdatePurchaseStatusDto {
+  @IsIn(["cancelled", "delivered"])
+  status!: "cancelled" | "delivered";
+}
+
 export class SetOrderTrashDto {
   @IsBoolean() trashed!: boolean;
   @IsBoolean() confirm!: boolean;

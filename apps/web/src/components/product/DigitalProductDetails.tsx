@@ -11,7 +11,11 @@ export function DigitalProductHeading({ product, locale }: { product: PublicProd
   return <header className={styles.heading}>
     <p className={styles.eyebrow}><DesignIcon name="file" />{c.library}{product.category ? <><span aria-hidden="true">/</span><span>{product.category}</span></> : null}</p>
     <h1 id="product-title">{product.title}</h1>
-    <DigitalProductDescription description={product.description} locale={locale} />
+    <nav className={styles.sectionLinks} aria-label={c.label}>
+      <a href="#download-description">{c.description}</a>
+      <a href="#purchase">{c.purchase}</a>
+      <a href="#download-details-title">{c.details}</a>
+    </nav>
   </header>;
 }
 
@@ -32,11 +36,12 @@ export function DigitalProductPreview({ product, locale }: { product: PublicProd
   </div>;
 }
 
-function DigitalProductDescription({ description, locale }: { description: string | null; locale: Locale }) {
+export function DigitalProductDescription({ description, locale }: { description: string | null; locale: Locale }) {
   const c = digitalProductCopy[locale];
-  return <div id="download-description" className={styles.description} aria-label={c.description}>
+  return <article id="download-description" className={styles.description} aria-labelledby="download-description-title" tabIndex={-1}>
+    <h2 id="download-description-title">{c.description}</h2>
     <ProductDescription description={description} fallback={c.noDescription} />
-  </div>;
+  </article>;
 }
 
 export function DigitalDownloadGuide({ locale }: { locale: Locale }) {

@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import type { AppUser } from "@topgsm/shared-types";
 import { Prisma } from "../../prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -18,7 +18,6 @@ export class LeaderboardService {
   constructor(private readonly prisma: PrismaService) {}
 
   async get(actor: AppUser) {
-    if (actor.role !== "buyer") throw new ForbiddenException("Buyer account required");
 
     const rows = await this.prisma.$queryRaw<RankedBuyer[]>(Prisma.sql`
       WITH purchased_orders AS (
@@ -28,7 +27,7 @@ export class LeaderboardService {
                SUM(oi.quantity)::bigint AS quantity
         FROM orders o
         JOIN order_items oi ON oi.order_id = o.id
-        JOIN users u ON u.id = o.buyer_id AND u.role = 'buyer'
+        JOIN users u ON u.id = o.buyer_id AND u.account_status = 'active'
         WHERE o.status IN ('paid', 'processing', 'shipped', 'awaiting_confirmation', 'delivered')
           AND o.currency = 'TOMAN'
           AND NOT EXISTS (

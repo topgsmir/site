@@ -49,7 +49,7 @@ export function CreateUserPanel({ locale, onCreated, onCancel }: { locale: Local
         <label><span>{c.fullName}</span><input name="fullName" required minLength={2} maxLength={100} autoComplete="name" /></label>
         <label><span>{c.email}</span><input name="email" type="email" required maxLength={254} autoComplete="email" dir="ltr" /></label>
         <label><span>{c.username}</span><input name="username" minLength={3} maxLength={32} pattern="[a-z0-9_]+" autoComplete="off" dir="ltr" /></label>
-        <label><span>{c.phoneNumber}</span><input name="phoneNumber" type="tel" autoComplete="tel" dir="ltr" /></label>
+        <label><span>{c.phoneNumber}</span><input name="phoneNumber" type="tel" autoComplete="tel" dir="ltr" /><small>{locale === "fa" ? "شماره تا تأیید خریدار برای ورود فعال نمی‌شود." : locale === "ar" ? "لن يُفعّل الرقم لتسجيل الدخول حتى يؤكده المشتري." : "The buyer must confirm this number before it can be used to sign in."}</small></label>
         <label><span>{c.password}</span><input name="password" type="password" required minLength={12} maxLength={128} autoComplete="new-password" aria-describedby="initial-password-hint" /></label>
       </div>
       <p id="initial-password-hint" className={styles.createHint}>{c.passwordHint}</p>

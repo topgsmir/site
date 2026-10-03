@@ -321,6 +321,8 @@ html[data-theme="dark"] .theme-icon-moon { opacity: 1; transform: rotate(0); }
 .vendor-card { position: relative; margin-bottom: 10px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card-surface); box-shadow: 0 10px 30px color-mix(in srgb, var(--shadow-color) 50%, transparent); transform-origin: center bottom; }
 .vendor-card-main { display: grid; grid-template-columns: 44px minmax(150px, 1fr) auto auto; gap: 14px; align-items: center; min-height: 86px; padding: 14px 16px; }
 .vendor-avatar { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 10px; color: var(--signal-dark); background: var(--signal-soft); font-size: 0.68rem; font-weight: 600; letter-spacing: 0.04em; }
+.vendor-avatar { overflow: hidden; }
+.vendor-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .vendor-primary { min-width: 0; }
 .vendor-primary > div { display: flex; align-items: center; gap: 10px; }
 .vendor-primary h3 { min-width: 0; overflow: hidden; font-size: 0.9rem; text-overflow: ellipsis; white-space: nowrap; }

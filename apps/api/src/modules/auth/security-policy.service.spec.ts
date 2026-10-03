@@ -7,11 +7,12 @@ describe("security policy", () => {
   it("keeps existing limits and CAPTCHA off until configured", async () => {
     const prisma = { security_policies: { findUnique: async () => null, findMany: async () => [] } } as unknown as PrismaService;
     const policies = new SecurityPolicyService(prisma);
-    assert.deepEqual((await policies.list()).slice(0, 2), [
+    const listed = await policies.list();
+    assert.deepEqual(listed.filter((policy) => policy.action === "login" || policy.action === "register"), [
       { action: "login", ipLimit: 40, subjectLimit: 8, ipWindowSeconds: 900, subjectWindowSeconds: 900, captchaEnabled: false },
       { action: "register", ipLimit: 10, subjectLimit: 3, ipWindowSeconds: 3600, subjectWindowSeconds: 86400, captchaEnabled: false }
     ]);
-    assert.equal((await policies.list()).length, Object.keys(SECURITY_DEFAULTS).length);
+    assert.equal(listed.length, Object.keys(SECURITY_DEFAULTS).length);
     assert.deepEqual(CAPTCHA_ACTIONS, ["login", "register", "otp", "comment_submit_guest"]);
   });
 

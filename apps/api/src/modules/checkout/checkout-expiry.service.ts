@@ -9,6 +9,7 @@ import { WalletLedgerService } from "../wallet/wallet-ledger.service";
 export class CheckoutExpiryService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(CheckoutExpiryService.name);
   private timer?: NodeJS.Timeout;
+  private running = false;
 
   constructor(private readonly prisma: PrismaService, private readonly payments: PaymentApplicationService, @Optional() private readonly wallets?: WalletLedgerService) {}
 
@@ -20,12 +21,17 @@ export class CheckoutExpiryService implements OnModuleInit, OnModuleDestroy {
   onModuleDestroy() { if (this.timer) clearInterval(this.timer); }
 
   private async tick() {
+    if (this.running) return;
+    this.running = true;
     try {
       const staleAttempts = await this.prisma.payment_attempts.findMany({
         where: { checkout_payment_group_id: { not: null }, status: "pending", updated_at: { lt: new Date(Date.now() - 30 * 60 * 1000) } },
-        select: { id: true }, take: 10, orderBy: { updated_at: "asc" }
+        select: { id: true }, take: 10, orderBy: [{ updated_at: "asc" }, { id: "asc" }]
       });
-      for (const attempt of staleAttempts) await this.payments.reconcileCheckoutAttempt(attempt.id);
+      for (const attempt of staleAttempts) {
+        try { await this.payments.reconcileCheckoutAttempt(attempt.id); }
+        catch (error) { this.logger.warn(`Payment reconciliation failed: ${error instanceof Error ? error.constructor.name : "UnknownError"}`); }
+      }
 
       const groups = await this.prisma.checkout_payment_groups.findMany({
         where: { status: { in: ["pending", "failed"] }, expires_at: { lt: new Date() }, attempts: { none: { status: { in: ["pending", "initiating", "initiation_unknown"] } } } },
@@ -40,6 +46,8 @@ export class CheckoutExpiryService implements OnModuleInit, OnModuleDestroy {
       for (const item of legacy) await this.releaseOrder(item.order_item.order_id);
     } catch (error) {
       this.logger.error(`Checkout expiry tick failed: ${error instanceof Error ? error.constructor.name : "UnknownError"}`);
+    } finally {
+      this.running = false;
     }
   }
 
@@ -87,7 +95,7 @@ export class CheckoutExpiryService implements OnModuleInit, OnModuleDestroy {
 
   private async releaseOrderInTransaction(tx: Prisma.TransactionClient, orderId: string) {
     const order = await tx.orders.findFirst({
-      where: { id: orderId, status: "pending" },
+      where: { id: orderId, status: "pending", payment_attempts: { none: { status: { in: ["pending", "initiating", "initiation_unknown"] } } } },
       select: { id: true, buyer_id: true, seller_id: true, items: { select: { inventory_reservation: { select: { id: true, offer_id: true, quantity: true, status: true } } } } }
     });
     if (!order) return;

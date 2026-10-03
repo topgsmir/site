@@ -9,6 +9,7 @@ import { useGSAP } from "@gsap/react";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import type { AppUser } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
+import { dashboardFor } from "@/lib/auth/dashboard-destination";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { CustomerLeaderboard } from "./CustomerLeaderboard";
@@ -113,6 +114,11 @@ export function AccountPanel({
             <AccountIcon name="cart" />
             <span>{c.cart}</span>
           </Link>
+          {user.role !== "buyer" ? (
+            <Link className={styles.managementLink} href={dashboardFor(user, locale) as Route}>
+              {locale === "fa" ? "داشبورد مدیریت" : locale === "ar" ? "لوحة الإدارة" : "Management dashboard"}
+            </Link>
+          ) : null}
           <span className={styles.logout}>
             <LogoutButton locale={locale} />
           </span>

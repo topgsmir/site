@@ -68,12 +68,6 @@ export class CreateVendorDto {
   @Max(1)
   commission!: number;
 
-  @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 4 })
-  @Min(0)
-  @Max(1)
-  holdbackRate!: number;
-
   @IsArray()
   @ArrayUnique()
   @IsEnum(vendorPermissions, { each: true })
@@ -128,13 +122,6 @@ export class UpdateVendorDto {
   @Min(0)
   @Max(1)
   commission?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 4 })
-  @Min(0)
-  @Max(1)
-  holdbackRate?: number;
 
   @IsOptional()
   @IsArray()

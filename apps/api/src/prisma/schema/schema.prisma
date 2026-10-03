@@ -73,6 +73,13 @@ model platform_notice {
   @@map("platform_notice")
 }
 
+model upload_center_settings {
+  id          Int      @id @default(1)
+  free_url    String   @default("") @db.Text
+  regular_url String   @default("") @db.Text
+  updated_at  DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+}
+
 model homepage_content {
   locale        String   @id @db.Text
   content       Json
@@ -433,6 +440,7 @@ model users {
   email                        String?                        @unique @map("email")
   password_hash                String?                        @map("password_hash")
   phone_number                 String?                        @unique @map("phone_number") @db.VarChar(16)
+  pending_phone_number         String?                        @unique @map("pending_phone_number") @db.VarChar(16)
   role                         user_role                      @map("role")
   created_at                   DateTime                       @default(now()) @map("created_at") @db.Timestamptz(3)
   updated_at                   DateTime                       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -838,7 +846,6 @@ model sellers {
   invited              Boolean                       @default(false) @map("invited")
   approved             Boolean                       @default(false) @map("approved")
   commission           Decimal                       @default(0.1) @map("commission") @db.Decimal(9, 6)
-  holdback_rate        Decimal                       @default(0.05) @map("holdback_rate") @db.Decimal(9, 6)
   phone_number         String?                       @map("phone_number")
   suspended_at         DateTime?                     @map("suspended_at") @db.Timestamptz(3)
   blog_review_required Boolean                       @default(true) @map("blog_review_required")
@@ -1670,7 +1677,8 @@ model orders {
   discount_amount  Decimal                         @default(0) @map("discount_amount") @db.Decimal(20, 4)
   coupon_id        String?                         @map("coupon_id")
   commission_rate  Decimal                         @map("commission_rate") @db.Decimal(9, 6)
-  holdback_rate    Decimal                         @map("holdback_rate") @db.Decimal(9, 6)
+  /// Historical holdback rate; new orders use the zero default.
+  holdback_rate    Decimal                         @default(0) @map("holdback_rate") @db.Decimal(9, 6)
   idempotency_key  String                          @map("idempotency_key") @db.Uuid
   request_hash     String                          @map("request_hash") @db.Char(64)
   created_at       DateTime                        @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -1788,7 +1796,8 @@ model payout_ledger {
   seller_id         String          @map("seller_id")
   gross_amount      Decimal         @map("gross_amount") @db.Decimal(20, 4)
   commission_amount Decimal         @map("commission_amount") @db.Decimal(20, 4)
-  holdback_amount   Decimal         @map("holdback_amount") @db.Decimal(20, 4)
+  /// Historical holdback amount; new payouts use the zero default.
+  holdback_amount   Decimal         @default(0) @map("holdback_amount") @db.Decimal(20, 4)
   shipping_cost_amount Decimal       @default(0) @map("shipping_cost_amount") @db.Decimal(20, 4)
   payable_amount    Decimal         @map("payable_amount") @db.Decimal(20, 4)
   currency          String          @map("currency") @db.VarChar(5)

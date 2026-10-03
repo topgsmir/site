@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import type { PrismaService } from "../../prisma/prisma.service";
 import { PayoutService } from "./payout.service";
@@ -45,4 +46,16 @@ test("requested payout pages keep status and seller scope on cursor and list que
     { id: "cursor-1", seller_id: "seller-1", status: "requested" },
     { seller_id: "seller-1", status: "requested" }
   ]);
+});
+
+test("a payout replay cannot reveal a former shop after seller membership changes", async () => {
+  const orderId = "order-1";
+  const hash = createHash("sha256").update(JSON.stringify({ orderId, status: "requested" })).digest("hex");
+  const transaction = { payout_events: { findUnique: async () => ({ request_hash: hash, payout: { seller_id: "former-shop" } }) } };
+  const prisma = {
+    seller_memberships: { findFirst: async () => ({ seller_id: "current-shop" }) },
+    $transaction: async (work: (tx: typeof transaction) => Promise<unknown>) => work(transaction)
+  } as unknown as PrismaService;
+  const actor = { id: "staff-1", fullName: "Seller Staff", email: "staff@example.com", role: "seller-staff" as const };
+  await assert.rejects(() => new PayoutService(prisma).request(actor, orderId, "request-key"), /Payout was not found/);
 });

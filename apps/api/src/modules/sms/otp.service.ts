@@ -5,11 +5,12 @@ import { createHmac, randomInt, randomUUID, timingSafeEqual } from "node:crypto"
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuthService } from "../auth/auth.service";
 import { AuthLoginSettingsService } from "../auth/auth-login-settings.service";
-import type { VerifyOtpDto } from "./dto/otp.dto";
+import type { ConfirmPendingPhoneDto, VerifyOtpDto } from "./dto/otp.dto";
 import { normalizeIranianPhone } from "./phone-number";
 import { SmsService } from "./sms.service";
 import { SmsSettingsService } from "./sms-settings.service";
 import { ClubService } from "../club/club.service";
+import type { AppUser } from "@topgsm/shared-types";
 
 @Injectable()
 export class OtpService {
@@ -44,6 +45,9 @@ export class OtpService {
 
     const userId = await this.prisma.$transaction(async (transaction) => {
       const byPhone = await transaction.users.findUnique({ where: { phone_number: phone } });
+      if (!byPhone && await transaction.users.findUnique({ where: { pending_phone_number: phone }, select: { id: true } })) {
+        throw new UnauthorizedException("Phone number unavailable");
+      }
       const email = input.email?.trim().toLowerCase();
       if (byPhone) {
         if (byPhone.account_status !== "active") throw new UnauthorizedException("Account unavailable");
@@ -81,6 +85,37 @@ export class OtpService {
     const secret = this.config.get<string>("OTP_HMAC_KEY")?.trim();
     if (!secret || secret.length < 32) throw new ServiceUnavailableException("OTP security key is not configured");
     return createHmac("sha256", secret).update(`${id}:${phone}:${code}`).digest("hex");
+  }
+
+  async pendingPhone(actor: AppUser) {
+    if (actor.role !== "buyer") throw new UnauthorizedException("Buyer account required");
+    const user = await this.prisma.users.findUnique({ where: { id: actor.id }, select: { pending_phone_number: true } });
+    return { pendingPhoneNumber: user?.pending_phone_number ?? null };
+  }
+
+  async confirmPendingPhone(actor: AppUser, input: ConfirmPendingPhoneDto) {
+    if (actor.role !== "buyer") throw new UnauthorizedException("Buyer account required");
+    await this.assertEnabled();
+    const phone = normalizeIranianPhone(input.phoneNumber);
+    const challenge = await this.prisma.otp_challenges.findFirst({ where: { id: input.challengeId, phone_number: phone, status: "pending" } });
+    if (!challenge || challenge.expires_at <= new Date() || challenge.attempts >= 5) throw new UnauthorizedException("OTP challenge is invalid or expired");
+    const expected = Buffer.from(challenge.code_hash, "hex");
+    const actual = Buffer.from(this.hash(challenge.id, phone, input.code), "hex");
+    if (!timingSafeEqual(expected, actual)) {
+      await this.prisma.otp_challenges.update({ where: { id: challenge.id }, data: { attempts: { increment: 1 } } });
+      throw new UnauthorizedException("OTP code is incorrect");
+    }
+    await this.prisma.$transaction(async (transaction) => {
+      const owner = await transaction.users.findUnique({ where: { id: actor.id }, select: { role: true, account_status: true, pending_phone_number: true } });
+      if (!owner || owner.role !== "buyer" || owner.account_status !== "active" || owner.pending_phone_number !== phone) throw new UnauthorizedException("Phone number unavailable");
+      const other = await transaction.users.findFirst({ where: { id: { not: actor.id }, phone_number: phone }, select: { id: true } });
+      if (other) throw new ConflictException("Phone number is already in use");
+      const consumed = await transaction.otp_challenges.updateMany({ where: { id: challenge.id, status: "pending", expires_at: { gt: new Date() }, attempts: { lt: 5 } }, data: { status: "consumed", consumed_at: new Date() } });
+      if (consumed.count !== 1) throw new ConflictException("OTP challenge was already used");
+      const promoted = await transaction.users.updateMany({ where: { id: actor.id, pending_phone_number: phone, account_status: "active" }, data: { phone_number: phone, pending_phone_number: null } });
+      if (promoted.count !== 1) throw new ConflictException("Phone number changed; request a new code");
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    return { phoneNumber: phone };
   }
 
   private async assertEnabled() {

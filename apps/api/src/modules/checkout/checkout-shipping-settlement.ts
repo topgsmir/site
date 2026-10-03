@@ -8,13 +8,11 @@ export function checkoutShippingSettlement(input: {
   shippingCost: string;
   shippingPayer: ShippingPayer | null;
   commissionRate: string;
-  holdbackRate: string;
 }) {
   const gross = new Prisma.Decimal(input.totalAmount).minus(input.shippingFee);
   const commission = gross.mul(input.commissionRate).toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP);
-  const holdback = gross.mul(input.holdbackRate).toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP);
   const sellerShippingCost = input.shippingPayer === "seller" ? new Prisma.Decimal(input.shippingCost) : new Prisma.Decimal(0);
-  const payable = gross.minus(commission).minus(holdback).minus(sellerShippingCost);
+  const payable = gross.minus(commission).minus(sellerShippingCost);
   if (gross.isNegative() || payable.isNegative()) throw new ConflictException("Seller shipping cost exceeds the order payout");
-  return { gross, commission, holdback, sellerShippingCost, payable };
+  return { gross, commission, sellerShippingCost, payable };
 }

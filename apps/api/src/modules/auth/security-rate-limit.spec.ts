@@ -39,6 +39,7 @@ it("uses configurable policies for every newly covered authenticated operation",
   const limits = new AuthRateLimitService(prisma, policies);
   const operations = [
     ["seo_configuration", () => limits.consumeSeoConfiguration("user", "127.0.0.1")],
+    ["upload_center_configuration", () => limits.consumeUploadCenterConfiguration("user", "127.0.0.1")],
     ["profile", () => limits.consumeProfileMutation("user", "127.0.0.1")],
     ["admin_user", () => limits.consumeAdminUserOperation("user", "127.0.0.1")],
     ["blog", () => limits.consumeBlogMutation("user", "127.0.0.1")],

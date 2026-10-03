@@ -1,4 +1,7 @@
 import { strict as assert } from "node:assert";
+import { mkdtemp, rm, stat } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 import type { ConfigService } from "@nestjs/config";
 import type { CredentialCryptoService } from "../../common/security/credential-crypto.service";
@@ -34,5 +37,58 @@ describe("BackupDestinationService security policy", () => {
     assert.equal(publicValue.privateKeyConfigured, false);
     assert.equal("encrypted_password" in publicValue, false);
     assert.equal("credential_hint" in publicValue, false);
+  });
+
+  it("classifies IPv4-mapped loopback and private addresses as blocked", () => {
+    assert.equal(service["isForbiddenAddress"]("::ffff:127.0.0.1"), true);
+    assert.equal(service["isForbiddenAddress"]("::ffff:7f00:1"), true);
+    assert.equal(service["isForbiddenAddress"]("0:0:0:0:0:ffff:127.0.0.1"), true);
+    assert.equal(service["isForbiddenAddress"]("::ffff:0:127.0.0.1"), true);
+    assert.equal(service["isForbiddenAddress"]("::ffff:192.168.1.2"), true);
+    assert.equal(service["isForbiddenAddress"]("::ffff:203.0.113.7"), false);
+  });
+
+  it("aborts a stalled remote download and removes its partial staging file", async () => {
+    const config = { get: (key: string) => key === "BACKUP_DOWNLOAD_TIMEOUT_MS" ? "30" : "" } as unknown as ConfigService;
+    const destinationService = new BackupDestinationService(config, {} as PrismaService, {} as CredentialCryptoService);
+    let connectionClosed = false;
+    Object.defineProperty(destinationService, "withConnection", { value: async (
+      _destination: unknown,
+      operation: (connection: unknown) => Promise<unknown>
+    ) => operation({ kind: "sftp", client: {
+      get: async () => new Promise(() => undefined),
+      end: async () => { connectionClosed = true; }
+    } }) });
+    const root = await mkdtemp(join(tmpdir(), "topgsm-backup-download-"));
+    const localPath = join(root, "restore-source");
+    try {
+      await assert.rejects(() => destinationService.download(
+        { remote_path: "/topgsm" } as Parameters<BackupDestinationService["download"]>[0],
+        "topgsm-20260101T000000Z-00000000-0000-4000-8000-000000000001.topgsm-backup",
+        localPath
+      ), /timed out/i);
+      assert.equal(connectionClosed, true);
+      assert.equal(await stat(localPath).catch(() => null), null);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects remote download before connection when staging lacks reserved space", async () => {
+    const root = await mkdtemp(join(tmpdir(), "topgsm-backup-space-"));
+    try {
+      const config = { get: (key: string) => key === "BACKUP_MIN_FREE_BYTES" ? String(Number.MAX_SAFE_INTEGER) : "" } as unknown as ConfigService;
+      const destinationService = new BackupDestinationService(config, {} as PrismaService, {} as CredentialCryptoService);
+      let connected = false;
+      Object.defineProperty(destinationService, "withConnection", { value: async () => { connected = true; } });
+      await assert.rejects(() => destinationService.download(
+        { remote_path: "/topgsm" } as Parameters<BackupDestinationService["download"]>[0],
+        "topgsm-20260101T000000Z-00000000-0000-4000-8000-000000000001.topgsm-backup",
+        join(root, "restore-source")
+      ), /enough free space/i);
+      assert.equal(connected, false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });

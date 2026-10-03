@@ -12,3 +12,8 @@
 .prose code { overflow-wrap: anywhere; }
 .prose hr { border: 0; border-block-start: 1px solid var(--color-product-rule); }
 .prose img { max-width: 100%; height: auto; }
+.prose :global(.article-table-scroll) { max-width: 100%; overflow-x: auto; }
+.prose :global(.article-table-scroll):focus-visible { outline: 2px solid var(--color-product-accent); outline-offset: -2px; }
+.prose table { width: 100%; border-collapse: collapse; }
+.prose :is(th, td) { min-width: 90px; padding: .5em .65em; border: 1px solid var(--color-product-rule); text-align: start; vertical-align: top; }
+.prose th { color: var(--color-product-ink); background: var(--color-product-surface-raised); font-weight: 650; }

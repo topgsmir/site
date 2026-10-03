@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import { randomUUID } from "node:crypto";
-import type { AppUser } from "@topgsm/shared-types";
+import type { AppUser, Role } from "@topgsm/shared-types";
 import type { BasePaymentAdapter } from "../../integrations/payments/base-payment.adapter";
 import { PaymentApplicationService } from "../../integrations/payments/payment-application.service";
 import type { PaymentCredentialService } from "../../integrations/payments/payment-credential.service";
@@ -27,7 +27,7 @@ const adapter = {
   availability: async () => ({ available: true, unavailabilityReason: null, configuration: null }),
   paymentUrl: (authority: string) => `https://pay.example/${authority}`,
   initiate: async (input: PaymentIntentInput) => ({ providerReferenceId: `authority-${input.operationId}`, paymentUrl: `https://pay.example/${input.operationId}`, status: "pending" as const }),
-  verify: async () => ({ verified: true, referenceId: `ref-${suffix}` }),
+  verify: async (authority: string) => ({ verified: true, referenceId: `ref-${authority}` }),
   inquiry: async () => true,
   refund: async () => null
 } satisfies BasePaymentAdapter;
@@ -42,7 +42,7 @@ const checkouts = new CheckoutService(prisma, paymentService, application, new U
 let buyer: AppUser;
 let physicalOfferId: string;
 let digitalOfferId: string;
-let checkoutId: string;
+const checkoutIds: string[] = [];
 let couponId: string;
 
 before(async () => {
@@ -52,7 +52,7 @@ before(async () => {
     const sellerUsers = [];
     for (const name of ["Physical", "Digital"]) sellerUsers.push(await tx.users.create({ data: { full_name: `${name} Seller`, email: `${name.toLowerCase()}-${suffix}@example.com`, role: "seller_admin" } }));
     const sellers = [];
-    for (const [index, user] of sellerUsers.entries()) sellers.push(await tx.sellers.create({ data: { user_id: user.id, shop_name: `Checkout Shop ${index}`, approved: true, commission: "0.10", holdback_rate: "0.05" } }));
+    for (const [index, user] of sellerUsers.entries()) sellers.push(await tx.sellers.create({ data: { user_id: user.id, shop_name: `Checkout Shop ${index}`, approved: true, commission: "0.10" } }));
     await tx.seller_permissions.create({ data: { seller_id: sellers[0]!.id, permission: "physical_products_manage" } });
     await tx.seller_shipping_profiles.create({ data: { seller_id: sellers[0]!.id, enabled: true, sender_name: "Checkout Sender", sender_mobile: "09123456789", province: "Tehran", city: "Tehran", address_line: "A complete test sender address", postal_code: "1234567890", latitude: 35.7, longitude: 51.4, updated_by_user_id: sellerUsers[0]!.id } });
     const physicalProduct = await tx.products.create({ data: { created_by_seller_id: sellers[0]!.id, title: "Physical checkout item", slug: `physical-checkout-${suffix}`, type: "physical" } });
@@ -74,7 +74,7 @@ before(async () => {
 });
 
 after(async () => {
-  if (checkoutId) {
+  for (const checkoutId of checkoutIds) {
     const orderIds = (await prisma.orders.findMany({ where: { checkout_id: checkoutId }, select: { id: true } })).map((item) => item.id);
     await prisma.$transaction([
       prisma.digital_entitlements.deleteMany({ where: { order_item: { order_id: { in: orderIds } } } }),
@@ -122,7 +122,7 @@ describe("marketplace checkout persistence", () => {
       shippingAddress: { recipientName: "Checkout Buyer", phoneNumber: "09123456789", province: "Tehran", city: "Tehran", postalCode: "1234567890", addressLine: "A complete checkout integration test address" }
     };
     const created = await checkouts.create(buyer, input, key);
-    checkoutId = created.id;
+    checkoutIds.push(created.id);
     const replay = await checkouts.create(buyer, input, key);
     assert.equal(replay.id, created.id);
     assert.equal(created.discountAmount, "300");
@@ -130,14 +130,27 @@ describe("marketplace checkout persistence", () => {
     await assert.rejects(() => checkouts.quote({ items, couponCode }), /not have enough stock|no longer available/i);
     assert.equal(created.orders.length, 2);
     assert.equal(created.paymentGroups.length, 1);
+    const newOrders = await prisma.orders.findMany({
+      where: { checkout_id: created.id },
+      select: { holdback_rate: true, payout_records: { select: { holdback_amount: true } } }
+    });
+    assert.equal(newOrders.length, 2);
+    for (const order of newOrders) {
+      assert.equal(order.holdback_rate.toString(), "0");
+      assert.equal(order.payout_records[0]?.holdback_amount.toString(), "0");
+    }
     assert.equal((await prisma.seller_offer_physical.findUniqueOrThrow({ where: { offer_id: physicalOfferId } })).stock, 1);
     const group = created.paymentGroups[0]!;
     // Editing the offer after checkout must not change the files purchased.
     await prisma.seller_offer_digital.update({ where: { offer_id: digitalOfferId }, data: { file_reference: "https://uploads.example/replacement.zip", file_references: ["https://uploads.example/replacement.zip"] } });
     const payment = await application.initiateCheckoutGroup(buyer, created.id, group.id, randomUUID());
     assert.ok(payment.authority);
-    const settled = await application.callback("zarinpal", payment.authority!, "OK");
-    assert.equal(settled.status, "succeeded");
+    const settlementRace = await Promise.allSettled([
+      application.callback("zarinpal", payment.authority!, "OK"),
+      new OrderService(prisma).transitionPurchase(buyer, created.orders[1]!.id, { status: "cancelled" }, randomUUID())
+    ]);
+    assert.equal(settlementRace[0]!.status, "fulfilled");
+    assert.equal(settlementRace[1]!.status, "rejected");
     assert.equal(await prisma.orders.count({ where: { checkout_id: created.id, status: "paid" } }), 2);
     assert.equal(await prisma.inventory_reservations.count({ where: { status: "committed", order_item: { order: { checkout_id: created.id } } } }), 1);
     assert.equal(await prisma.digital_entitlements.count({ where: { buyer_id: buyer.id } }), 2);
@@ -155,11 +168,55 @@ describe("marketplace checkout persistence", () => {
     assert.equal(new URL(await claim(0)).pathname, "/test.zip");
     await assert.rejects(claim(2), /not found/);
     await assert.rejects(orders.claimDigitalDownload({ ...buyer, id: randomUUID() }, orderId, itemId, "127.0.0.1", 0), /not found/);
-    await assert.rejects(orders.claimDigitalDownload({ ...buyer, role: "seller-admin" }, orderId, itemId, "127.0.0.1", 0), /Only buyers/);
-    const concurrent = await Promise.allSettled([claim(0), claim(0)]);
+    const concurrent = await Promise.allSettled([claim(0), orders.claimDigitalDownload({ ...buyer, role: "seller-admin" }, orderId, itemId, "127.0.0.1", 0)]);
     assert.equal(concurrent.filter((result) => result.status === "fulfilled").length, 1);
     assert.equal((await prisma.digital_entitlements.findUniqueOrThrow({ where: { id: files[0]!.id } })).download_count, 2);
     await prisma.orders.update({ where: { id: orderId }, data: { status: "cancelled" } });
     await assert.rejects(claim(0), /not found/);
+  });
+
+  it("lets every role purchase, pay, download, and manage only its own purchase", async () => {
+    const seller = await prisma.seller_offers.findUniqueOrThrow({ where: { id: digitalOfferId }, select: { listing: { select: { seller: { select: { user_id: true } } } } } });
+    const sellerOwner = await prisma.users.findUniqueOrThrow({ where: { id: seller.listing.seller.user_id } });
+    const roles: Array<{ role: Role; databaseRole: "buyer" | "seller_staff" | "platform_admin" | "platform_staff" }> = [
+      { role: "buyer", databaseRole: "buyer" },
+      { role: "seller-staff", databaseRole: "seller_staff" },
+      { role: "platform-admin", databaseRole: "platform_admin" },
+      { role: "platform-staff", databaseRole: "platform_staff" }
+    ];
+    const shoppers: AppUser[] = [{ id: sellerOwner.id, fullName: sellerOwner.full_name, email: sellerOwner.email, role: "seller-admin" }];
+    for (const { role, databaseRole } of roles) {
+      const user = await prisma.users.create({ data: { full_name: `Role shopper ${role}`, email: `role-${role}-${suffix}@example.com`, role: databaseRole } });
+      shoppers.push({ id: user.id, fullName: user.full_name, email: user.email, role });
+    }
+    const orders = new OrderService(prisma, undefined, new ConfigService({ UPLOAD_DOWNLOAD_HOSTS: "uploads.example", UPLOAD_DOWNLOAD_SECRET: "test-secret-that-is-at-least-32-bytes" }));
+    for (const shopper of shoppers) {
+      const quote = await checkouts.quote({ items: [{ offerId: digitalOfferId, quantity: 1 }] });
+      const created = await checkouts.create(shopper, {
+        items: [{ offerId: digitalOfferId, quantity: 1 }],
+        paymentSelections: quote.groups.map((group) => ({ orderGroupKey: group.key, providerCode: "zarinpal" }))
+      }, randomUUID());
+      checkoutIds.push(created.id);
+      assert.equal((await checkouts.get(shopper, created.id)).id, created.id);
+      await assert.rejects(() => checkouts.get({ ...shopper, id: randomUUID() }, created.id), /not found/);
+      const group = created.paymentGroups[0]!;
+      const payment = await application.initiateCheckoutGroup(shopper, created.id, group.id, randomUUID());
+      assert.equal((await application.callback("zarinpal", payment.authority!, "OK")).status, "succeeded");
+      const purchase = created.orders[0]!;
+      const personal = await orders.getPurchase(shopper, purchase.id);
+      assert.equal(personal.id, purchase.id);
+      assert.equal("commissionRate" in personal, false);
+      assert.equal((await orders.listPurchases(shopper, { limit: 20 })).items.some((item) => item.id === purchase.id), true);
+      await assert.rejects(() => orders.getPurchase({ ...shopper, id: randomUUID() }, purchase.id), /not found/);
+      const item = await prisma.order_items.findFirstOrThrow({ where: { order_id: purchase.id }, select: { id: true } });
+      assert.equal(new URL(await orders.claimDigitalDownload(shopper, purchase.id, item.id, "127.0.0.1")).hostname, "uploads.example");
+      const delivered = await orders.transitionPurchase(shopper, purchase.id, { status: "delivered" }, randomUUID());
+      assert.equal(delivered.status, "delivered");
+    }
+    const promoted = shoppers.find((shopper) => shopper.role === "buyer")!;
+    await prisma.users.update({ where: { id: promoted.id }, data: { role: "seller_staff" } });
+    const promotedOrder = await prisma.orders.findFirstOrThrow({ where: { buyer_id: promoted.id }, select: { id: true } });
+    assert.equal((await orders.getPurchase({ ...promoted, role: "seller-staff" }, promotedOrder.id)).id, promotedOrder.id);
+    assert.equal((await orders.listPurchases({ ...promoted, role: "seller-staff" }, { limit: 20 })).items.some((item) => item.id === promotedOrder.id), true);
   });
 });

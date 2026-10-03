@@ -3,6 +3,9 @@ import { after, before, describe, it } from "node:test";
 import { randomUUID } from "node:crypto";
 import type { AppUser } from "@topgsm/shared-types";
 import { PrismaService } from "../../prisma/prisma.service";
+import { CheckoutService } from "../checkout/checkout.service";
+import { ShippingPolicyService } from "../../integrations/shipping/shipping-policy.service";
+import { UsdRateService } from "../usd-rate/usd-rate.service";
 import { OrderService } from "./order.service";
 import { PayoutService } from "../payout/payout.service";
 import { assertDedicatedTestDatabase } from "../../test/test-database";
@@ -11,6 +14,8 @@ assertDedicatedTestDatabase();
 const prisma = new PrismaService();
 const orders = new OrderService(prisma);
 const payouts = new PayoutService(prisma);
+const paymentService = { listProviders: async () => [{ code: "zarinpal", name: "Test provider", available: true, currencies: ["TOMAN"] }] };
+const checkouts = new CheckoutService(prisma, paymentService as never, {} as never, new UsdRateService(prisma), {} as never, new ShippingPolicyService(prisma), { active: () => ({ isConfigured: async () => true }) } as never);
 const suffix = randomUUID();
 
 let buyer: AppUser;
@@ -68,12 +73,12 @@ before(async () => {
         shop_name: "Secure Shop",
         approved: true,
         commission: "0.10",
-        holdback_rate: "0.05",
         permissions: {
           createMany: {
             data: [
               { permission: "orders_manage" },
-              { permission: "payouts_request" }
+              { permission: "payouts_request" },
+              { permission: "physical_products_manage" }
             ]
           }
         }
@@ -86,6 +91,8 @@ before(async () => {
         role: "admin"
       }
     });
+    await transaction.seller_shipping_profiles.create({ data: { seller_id: seller.id, enabled: true, sender_name: "Test sender", sender_mobile: "09123456789", province: "Tehran", city: "Tehran", address_line: "A complete test sender address", postal_code: "1234567890", latitude: 35.7, longitude: 51.4, updated_by_user_id: sellerUser.id } });
+    await transaction.payment_method_configs.upsert({ where: { provider_code: "zarinpal" }, create: { provider_code: "zarinpal", enabled: true }, update: { enabled: true } });
     const product = await transaction.products.create({
       data: {
         created_by_seller_id: seller.id,
@@ -137,10 +144,15 @@ after(async () => {
   await prisma.$transaction(async (transaction) => {
     await transaction.payout_events.deleteMany({ where: { actor: { email: { in: emails } } } });
     await transaction.order_events.deleteMany({ where: { actor: { email: { in: emails } } } });
+    await transaction.payment_attempts.deleteMany({ where: { order: { seller_id: sellerId } } });
+    await transaction.checkout_payment_group_orders.deleteMany({ where: { order: { seller_id: sellerId } } });
+    await transaction.checkout_payment_groups.deleteMany({ where: { checkout: { buyer_id: { in: [buyer.id, secondBuyer.id, thirdBuyer.id] } } } });
+    await transaction.order_shipping_addresses.deleteMany({ where: { order: { seller_id: sellerId } } });
     await transaction.payout_ledger.deleteMany({ where: { seller_id: sellerId } });
     await transaction.inventory_reservations.deleteMany({ where: { order_item: { order: { seller_id: sellerId } } } });
     await transaction.order_items.deleteMany({ where: { order: { seller_id: sellerId } } });
     await transaction.orders.deleteMany({ where: { seller_id: sellerId } });
+    await transaction.checkouts.deleteMany({ where: { buyer_id: { in: [buyer.id, secondBuyer.id, thirdBuyer.id] } } });
     await transaction.seller_listings.deleteMany({ where: { seller_id: sellerId } });
     await transaction.product_variants.deleteMany({ where: { product: { created_by_seller_id: sellerId } } });
     await transaction.products.deleteMany({ where: { created_by_seller_id: sellerId } });
@@ -154,11 +166,11 @@ after(async () => {
 describe("secure order and payout persistence", () => {
   it("derives money and seller identity and replays an idempotent create", async () => {
     const key = randomUUID();
-    const first = await orders.create(buyer, { offerId, quantity: 1 }, key);
-    const replay = await orders.create(buyer, { offerId, quantity: 1 }, key);
+    const first = await createPurchase(buyer, { offerId, quantity: 1 }, key);
+    const replay = await createPurchase(buyer, { offerId, quantity: 1 }, key);
 
     assert.equal(replay.id, first.id);
-    assert.equal(first.seller.id, sellerId);
+    assert.equal((await prisma.orders.findUniqueOrThrow({ where: { id: first.id } })).seller_id, sellerId);
     assert.equal(first.totalAmount, "1001");
     assert.equal("commissionRate" in first, false);
     assert.equal("holdbackRate" in replay, false);
@@ -166,10 +178,10 @@ describe("secure order and payout persistence", () => {
       where: { order_id: first.id }
     });
     assert.equal(ledger.commission_amount.toString(), "100");
-    assert.equal(ledger.holdback_amount.toString(), "50");
-    assert.equal(ledger.payable_amount.toString(), "851");
+    assert.equal(ledger.holdback_amount.toString(), "0");
+    assert.equal(ledger.payable_amount.toString(), "901");
     assert.equal(
-      await prisma.orders.count({ where: { buyer_id: buyer.id, idempotency_key: key } }),
+      await prisma.checkouts.count({ where: { buyer_id: buyer.id, idempotency_key: key } }),
       1
     );
     assert.equal(await prisma.order_events.count({ where: { order_id: first.id } }), 1);
@@ -180,15 +192,15 @@ describe("secure order and payout persistence", () => {
       1
     );
     await assert.rejects(
-      () => orders.create(buyer, { offerId, quantity: 2 }, key),
-      /Idempotency-Key was already used/
+      () => createPurchase(buyer, { offerId, quantity: 2 }, key),
+      /Idempotency|idempotency|another request/
     );
   });
 
   it("scopes reads and prevents overselling under concurrent buyers", async () => {
     const results = await Promise.allSettled([
-      orders.create(secondBuyer, { offerId, quantity: 2 }, randomUUID()),
-      orders.create(thirdBuyer, { offerId, quantity: 2 }, randomUUID())
+      createPurchase(secondBuyer, { offerId, quantity: 2 }, randomUUID()),
+      createPurchase(thirdBuyer, { offerId, quantity: 2 }, randomUUID())
     ]);
     assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
     assert.equal(results.filter((result) => result.status === "rejected").length, 1);
@@ -235,10 +247,15 @@ describe("secure order and payout persistence", () => {
     );
 
     // Payment settlement is intentionally absent from the client API; this
-    // simulates a future verified provider transition.
+    // records a verified provider payment before testing fulfillment and payout.
     await prisma.orders.update({ where: { id: row.id }, data: { status: "paid" } });
+    await prisma.payment_attempts.create({ data: {
+      order_id: row.id, provider: "zarinpal", status: "succeeded", amount: row.total_amount,
+      currency: row.currency, idempotency_key: randomUUID(), authority: randomUUID(),
+      provider_ref_id: randomUUID(), verified_at: new Date()
+    } });
     await assert.rejects(
-      () => orders.transition(admin, row.id, { status: "delivered", confirmSensitive: true }, randomUUID()),
+      () => orders.transition(admin, row.id, { status: "shipped", confirmSensitive: true }, randomUUID()),
       /not allowed/
     );
     await orders.transition(sellerActor, row.id, { status: "processing" }, randomUUID());
@@ -285,4 +302,12 @@ function thisActor(
   role: AppUser["role"]
 ): AppUser {
   return { id: user.id, fullName: user.full_name, email: user.email, role };
+}
+
+async function createPurchase(actor: AppUser, line: { offerId: string; quantity: number }, key: string) {
+  const created = await checkouts.create(actor, {
+    items: [line], paymentSelections: [{ orderGroupKey: `${sellerId}:physical`, providerCode: "zarinpal" }],
+    shippingAddress: { recipientName: "Order Buyer", phoneNumber: "09123456789", province: "Tehran", city: "Tehran", postalCode: "1234567890", addressLine: "A complete integration test shipping address" }
+  }, key);
+  return orders.getPurchase(actor, created.orders[0]!.id);
 }

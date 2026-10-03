@@ -58,13 +58,17 @@ test("catalog exposes a broad unique tool surface without recursive assistant ro
 test("catalog covers every ordinary controller route and documents security-flow exclusions", () => {
   const catalogRoutes = new Set(ADMIN_TOOL_CATALOG.map((entry) => `${entry.method} ${entry.path}`));
   const excluded = [
+    // Phone verification is an identity proof flow, never an admin AI capability.
+    "GET /auth/otp/pending-phone",
     "GET /payments/zarinpal/callback",
     "GET /payments/zibal/callback",
     "GET /system/restores/:id",
     "POST /admin/staff/setup/:token",
     "POST /auth/login",
     "POST /auth/logout",
+    "POST /auth/otp/confirm-pending-phone",
     "POST /auth/otp/request",
+    "POST /auth/otp/request-pending-phone",
     "POST /auth/otp/verify",
     "POST /auth/register",
     "POST /captcha/challenge"

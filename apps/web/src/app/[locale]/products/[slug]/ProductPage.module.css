@@ -877,14 +877,16 @@
 .page:not([data-product-type="digital"]) .support { padding: 20px; gap: 16px; border-radius: 16px; }
 .page:not([data-product-type="digital"]) .footer { margin-block-start: 28px; padding-block: 20px; font-size: .8125rem; }
 
-/* Download Dossier: full description precedes purchase; preview stays secondary. */
+/* Downloadable products: a reading column with independent purchase controls. */
 .page[data-product-type="digital"] .main,
 .page[data-product-type="digital"] .footer { width: min(100% - 32px, 1100px); }
 .page[data-product-type="digital"] .main { gap: var(--space-product-xl); }
-.page[data-product-type="digital"] .hero { grid-template-columns: minmax(0, 1fr); align-items: start; gap: var(--space-product-xl); padding: 0; border: 0; border-radius: 0; background: none; }
+.page[data-product-type="digital"] .hero { grid-template-columns: minmax(0, 1fr); grid-template-areas: "preview" "purchase" "description"; align-items: start; gap: var(--space-product-lg); padding: 0; border: 0; border-radius: 0; background: none; }
+.page[data-product-type="digital"] .productIntro { grid-area: preview; }
 .page[data-product-type="digital"] .productIntro,
 .page[data-product-type="digital"] .purchasePanel { animation: none; }
-.page[data-product-type="digital"] .purchasePanel { position: static; width: 100%; padding: var(--space-product-lg); box-shadow: none; border-radius: var(--radius-product-md); }
+.page[data-product-type="digital"] .purchasePanel { grid-area: purchase; position: static; width: 100%; padding: var(--space-product-lg); box-shadow: none; border-radius: var(--radius-product-md); scroll-margin-block-start: var(--space-product-xl); }
+.page[data-product-type="digital"] .purchasePanel:focus-visible { outline: 2px solid var(--color-product-focus); outline-offset: 3px; }
 .page[data-product-type="digital"] .purchasePanel h2,
 .page[data-product-type="digital"] .specification h2,
 .page[data-product-type="digital"] .support h2 { font-size: var(--text-product-lg); }
@@ -903,8 +905,9 @@
 .page[data-product-type="digital"] .mobileCart a:hover { background: var(--color-dashboard-accent-strong); }
 .page[data-product-type="digital"] .mobileCart a:active { transform: translateY(1px); }
 @media (min-width: 64rem) {
-  .page[data-product-type="digital"] .hero,
+  .page[data-product-type="digital"] .hero { grid-template-columns: minmax(0, 1fr) minmax(19rem, 22rem); grid-template-areas: "preview purchase" "description purchase"; grid-template-rows: auto 1fr; column-gap: var(--space-product-xl); }
   .page[data-product-type="digital"] .details { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: var(--space-product-3xl); }
-  .page[data-product-type="digital"] .productIntro { position: sticky; top: var(--space-product-xl); }
-  .page[data-product-type="digital"] .purchasePanel { padding: var(--space-product-xl); }
+}
+@media (min-width: 64rem) and (min-height: 48rem) {
+  .page[data-product-type="digital"] .purchasePanel { position: sticky; top: var(--space-product-lg); }
 }

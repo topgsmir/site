@@ -1,11 +1,14 @@
 import { legacySitemapRows } from "../seo/legacy-sitemap";
 import { publicBlogWhere } from "./blog-visibility";
+import { publicProductWhere } from "../product/product-visibility";
+import { ConfigService } from "@nestjs/config";
 import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
-  NotFoundException
+  NotFoundException,
+  Optional
 } from "@nestjs/common";
 import { blog_locale, blog_revision_status, Prisma } from "../../prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -76,7 +79,7 @@ type BlogSnapshot = {
 
 @Injectable()
 export class BlogService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, @Optional() private readonly config?: ConfigService) {}
 
   async listManaged(actor: BlogActor, input: ManagedBlogQueryDto) {
     const search = input.search?.normalize("NFKC").trim();
@@ -1170,7 +1173,7 @@ export class BlogService {
 
   private publicInclude(locale: blog_locale, detail = false) {
     return {
-      seller: { select: { id: true, shop_name: true, approved: true, invited: true, suspended_at: true } },
+      seller: { select: { id: true, shop_name: true, approved: true, invited: true, suspended_at: true, profile_media: { select: { id: true, width: true, height: true } } } },
       routes: { where: detail ? undefined : { locale, is_current: true }, select: { locale: true, slug: true, is_current: true } },
       published_revision: {
         include: {
@@ -1179,6 +1182,7 @@ export class BlogService {
           category: { include: { translations: { where: { locale } } } },
           tags: { include: { tag: { include: { translations: { where: { locale } } } } } },
           related_products: {
+            where: { product: publicProductWhere(this.config?.get<string>("BRIDGE_FEATURE_ENABLED") === "true") },
             orderBy: { position: "asc" as const },
             include: {
               product: {
@@ -1241,8 +1245,14 @@ export class BlogService {
       status: "published" as const,
       cover: this.mapMedia(revision.cover_asset),
       author: post.seller
-        ? { id: post.seller.id, name: post.seller.shop_name, type: "seller" as const }
-        : { id: null, name: "Top GSM Editorial", type: "editorial" as const },
+        ? { id: post.seller.id, name: post.seller.shop_name, type: "seller" as const,
+            profilePicture: post.seller.profile_media ? {
+              id: post.seller.profile_media.id,
+              url: `/media/${post.seller.profile_media.id}/profile.webp`,
+              width: post.seller.profile_media.width,
+              height: post.seller.profile_media.height
+            } : null }
+        : { id: null, name: "Top GSM Editorial", type: "editorial" as const, profilePicture: null },
       category: revision.category
         ? { id: revision.category.id, name: revision.category.translations[0]?.name ?? "", slug: revision.category.translations[0]?.slug ?? "" }
         : null,

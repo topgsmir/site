@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException, RequestTimeoutException, ServiceUnavailableException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { BackupRestorePreflight } from "@topgsm/shared-types";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
@@ -12,11 +12,14 @@ import { BackupDestinationService } from "./backup-destination.service";
 import { hashMonitorToken, writePendingRestore } from "./backup-maintenance";
 import { BackupPathsService } from "./backup-paths.service";
 import { BackupRunService } from "./backup-run.service";
+import { assertStagingFreeSpace, backupMinFreeBytes } from "./backup-staging-space";
 import type { BackupRestorePreflightDto, ConfirmBackupRestoreDto } from "./dto/backup.dto";
 
 @Injectable()
 export class BackupRestoreService {
   private readonly restartEnabled: boolean;
+  private readonly maxArchiveBytes: number;
+  private readonly minFreeBytes: number;
 
   constructor(
     config: ConfigService,
@@ -29,6 +32,9 @@ export class BackupRestoreService {
     private readonly destinations: BackupDestinationService
   ) {
     this.restartEnabled = config.get<string>("BACKUP_RESTART_ENABLED") === "true";
+    const configuredLimit = Number(config.get<string>("BACKUP_MAX_ARCHIVE_BYTES"));
+    this.maxArchiveBytes = Number.isSafeInteger(configuredLimit) && configuredLimit > 0 ? configuredLimit : 25 * 1024 ** 3;
+    this.minFreeBytes = backupMinFreeBytes(config);
   }
 
   async preflight(input: BackupRestorePreflightDto, actorUserId: string): Promise<BackupRestorePreflight> {
@@ -52,12 +58,16 @@ export class BackupRestoreService {
       let sourceReference: string;
       if (input.runId) {
         const source = await this.runs.archiveForDownload(input.runId);
+        await this.assertArchiveSize(source.path);
+        await this.assertStagingSpace(source.path);
         await cp(source.path, stagedArchive, { force: false });
         sourceKind = "catalog";
         sourceReference = input.runId;
       } else if (input.uploadId) {
         const source = this.paths.stagingPath(input.uploadId!, "upload");
         if (!(await stat(source).catch(() => null))?.isFile()) throw new NotFoundException("Uploaded backup package was not found or expired");
+        await this.assertArchiveSize(source);
+        await this.assertStagingSpace(source);
         await cp(source, stagedArchive, { force: false });
         sourceKind = "upload";
         sourceReference = input.uploadId!;
@@ -175,6 +185,18 @@ export class BackupRestoreService {
     return createHash("sha256").update(value.trim().replace(/\s+/g, " ").toUpperCase()).digest("hex");
   }
 
+  private async assertArchiveSize(path: string) {
+    const metadata = await stat(path);
+    if (!metadata.isFile() || metadata.size < 1 || metadata.size > this.maxArchiveBytes) {
+      throw new BadRequestException("Backup archive size is invalid");
+    }
+  }
+
+  private async assertStagingSpace(sourcePath: string) {
+    const source = await stat(sourcePath);
+    await assertStagingFreeSpace(this.paths.staging, source.size, this.minFreeBytes);
+  }
+
   private semanticVersion(value: string) {
     const match = /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(value);
     if (!match) return null;
@@ -189,6 +211,7 @@ export class BackupRestoreService {
       catch (error) {
         lastError = error;
         await rm(path, { force: true });
+        if (error instanceof RequestTimeoutException) throw error;
         if (attempt < 3) await new Promise((resolvePromise) => setTimeout(resolvePromise, attempt * 1_000));
       }
     }

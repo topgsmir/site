@@ -2,7 +2,7 @@
 
 import axios from "axios";
 import Link from "next/link";
-import Image from "next/image";
+import { SellerAvatar } from "@/components/seller/SellerAvatar";
 import type { Route } from "next";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import type { SellerProfilePicture, SellerPublicProfileSettings } from "@topgsm/shared-types";
@@ -121,9 +121,7 @@ export function SellerExpertProfileWorkspace({ locale }: { locale: Locale }) {
       <fieldset className={styles.pictureField} disabled={pictureBusy !== null}>
         <legend>{c.picture}</legend>
         <div className={styles.pictureRow}>
-          <div className={styles.picturePreview}>
-            {profile.profilePicture ? <Image src={profile.profilePicture.url} alt="" width={96} height={96} /> : <span aria-hidden="true">{(profile.publicName ?? profile.shopName).trim().slice(0, 2).toLocaleUpperCase(locale)}</span>}
-          </div>
+          <SellerAvatar className={styles.picturePreview} name={profile.publicName ?? profile.shopName} picture={profile.profilePicture} locale={locale} size={96} />
           <div className={styles.pictureControls}>
             <p>{c.pictureHint}</p>
             <div><label className={styles.pictureButton}><span>{pictureBusy === "uploading" ? c.uploadingPicture : profile.profilePicture ? c.replacePicture : c.choosePicture}</span><input type="file" accept="image/webp" onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; void uploadPicture(file); }} /></label>{profile.profilePicture ? <button className={styles.removePicture} type="button" onClick={() => void removePicture()}>{pictureBusy === "removing" ? c.removingPicture : c.removePicture}</button> : null}</div>

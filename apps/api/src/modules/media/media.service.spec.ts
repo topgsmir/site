@@ -194,6 +194,22 @@ describe("media boundary", () => {
     );
   });
 
+  it("lets platform staff target an invited seller while retaining WebP validation", async () => {
+    let sellerWhere: unknown;
+    const prisma = {
+      sellers: { findFirst: async ({ where }: { where: unknown }) => {
+        sellerWhere = where;
+        return { id: actor.sellerId };
+      } }
+    } as unknown as PrismaService;
+    const service = new MediaService(new ConfigService({ MEDIA_ROOT: "var/test-media" }), prisma);
+    await assert.rejects(
+      service.uploadSellerProfilePicture(actor.sellerId, actor.user.id, "platform", undefined),
+      BadRequestException
+    );
+    assert.deepEqual(sellerWhere, { id: actor.sellerId });
+  });
+
   it("rejects PNG profile pictures even when labeled as WebP", async () => {
     const image = await sharp({ create: { width: 32, height: 32, channels: 4, background: "#2457ff" } })
       .png()

@@ -10,6 +10,23 @@ import { SellerProfileGuard } from "./seller-profile.guard";
 import { SellerService } from "./seller.service";
 
 describe("seller profile picture upload", () => {
+  it("uploads a picture for the seller selected by a platform administrator", async () => {
+    const sellerId = "00000000-0000-4000-8000-000000000001";
+    const uploads: Array<{ sellerId: string; userId: string; role: string }> = [];
+    let limited = false;
+    const controller = new SellerController(
+      {} as SellerService,
+      { consumeMediaUpload: async () => { limited = true; } } as unknown as AuthRateLimitService,
+      { uploadSellerProfilePicture: async (id: string, userId: string, role: string) => {
+        uploads.push({ sellerId: id, userId, role });
+        return { id: "picture-id", url: "", width: 640, height: 640 };
+      } } as unknown as MediaService
+    );
+    await controller.uploadVendorPicture(sellerId, undefined, { authenticatedUser: { id: "platform-admin-id" } } as never, "127.0.0.1");
+    assert.equal(limited, true);
+    assert.deepEqual(uploads, [{ sellerId, userId: "platform-admin-id", role: "platform" }]);
+  });
+
   it("accepts one multipart file and rejects extra fields", async () => {
     const uploads: Array<{ sellerId: string; userId: string; role: string; filename: string }> = [];
     const module = await Test.createTestingModule({

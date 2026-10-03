@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import type { BackupComponent, BackupManifestSummary } from "@topgsm/shared-types";
 import { readdir, readFile, rm, stat } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -20,8 +20,9 @@ type Sidecar = {
 };
 
 @Injectable()
-export class BackupCatalogService implements OnModuleInit {
+export class BackupCatalogService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(BackupCatalogService.name);
+  private cleanupTimer?: NodeJS.Timeout;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -34,6 +35,14 @@ export class BackupCatalogService implements OnModuleInit {
     await this.cleanStaleStaging();
     await this.cleanStaleRestoreMonitors();
     await this.reconcileLocalArchives();
+    this.cleanupTimer = setInterval(() => {
+      void this.cleanStaleStaging().catch((error: unknown) => this.logger.warn(`Staging cleanup failed: ${this.errorCode(error)}`));
+    }, 60 * 60 * 1000);
+    this.cleanupTimer.unref();
+  }
+
+  onModuleDestroy() {
+    if (this.cleanupTimer) clearInterval(this.cleanupTimer);
   }
 
   private async reconcileLocalArchives() {

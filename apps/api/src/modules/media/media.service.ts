@@ -297,14 +297,14 @@ export class MediaService {
   async uploadSellerProfilePicture(
     sellerId: string,
     actorUserId: string,
-    membershipRole: "admin" | "staff",
+    membershipRole: "admin" | "staff" | "platform",
     file: Express.Multer.File | undefined
   ) {
-    if (membershipRole !== "admin") {
+    if (membershipRole !== "admin" && membershipRole !== "platform") {
       throw new ForbiddenException("Only a seller administrator can edit the public profile");
     }
     const seller = await this.prisma.sellers.findFirst({
-      where: { id: sellerId, invited: false, approved: true, suspended_at: null },
+      where: { id: sellerId, ...(membershipRole === "platform" ? {} : { invited: false, approved: true, suspended_at: null }) },
       select: { id: true }
     });
     if (!seller) throw new NotFoundException("Seller was not found");
@@ -343,7 +343,7 @@ export class MediaService {
         await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock_shared(${MEDIA_BACKUP_LOCK})`);
         await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "sellers" WHERE "id" = ${sellerId} FOR UPDATE`);
         const editableSeller = await tx.sellers.findFirst({
-          where: { id: sellerId, invited: false, approved: true, suspended_at: null },
+          where: { id: sellerId, ...(membershipRole === "platform" ? {} : { invited: false, approved: true, suspended_at: null }) },
           select: { id: true }
         });
         if (!editableSeller) throw new NotFoundException("Seller was not found");
@@ -383,9 +383,9 @@ export class MediaService {
 
   async deleteSellerProfilePicture(
     sellerId: string,
-    membershipRole: "admin" | "staff"
+    membershipRole: "admin" | "staff" | "platform"
   ) {
-    if (membershipRole !== "admin") {
+    if (membershipRole !== "admin" && membershipRole !== "platform") {
       throw new ForbiddenException("Only a seller administrator can edit the public profile");
     }
     let path: string | null = null;
@@ -393,7 +393,7 @@ export class MediaService {
       await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock_shared(${MEDIA_BACKUP_LOCK})`);
       await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "sellers" WHERE "id" = ${sellerId} FOR UPDATE`);
       const seller = await tx.sellers.findFirst({
-        where: { id: sellerId, invited: false, approved: true, suspended_at: null },
+        where: { id: sellerId, ...(membershipRole === "platform" ? {} : { invited: false, approved: true, suspended_at: null }) },
         select: { id: true }
       });
       if (!seller) throw new NotFoundException("Seller was not found");

@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ForbiddenException } from "@nestjs/common";
 import { GUARDS_METADATA } from "@nestjs/common/constants";
 import type { AuthRateLimitService } from "../auth/auth-rate-limit.service";
 import { PlatformAdminGuard, type AuthenticatedRequest } from "../auth/platform-admin.guard";
@@ -10,10 +9,10 @@ import { ClubAdminController } from "./club-admin.controller";
 import type { ClubService } from "./club.service";
 import type { ClubAdminService } from "./club-admin.service";
 
-test("buyer club endpoints reject seller sessions and require authentication", () => {
+test("personal club endpoints accept seller sessions and require authentication", async () => {
   const controller = new ClubController({ summary: async () => ({ enabled: false }) } as unknown as ClubService, {} as AuthRateLimitService);
   const seller = { authenticatedUser: { id: "seller-id", role: "seller-admin" } } as unknown as AuthenticatedRequest;
-  assert.throws(() => controller.summary(seller), ForbiddenException);
+  assert.deepEqual(await controller.summary(seller), { enabled: false });
   assert.deepEqual(Reflect.getMetadata(GUARDS_METADATA, ClubController), [AuthenticatedGuard]);
 });
 

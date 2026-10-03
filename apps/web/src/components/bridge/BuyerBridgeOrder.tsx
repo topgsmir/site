@@ -39,7 +39,7 @@ function OrderDetails({ locale, orderId }: { locale: Locale; orderId: string }) 
     const controller = new AbortController(); request.current = controller;
     setRefreshing(true);
     try {
-      const response = await api.get<BuyerOrder>(`/orders/${orderId}`, { signal: controller.signal });
+      const response = await api.get<BuyerOrder>(`/orders/purchases/${orderId}`, { signal: controller.signal });
       if (controller.signal.aborted || !mounted.current) return;
       current.current = response.data; setOrder(response.data); setError(null);
     } catch (cause) {
@@ -74,7 +74,7 @@ function OrderDetails({ locale, orderId }: { locale: Locale; orderId: string }) 
     mutationLock.current = true; setBusy(true); setActionError("");
     mutationKey.current ??= crypto.randomUUID();
     try {
-      await api.patch(`/orders/${orderId}/status`, { status: action }, { headers: { "Idempotency-Key": mutationKey.current } });
+      await api.patch(`/orders/purchases/${orderId}/status`, { status: action }, { headers: { "Idempotency-Key": mutationKey.current } });
       if (!mounted.current) return;
       setAction(null); setMessage(c.updated); mutationKey.current = null;
       await load();

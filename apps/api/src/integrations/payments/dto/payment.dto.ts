@@ -160,3 +160,16 @@ export class ListPaymentSellerOptionsQueryDto {
   @Max(100)
   limit = 50;
 }
+
+export class ResolvePaymentAttemptDto {
+  @IsIn(["cancelled", "refunded"])
+  outcome!: "cancelled" | "refunded";
+
+  @IsString()
+  @MinLength(10)
+  @MaxLength(500)
+  providerEvidence!: string;
+
+  @IsIn([true])
+  confirm!: boolean;
+}

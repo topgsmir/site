@@ -304,7 +304,7 @@ export interface PublicBlogPost extends BlogPostSummary {
   seoTitle: string;
   seoDescription: string;
   coverAltText: string;
-  author: { id: string | null; name: string; type: "editorial" | "seller" };
+  author: { id: string | null; name: string; type: "editorial" | "seller"; profilePicture: SellerProfilePicture | null };
   relatedProducts: RelatedProductSummary[];
   alternateSlugs: Record<BlogLocale, string>;
 }
@@ -507,8 +507,10 @@ export interface AdminUserSummary {
   username: string | null;
   email: string | null;
   phoneNumber: string | null;
+  pendingPhoneNumber: string | null;
   role: string;
   orderCount: number;
+  walletBalance: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -1309,12 +1311,12 @@ export type VendorStatus = "invited" | "active" | "suspended";
 export interface Vendor {
   id: string;
   shopName: string;
+  profilePicture: SellerProfilePicture | null;
   ownerName: string;
   ownerEmail: string;
   phoneNumber: string | null;
   status: VendorStatus;
   commission: number;
-  holdbackRate: number;
   blogReviewRequired: boolean;
   goghdiAgentId: string | null;
   permissions: VendorPermission[];

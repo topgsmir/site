@@ -8,9 +8,10 @@ import { normalizeIranianPhone } from "../sms/phone-number";
 import type { AdminUserHistoryQueryDto, CreateAdminUserDto, ListAdminUsersQueryDto, UpdateAdminUserDto } from "./dto/admin-users.dto";
 
 const userSelect = {
-  id: true, support_code: true, full_name: true, username: true, email: true, phone_number: true,
+  id: true, support_code: true, full_name: true, username: true, email: true, phone_number: true, pending_phone_number: true,
   role: true, account_status: true, blocked_at: true, deleted_at: true, created_at: true, updated_at: true,
-  _count: { select: { orders: true } }
+  _count: { select: { orders: true } },
+  wallet_account: { select: { balance: true } }
 } satisfies Prisma.usersSelect;
 
 type HistoryItem = AdminUserHistoryPage["items"][number];
@@ -24,10 +25,10 @@ export class AdminUsersService {
   private mapUser(user: Prisma.usersGetPayload<{ select: typeof userSelect }>) {
     return {
       id: user.id, supportCode: user.support_code, fullName: user.full_name, username: user.username,
-      email: user.email, phoneNumber: user.phone_number, role: user.role,
+      email: user.email, phoneNumber: user.phone_number, pendingPhoneNumber: user.pending_phone_number, role: user.role,
       accountStatus: user.account_status as AdminUsersPage["items"][number]["accountStatus"],
       blockedAt: user.blocked_at?.toISOString() ?? null, deletedAt: user.deleted_at?.toISOString() ?? null,
-      orderCount: user._count.orders, createdAt: user.created_at.toISOString(),
+      orderCount: user._count.orders, walletBalance: user.wallet_account?.balance.toString() ?? "0", createdAt: user.created_at.toISOString(),
       updatedAt: user.updated_at.toISOString()
     };
   }
@@ -53,11 +54,12 @@ export class AdminUsersService {
         { username: { contains: search, mode: "insensitive" } },
         { email: { contains: search, mode: "insensitive" } },
         { phone_number: { contains: search } },
+        { pending_phone_number: { contains: search } },
         ...( /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(search) ? [{ id: search }] : [] )
       ] } : {}),
       ...(from || to ? { created_at: { ...(from ? { gte: from } : {}), ...(to ? { lt: new Date(to.getTime() + 86_400_000) } : {}) } } : {}),
       ...(input.hasOrders === "yes" ? { orders: { some: {} } } : input.hasOrders === "no" ? { orders: { none: {} } } : {}),
-      ...(input.hasPhone === "yes" ? { phone_number: { not: null } } : input.hasPhone === "no" ? { phone_number: null } : {})
+      ...(input.hasPhone === "yes" ? { AND: [{ OR: [{ phone_number: { not: null } }, { pending_phone_number: { not: null } }] }] } : input.hasPhone === "no" ? { phone_number: null, pending_phone_number: null } : {})
     };
     const orderBy: Prisma.usersOrderByWithRelationInput[] = input.sort === "oldest"
       ? [{ created_at: "asc" }, { id: "asc" }]
@@ -83,22 +85,25 @@ export class AdminUsersService {
     if (fullName.length < 2) throw new BadRequestException("Name is too short");
     const email = input.email.trim().toLowerCase();
     const username = input.username?.trim().toLowerCase() || null;
-    const phoneNumber = input.phoneNumber ? normalizeIranianPhone(input.phoneNumber) : null;
+    const pendingPhoneNumber = input.phoneNumber ? normalizeIranianPhone(input.phoneNumber) : null;
     const passwordHash = await this.auth.createPasswordHash(input.password);
     try {
       return await this.prisma.$transaction(async (tx) => {
+        if (pendingPhoneNumber && await tx.users.findFirst({ where: { OR: [{ phone_number: pendingPhoneNumber }, { pending_phone_number: pendingPhoneNumber }] }, select: { id: true } })) {
+          throw new ConflictException("Phone number is already in use");
+        }
         const user = await tx.users.create({
-          data: { full_name: fullName, email, username, phone_number: phoneNumber, password_hash: passwordHash, role: "buyer" },
+          data: { full_name: fullName, email, username, pending_phone_number: pendingPhoneNumber, password_hash: passwordHash, role: "buyer" },
           select: userSelect
         });
         await tx.admin_user_profile_changes.create({ data: {
           user_id: user.id,
           actor_user_id: actorId,
           before_data: {},
-          after_data: { accountCreated: true, fullName: user.full_name, username: user.username, email: user.email, phoneNumber: user.phone_number, role: user.role }
+          after_data: { accountCreated: true, fullName: user.full_name, username: user.username, email: user.email, pendingPhoneNumber: user.pending_phone_number, role: user.role }
         } });
         return this.mapUser(user);
-      });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
         throw new ConflictException("Email, username, or phone number is already in use");
@@ -110,11 +115,13 @@ export class AdminUsersService {
   async update(id: string, actorId: string, input: UpdateAdminUserDto) {
     id = await resolveUserId(this.prisma, id);
     if (input.fullName === null || input.email === null) throw new BadRequestException("Name and email cannot be null");
-    const data = {
+    const data: { full_name?: string; email?: string; username?: string | null; phone_number?: null; pending_phone_number?: string | null } = {
       ...(input.fullName !== undefined ? { full_name: input.fullName.trim() } : {}),
       ...(input.email !== undefined ? { email: input.email.trim().toLowerCase() } : {}),
       ...(input.username !== undefined ? { username: input.username?.trim().toLowerCase() || null } : {}),
-      ...(input.phoneNumber !== undefined ? { phone_number: input.phoneNumber ? normalizeIranianPhone(input.phoneNumber) : null } : {})
+      ...(input.phoneNumber !== undefined ? input.phoneNumber
+        ? { pending_phone_number: normalizeIranianPhone(input.phoneNumber) }
+        : { phone_number: null, pending_phone_number: null } : {})
     };
     if (!Object.keys(data).length) throw new BadRequestException("No profile fields supplied");
     if (data.full_name !== undefined && data.full_name.length < 2) throw new BadRequestException("Name is too short");
@@ -124,14 +131,19 @@ export class AdminUsersService {
         const before = await tx.users.findUnique({ where: { id }, select: userSelect });
         if (!before) throw new NotFoundException("User not found");
         if (["deleted", "deletion_pending"].includes(before.account_status)) throw new ConflictException("Account cannot be edited");
+        if (data.pending_phone_number && data.pending_phone_number !== before.phone_number) {
+          const phoneOwner = await tx.users.findFirst({ where: { id: { not: id }, OR: [{ phone_number: data.pending_phone_number }, { pending_phone_number: data.pending_phone_number }] }, select: { id: true } });
+          if (phoneOwner) throw new ConflictException("Phone number is already in use");
+        }
+        if (data.pending_phone_number === before.phone_number) data.pending_phone_number = null;
         const after = await tx.users.update({ where: { id }, data, select: userSelect });
         await tx.admin_user_profile_changes.create({ data: {
           user_id: id, actor_user_id: actorId,
-          before_data: { fullName: before.full_name, username: before.username, email: before.email, phoneNumber: before.phone_number },
-          after_data: { fullName: after.full_name, username: after.username, email: after.email, phoneNumber: after.phone_number }
+          before_data: { fullName: before.full_name, username: before.username, email: before.email, phoneNumber: before.phone_number, pendingPhoneNumber: before.pending_phone_number },
+          after_data: { fullName: after.full_name, username: after.username, email: after.email, phoneNumber: after.phone_number, pendingPhoneNumber: after.pending_phone_number }
         } });
         return this.mapUser(after);
-      });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
         throw new ConflictException("Email, username, or phone number is already in use");

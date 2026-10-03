@@ -174,7 +174,7 @@ export class UserTransferWorker implements OnModuleInit, OnModuleDestroy {
     await tx.auth_sessions.deleteMany({ where: { user_id: job.user_id } });
     await tx.admin_user_notes.updateMany({ where: { user_id: job.user_id }, data: { body: "[redacted]" } });
     await tx.users.update({ where: { id: job.user_id }, data: {
-      account_status: "deleted", deleted_at: new Date(), full_name: "Deleted user", username: null, email: null, phone_number: null, password_hash: null
+      account_status: "deleted", deleted_at: new Date(), full_name: "Deleted user", username: null, email: null, phone_number: null, pending_phone_number: null, password_hash: null
     } });
     await tx.user_account_events.create({ data: { user_id: job.user_id, actor_user_id: job.actor_user_id, action: "deleted", reason: job.reason,
       after_data: { jobId: job.id, replacementUserId: job.replacement_user_id, progress: job.progress } } });

@@ -12,16 +12,16 @@ export class ClubAdminController {
   constructor(private readonly admin: ClubAdminService, private readonly club: ClubService, private readonly rateLimits: AuthRateLimitService) {}
 
   @Get("settings") settings() { return this.club.settings(); }
-  @Patch("settings") updateSettings(@Req() request: AuthenticatedRequest, @Body() body: ClubSettingsDto) { return this.admin.updateSettings(request.authenticatedUser!.id, body); }
+  @Patch("settings") async updateSettings(@Req() request: AuthenticatedRequest, @Ip() ip: string, @Body() body: ClubSettingsDto) { await this.rateLimits.consumeOrderMutation(request.authenticatedUser!.id, ip); return this.admin.updateSettings(request.authenticatedUser!.id, body); }
   @Get("tiers") tiers() { return this.admin.tiers(); }
-  @Post("tiers") createTier(@Req() request: AuthenticatedRequest, @Body() body: ClubTierDto) { return this.admin.putTier(request.authenticatedUser!.id, null, body); }
-  @Put("tiers/:id") updateTier(@Req() request: AuthenticatedRequest, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Body() body: ClubTierDto) { return this.admin.putTier(request.authenticatedUser!.id, id, body); }
+  @Post("tiers") async createTier(@Req() request: AuthenticatedRequest, @Ip() ip: string, @Body() body: ClubTierDto) { await this.rateLimits.consumeOrderMutation(request.authenticatedUser!.id, ip); return this.admin.putTier(request.authenticatedUser!.id, null, body); }
+  @Put("tiers/:id") async updateTier(@Req() request: AuthenticatedRequest, @Ip() ip: string, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Body() body: ClubTierDto) { await this.rateLimits.consumeOrderMutation(request.authenticatedUser!.id, ip); return this.admin.putTier(request.authenticatedUser!.id, id, body); }
   @Get("rewards") rewards() { return this.admin.rewards(); }
-  @Post("rewards") createReward(@Req() request: AuthenticatedRequest, @Body() body: ClubRewardDto) { return this.admin.putReward(request.authenticatedUser!.id, null, body); }
-  @Put("rewards/:id") updateReward(@Req() request: AuthenticatedRequest, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Body() body: ClubRewardDto) { return this.admin.putReward(request.authenticatedUser!.id, id, body); }
+  @Post("rewards") async createReward(@Req() request: AuthenticatedRequest, @Ip() ip: string, @Body() body: ClubRewardDto) { await this.rateLimits.consumeOrderMutation(request.authenticatedUser!.id, ip); return this.admin.putReward(request.authenticatedUser!.id, null, body); }
+  @Put("rewards/:id") async updateReward(@Req() request: AuthenticatedRequest, @Ip() ip: string, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Body() body: ClubRewardDto) { await this.rateLimits.consumeOrderMutation(request.authenticatedUser!.id, ip); return this.admin.putReward(request.authenticatedUser!.id, id, body); }
   @Get("campaigns") campaigns() { return this.admin.campaigns(); }
-  @Post("campaigns") createCampaign(@Req() request: AuthenticatedRequest, @Body() body: ClubCampaignDto) { return this.admin.putCampaign(request.authenticatedUser!.id, null, body); }
-  @Put("campaigns/:id") updateCampaign(@Req() request: AuthenticatedRequest, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Body() body: ClubCampaignDto) { return this.admin.putCampaign(request.authenticatedUser!.id, id, body); }
+  @Post("campaigns") async createCampaign(@Req() request: AuthenticatedRequest, @Ip() ip: string, @Body() body: ClubCampaignDto) { await this.rateLimits.consumeOrderMutation(request.authenticatedUser!.id, ip); return this.admin.putCampaign(request.authenticatedUser!.id, null, body); }
+  @Put("campaigns/:id") async updateCampaign(@Req() request: AuthenticatedRequest, @Ip() ip: string, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Body() body: ClubCampaignDto) { await this.rateLimits.consumeOrderMutation(request.authenticatedUser!.id, ip); return this.admin.putCampaign(request.authenticatedUser!.id, id, body); }
   @Get("members") members(@Query() query: ClubHistoryQueryDto) { return this.admin.members(query.cursor, query.limit); }
   @Get("members/:id") member(@Param("id", new ParseUUIDPipe({ version: "4" })) id: string) { return this.club.summary(id); }
   @Get("members/:id/history") history(@Param("id", new ParseUUIDPipe({ version: "4" })) id: string, @Query() query: ClubHistoryQueryDto) { return this.club.history(id, query.cursor, query.limit); }

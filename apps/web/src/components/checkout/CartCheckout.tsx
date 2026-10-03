@@ -82,7 +82,7 @@ function formatCountdown(seconds: number, locale: Locale) {
   return new Intl.NumberFormat(locale, { minimumIntegerDigits: 2 }).format(minutes) + ":" + new Intl.NumberFormat(locale, { minimumIntegerDigits: 2 }).format(remainder);
 }
 
-export function CartCheckout({ locale, signedInBuyer }: { locale: Locale; signedInBuyer: boolean }) {
+export function CartCheckout({ locale, signedInUser }: { locale: Locale; signedInUser: boolean }) {
   const c = COPY[locale];
   const [items, setItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
@@ -101,7 +101,7 @@ export function CartCheckout({ locale, signedInBuyer }: { locale: Locale; signed
   const [clubDraft, setClubDraft] = useState("");
   const [clubPoints, setClubPoints] = useState(0);
   const [clubRewardId, setClubRewardId] = useState("");
-  const [authenticated, setAuthenticated] = useState(signedInBuyer);
+  const [authenticated, setAuthenticated] = useState(signedInUser);
   const [challenge, setChallenge] = useState<OtpChallenge | null>(null);
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);

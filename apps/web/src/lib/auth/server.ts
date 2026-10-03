@@ -4,7 +4,9 @@ import { redirect } from "next/navigation";
 import { SERVER_API_BASE } from "@/lib/api/server";
 import type { Locale } from "@/lib/i18n";
 import type { AppUser, Role } from "@topgsm/shared-types";
+import { dashboardFor } from "./dashboard-destination";
 export type { AppUser } from "@topgsm/shared-types";
+export { dashboardFor } from "./dashboard-destination";
 
 export async function getCurrentUser(): Promise<AppUser | null> {
   const cookieHeader = (await cookies()).toString();
@@ -25,23 +27,6 @@ export async function getCurrentUser(): Promise<AppUser | null> {
   }
 }
 
-export function dashboardFor(user: AppUser, locale: Locale) {
-  if (user.role === "platform-admin") return `/${locale}/admin`;
-  if (user.role === "platform-staff") {
-    if (user.platformPermissions?.includes("uploads_manage")) {
-      return `/${locale}/admin/uploads`;
-    }
-    if (user.platformPermissions?.includes("blog_manage")) {
-      return `/${locale}/admin/blog`;
-    }
-    return `/${locale}/admin`;
-  }
-  if (user.role === "seller-admin" || user.role === "seller-staff") {
-    return `/${locale}/seller-dashboard`;
-  }
-  return `/${locale}/account`;
-}
-
 export async function requireUser(locale: Locale, allowedRoles: Role[]) {
   const user = await getCurrentUser();
   if (!user) redirect(`/${locale}/login`);
@@ -50,5 +35,11 @@ export async function requireUser(locale: Locale, allowedRoles: Role[]) {
     redirect(dashboardFor(user, locale) as Route);
   }
 
+  return user;
+}
+
+export async function requireAuthenticatedUser(locale: Locale) {
+  const user = await getCurrentUser();
+  if (!user) redirect(`/${locale}/login`);
   return user;
 }

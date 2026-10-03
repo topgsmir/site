@@ -1,3 +1,0 @@
-module.exports=[67993,a=>{"use strict";var b=a.i(71905),c=a.i(16413),d=a.i(18124),e=a.i(5019);a.s(["SellerLockClientGate",0,function({locale:a,children:f}){let[g,h]=(0,c.useState)(!1);return(0,c.useEffect)(()=>{let a=!0,b=async()=>{try{let b=await d.api.get("/comments/seller/status");a&&h(b.data.locked)}catch{}};b();let c=window.setInterval(()=>void b(),15e3);return window.addEventListener("focus",b),()=>{a=!1,window.clearInterval(c),window.removeEventListener("focus",b)}},[]),g?(0,b.jsx)(e.SellerCommentsWorkspace,{locale:a,locked:!0}):f}])}];
-
-//# sourceMappingURL=apps_web_src_components_comments_SellerLockClientGate_tsx_10sc-he._.js.map

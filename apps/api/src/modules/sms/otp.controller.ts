@@ -1,13 +1,15 @@
-import { Body, Controller, ForbiddenException, Ip, Post, Res } from "@nestjs/common";
+import { Body, Controller, ForbiddenException, Get, Ip, Post, Req, Res, UseGuards } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
 import { BrowserSessionMutation } from "../auth/browser-session-mutation.decorator";
 import { SESSION_COOKIE } from "../auth/session-token";
-import { RequestOtpDto, VerifyOtpDto } from "./dto/otp.dto";
+import { ConfirmPendingPhoneDto, RequestOtpDto, VerifyOtpDto } from "./dto/otp.dto";
 import { normalizeIranianPhone } from "./phone-number";
 import { OtpService } from "./otp.service";
 import { SecurityPolicyService } from "../auth/security-policy.service";
 import { CaptchaService } from "../captcha/captcha.service";
+import { AuthenticatedGuard } from "../auth/authenticated.guard";
+import type { AuthenticatedRequest } from "../auth/platform-admin.guard";
 
 type HeaderResponse = { setHeader(name: string, value: string): void };
 
@@ -34,6 +36,26 @@ export class OtpController {
     if ("registrationRequired" in session) return session;
     response.setHeader("Set-Cookie", this.cookie(session.token));
     return { user: session.user };
+  }
+
+  @Get("pending-phone") @UseGuards(AuthenticatedGuard)
+  pendingPhone(@Req() request: AuthenticatedRequest) {
+    return this.otp.pendingPhone(request.authenticatedUser!);
+  }
+
+  @Post("request-pending-phone") @UseGuards(AuthenticatedGuard) @BrowserSessionMutation()
+  async requestPendingPhone(@Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+    const { pendingPhoneNumber } = await this.otp.pendingPhone(request.authenticatedUser!);
+    if (!pendingPhoneNumber) throw new ForbiddenException("No phone number is awaiting verification");
+    await this.rateLimits.consumeOtp(pendingPhoneNumber, clientIp);
+    return this.otp.request(pendingPhoneNumber);
+  }
+
+  @Post("confirm-pending-phone") @UseGuards(AuthenticatedGuard) @BrowserSessionMutation()
+  async confirmPendingPhone(@Req() request: AuthenticatedRequest, @Body() body: ConfirmPendingPhoneDto, @Ip() clientIp: string) {
+    const phone = normalizeIranianPhone(body.phoneNumber);
+    await this.rateLimits.consumeOtp(phone, clientIp);
+    return this.otp.confirmPendingPhone(request.authenticatedUser!, body);
   }
 
   private cookie(token: string) {

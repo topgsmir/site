@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { requireUser } from "@/lib/auth/server";
+import { requireAuthenticatedUser } from "@/lib/auth/server";
 import { isLocale } from "@/lib/i18n";
 import { CheckoutStatus } from "@/components/checkout/CheckoutStatus";
 
@@ -9,6 +9,6 @@ export const metadata = { title: "Checkout", robots: { index: false, follow: fal
 export default async function CheckoutPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale, id } = await params;
   if (!isLocale(locale)) notFound();
-  await requireUser(locale, ["buyer"]);
+  await requireAuthenticatedUser(locale);
   return <CheckoutStatus locale={locale} checkoutId={id} />;
 }

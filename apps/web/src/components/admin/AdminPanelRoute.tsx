@@ -36,6 +36,7 @@ export type AdminSection =
   | "settings-homepage"
   | "settings-seo"
   | "settings-backup"
+  | "settings-upload-centers"
   | "editorial"
   | "blog-categories"
   | "blog-tags"

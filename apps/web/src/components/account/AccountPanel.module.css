@@ -12,6 +12,7 @@
 .topbarLabel { border-inline-start: 1px solid var(--color-dashboard-rule); padding-inline-start: 28px; color: var(--color-dashboard-muted); font-size: .78rem; }
 .toplinks { display: flex; align-items: center; gap: 18px; margin-inline-start: auto; }
 .cartLink { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--color-dashboard-ink-soft); font-size: .8rem; }
+.managementLink { display: inline-flex; align-items: center; min-height: 44px; color: var(--color-dashboard-ink-soft); font-size: .8rem; }
 .logout { border-inline-start: 1px solid var(--color-dashboard-rule); padding-inline-start: 18px; }
 .logout :global(.logout-button) { color: var(--color-dashboard-muted); background: transparent; border-color: transparent; }
 .navbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: min(1280px, calc(100% - 48px)); margin-inline: auto; border-bottom: 1px solid var(--color-dashboard-rule); }
@@ -63,7 +64,7 @@
 .shell :is(a, button, summary) { transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease, transform 180ms ease; }
 .shell :is(a, button, summary, input):focus-visible { outline: 2px solid var(--color-dashboard-accent); outline-offset: 4px; }
 .shell :is(a, button):active { transform: translateY(1px); }
-.navigation a:hover, .storeLink:hover, .cartLink:hover, .editLink:hover { color: var(--color-dashboard-accent); }
+.navigation a:hover, .storeLink:hover, .cartLink:hover, .managementLink:hover, .editLink:hover { color: var(--color-dashboard-accent); }
 .primaryLink:hover { background: var(--color-dashboard-focus); }
 .discover:hover { background: var(--color-dashboard-accent-soft); border-color: var(--color-dashboard-accent); }
 :global([dir="rtl"]) .shell svg[data-directional] { transform: scaleX(-1); }
@@ -71,7 +72,7 @@
 @media (max-width: 1050px) { .content { grid-template-columns: minmax(0, 1fr) 290px; gap: 20px; } .welcomeCopy { padding: 28px; } .topbarLabel { display: none; } .profile { padding: 20px; } }
 @media (max-width: 850px) { .content { grid-template-columns: minmax(0, 1fr); } .secondaryColumn { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } .welcome { grid-template-columns: 1.2fr 1fr; } .welcomeCopy h1 { font-size: 1.6rem; } }
 @media (max-width: 600px) {
-  .topbar { min-height: 64px; gap: 12px; padding-inline: 18px; } .brand { font-size: 1.5rem; gap: 7px; } .brandMark { transform: scale(.85) skewY(-15deg); width: 24px; } .toplinks { gap: 8px; } .cartLink { padding-inline: 8px; } .cartLink > span { display: none; } .logout { padding-inline-start: 0; border: 0; } .logout :global(.logout-button) { width: 40px; padding-inline: 8px; } .logout :global(.logout-button) span { display: none; }
+  .topbar { min-height: 64px; gap: 12px; padding-inline: 18px; } .brand { font-size: 1.5rem; gap: 7px; } .brandMark { transform: scale(.85) skewY(-15deg); width: 24px; } .toplinks { gap: 8px; } .cartLink { padding-inline: 8px; } .cartLink > span { display: none; } .managementLink { max-width: 104px; font-size: .7rem; line-height: 1.2; text-align: center; } .logout { padding-inline-start: 0; border: 0; } .logout :global(.logout-button) { width: 40px; padding-inline: 8px; } .logout :global(.logout-button) span { display: none; }
   .navbar { position: fixed; z-index: var(--z-dashboard-sticky); inset-inline: 12px; inset-block-end: max(10px, env(safe-area-inset-bottom)); width: auto; gap: 0; padding: 4px; border: 1px solid var(--color-dashboard-rule); border-radius: 16px; background: color-mix(in srgb, var(--color-dashboard-surface) 94%, transparent); box-shadow: var(--shadow-dashboard-card); backdrop-filter: blur(18px) saturate(130%); }
   .main { width: calc(100% - 32px); padding-top: 22px; padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
   .navigation { width: 100%; justify-content: stretch; gap: 4px; }
@@ -83,4 +84,5 @@
   .welcome { grid-template-columns: minmax(0, 1fr); margin-bottom: 24px; border-radius: 14px; } .welcomeCopy { padding: 20px; gap: 12px; } .welcomeCopy h1 { font-size: 1.6rem; } .welcomeCopy > p:not(.greeting) { font-size: .82rem; } .welcomeArt { height: 170px; } .welcomeArt img { object-position: center 47%; } .artCaption { inset-inline: auto 14px; bottom: 12px; padding: 8px 10px; font-size: .52rem; }
   .secondaryColumn { grid-template-columns: minmax(0, 1fr); } .discover { padding: 18px; gap: 12px; } .discover strong { font-size: .85rem; } .discoverIcon { width: 40px; height: 46px; } .heading { padding-block: 6px 26px; } .heading h1 { font-size: 1.6rem; } .footer { flex-wrap: wrap; gap: 10px; margin-top: 32px; } .footer p { font-size: .68rem; }
 }
+@media (max-width: 360px) { .topbar { gap: 8px; padding-inline: 14px; } .brand > span:last-child { display: none; } .cartLink { padding-inline: 4px; } .toplinks { gap: 4px; } }
 @media (prefers-reduced-motion: reduce) { .shell *, .shell *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } .shell :is(a, button):active { transform: none; } }
