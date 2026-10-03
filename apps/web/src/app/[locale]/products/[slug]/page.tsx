@@ -15,6 +15,7 @@ import { productDescriptionText } from "@/lib/product-description";
 
 type ProductRouteProps = {
   params: Promise<{ locale: string; slug: string }>;
+  searchParams?: Promise<{ visit?: string }>;
 };
 
 const SITE_URL = (
@@ -170,8 +171,8 @@ function productJsonLd(product: PublicProduct, locale: Locale) {
   };
 }
 
-export default async function ProductRoute({ params }: ProductRouteProps) {
-  const { locale: localeParam, slug } = await params;
+export default async function ProductRoute({ params, searchParams }: ProductRouteProps) {
+  const [{ locale: localeParam, slug }, query] = await Promise.all([params, searchParams]);
   if (!isLocale(localeParam)) notFound();
 
   const product = await loadProduct(slug, localeParam);
@@ -195,7 +196,7 @@ export default async function ProductRoute({ params }: ProductRouteProps) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
         />
-        <ProductPage key={product.id} product={product} locale={localeParam} copy={getDictionary(localeParam).product} editHref={editHref} accountHref={accountHref} signedInBuyer={user?.role === "buyer"}
+        <ProductPage key={product.id} product={product} locale={localeParam} copy={getDictionary(localeParam).product} editHref={editHref} accountHref={accountHref} signedInBuyer={user?.role === "buyer"} visitId={query?.visit}
           bridgeCheckout={<BridgeCheckout locale={localeParam} product={product} signedInUser={Boolean(user)} embedded />} />
       </>
     );
@@ -209,7 +210,7 @@ export default async function ProductRoute({ params }: ProductRouteProps) {
           __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c")
         }}
       />
-      <ProductPage key={product.id} product={product} locale={localeParam} copy={getDictionary(localeParam).product} editHref={editHref} accountHref={accountHref} signedInBuyer={user?.role === "buyer"} />
+      <ProductPage key={product.id} product={product} locale={localeParam} copy={getDictionary(localeParam).product} editHref={editHref} accountHref={accountHref} signedInBuyer={user?.role === "buyer"} visitId={query?.visit} />
     </>
   );
 }

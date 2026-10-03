@@ -423,6 +423,8 @@ enum staff_invitation_status {
 }
 
 model users {
+  created_marketing_links marketing_links[] @relation("marketing_creator")
+  marketing_events marketing_events[] @relation("marketing_actor")
   support_code                 String                         @unique @default(dbgenerated("allocate_user_support_code()"))
   account_status               String                         @default("active")
   blocked_at                   DateTime?                      @db.Timestamptz
@@ -834,6 +836,7 @@ model captcha_challenges {
 }
 
 model sellers {
+  marketing_links marketing_links[]
   merged_into_seller_id String?
   merged_at            DateTime? @db.Timestamptz
   merged_into          sellers? @relation("seller_merge", fields: [merged_into_seller_id], references: [id], onDelete: Restrict)
@@ -1315,6 +1318,7 @@ model product_category_events {
 }
 
 model products {
+  marketing_links marketing_links[]
   id                   String                   @id @default(uuid()) @map("id") @db.Uuid
   created_by_seller_id String                   @map("created_by_seller_id")
   price_currency       String                   @default("TOMAN") @db.VarChar(5)
@@ -1687,6 +1691,7 @@ model seller_offer_bridge {
 }
 
 model orders {
+  marketing_earnings marketing_earnings[]
   id               String                          @id @default(uuid()) @map("id")
   traffic_source   String?                         @map("traffic_source") @db.VarChar(100)
   buyer_id         String                          @map("buyer_id")
@@ -1765,6 +1770,7 @@ model shipping_dispatches {
 }
 
 model order_items {
+  marketing_earning marketing_earnings?
   id                    String                  @id @default(uuid()) @map("id")
   order_id              String                  @map("order_id")
   offer_id              String                  @map("offer_id") @db.Uuid
@@ -1815,6 +1821,8 @@ model order_events {
 }
 
 model payout_ledger {
+  marketing_commission_amount Decimal @default(0) @db.Decimal(20, 4)
+  platform_marketing_commission_amount Decimal @default(0) @db.Decimal(20, 4)
   id                String          @id @default(uuid()) @map("id")
   order_id          String          @unique @map("order_id")
   seller_id         String          @map("seller_id")
@@ -1838,6 +1846,78 @@ model payout_ledger {
   @@index([seller_id, created_at, id])
   @@index([status, created_at(sort: Desc), id(sort: Desc)])
   @@map("payout_ledger")
+}
+
+model marketing_links {
+  id String @id @default(uuid()) @db.Uuid
+  code String @unique @db.VarChar(32)
+  seller_id String
+  product_id String @db.Uuid
+  created_by_user_id String
+  recipient_name String @db.VarChar(120)
+  recipient_contact String? @db.VarChar(160)
+  commission_rate Decimal @db.Decimal(7, 6)
+  funding_source String @default("seller") @db.VarChar(16)
+  active Boolean @default(true)
+  expires_at DateTime? @db.Timestamptz(3)
+  created_at DateTime @default(now()) @db.Timestamptz(3)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  seller sellers @relation(fields: [seller_id], references: [id], onDelete: Restrict)
+  product products @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  creator users @relation("marketing_creator", fields: [created_by_user_id], references: [id], onDelete: Restrict)
+  visits marketing_visits[]
+  earnings marketing_earnings[]
+  events marketing_events[]
+
+  @@index([seller_id, created_at(sort: Desc), id(sort: Desc)])
+  @@index([product_id, active])
+}
+
+model marketing_visits {
+  id String @id @default(uuid()) @db.Uuid
+  link_id String @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(3)
+  link marketing_links @relation(fields: [link_id], references: [id], onDelete: Restrict)
+  earnings marketing_earnings[]
+
+  @@index([link_id, created_at(sort: Desc), id(sort: Desc)])
+}
+
+model marketing_earnings {
+  id String @id @default(uuid()) @db.Uuid
+  link_id String @db.Uuid
+  visit_id String @db.Uuid
+  order_id String
+  order_item_id String @unique
+  base_amount Decimal @db.Decimal(20, 4)
+  commission_rate Decimal @db.Decimal(7, 6)
+  amount Decimal @db.Decimal(20, 4)
+  funding_source String @db.VarChar(16)
+  status String @default("pending") @db.VarChar(24)
+  paid_at DateTime? @db.Timestamptz(3)
+  created_at DateTime @default(now()) @db.Timestamptz(3)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  link marketing_links @relation(fields: [link_id], references: [id], onDelete: Restrict)
+  visit marketing_visits @relation(fields: [visit_id], references: [id], onDelete: Restrict)
+  order orders @relation(fields: [order_id], references: [id], onDelete: Restrict)
+  order_item order_items @relation(fields: [order_item_id], references: [id], onDelete: Restrict)
+
+  @@index([link_id, created_at(sort: Desc), id(sort: Desc)])
+  @@index([order_id])
+  @@index([status, created_at(sort: Desc), id(sort: Desc)])
+}
+
+model marketing_events {
+  id String @id @default(uuid()) @db.Uuid
+  link_id String @db.Uuid
+  actor_user_id String
+  action String @db.VarChar(32)
+  detail String? @db.VarChar(200)
+  created_at DateTime @default(now()) @db.Timestamptz(3)
+  link marketing_links @relation(fields: [link_id], references: [id], onDelete: Restrict)
+  actor users @relation("marketing_actor", fields: [actor_user_id], references: [id], onDelete: Restrict)
+
+  @@index([link_id, created_at(sort: Desc), id(sort: Desc)])
 }
 
 model payout_events {

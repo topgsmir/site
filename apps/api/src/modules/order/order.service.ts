@@ -696,6 +696,7 @@ export class OrderService {
         if (changed.count !== 1) {
           throw new ConflictException("The order changed; reload and try again");
         }
+        if (input.status === "cancelled") await transaction.marketing_earnings.updateMany({ where: { order_id: orderId, status: { in: ["pending", "payable"] } }, data: { status: "reversed" } });
         if (current.status === "pending" && input.status === "delivered") {
           for (const item of current.items) {
             if (item.product_type !== "physical") continue;

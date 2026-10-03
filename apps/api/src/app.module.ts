@@ -33,6 +33,7 @@ import { AdminNotificationsModule } from "./modules/notifications/admin-notifica
 import { WalletModule } from "./modules/wallet/wallet.module";
 import { ClubModule } from "./modules/club/club.module";
 import { UploadCentersModule } from "./modules/upload-centers/upload-centers.module";
+import { MarketingModule } from "./modules/marketing/marketing.module";
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { UploadCentersModule } from "./modules/upload-centers/upload-centers.mod
     WalletModule,
     ClubModule,
     UploadCentersModule,
+    MarketingModule,
     AiModule,
     ContentAiModule,
     DataAssistantModule,

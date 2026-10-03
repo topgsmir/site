@@ -36,6 +36,7 @@ import { ProductDescriptionTemplatesWorkspace } from "@/components/admin/Product
 import { ProductBulkEdit } from "@/components/admin/ProductBulkEdit";
 import { AiWorkspace } from "@/components/admin/AiWorkspace";
 import { CouponWorkspace } from "@/components/admin/CouponWorkspace";
+import { MarketingWorkspace } from "@/components/marketing/MarketingWorkspace";
 import { ClubWorkspace } from "@/components/admin/ClubWorkspace";
 import { SmsSettingsWorkspace } from "@/components/admin/SmsSettingsWorkspace";
 import { GoghdiSettingsWorkspace } from "@/components/admin/GoghdiSettingsWorkspace";
@@ -136,6 +137,7 @@ const copy = {
     productTemplates: "Templates",
     productChanges: "Product changes",
     coupons: "Coupons",
+    marketing: "Marketing",
     orders: "Orders",
     newOrders: "new orders",
     permissions: "Permissions",
@@ -310,6 +312,7 @@ const copy = {
     productTemplates: "قالب‌های آماده",
     productChanges: "تغییرات محصولات",
     coupons: "کدهای تخفیف",
+    marketing: "بازاریابی",
     orders: "سفارش",
     newOrders: "سفارش جدید",
     permissions: "دسترسی‌ها",
@@ -484,6 +487,7 @@ const copy = {
     productTemplates: "القوالب الجاهزة",
     productChanges: "تغييرات المنتجات",
     coupons: "القسائم",
+    marketing: "التسويق",
     orders: "الطلبات",
     newOrders: "طلبات جديدة",
     permissions: "الصلاحيات",
@@ -823,6 +827,7 @@ export function VendorManagement({
   const isSalesServiceSection =
     section === "statistics" ||
     section === "coupons" ||
+    section === "marketing" ||
     section === "club" ||
     section === "orders" ||
     section === "order-detail";
@@ -872,6 +877,7 @@ export function VendorManagement({
       "product-templates": c.productTemplates,
       "product-changes": c.productChanges,
       coupons: c.coupons,
+      marketing: c.marketing,
       club:
         locale === "fa"
           ? "باشگاه مشتریان"
@@ -1511,6 +1517,14 @@ export function VendorManagement({
                     >
                       <CouponIcon />
                       <span>{c.coupons}</span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/marketing` as Route}
+                      aria-current={section === "marketing" ? "page" : undefined}
+                    >
+                      <CouponIcon />
+                      <span>{c.marketing}</span>
                     </Link>
                     <Link
                       className={navigationStyles.item}
@@ -2573,6 +2587,7 @@ export function VendorManagement({
         ) : null}
 
         {section === "coupons" ? <CouponWorkspace locale={locale} /> : null}
+        {section === "marketing" ? <MarketingWorkspace locale={locale} admin /> : null}
         {section === "club" ? <ClubWorkspace locale={locale} /> : null}
 
         {section === "orders" ? <AdminOrdersWorkspace locale={locale} /> : null}

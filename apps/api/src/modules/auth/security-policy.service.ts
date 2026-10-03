@@ -13,7 +13,7 @@ export const SECURITY_DEFAULTS = {
   upload_center_configuration: policy(30, 10),
   login: policy(40, 8), register: policy(10, 3, 3600, 86400), otp: policy(20, 5, 3600),
   profile: policy(30, 10), admin_user: policy(120, 30),
-  captcha_challenge: policy(30, 30), checkout_quote: policy(120, 30),
+  captcha_challenge: policy(30, 30), checkout_quote: policy(120, 30), marketing_visit: policy(120, 30),
   comment_submit_guest: policy(20, 5, 3600), comment_submit: policy(30, 8),
   comment_reply: policy(90, 30), comment_admin: policy(90, 30),
   blog: policy(120, 40), coupon: policy(90, 30), product: policy(120, 40),

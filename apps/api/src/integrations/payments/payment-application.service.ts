@@ -309,6 +309,7 @@ export class PaymentApplicationService {
         data: { status: "paid" }
       });
       if (orderChanged.count !== 1) throw new ConflictException("Order changed while payment was being settled");
+      await transaction.marketing_earnings.updateMany({ where: { order_id: attempt.order.id, status: "pending" }, data: { status: "payable" } });
       await transaction.inventory_reservations.updateMany({
         where: { order_item: { order_id: attempt.order.id }, status: "active" },
         data: { status: "committed" }
@@ -458,6 +459,7 @@ export class PaymentApplicationService {
       await tx.checkout_payment_groups.update({ where: { id: group.id }, data: { status: "paid" } });
       for (const { order } of current.orders) {
         const orderChanged = await tx.orders.updateMany({ where: { id: order.id, status: "pending" }, data: { status: "paid" } });
+        if (orderChanged.count === 1) await tx.marketing_earnings.updateMany({ where: { order_id: order.id, status: "pending" }, data: { status: "payable" } });
         if (orderChanged.count !== 1) throw new ConflictException("Order changed while payment was being settled");
         await tx.inventory_reservations.updateMany({ where: { order_item: { order_id: order.id }, status: "active" }, data: { status: "committed" } });
         const entitlements = order.items.filter((item) => item.digital_delivery_url && item.digital_max_downloads !== null);
@@ -652,6 +654,7 @@ export class PaymentApplicationService {
         data: { status: "cancelled" }
       });
       if (orderChanged.count !== 1) throw new ConflictException("Order changed; reload and try again");
+      await transaction.marketing_earnings.updateMany({ where: { order_id: attempt.order.id, status: { in: ["pending", "payable"] } }, data: { status: "reversed" } });
       const refund = await transaction.payment_refunds.create({
         data: {
           payment_attempt_id: attempt.id,

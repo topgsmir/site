@@ -14,6 +14,7 @@ export type AdminSection =
   | "product-templates"
   | "product-changes"
   | "coupons"
+  | "marketing"
   | "club"
   | "orders"
   | "order-detail"

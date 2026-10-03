@@ -11,6 +11,7 @@ import { api } from "@/lib/api/client";
 import { captchaTokenFor } from "@/lib/security-captcha";
 import { getTrafficSource } from "@/lib/traffic-source";
 import { readCart, writeCart, type CartItem } from "@/lib/cart";
+import { marketingVisitFor } from "@/lib/marketing-attribution";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import type { Locale } from "@/lib/i18n";
 import { isUuidV4, safePaymentHref } from "@/lib/safe-navigation";
@@ -312,9 +313,10 @@ export function CartCheckout({ locale, signedInUser }: { locale: Locale; signedI
       ...(appliedCouponCode ? { couponCode: appliedCouponCode } : {}),
       ...(clubPoints ? { clubPoints } : {}),
       ...(clubRewardId ? { clubRewardId } : {}),
-      items: items.map(({ offerId, quantity, serviceNote }) => ({
+      items: items.map(({ offerId, productId, quantity, serviceNote }) => ({
         offerId,
         quantity,
+        ...(marketingVisitFor(productId) ? { visitId: marketingVisitFor(productId) } : {}),
         ...(serviceNote ? { serviceNote } : {}),
         ...((pricedOffers.get(offerId)?.serviceInputs.length ?? 0) > 0 ? {
           serviceAnswers: pricedOffers.get(offerId)!.serviceInputs.map((field) => ({ key: field.key, value: serviceAnswers[offerId]?.[field.key] ?? "" }))

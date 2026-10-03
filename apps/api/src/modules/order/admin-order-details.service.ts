@@ -38,7 +38,7 @@ const detailsSelect = {
     actor: { select: { id: true, full_name: true, email: true } }
   } },
   payout_records: { select: {
-    id: true, gross_amount: true, commission_amount: true, holdback_amount: true, shipping_cost_amount: true,
+    id: true, gross_amount: true, commission_amount: true, marketing_commission_amount: true, platform_marketing_commission_amount: true, holdback_amount: true, shipping_cost_amount: true,
     payable_amount: true, currency: true, status: true, requested_at: true,
     approved_at: true, settled_at: true, created_at: true, updated_at: true,
     events: { orderBy: { created_at: "desc" }, select: {
@@ -169,7 +169,7 @@ export class AdminOrderDetailsService {
       })),
       payouts: order.payout_records.map((payout) => ({
         id: payout.id, status: payout.status, currency: payout.currency.trim(),
-        grossAmount: payout.gross_amount.toString(), commissionAmount: payout.commission_amount.toString(),
+        grossAmount: payout.gross_amount.toString(), commissionAmount: payout.commission_amount.toString(), marketingCommissionAmount: payout.marketing_commission_amount.toString(), platformMarketingCommissionAmount: payout.platform_marketing_commission_amount.toString(),
         holdbackAmount: payout.holdback_amount.toString(), shippingCostAmount: payout.shipping_cost_amount.toString(), payableAmount: payout.payable_amount.toString(),
         requestedAt: payout.requested_at?.toISOString() ?? null,
         approvedAt: payout.approved_at?.toISOString() ?? null,

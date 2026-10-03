@@ -13,6 +13,7 @@ import type { PublicProduct, PublicProductOffer, PublicProductVariant } from "./
 import styles from "./ProductPage.module.css";
 import { readCart, writeCart } from "@/lib/cart";
 import { api, API_BASE } from "@/lib/api/client";
+import { marketingVisitFor, rememberMarketingVisit } from "@/lib/marketing-attribution";
 import { ProductComments } from "@/components/comments/ProductComments";
 import { OfferPicker } from "@/components/product/OfferPicker";
 import { PublicHeader } from "@/components/PublicHeader";
@@ -78,7 +79,8 @@ export function ProductPage({
   editHref,
   bridgeCheckout,
   accountHref,
-  signedInBuyer = false
+  signedInBuyer = false,
+  visitId
 }: {
   product: PublicProduct;
   locale: Locale;
@@ -87,6 +89,7 @@ export function ProductPage({
   bridgeCheckout?: ReactNode;
   accountHref?: string | null;
   signedInBuyer?: boolean;
+  visitId?: string;
 }) {
   const c = productPageCopy[locale];
   const d = digitalProductCopy[locale];
@@ -104,6 +107,14 @@ export function ProductPage({
   const [downloadChoices, setDownloadChoices] = useState<Array<{ href: string; available: boolean }>>([]);
   const [accessOrderId, setAccessOrderId] = useState<string | null>(null);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!visitId) return;
+    rememberMarketingVisit(product.id, visitId);
+    const items = readCart();
+    let changed = false;
+    for (const item of items) if (item.productId === product.id && item.visitId !== visitId) { item.visitId = visitId; changed = true; }
+    if (changed) writeCart(items);
+  }, [product.id, visitId]);
   const selectedOffer = offers.find((offer) => offer.id === selectedOfferId) ?? firstAvailableOffer;
   const unavailable = !selectedOffer || selectedOffer.physical?.inStock === false;
   const isFreeDigital = isDigital && Boolean(selectedOffer && /^0(?:\.0+)?$/.test(selectedOffer.price));
@@ -147,15 +158,17 @@ export function ProductPage({
         setButtonState("error");
         return;
       }
+      const attribution = (visitId && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(visitId) ? visitId : undefined) ?? marketingVisitFor(product.id);
       if (existing) {
         if (!isDigital) existing.quantity += quantity;
         existing.productName = product.title;
+        if (attribution) existing.visitId = attribution;
       } else {
         if (items.length >= 50) {
           setButtonState("error");
           return;
         }
-        items.push({ productId: product.id, productName: product.title, offerId: selectedOffer.id, quantity });
+        items.push({ productId: product.id, productName: product.title, offerId: selectedOffer.id, quantity, ...(attribution ? { visitId: attribution } : {}) });
       }
       writeCart(items);
       if (goToCart) {
