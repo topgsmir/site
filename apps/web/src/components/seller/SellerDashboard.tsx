@@ -1038,7 +1038,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
     } catch (error) {
       const detail = requestError(error, copy.updateError);
       setEditState("error"); setEditError(detail);
-      throw new Error(detail);
+      throw new Error(detail, { cause: error });
     }
   }
 

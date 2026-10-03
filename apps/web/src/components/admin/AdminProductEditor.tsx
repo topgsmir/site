@@ -222,7 +222,7 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
       const detail = requestError instanceof Error && requestError.message === c.loadError
         ? c.loadError : requestMessage(requestError, c.saveError);
       setError(detail);
-      throw new Error(detail);
+      throw new Error(detail, { cause: requestError });
     }
     finally { setBusy(null); }
   }
