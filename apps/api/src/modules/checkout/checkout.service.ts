@@ -9,6 +9,7 @@ import {
   ServiceUnavailableException
 } from "@nestjs/common";
 import type { AppUser, ProductType, ServiceInputDefinition } from "@topgsm/shared-types";
+import { sellerCommissionRate } from "../seller/seller-commission";
 import { createHash, randomUUID } from "node:crypto";
 import { Prisma } from "../../prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -384,7 +385,7 @@ export class CheckoutService {
         service: { select: { input_schema: true } },
         listing: {
           select: {
-            seller: { select: { id: true, shop_name: true, commission: true, permissions: { where: { permission: "physical_products_manage" }, select: { permission: true } }, shipping_profile: { select: { enabled: true, latitude: true, longitude: true } } } },
+            seller: { select: { id: true, shop_name: true, commission: true, commission_digital: true, commission_physical: true, commission_service: true, commission_bridge: true, permissions: { where: { permission: "physical_products_manage" }, select: { permission: true } }, shipping_profile: { select: { enabled: true, latitude: true, longitude: true } } } },
             product: {
               select: {
                 id: true,
@@ -483,7 +484,7 @@ export class CheckoutService {
       const key = `${offer.listing.seller.id}:${type}`;
       const group = groups.get(key) ?? {
         key, seller: { id: offer.listing.seller.id, shopName: offer.listing.seller.shop_name }, productType: type,
-        commissionRate: offer.listing.seller.commission.toString(), items: [], total: new Prisma.Decimal(0)
+        commissionRate: sellerCommissionRate(offer.listing.seller, type).toString(), items: [], total: new Prisma.Decimal(0)
       };
       const unitPrice = offerCurrency === "USD"
         ? offer.price.mul(tomanPerUsd!).toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP)

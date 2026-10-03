@@ -28,6 +28,7 @@ import { ShippingProviderRegistry } from "../../integrations/shipping/shipping-p
 import { SellerShippingProfileService } from "../../integrations/shipping/seller-shipping-profile.service";
 import { signUploadDownloadLink } from "./upload-download-link";
 import { buildOrderCsv } from "./order-export";
+import { sellerCommissionRate } from "../seller/seller-commission";
 
 const orderSelect = {
   id: true,
@@ -435,6 +436,10 @@ export class OrderService {
                     id: true,
                     shop_name: true,
                     commission: true,
+                    commission_digital: true,
+                    commission_physical: true,
+                    commission_service: true,
+                    commission_bridge: true,
                   }
                 },
                 product: {
@@ -504,8 +509,9 @@ export class OrderService {
           : offer.price;
         const currency = "TOMAN";
         const gross = unitPrice.mul(input.quantity);
+        const commissionRate = sellerCommissionRate(offer.listing.seller, offer.listing.product.type);
         const commission = gross
-          .mul(offer.listing.seller.commission)
+          .mul(commissionRate)
           .toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP);
         const payable = gross.minus(commission);
         if (payable.isNegative()) {
@@ -520,7 +526,7 @@ export class OrderService {
             status: "pending",
             currency,
             total_amount: gross,
-            commission_rate: offer.listing.seller.commission,
+            commission_rate: commissionRate,
             idempotency_key: idempotencyKey,
             request_hash: requestHash,
             items: {

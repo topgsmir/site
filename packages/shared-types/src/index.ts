@@ -1317,6 +1317,7 @@ export interface Vendor {
   phoneNumber: string | null;
   status: VendorStatus;
   commission: number;
+  commissionRates: Record<ProductType, number | null>;
   blogReviewRequired: boolean;
   goghdiAgentId: string | null;
   permissions: VendorPermission[];

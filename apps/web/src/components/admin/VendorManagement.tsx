@@ -156,6 +156,8 @@ const copy = {
     optionalPassword: "New password (optional)",
     status: "Account status",
     commission: "Commission",
+    commissionRatesTitle: "Commission by product type",
+    commissionRatesHint: "Leave a rate blank to use the default commission above.",
     accessTitle: "Vendor access",
     accessHint:
       "Permissions apply to this vendor account immediately after saving.",
@@ -328,6 +330,8 @@ const copy = {
     optionalPassword: "رمز عبور جدید (اختیاری)",
     status: "وضعیت حساب",
     commission: "کمیسیون",
+    commissionRatesTitle: "کمیسیون بر اساس نوع محصول",
+    commissionRatesHint: "نرخ خالی از کمیسیون پیش‌فرض بالا استفاده می‌کند.",
     accessTitle: "دسترسی فروشنده",
     accessHint:
       "دسترسی‌ها بلافاصله پس از ذخیره برای این فروشنده اعمال می‌شوند.",
@@ -500,6 +504,8 @@ const copy = {
     optionalPassword: "كلمة مرور جديدة (اختياري)",
     status: "حالة الحساب",
     commission: "العمولة",
+    commissionRatesTitle: "العمولة حسب نوع المنتج",
+    commissionRatesHint: "اترك النسبة فارغة لاستخدام العمولة الافتراضية أعلاه.",
     accessTitle: "صلاحيات البائع",
     accessHint: "تطبق الصلاحيات على حساب البائع فور الحفظ.",
     cancel: "إلغاء",
@@ -607,6 +613,7 @@ type VendorFormState = {
   password: string;
   status: VendorStatus;
   commission: string;
+  commissionRates: Record<ProductType, string>;
   blogReviewRequired: boolean;
   permissions: VendorPermission[];
 };
@@ -620,6 +627,7 @@ const emptyForm: VendorFormState = {
   password: "",
   status: "active",
   commission: "10",
+  commissionRates: { digital: "", physical: "", service: "", bridge: "" },
   blogReviewRequired: true,
   permissions: [
     "products_manage",
@@ -661,6 +669,12 @@ function formFromVendor(vendor: Vendor): VendorFormState {
     password: "",
     status: vendor.status,
     commission: String(vendor.commission * 100),
+    commissionRates: {
+      digital: vendor.commissionRates.digital === null ? "" : String(vendor.commissionRates.digital * 100),
+      physical: vendor.commissionRates.physical === null ? "" : String(vendor.commissionRates.physical * 100),
+      service: vendor.commissionRates.service === null ? "" : String(vendor.commissionRates.service * 100),
+      bridge: vendor.commissionRates.bridge === null ? "" : String(vendor.commissionRates.bridge * 100)
+    },
     blogReviewRequired: vendor.blogReviewRequired,
     permissions: [...vendor.permissions],
   };
@@ -1201,6 +1215,11 @@ export function VendorManagement({
       ...(form.password ? { password: form.password } : {}),
       status: form.status,
       commission: Number(form.commission) / 100,
+      commissionRates: Object.fromEntries(
+        (["digital", "physical", "service", "bridge"] as const).map((type) => [
+          type, form.commissionRates[type].trim() === "" ? null : Number(form.commissionRates[type]) / 100
+        ])
+      ),
       blogReviewRequired: form.blogReviewRequired,
       permissions: form.permissions,
     };
@@ -2757,6 +2776,23 @@ export function VendorManagement({
                   />
                 </div>
 
+                <fieldset className="permission-fieldset vendor-commission-fieldset">
+                  <legend>{c.commissionRatesTitle}</legend>
+                  <p>{c.commissionRatesHint}</p>
+                  <div className="vendor-commission-grid">
+                    {(["digital", "physical", "service", "bridge"] as const).map((type) => (
+                      <PercentField
+                        key={type}
+                        name={`commission-${type}`}
+                        label={c[type]}
+                        value={form.commissionRates[type]}
+                        onChange={(value) => setForm((current) => ({ ...current, commissionRates: { ...current.commissionRates, [type]: value } }))}
+                        required={false}
+                      />
+                    ))}
+                  </div>
+                </fieldset>
+
                 <p className="vendor-form-hint">{c.goghdiAgentHint}</p>
 
                 <fieldset className="permission-fieldset">
@@ -2905,11 +2941,13 @@ function PercentField({
   label,
   value,
   onChange,
+  required = true,
 }: {
   name: string;
   label: string;
   value: string;
   onChange(value: string): void;
+  required?: boolean;
 }) {
   return (
     <label className="vendor-field vendor-percent-field">
@@ -2923,7 +2961,7 @@ function PercentField({
         step="0.01"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        required
+        required={required}
         autoComplete="off"
       />
       <b aria-hidden="true">%</b>
