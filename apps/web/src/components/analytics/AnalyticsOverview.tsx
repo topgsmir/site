@@ -171,7 +171,7 @@ export function AnalyticsOverview({ locale, audience, compact = false }: { local
       </article>
 
       <div className={styles.detailGrid}>
-        <Breakdown title={copy.financial} items={[{ key: "gross", label: copy.grossSales, count: Number(data.summary.paidOrders.value), amount: data.summary.grossSales.value }, { key: "commission", label: copy.commission, count: 0, amount: data.summary.commission.value }, { key: "holdback", label: copy.holdback, count: 0, amount: data.summary.holdback.value }, { key: "refunds", label: copy.refunds, count: 0, amount: data.summary.refunds.value }, { key: "net", label: copy.netSales, count: Number(data.summary.paidOrders.value), amount: data.summary.netSales.value }]} locale={locale}/>
+        <Breakdown title={copy.financial} items={[{ key: "gross", label: copy.grossSales, count: Number(data.summary.paidOrders.value), amount: data.summary.grossSales.value }, { key: "commission", label: copy.commission, count: 0, amount: data.summary.commission.value }, ...(Number(data.summary.holdback.value) > 0 ? [{ key: "holdback", label: copy.holdback, count: 0, amount: data.summary.holdback.value }] : []), { key: "refunds", label: copy.refunds, count: 0, amount: data.summary.refunds.value }, { key: "net", label: copy.netSales, count: Number(data.summary.paidOrders.value), amount: data.summary.netSales.value }]} locale={locale}/>
         <Breakdown title={copy.orders} items={data.orderStatuses} locale={locale}/>
         <Breakdown title={copy.productTypes} items={data.productTypes} locale={locale}/>
         <Breakdown title={copy.payouts} items={data.payoutPipeline} locale={locale}/>

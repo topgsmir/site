@@ -90,6 +90,7 @@ export class PayoutService {
         });
         if (replay) {
           this.assertSameRequest(replay.request_hash, requestHash);
+          if (replay.payout.seller_id !== sellerId) throw new NotFoundException("Payout was not found");
           return replay.payout;
         }
 
@@ -131,7 +132,7 @@ export class PayoutService {
       });
       return this.map(payout);
     } catch (error) {
-      return this.replayOrThrow(error, actor.id, idempotencyKey, requestHash);
+      return this.replayOrThrow(error, actor.id, idempotencyKey, requestHash, sellerId);
     }
   }
 
@@ -239,7 +240,8 @@ export class PayoutService {
     error: unknown,
     actorUserId: string,
     idempotencyKey: string,
-    requestHash: string
+    requestHash: string,
+    sellerId?: string
   ) {
     if (this.isUniqueConflict(error)) {
       const replay = await this.prisma.payout_events.findUnique({
@@ -253,6 +255,7 @@ export class PayoutService {
       });
       if (replay) {
         this.assertSameRequest(replay.request_hash, requestHash);
+        if (sellerId && replay.payout.seller_id !== sellerId) throw new NotFoundException("Payout was not found");
         return this.map(replay.payout);
       }
     }

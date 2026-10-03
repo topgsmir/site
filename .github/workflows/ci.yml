@@ -49,6 +49,9 @@ jobs:
       - name: Bootstrap worktree
         run: pnpm run bootstrap
 
+      - name: Audit production dependencies for critical advisories
+        run: pnpm audit --prod --audit-level critical
+
       - name: Type-check
         run: pnpm run type-check
 

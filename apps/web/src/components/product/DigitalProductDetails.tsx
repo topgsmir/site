@@ -8,35 +8,33 @@ import styles from "./DigitalProductDetails.module.css";
 
 export function DigitalProductHeading({ product, locale }: { product: PublicProduct; locale: Locale }) {
   const c = digitalProductCopy[locale];
+  const image = product.image?.variants.find((item) => item.name === "thumb") ?? product.image?.variants[0];
   return <header className={styles.heading}>
-    <p className={styles.eyebrow}><DesignIcon name="file" />{c.library}{product.category ? <><span aria-hidden="true">/</span><span>{product.category}</span></> : null}</p>
-    <h1 id="product-title">{product.title}</h1>
-    <DigitalProductDescription description={product.description} locale={locale} />
+    <div className={styles.productIdentity}>
+      <div>
+        <p className={styles.eyebrow}><DesignIcon name="file" />{c.library}{product.category ? <><span aria-hidden="true">/</span><span>{product.category}</span></> : null}</p>
+        <h1 id="product-title">{product.title}</h1>
+      </div>
+      {image ? <Image className={styles.thumbnail} unoptimized src={image.url} alt={product.title} width={image.width} height={image.height} priority /> : null}
+    </div>
+    <nav className={styles.sectionLinks} aria-label={c.label}>
+      <a href="#download-description">{c.description}</a>
+      <a href="#download-details-title">{c.details}</a>
+    </nav>
   </header>;
 }
 
-export function DigitalProductPreview({ product, locale }: { product: PublicProduct; locale: Locale }) {
+export function DigitalDeliveryNote({ locale }: { locale: Locale }) {
   const c = digitalProductCopy[locale];
-  const image = product.image?.variants.find((item) => item.name === "large") ?? product.image?.variants[0];
-  return <div className={styles.previewColumn}>
-    <figure className={styles.preview}>
-      <div className={styles.previewLabel}><DesignIcon name="file" /><span>{c.label}</span></div>
-      {image ? <Image className={styles.image} unoptimized src={image.url} alt={product.title} width={image.width} height={image.height} priority /> : <div className={styles.fileCover}>
-        <DesignIcon name="file" className={styles.fileIcon} />
-        <strong>{product.title}</strong>
-        <span>{c.noPreview}</span>
-      </div>}
-      <figcaption><span>{c.preview}</span><span dir="ltr" translate="no">topgsm.</span></figcaption>
-    </figure>
-    <div className={styles.delivery}><DesignIcon name="file" /><div><strong>{c.delivery}</strong><p>{c.deliveryBody}</p></div></div>
-  </div>;
+  return <div className={styles.delivery}><DesignIcon name="file" /><div><strong>{c.delivery}</strong><p>{c.deliveryBody}</p></div></div>;
 }
 
-function DigitalProductDescription({ description, locale }: { description: string | null; locale: Locale }) {
+export function DigitalProductDescription({ description, locale }: { description: string | null; locale: Locale }) {
   const c = digitalProductCopy[locale];
-  return <div id="download-description" className={styles.description} aria-label={c.description}>
+  return <article id="download-description" className={styles.description} aria-labelledby="download-description-title" tabIndex={-1}>
+    <h2 id="download-description-title">{c.description}</h2>
     <ProductDescription description={description} fallback={c.noDescription} />
-  </div>;
+  </article>;
 }
 
 export function DigitalDownloadGuide({ locale }: { locale: Locale }) {

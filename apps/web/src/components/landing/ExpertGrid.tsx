@@ -6,6 +6,7 @@ import type { Route } from "next";
 import { useId, useState } from "react";
 import type { PublicExpertSummary } from "@topgsm/shared-types";
 import { DesignIcon } from "@/components/DesignIcon";
+import { sellerAvatarLetters } from "@/components/seller/SellerAvatar";
 import type { Locale } from "@/lib/i18n";
 import styles from "./ExpertGrid.module.css";
 
@@ -16,10 +17,10 @@ const copy = {
   ar: { verified: "خبير معتمد", active: "منتج نشط", profile: "عرض الملف", all: "عرض جميع الخبراء", less: "عرض أقل", count: (shown: string, total: string) => `${shown} من ${total} خبراء` }
 } as const;
 
-function ExpertPortrait({ expert }: { expert: PublicExpertSummary }) {
+function ExpertPortrait({ expert, locale }: { expert: PublicExpertSummary; locale: Locale }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const picture = expert.profilePicture;
-  const initials = expert.name.trim().split(/\s+/).slice(0, 2).map((part) => Array.from(part)[0]).join("");
+  const initials = sellerAvatarLetters(expert.name, locale);
 
   return <span className={styles.portrait} aria-hidden="true">
     {picture && failedUrl !== picture.url
@@ -46,7 +47,7 @@ export function ExpertGrid({ experts, locale }: { experts: PublicExpertSummary[]
       {experts.map((expert, index) => <li key={expert.id} hidden={index >= shown}>
         <Link className={styles.expert} href={`/${locale}/experts/${expert.id}` as Route} prefetch={false} aria-label={`${c.profile}: ${expert.name}`}>
           <span className={styles.portraitWrap}>
-            <ExpertPortrait expert={expert} />
+            <ExpertPortrait expert={expert} locale={locale} />
             <span className={styles.verified} role="img" aria-label={c.verified} title={c.verified}><DesignIcon name="check" /></span>
           </span>
           <h3 dir="auto">{expert.name}</h3>

@@ -16,8 +16,8 @@ export class ClubService {
   settings() { return this.prisma.club_settings.findUniqueOrThrow({ where: { id: 1 } }); }
 
   async ensureMember(tx: Tx, userId: string) {
-    const user = await tx.users.findUnique({ where: { id: userId }, select: { role: true, account_status: true } });
-    if (!user || user.role !== "buyer" || user.account_status !== "active") throw new NotFoundException("Active buyer not found");
+    const user = await tx.users.findUnique({ where: { id: userId }, select: { account_status: true } });
+    if (!user || user.account_status !== "active") throw new NotFoundException("Active account not found");
     return tx.club_members.upsert({ where: { user_id: userId }, create: { user_id: userId }, update: {} });
   }
 
@@ -49,12 +49,12 @@ export class ClubService {
 
   async spend(tx: Tx, userId: string, points: number, operationKey: string, kind: string, referenceId: string, reservationId?: string) {
     if (!Number.isSafeInteger(points) || points <= 0) throw new BadRequestException("Invalid points");
+    await this.ensureMember(tx, userId);
     const existing = await tx.club_point_entries.findUnique({ where: { operation_key: operationKey } });
     if (existing) {
       if (existing.user_id !== userId || existing.delta !== -points) throw new ConflictException("Point operation key was reused");
       return;
     }
-    await this.ensureMember(tx, userId);
     const debit = await tx.club_members.updateMany({ where: { user_id: userId, balance: { gte: points } }, data: { balance: { decrement: points } } });
     if (debit.count !== 1) throw new ConflictException("Insufficient club points");
     const lots = await tx.club_point_lots.findMany({ where: { user_id: userId, remaining: { gt: 0 }, expires_at: { gt: new Date() } }, orderBy: [{ expires_at: "asc" }, { id: "asc" }] });

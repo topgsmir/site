@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ForbiddenException } from "@nestjs/common";
 import type { AppUser } from "@topgsm/shared-types";
 import { LeaderboardService } from "./leaderboard.service";
 import type { PrismaService } from "../../prisma/prisma.service";
@@ -23,7 +22,11 @@ test("leaderboard returns names and ranks while keeping other buyers' purchase t
   assert.deepEqual(Object.keys(result.leaders[0]!).sort(), ["isYou", "name", "place", "score"]);
 });
 
-test("leaderboard refuses non-buyers before querying purchases", async () => {
-  const prisma = { $queryRaw: () => { throw new Error("query should not run"); } } as unknown as PrismaService;
-  await assert.rejects(() => new LeaderboardService(prisma).get({ ...buyer, role: "seller-admin" } as AppUser), ForbiddenException);
+test("leaderboard shows a staff shopper their own rank", async () => {
+  const prisma = { $queryRaw: async () => [
+    { buyer_id: "buyer-1", full_name: "Ali Rezaei", place: 1n, score: 70n, spent: { toString: () => "50000" }, quantity: 2n, order_count: 1n }
+  ] } as unknown as PrismaService;
+  const result = await new LeaderboardService(prisma).get({ ...buyer, role: "seller-admin" } as AppUser);
+  assert.equal(result.you.place, 1);
+  assert.equal(result.leaders[0]?.isYou, true);
 });

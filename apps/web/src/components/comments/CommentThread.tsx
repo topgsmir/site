@@ -69,14 +69,14 @@ export function CommentThread({ targetType, targetId, locale }: { targetType: "p
     finally { setSending(false); }
   }
 
-  const canPost = user?.role === "buyer" || (!user && policy === "guests");
+  const canPost = Boolean(user) || (!user && policy === "guests");
   return <section className={styles.section} dir={locale === "en" ? "ltr" : "rtl"} aria-labelledby={headingId}>
     <header className={styles.header}><h2 id={headingId}>{c.title}</h2><p>{c.intro}</p></header>
     {ready && canPost ? <form className={styles.card} onSubmit={submit}>
       {!user ? <div className={styles.guest}><label htmlFor={`${targetType}-comment-guest-name`}>{c.name}</label><input id={`${targetType}-comment-guest-name`} required maxLength={100} value={name} onChange={(event) => setName(event.target.value)} /></div> : null}
       <label htmlFor={bodyId}>{c.body}</label><textarea id={bodyId} required maxLength={2000} value={body} onChange={(event) => setBody(event.target.value)} />
       <div><button className={styles.primary} type="submit" disabled={sending || !body.trim()}>{sending ? c.sending : c.submit}</button></div>
-    </form> : ready && !user ? <p><Link href={`/${locale}/login` as Route}>{c.signIn}</Link></p> : ready && targetType === "product" && policy === "purchasers" && user?.role === "buyer" ? <p>{c.purchase}</p> : null}
+    </form> : ready && !user ? <p><Link href={`/${locale}/login` as Route}>{c.signIn}</Link></p> : ready && targetType === "product" && policy === "purchasers" && user ? <p>{c.purchase}</p> : null}
     {error ? <p className={styles.error} role="alert">{error}</p> : null}{message ? <p className={styles.success} role="status">{message}</p> : null}
     {!loading && !items.length ? <p className={styles.empty}>{c.empty}</p> : <div className={styles.list}>{items.map((item) => <article className={styles.card} key={item.id}><div className={styles.meta}><strong>{item.authorName}</strong><time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleDateString(locale)}</time></div><p>{item.body}</p>{item.replies.map((reply, index) => <div className={styles.reply} key={index}><strong>{c.reply} · {reply.authorName ?? reply.sellerName}</strong><p>{reply.body}</p></div>)}</article>)}</div>}
     {cursor && !loading ? <button className={styles.more} type="button" onClick={() => void load(cursor)}>{c.more}</button> : null}

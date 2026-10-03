@@ -49,7 +49,9 @@ before(async () => {
     const seller = await tx.sellers.create({ data: { user_id: sellerUser.id, shop_name: "Repair Lab", approved: true, permissions: { create: { permission: "blog_manage" } } } });
     const other = await tx.sellers.create({ data: { user_id: otherUser.id, shop_name: "Other Lab", approved: true, permissions: { create: { permission: "blog_manage" } } } });
     const product = await tx.products.create({ data: { created_by_seller_id: seller.id, title: "Screen kit", slug: `screen-kit-${suffix}`, kind: "simple", type: "physical", status: "active" } });
-    await tx.seller_listings.create({ data: { seller_id: seller.id, product_id: product.id, status: "active" } });
+    const variant = await tx.product_variants.create({ data: { product_id: product.id, option_signature: "a".repeat(64) } });
+    const listing = await tx.seller_listings.create({ data: { seller_id: seller.id, product_id: product.id, status: "active" } });
+    await tx.seller_offers.create({ data: { listing_id: listing.id, variant_id: variant.id, price: "100", currency: "TOMAN", status: "active", physical: { create: { stock: 10 } } } });
     const category = await tx.blog_categories.create({ data: { translations: { create: (["fa", "en", "ar"] as const).map((locale) => ({ locale, name: `${locale} Repair`, slug: `${locale}-repair-${suffix}` })) } } });
     const media = await tx.blog_media_assets.create({ data: { owner_user_id: sellerUser.id, seller_id: seller.id, kind: "cover", width: 1600, height: 900, byte_size: 1000, checksum: "a".repeat(64), variants: { create: { variant: "wide", width: 1600, height: 900, byte_size: 900, path: `test/${suffix}/wide.webp` } } } });
     return { sellerUser, otherUser, admin, seller, other, product, category, media };
@@ -99,6 +101,11 @@ describe("immutable multilingual blog workflow", () => {
     assert.equal(published.state, "published");
     const publicV1 = await blog.getPublic("en", `en-repair-guide-${suffix}-v1`);
     assert.ok("title" in publicV1 && String(publicV1.title).includes("v1"));
+    assert.ok("relatedProducts" in publicV1 && publicV1.relatedProducts.some((product) => product.id === productId));
+    await prisma.products.update({ where: { id: productId }, data: { title: "Unapproved screen kit", status: "pending_review" } });
+    const whilePrivate = await blog.getPublic("en", `en-repair-guide-${suffix}-v1`);
+    assert.ok("relatedProducts" in whilePrivate && !whilePrivate.relatedProducts.some((product) => product.id === productId));
+    await prisma.products.update({ where: { id: productId }, data: { title: "Screen kit", status: "active" } });
 
     const revision2 = await blog.update(sellerActor, postId, {
       optimisticVersion: published.optimisticVersion,

@@ -5,7 +5,7 @@ export { PRODUCT_RICH_TEXT_PREFIX };
 function validNode(value: unknown, depth = 0): value is RichTextNode {
   if (!value || typeof value !== "object" || depth > 12) return false;
   const node = value as Record<string, unknown>;
-  if (typeof node.type !== "string" || !["doc", "paragraph", "heading", "bulletList", "orderedList", "listItem", "blockquote", "codeBlock", "hardBreak", "horizontalRule", "text"].includes(node.type)) return false;
+  if (typeof node.type !== "string" || !["doc", "paragraph", "heading", "bulletList", "orderedList", "listItem", "blockquote", "codeBlock", "hardBreak", "horizontalRule", "text", "table", "tableRow", "tableCell", "tableHeader"].includes(node.type)) return false;
   if (node.text !== undefined && typeof node.text !== "string") return false;
   if (node.marks !== undefined && (!Array.isArray(node.marks) || !node.marks.every((mark) => mark && typeof mark === "object" && typeof mark.type === "string"))) return false;
   if (node.content !== undefined && (!Array.isArray(node.content) || !node.content.every((child) => validNode(child, depth + 1)))) return false;

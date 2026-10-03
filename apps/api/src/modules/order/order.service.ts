@@ -19,6 +19,7 @@ import type {
   CreateOrderDto,
   ExportOrdersDto,
   ListOrdersQueryDto,
+  UpdatePurchaseStatusDto,
   UpdateOrderShippingDto,
   UpdateOrderStatusDto
 } from "./dto/order.dto";
@@ -79,6 +80,18 @@ const buyerOrderSummarySelect = {
   seller: { select: { shop_name: true, goghdi_agent_id: true } },
   items: { select: { id: true, product_title: true, product_type: true, quantity: true } }
 } satisfies Prisma.ordersSelect;
+
+type PurchaseOrderSummary = {
+  id: string;
+  status: order_status;
+  currency: string;
+  totalAmount: string;
+  createdAt: string;
+  seller: { shopName: string };
+  chatAvailable: boolean;
+  items: Array<{ id: string; productTitle: string; productType: product_type; quantity: number }>;
+  payment?: never;
+};
 
 const adminOrderDirectorySelect = {
   id: true, status: true, trashed_at: true, currency: true, total_amount: true, traffic_source: true, created_at: true,
@@ -229,35 +242,7 @@ export class OrderService {
         statusCounts
       };
     }
-    if (actor.role === "buyer") {
-      const rows = await this.prisma.orders.findMany({
-        where,
-        ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
-        take: input.limit + 1,
-        orderBy: [{ created_at: direction }, { id: direction }],
-        select: buyerOrderSummarySelect
-      });
-      const hasMore = rows.length > input.limit;
-      const page = hasMore ? rows.slice(0, input.limit) : rows;
-      return {
-        items: page.map((order) => ({
-          id: order.id,
-          status: order.status,
-          currency: order.currency.trim(),
-          totalAmount: order.total_amount.toString(),
-          createdAt: order.created_at.toISOString(),
-          seller: { shopName: order.seller.shop_name },
-          chatAvailable: Boolean(order.seller.goghdi_agent_id),
-          items: order.items.map((item) => ({
-            id: item.id,
-            productTitle: item.product_title,
-            productType: item.product_type,
-            quantity: item.quantity
-          }))
-        })),
-        nextCursor: hasMore ? page.at(-1)?.id ?? null : null
-      };
-    }
+    if (actor.role === "buyer") return this.purchasePage(where, input, direction);
     const rows = await this.prisma.orders.findMany({
       where,
       ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
@@ -289,6 +274,47 @@ export class OrderService {
     };
   }
 
+  async listPurchases(actor: AppUser, input: ListOrdersQueryDto) {
+    if (input.view || input.trash || input.statusGroup) throw new BadRequestException("Management filters are unavailable for purchases");
+    const { where } = await this.listWhere(actor, input, true);
+    const direction = input.sort === "oldest" ? "asc" : "desc";
+    if (input.cursor) {
+      const cursor = await this.prisma.orders.findFirst({ where: { ...where, id: input.cursor }, select: { id: true } });
+      if (!cursor) throw new NotFoundException("Order page cursor was not found");
+    }
+    return this.purchasePage(where, input, direction);
+  }
+
+  private async purchasePage(where: Prisma.ordersWhereInput, input: ListOrdersQueryDto, direction: "asc" | "desc"): Promise<{ items: PurchaseOrderSummary[]; nextCursor: string | null; statusCounts?: never }> {
+    const rows = await this.prisma.orders.findMany({
+      where,
+      ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+      take: input.limit + 1,
+      orderBy: [{ created_at: direction }, { id: direction }],
+      select: buyerOrderSummarySelect
+    });
+    const hasMore = rows.length > input.limit;
+    const page = hasMore ? rows.slice(0, input.limit) : rows;
+    return {
+      items: page.map((order): PurchaseOrderSummary => ({
+        id: order.id,
+        status: order.status,
+        currency: order.currency.trim(),
+        totalAmount: order.total_amount.toString(),
+        createdAt: order.created_at.toISOString(),
+        seller: { shopName: order.seller.shop_name },
+        chatAvailable: Boolean(order.seller.goghdi_agent_id),
+        items: order.items.map((item) => ({
+          id: item.id,
+          productTitle: item.product_title,
+          productType: item.product_type,
+          quantity: item.quantity
+        }))
+      })),
+      nextCursor: hasMore ? page.at(-1)?.id ?? null : null
+    };
+  }
+
   async exportCsv(actor: AppUser, input: ExportOrdersDto) {
     if (!this.hasPlatformPermission(actor, "orders_manage")) {
       throw new ForbiddenException("Platform order access is required");
@@ -305,7 +331,7 @@ export class OrderService {
     return buildOrderCsv(rows, input.columns, input.locale);
   }
 
-  private async listWhere(actor: AppUser, input: Pick<ListOrdersQueryDto, "view" | "trash" | "status" | "statusGroup" | "productType" | "dateFrom" | "dateTo" | "search">) {
+  private async listWhere(actor: AppUser, input: Pick<ListOrdersQueryDto, "view" | "trash" | "status" | "statusGroup" | "productType" | "dateFrom" | "dateTo" | "search">, personal = false) {
     const fromDay = input.dateFrom ? DateTime.fromISO(input.dateFrom, { zone: "Asia/Tehran" }) : undefined;
     const toDay = input.dateTo ? DateTime.fromISO(input.dateTo, { zone: "Asia/Tehran" }) : undefined;
     if ((fromDay && (!fromDay.isValid || fromDay.toISODate() !== input.dateFrom)) ||
@@ -316,7 +342,7 @@ export class OrderService {
     const term = input.search?.trim();
     if (term && term.length < 3) throw new BadRequestException("Order search needs at least 3 characters");
     const baseWhere: Prisma.ordersWhereInput = {
-      ...await this.scope(actor),
+      ...(personal ? { buyer_id: actor.id } : await this.scope(actor)),
       ...(input.view === "directory" ? { trashed_at: input.trash === "trashed" ? { not: null } : null } : {}),
       ...(input.productType ? { items: { some: { product_type: input.productType as product_type } } } : {}),
       ...(from || toExclusive ? { created_at: { ...(from ? { gte: from } : {}), ...(toExclusive ? { lt: toExclusive } : {}) } } : {}),
@@ -354,10 +380,13 @@ export class OrderService {
     return this.mapForActor(order, actor);
   }
 
+  async getPurchase(actor: AppUser, orderId: string) {
+    const order = await this.prisma.orders.findFirst({ where: { id: orderId, buyer_id: actor.id }, select: orderSelect });
+    if (!order) throw new NotFoundException("Order was not found");
+    return this.mapForBuyer(order);
+  }
+
   async create(actor: AppUser, input: CreateOrderDto, idempotencyKey: string) {
-    if (actor.role !== "buyer") {
-      throw new ForbiddenException("Only buyers can create orders");
-    }
     const normalizedBridgeFields = (input.bridgeFields ?? [])
       .map((item) => ({ key: item.key.trim(), value: item.value.normalize("NFKC").trim() }))
       .sort((left, right) => left.key.localeCompare(right.key));
@@ -406,7 +435,6 @@ export class OrderService {
                     id: true,
                     shop_name: true,
                     commission: true,
-                    holdback_rate: true
                   }
                 },
                 product: {
@@ -437,6 +465,7 @@ export class OrderService {
           }
         });
         if (!offer) throw new NotFoundException("Offer was not found");
+        if (!["bridge"].includes(offer.listing.product.type)) throw new BadRequestException("Use checkout for physical, digital, and service orders");
 
         if (offer.listing.product.type === "bridge" && this.config?.get<string>("BRIDGE_FEATURE_ENABLED") !== "true") throw new ServiceUnavailableException("Bridge is not enabled");
         const bridgePlan = offer.listing.product.type === "bridge"
@@ -478,10 +507,7 @@ export class OrderService {
         const commission = gross
           .mul(offer.listing.seller.commission)
           .toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP);
-        const holdback = gross
-          .mul(offer.listing.seller.holdback_rate)
-          .toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP);
-        const payable = gross.minus(commission).minus(holdback);
+        const payable = gross.minus(commission);
         if (payable.isNegative()) {
           throw new ConflictException("Seller payout terms are invalid");
         }
@@ -495,7 +521,6 @@ export class OrderService {
             currency,
             total_amount: gross,
             commission_rate: offer.listing.seller.commission,
-            holdback_rate: offer.listing.seller.holdback_rate,
             idempotency_key: idempotencyKey,
             request_hash: requestHash,
             items: {
@@ -530,7 +555,6 @@ export class OrderService {
               create: {
                 gross_amount: gross,
                 commission_amount: commission,
-                holdback_amount: holdback,
                 payable_amount: payable,
                 currency,
                 status: "draft"
@@ -574,7 +598,7 @@ export class OrderService {
         });
         return created;
       });
-      return this.mapForActor(order, actor);
+      return this.mapForBuyer(order);
     } catch (error) {
       if (this.isUniqueConflict(error)) {
         const replay = await this.prisma.orders.findUnique({
@@ -588,7 +612,7 @@ export class OrderService {
         });
         if (replay) {
           this.assertSameRequest(replay.request_hash, requestHash);
-          return this.mapForActor(replay, actor);
+          return this.mapForBuyer(replay);
         }
       }
       throw error;
@@ -601,8 +625,18 @@ export class OrderService {
     input: UpdateOrderStatusDto,
     idempotencyKey: string
   ) {
-    const requestHash = this.hash({ orderId, status: input.status });
-    const sellerId = await this.sellerIdFor(actor, "orders_manage");
+    return this.transitionWithScope(actor, orderId, input, idempotencyKey, false);
+  }
+
+  async transitionPurchase(actor: AppUser, orderId: string, input: UpdatePurchaseStatusDto, idempotencyKey: string) {
+    return this.transitionWithScope(actor, orderId, input, idempotencyKey, true);
+  }
+
+  private async transitionWithScope(actor: AppUser, orderId: string, input: UpdateOrderStatusDto | UpdatePurchaseStatusDto, idempotencyKey: string, personalRoute: boolean) {
+    const purchase = personalRoute || actor.role === "buyer";
+    const requestHash = this.hash({ orderId, status: input.status, ...(personalRoute ? { intent: "purchase" } : {}) });
+    const scope = purchase ? { buyer_id: actor.id } : await this.scope(actor);
+    const mapResult = (order: OrderRecord) => purchase ? this.mapForBuyer(order) : this.mapForActor(order, actor);
 
     try {
       const order = await this.serializable(async (transaction) => {
@@ -617,6 +651,8 @@ export class OrderService {
         });
         if (replay) {
           this.assertSameRequest(replay.request_hash, requestHash);
+          const authorized = await transaction.orders.findFirst({ where: { ...scope, id: replay.order.id, trashed_at: null }, select: { id: true } });
+          if (!authorized) throw new NotFoundException("Order was not found");
           return replay.order;
         }
 
@@ -624,11 +660,7 @@ export class OrderService {
           where: {
             id: orderId,
             trashed_at: null,
-            ...(this.hasPlatformPermission(actor, "orders_manage")
-              ? {}
-              : actor.role === "buyer"
-                ? { buyer_id: actor.id }
-                : { seller_id: sellerId ?? "" })
+            ...scope
           },
           select: { ...orderSelect, payout_records: { select: { status: true } }, items: { select: { id: true, product_type: true, inventory_reservation: { select: { id: true, offer_id: true, quantity: true, status: true } } } } }
         });
@@ -636,19 +668,19 @@ export class OrderService {
 
         const productType = current.items[0]?.product_type;
         if (!productType) throw new ConflictException("Order has no fulfillment item");
-        this.assertTransition(actor, current.status, input.status, productType, current.payout_records[0]?.status);
-        if (this.hasPlatformPermission(actor, "orders_manage") && !input.confirmSensitive) {
+        this.assertTransition(actor, current.status, input.status, productType, current.payout_records[0]?.status, purchase);
+        if (!purchase && this.hasPlatformPermission(actor, "orders_manage") && !("confirmSensitive" in input && input.confirmSensitive)) {
           throw new BadRequestException("Confirm this administrative status change");
         }
-        if (current.status === "pending" && input.status === "delivered") {
+        if (current.status === "pending" && (input.status === "delivered" || input.status === "cancelled")) {
           const inFlightPayment = await transaction.payment_attempts.count({ where: {
-            status: { notIn: ["failed", "refunded"] },
+            status: { notIn: ["created", "failed", "refunded"] },
             OR: [
               { order_id: orderId },
               ...(current.checkout_id ? [{ checkout_payment_group: { checkout_id: current.checkout_id } }] : [])
             ]
           } });
-          if (inFlightPayment) throw new ConflictException("Payment is in progress; complete or resolve it before manually completing this order");
+          if (inFlightPayment) throw new ConflictException("Payment is in progress; complete or resolve it before changing this order");
         }
 
         const changed = await transaction.orders.updateMany({
@@ -670,6 +702,16 @@ export class OrderService {
           }
         }
         if (input.status === "cancelled") {
+          // Created attempts have never reached the provider. Closing them in the
+          // same transaction frees their unique slot; the initiation claim locks
+          // and checks this order, so it cannot charge after cancellation wins.
+          await transaction.payment_attempts.updateMany({
+            where: { status: "created", OR: [
+              { order_id: orderId },
+              ...(current.checkout_id ? [{ checkout_payment_group: { checkout_id: current.checkout_id } }] : [])
+            ] },
+            data: { status: "failed", failure_code: "ORDER_CANCELLED_BEFORE_INITIATION" }
+          });
           for (const item of current.items) {
             const reservation = item.inventory_reservation;
             if (!reservation || reservation.status !== "active") continue;
@@ -709,7 +751,7 @@ export class OrderService {
           select: orderSelect
         });
       });
-      return this.mapForActor(order, actor);
+      return mapResult(order);
     } catch (error) {
       if (this.isUniqueConflict(error)) {
         const replay = await this.prisma.order_events.findUnique({
@@ -723,7 +765,9 @@ export class OrderService {
         });
         if (replay) {
           this.assertSameRequest(replay.request_hash, requestHash);
-          return this.mapForActor(replay.order, actor);
+          const authorized = await this.prisma.orders.findFirst({ where: { ...scope, id: replay.order.id, trashed_at: null }, select: { id: true } });
+          if (!authorized) throw new NotFoundException("Order was not found");
+          return mapResult(replay.order);
         }
       }
       throw error;
@@ -784,7 +828,12 @@ export class OrderService {
     const requestHash = this.hash({ orderId, carrier: input.carrier?.trim() ?? null, trackingCode: input.trackingCode?.trim() ?? null });
     return this.serializable(async (tx) => {
       const replay = await tx.order_events.findUnique({ where: { actor_user_id_idempotency_key: { actor_user_id: actor.id, idempotency_key: idempotencyKey } }, select: { request_hash: true, order: { select: orderSelect } } });
-      if (replay) { this.assertSameRequest(replay.request_hash, requestHash); return this.map(replay.order); }
+      if (replay) {
+        this.assertSameRequest(replay.request_hash, requestHash);
+        const authorized = await tx.orders.findFirst({ where: { id: replay.order.id, seller_id: sellerId, trashed_at: null }, select: { id: true } });
+        if (!authorized) throw new NotFoundException("Order was not found");
+        return this.map(replay.order);
+      }
       const order = await tx.orders.findFirst({ where: { id: orderId, seller_id: sellerId, status: "processing", items: { some: { product_type: "physical" } } }, select: { id: true, buyer_id: true, seller_id: true } });
       if (!order) throw new NotFoundException("A processing physical order was not found");
       const changed = await tx.orders.updateMany({ where: { id: order.id, seller_id: sellerId, status: "processing" }, data: { status: "shipped" } });
@@ -801,7 +850,6 @@ export class OrderService {
   }
 
   async claimDigitalDownload(actor: AppUser, orderId: string, itemId: string, clientIp: string, fileIndex = 0) {
-    if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can download purchases");
     return this.prisma.$transaction(async (tx) => {
       const entitlement = await tx.digital_entitlements.findFirst({
         where: { order_item_id: itemId, file_index: fileIndex, buyer_id: actor.id, order_item: { order_id: orderId, order: { buyer_id: actor.id, status: { in: ["paid", "processing", "awaiting_confirmation", "delivered"] } } } },
@@ -866,19 +914,18 @@ export class OrderService {
     from: order_status,
     to: UpdateOrderStatusDto["status"],
     productType: product_type,
-    payoutStatus?: string
+    payoutStatus?: string,
+    purchase = actor.role === "buyer"
   ) {
     let allowed: boolean;
-    if (this.hasPlatformPermission(actor, "orders_manage")) {
-      allowed = this.adminTransitions(from, productType, payoutStatus).includes(to);
-    } else if (actor.role === "buyer") {
+    if (purchase) {
       allowed =
         (from === "pending" && to === "cancelled") ||
         (productType === "digital" && from === "paid" && to === "delivered") ||
         (productType === "physical" && from === "shipped" && to === "delivered") ||
-        (productType !== "physical" &&
-          from === "awaiting_confirmation" &&
-          to === "delivered");
+        (productType !== "physical" && from === "awaiting_confirmation" && to === "delivered");
+    } else if (this.hasPlatformPermission(actor, "orders_manage")) {
+      allowed = this.adminTransitions(from, productType, payoutStatus).includes(to);
     } else {
       allowed =
         (from === "paid" && to === "processing") ||
@@ -1036,6 +1083,11 @@ export class OrderService {
       actor.role === "seller-admin" || actor.role === "seller-staff"
     );
     if (actor.role !== "buyer") return mapped;
+    return this.mapForBuyer(order);
+  }
+
+  private mapForBuyer(order: OrderRecord) {
+    const mapped = this.map(order);
     return {
       id: mapped.id,
       checkoutId: mapped.checkoutId,

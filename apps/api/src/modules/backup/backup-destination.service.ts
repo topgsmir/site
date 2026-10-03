@@ -1,22 +1,30 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException, RequestTimeoutException, ServiceUnavailableException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { AdminBackupDestination, AdminRemoteBackupArchive, BackupProtocol } from "@topgsm/shared-types";
 import { Client as FtpClient } from "basic-ftp";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
-import { basename, posix } from "node:path";
-import { Readable } from "node:stream";
+import { basename, dirname, posix } from "node:path";
+import { Readable, Transform } from "node:stream";
+import { createWriteStream } from "node:fs";
+import { rm } from "node:fs/promises";
+import { pipeline } from "node:stream/promises";
 import SftpClient from "ssh2-sftp-client";
 import { CredentialCryptoService } from "../../common/security/credential-crypto.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import type { CreateBackupDestinationDto, UpdateBackupDestinationDto } from "./dto/backup.dto";
+import { assertStagingFreeSpace, backupMinFreeBytes } from "./backup-staging-space";
 
 type StoredDestination = Awaited<ReturnType<PrismaService["backup_destinations"]["findUniqueOrThrow"]>>;
+const SPACE_CHECK_BYTES = 16 * 1024 ** 2;
 
 @Injectable()
 export class BackupDestinationService {
   private readonly allowedCidrs: string[];
+  private readonly maxArchiveBytes: number;
+  private readonly maxDownloadMs: number;
+  private readonly minFreeBytes: number;
 
   constructor(
     config: ConfigService,
@@ -24,6 +32,12 @@ export class BackupDestinationService {
     private readonly crypto: CredentialCryptoService
   ) {
     this.allowedCidrs = (config.get<string>("BACKUP_DESTINATION_ALLOWED_CIDRS") ?? "").split(",").map((item) => item.trim()).filter(Boolean);
+    const configuredLimit = Number(config.get<string>("BACKUP_MAX_ARCHIVE_BYTES"));
+    this.maxArchiveBytes = Number.isSafeInteger(configuredLimit) && configuredLimit > 0 ? configuredLimit : 25 * 1024 ** 3;
+    const configuredTimeout = Number(config.get<string>("BACKUP_DOWNLOAD_TIMEOUT_MS"));
+    this.maxDownloadMs = Number.isSafeInteger(configuredTimeout) && configuredTimeout > 0 && configuredTimeout <= 24 * 60 * 60_000
+      ? configuredTimeout : 2 * 60 * 60_000;
+    this.minFreeBytes = backupMinFreeBytes(config);
   }
 
   async list(): Promise<AdminBackupDestination[]> {
@@ -32,6 +46,7 @@ export class BackupDestinationService {
   }
 
   async create(input: CreateBackupDestinationDto, actorUserId: string) {
+    this.assertSafeCommandValue(input.username, input.remotePath, input.password, input.privateKeyPassphrase);
     this.validateProtocol(input.protocol, input.allowInsecure, input.hostKeyFingerprint, input.password, input.privateKey);
     const id = randomUUID();
     const secrets = this.encryptSecrets(id, input.password, input.privateKey, input.privateKeyPassphrase);
@@ -53,6 +68,7 @@ export class BackupDestinationService {
   }
 
   async update(id: string, input: UpdateBackupDestinationDto, actorUserId: string) {
+    this.assertSafeCommandValue(input.username, input.remotePath, input.password, input.privateKeyPassphrase);
     const current = await this.getStored(id);
     const protocol = input.protocol ?? current.protocol as BackupProtocol;
     const allowInsecure = input.allowInsecure ?? current.allow_insecure;
@@ -152,9 +168,52 @@ export class BackupDestinationService {
 
   async download(destination: StoredDestination, remoteName: string, localPath: string) {
     if (!/^topgsm-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}[.]topgsm-backup$/i.test(remoteName)) throw new BadRequestException("Remote archive name is invalid");
+    await assertStagingFreeSpace(dirname(localPath), SPACE_CHECK_BYTES, this.minFreeBytes);
     await this.withConnection(destination, async (connection) => {
-      if (connection.kind === "sftp") await connection.client.fastGet(posix.join(destination.remote_path, remoteName), localPath);
-      else { await connection.client.cd(destination.remote_path); await connection.client.downloadTo(localPath, remoteName); }
+      let bytes = 0;
+      let nextSpaceCheck = 0;
+      const bounded = new Transform({
+        transform: (chunk: Buffer, _encoding, callback) => {
+          bytes += chunk.length;
+          if (bytes > this.maxArchiveBytes) {
+            callback(new BadRequestException("Remote backup package is too large"));
+            return;
+          }
+          if (bytes < nextSpaceCheck) {
+            callback(null, chunk);
+            return;
+          }
+          nextSpaceCheck = bytes + SPACE_CHECK_BYTES;
+          void assertStagingFreeSpace(dirname(localPath), Math.max(SPACE_CHECK_BYTES, chunk.length), this.minFreeBytes)
+            .then(() => callback(null, chunk), (error: unknown) => callback(error instanceof Error ? error : new Error("Backup staging space check failed")));
+        }
+      });
+      const writing = pipeline(bounded, createWriteStream(localPath, { flags: "wx", mode: 0o600 }));
+      void writing.catch(() => undefined);
+      let deadline: NodeJS.Timeout | undefined;
+      const timeout = new Promise<never>((_resolve, reject) => {
+        deadline = setTimeout(() => {
+          bounded.destroy(new Error("backup_download_timeout"));
+          if (connection.kind === "sftp") void connection.client.end().catch(() => undefined);
+          else connection.client.close();
+          reject(new RequestTimeoutException("Remote backup download timed out"));
+        }, this.maxDownloadMs);
+      });
+      try {
+        const transfer = connection.kind === "sftp"
+          ? connection.client.get(posix.join(destination.remote_path, remoteName), bounded)
+          : (async () => { await connection.client.cd(destination.remote_path); await connection.client.downloadTo(bounded, remoteName); })();
+        await Promise.race([transfer, timeout]);
+        bounded.end();
+        await writing;
+      } catch (error) {
+        bounded.destroy(error instanceof Error ? error : new Error("Backup download failed"));
+        await writing.catch(() => undefined);
+        await rm(localPath, { force: true });
+        throw error;
+      } finally {
+        if (deadline) clearTimeout(deadline);
+      }
     });
   }
 
@@ -214,9 +273,11 @@ export class BackupDestinationService {
   }
 
   private async withConnection<T>(destination: StoredDestination, operation: (connection: { kind: "sftp"; client: SftpClient } | { kind: "ftp"; client: FtpClient }) => Promise<T>): Promise<T> {
+    this.assertSafeCommandValue(destination.username, destination.remote_path);
     const address = await this.resolveSafeAddress(destination.host);
     const password = destination.encrypted_password && destination.encryption_key_id
       ? this.crypto.decrypt(destination.encrypted_password, destination.encryption_key_id, `backup-destination:${destination.id}:password`, "BACKUP_DESTINATION") : undefined;
+    this.assertSafeCommandValue(password);
     if (destination.protocol === "sftp") {
       const client = new SftpClient(`topgsm-backup-${destination.id}`);
       const privateKey = destination.encrypted_private_key && destination.encryption_key_id
@@ -283,6 +344,7 @@ export class BackupDestinationService {
   }
 
   private normalizeRemotePath(value: string) {
+    this.assertSafeCommandValue(value);
     const normalized = posix.normalize(value.trim().replaceAll("\\", "/"));
     if (!normalized || normalized === "." || normalized === "/" || normalized.includes("\0") || normalized === ".." || normalized.startsWith("../")) {
       throw new BadRequestException("Use a dedicated non-root remote backup directory");
@@ -299,7 +361,9 @@ export class BackupDestinationService {
     throw new BadRequestException("Backup destination resolves only to blocked private or local addresses");
   }
 
-  private isForbiddenAddress(address: string) {
+  private isForbiddenAddress(address: string): boolean {
+    const mapped = this.mappedIpv4(address);
+    if (mapped) return this.isForbiddenAddress(mapped);
     if (isIP(address) === 4) {
       const [a, b] = address.split(".").map(Number);
       return a === 0 || a === 10 || a === 127 || a >= 224 || a === 169 && b === 254 || a === 172 && b >= 16 && b <= 31 || a === 192 && b === 168 || a === 100 && b >= 64 && b <= 127;
@@ -309,6 +373,8 @@ export class BackupDestinationService {
   }
 
   private matchesCidr(address: string, cidr: string) {
+    address = this.mappedIpv4(address) ?? address;
+    cidr = this.mappedIpv4(cidr) ?? cidr;
     if (!cidr.includes("/")) return address === cidr;
     if (isIP(address) !== 4) return false;
     const [base, bitsText] = cidr.split("/");
@@ -323,5 +389,22 @@ export class BackupDestinationService {
   private errorCode(error: unknown) {
     const source = error instanceof Error ? `${error.name}:${error.message}` : "UNKNOWN";
     return source.replace(/[^A-Za-z0-9:_-]/g, "_").slice(0, 64).toUpperCase();
+  }
+
+  private mappedIpv4(address: string): string | null {
+    if (isIP(address) !== 6) return null;
+    // WHATWG URL parsing expands mixed IPv4 notation and compresses all equivalent IPv6 spellings.
+    const canonical = new URL(`http://[${address}]/`).hostname.slice(1, -1);
+    const words = /^::ffff:(?:0:)?([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i.exec(canonical);
+    if (!words) return null;
+    const high = Number.parseInt(words[1]!, 16);
+    const low = Number.parseInt(words[2]!, 16);
+    return `${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`;
+  }
+
+  private assertSafeCommandValue(...values: Array<string | undefined>) {
+    if (values.some((value) => value !== undefined && /[\r\n\0]/.test(value))) {
+      throw new BadRequestException("Backup destination credentials and paths cannot contain control characters");
+    }
   }
 }

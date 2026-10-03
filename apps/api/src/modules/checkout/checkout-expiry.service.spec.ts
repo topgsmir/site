@@ -32,3 +32,18 @@ describe("checkout coupon expiry", () => {
     assert.equal(decremented, 1);
   });
 });
+
+it("continues reconciling later attempts and expiring groups after one provider failure", async () => {
+  const reconciled: string[] = [];
+  let groupsQueried = false;
+  const prisma = {
+    payment_attempts: { findMany: async () => [{ id: "unavailable" }, { id: "later" }] },
+    checkout_payment_groups: { findMany: async () => { groupsQueried = true; return []; } },
+    inventory_reservations: { findMany: async () => [] }
+  };
+  const payments = { reconcileCheckoutAttempt: async (id: string) => { reconciled.push(id); if (id === "unavailable") throw new Error("provider unavailable"); } };
+  const expiry = new CheckoutExpiryService(prisma as never, payments as never);
+  await (expiry as unknown as { tick(): Promise<void> }).tick();
+  assert.deepEqual(reconciled, ["unavailable", "later"]);
+  assert.equal(groupsQueried, true);
+});

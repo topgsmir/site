@@ -1,0 +1,7 @@
+.modes { display: flex; gap: 4px; padding: 5px 8px 0; border: 1px solid var(--color-dashboard-rule); border-bottom: 0; border-radius: 10px 10px 0 0; background: var(--color-dashboard-paper); }
+.modes button { min-height: 36px; padding: 6px 12px; border: 0; border-radius: 7px 7px 0 0; color: var(--color-dashboard-muted); background: transparent; cursor: pointer; }
+.modes button[aria-pressed="true"] { color: var(--color-dashboard-accent); background: var(--color-dashboard-surface); }
+.modes button:focus-visible, .codeEditor textarea:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: -2px; }
+.codeEditor { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--color-dashboard-rule); border-radius: 0 0 10px 10px; background: var(--color-dashboard-surface); }
+.codeEditor textarea { width: 100%; min-height: 170px; resize: vertical; padding: 10px 12px; border: 1px solid var(--color-dashboard-rule); border-radius: 7px; color: var(--color-dashboard-ink); background: var(--color-dashboard-paper); font: 13px/1.6 ui-monospace, SFMono-Regular, Consolas, monospace; tab-size: 2; }
+.codeEditor p { margin: 0; color: var(--color-dashboard-muted); font-size: 12px; line-height: 1.7; }

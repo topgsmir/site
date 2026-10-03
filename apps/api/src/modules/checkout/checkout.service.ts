@@ -2,7 +2,6 @@ import { mapDigitalDeliveries, digitalFileReferences, digitalFileTitles } from "
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   HttpStatus,
   Injectable,
   NotFoundException,
@@ -173,7 +172,7 @@ export class CheckoutService {
       usdToTomanRate: quote.usdToTomanRate,
       commonPaymentMethods: quote.commonPaymentMethods,
       requiresShippingAddress: quote.requiresShippingAddress,
-      groups: quote.groups.map(({ commissionRate: _commission, holdbackRate: _holdback, total: _total, ...group }) => ({
+      groups: quote.groups.map(({ commissionRate: _commission, total: _total, ...group }) => ({
         ...group,
         items: group.items.map(({ digitalDeliveryUrl: _url, digitalDeliveryUrls: _urls, digitalDeliveryTitles: _titles, digitalMaxDownloads: _limit, serviceAnswers: _answers, parcel: _parcel, ...item }) => item)
       }))
@@ -181,7 +180,6 @@ export class CheckoutService {
   }
 
   async create(actor: AppUser, input: CreateCheckoutDto, idempotencyKey: string) {
-    if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can create checkouts");
     const requestHash = this.hash({
       items: [...input.items].sort((a, b) => a.offerId.localeCompare(b.offerId)),
       expectedTotalAmount: input.expectedTotalAmount ?? null,
@@ -251,7 +249,7 @@ export class CheckoutService {
               if (reserved.count !== 1) throw new ConflictException(`${line.title} no longer has enough stock`);
             }
           }
-          const { gross, commission, holdback, sellerShippingCost, payable } = checkoutShippingSettlement({ ...group, totalAmount: new Prisma.Decimal(group.totalAmount).add(group.clubDiscountAmount).toString() });
+          const { gross, commission, sellerShippingCost, payable } = checkoutShippingSettlement({ ...group, totalAmount: new Prisma.Decimal(group.totalAmount).add(group.clubDiscountAmount).toString() });
           const orderKey = randomUUID();
           const order = await tx.orders.create({
             data: {
@@ -268,7 +266,6 @@ export class CheckoutService {
               discount_amount: new Prisma.Decimal(group.discountAmount),
               coupon_id: new Prisma.Decimal(group.discountAmount).minus(group.clubDiscountAmount).gt(0) ? quote.couponId : null,
               commission_rate: new Prisma.Decimal(group.commissionRate),
-              holdback_rate: new Prisma.Decimal(group.holdbackRate),
               idempotency_key: orderKey,
               request_hash: this.hash({ checkoutId: createdCheckout.id, group: group.key }),
               ...(group.productType === "physical" && input.shippingAddress
@@ -278,7 +275,6 @@ export class CheckoutService {
                 create: {
                   gross_amount: gross,
                   commission_amount: commission,
-                  holdback_amount: holdback,
                   shipping_cost_amount: sellerShippingCost,
                   payable_amount: payable,
                   currency: "TOMAN"
@@ -359,7 +355,6 @@ export class CheckoutService {
   }
 
   async get(actor: AppUser, checkoutId: string) {
-    if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can view checkouts");
     const checkout = await this.prisma.checkouts.findFirst({ where: { id: checkoutId, buyer_id: actor.id }, select: checkoutSelect });
     if (!checkout) throw new NotFoundException("Checkout was not found");
     return this.map(checkout);
@@ -389,7 +384,7 @@ export class CheckoutService {
         service: { select: { input_schema: true } },
         listing: {
           select: {
-            seller: { select: { id: true, shop_name: true, commission: true, holdback_rate: true, permissions: { where: { permission: "physical_products_manage" }, select: { permission: true } }, shipping_profile: { select: { enabled: true, latitude: true, longitude: true } } } },
+            seller: { select: { id: true, shop_name: true, commission: true, permissions: { where: { permission: "physical_products_manage" }, select: { permission: true } }, shipping_profile: { select: { enabled: true, latitude: true, longitude: true } } } },
             product: {
               select: {
                 id: true,
@@ -442,7 +437,7 @@ export class CheckoutService {
     const shippingPolicy = await this.shippingPolicy.effective(db);
     const groups = new Map<string, {
       key: string; seller: { id: string; shopName: string }; productType: ProductType;
-      commissionRate: string; holdbackRate: string; items: InternalQuoteLine[]; total: Prisma.Decimal;
+      commissionRate: string; items: InternalQuoteLine[]; total: Prisma.Decimal;
     }>();
     for (const requested of input.items) {
       const offer = offerById.get(requested.offerId)!;
@@ -488,7 +483,7 @@ export class CheckoutService {
       const key = `${offer.listing.seller.id}:${type}`;
       const group = groups.get(key) ?? {
         key, seller: { id: offer.listing.seller.id, shopName: offer.listing.seller.shop_name }, productType: type,
-        commissionRate: offer.listing.seller.commission.toString(), holdbackRate: offer.listing.seller.holdback_rate.toString(), items: [], total: new Prisma.Decimal(0)
+        commissionRate: offer.listing.seller.commission.toString(), items: [], total: new Prisma.Decimal(0)
       };
       const unitPrice = offerCurrency === "USD"
         ? offer.price.mul(tomanPerUsd!).toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP)

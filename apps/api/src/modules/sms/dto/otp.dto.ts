@@ -17,3 +17,9 @@ export class VerifyOtpDto extends RequestOtpDto {
   @Transform(({ value }: { value: unknown }) => typeof value === "string" && !value.trim() ? undefined : value)
   @IsOptional() @IsEmail() @MaxLength(254) email?: string;
 }
+
+export class ConfirmPendingPhoneDto {
+  @IsString() @Matches(/^(?:\+98|0098|98|0)?9\d{9}$/) phoneNumber!: string;
+  @IsUUID("4") challengeId!: string;
+  @IsString() @Matches(/^\d{6}$/) code!: string;
+}

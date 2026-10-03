@@ -70,6 +70,32 @@ export class SellerController {
     return this.sellerService.listAgents();
   }
 
+  @Post("vendors/:id/picture")
+  @RequirePlatformPermission("vendors_manage")
+  @UseGuards(PlatformPermissionGuard)
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 8 * 1024 * 1024, files: 1, fields: 0, parts: 2 } }))
+  async uploadVendorPicture(
+    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
+  ) {
+    await this.rateLimits.consumeMediaUpload(request.authenticatedUser!.id, clientIp);
+    return this.media.uploadSellerProfilePicture(id, request.authenticatedUser!.id, "platform", file);
+  }
+
+  @Delete("vendors/:id/picture")
+  @RequirePlatformPermission("vendors_manage")
+  @UseGuards(PlatformPermissionGuard)
+  async deleteVendorPicture(
+    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
+  ) {
+    await this.rateLimits.consumeSellerOperation(request.authenticatedUser!.id, clientIp);
+    return this.media.deleteSellerProfilePicture(id, "platform");
+  }
+
   @Get("directory")
   listPublicSellers() {
     return this.sellerService.listPublicSellers();

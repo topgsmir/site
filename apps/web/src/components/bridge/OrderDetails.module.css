@@ -145,7 +145,7 @@
 .downloadDialogHeader > div { min-width: 0; overflow-wrap: anywhere; }
 .downloadDialogHeader h2 { margin-bottom: 4px; }
 .downloadFiles { display: grid; gap: 16px; margin: 24px 0 0; padding: 0; list-style: none; }
-.downloadDialog a:focus-visible { outline: 2px solid var(--color-role-info); outline-offset: 4px; }
+.downloadDialog button:focus-visible { outline: 2px solid var(--color-role-info); outline-offset: 4px; }
 .actions { display: flex; flex-wrap: wrap; justify-content: end; gap: 12px; margin-top: 24px; }
 .skeleton { display: grid; grid-template-columns: minmax(0, 1fr) 288px; gap: 18px; }
 .skeleton > div { height: 220px; background: var(--color-dashboard-surface-raised); border-radius: var(--radius-dashboard-md); animation: breathe var(--dur-dashboard-loader) ease-in-out infinite alternate; }

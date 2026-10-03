@@ -4,8 +4,6 @@ import type { Route } from "next";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-
-
 import { DesignIcon } from "@/components/DesignIcon";
 import Link from "next/link";
 import type {
@@ -18,7 +16,7 @@ import type {
   PlatformPermission,
   Vendor,
   VendorPermission,
-  VendorStatus
+  VendorStatus,
 } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
@@ -60,10 +58,13 @@ import { useNewOrderCount } from "@/components/dashboard/useNewOrderCount";
 import { DashboardMobileNavigation } from "@/components/dashboard/DashboardMobileNavigation";
 import { UploadsWorkspace } from "@/components/admin/UploadsWorkspace";
 import { AdminNotificationsWorkspace } from "@/components/admin/AdminNotificationsWorkspace";
+import type { AdminNotificationCounts } from "@/components/admin/AdminNotificationsWorkspace";
 import { BackupRestoreWorkspace } from "@/components/admin/BackupRestoreWorkspace";
+import { UploadCenterSettingsWorkspace } from "@/components/admin/UploadCenterSettingsWorkspace";
+import { UploadCenterNavigation } from "@/components/dashboard/UploadCenterNavigation";
+import { VendorPictureControl } from "@/components/admin/VendorPictureControl";
+import { SellerAvatar } from "@/components/seller/SellerAvatar";
 import { useAdminBoxDisclosures } from "@/components/admin/useAdminBoxDisclosures";
-
-
 
 const permissionOrder: VendorPermission[] = [
   "blog_ai",
@@ -76,7 +77,7 @@ const permissionOrder: VendorPermission[] = [
   "orders_manage",
   "staff_manage",
   "analytics_view",
-  "payouts_request"
+  "payouts_request",
 ];
 
 const copy = {
@@ -119,7 +120,8 @@ const copy = {
     skip: "Skip to vendor workspace",
     titleStart: "Vendors,",
     titleEnd: "under control.",
-    subtitle: "Create vendor accounts, tune commercial terms, and grant only the access each team needs.",
+    subtitle:
+      "Create vendor accounts, tune commercial terms, and grant only the access each team needs.",
     create: "Create vendor",
     total: "Total vendors",
     active: "Active now",
@@ -146,14 +148,15 @@ const copy = {
     shopName: "Shop name",
     phone: "Phone number",
     goghdiAgentId: "Goghdi agent ID",
-    goghdiAgentHint: "The 24-character agent ID from the seller's Goghdi account. Order chats are assigned directly to this agent.",
+    goghdiAgentHint:
+      "The 24-character agent ID from the seller's Goghdi account. Order chats are assigned directly to this agent.",
     password: "Temporary password",
     optionalPassword: "New password (optional)",
     status: "Account status",
     commission: "Commission",
-    holdback: "Holdback",
     accessTitle: "Vendor access",
-    accessHint: "Permissions apply to this vendor account immediately after saving.",
+    accessHint:
+      "Permissions apply to this vendor account immediately after saving.",
     cancel: "Cancel",
     save: "Save changes",
     creating: "Creating vendor…",
@@ -168,14 +171,18 @@ const copy = {
     productsManage: "Manage products",
     productsManageHint: "Create, edit, publish, and archive listings.",
     physicalProductsManage: "Sell physical products",
-    physicalProductsManageHint: "Grant physical inventory and seller-managed shipping setup.",
+    physicalProductsManageHint:
+      "Grant physical inventory and seller-managed shipping setup.",
     productsPublish: "Publish without review",
-    productsPublishHint: "Allow new and edited products to become public immediately.",
+    productsPublishHint:
+      "Allow new and edited products to become public immediately.",
     blogManage: "Manage blog posts",
     blogAi: "Blog AI",
-    blogAiHint: "Use AI to draft and polish articles. Requires blog management access.",
+    blogAiHint:
+      "Use AI to draft and polish articles. Requires blog management access.",
     productsAi: "Product AI",
-    productsAiHint: "Use AI to write product content. Requires product management access.",
+    productsAiHint:
+      "Use AI to write product content. Requires product management access.",
     blogManageHint: "Create and publish seller-authored blog posts.",
     couponsManage: "Manage coupons",
     couponsManageHint: "Create and schedule discount codes for the shop.",
@@ -201,7 +208,12 @@ const copy = {
     allKinds: "All structures",
     productType: "Product type",
     productKind: "Product structure",
-    digital: "Digital", physical: "Physical", service: "Service", bridge: "Bridge", simple: "Simple", variable: "Variable",
+    digital: "Digital",
+    physical: "Physical",
+    service: "Service",
+    bridge: "Bridge",
+    simple: "Simple",
+    variable: "Variable",
     categoryFilter: "Filter category",
     sellerFilter: "Seller shop name",
     stockFilter: "Physical stock",
@@ -227,7 +239,8 @@ const copy = {
     noMatchingProducts: "No products match these filters.",
     loadMore: "Load more",
     editProduct: "Edit product",
-    editProductHint: "Update the shared catalog record. Changes affect every seller listing for this product.",
+    editProductHint:
+      "Update the shared catalog record. Changes affect every seller listing for this product.",
     productTitle: "Product title",
     category: "Category",
     description: "Description",
@@ -237,7 +250,7 @@ const copy = {
     statusPublished: "Published",
     statusArchived: "Archived",
     productUpdated: "Product updated successfully.",
-    productUpdateError: "The product could not be updated."
+    productUpdateError: "The product could not be updated.",
   },
   fa: {
     admin: "مدیر پلتفرم",
@@ -278,7 +291,8 @@ const copy = {
     skip: "رفتن به مدیریت فروشنده‌ها",
     titleStart: "فروشنده‌ها،",
     titleEnd: "کاملاً تحت کنترل.",
-    subtitle: "حساب فروشنده بسازید، شرایط تجاری را تنظیم کنید و فقط دسترسی‌های لازم را به هر تیم بدهید.",
+    subtitle:
+      "حساب فروشنده بسازید، شرایط تجاری را تنظیم کنید و فقط دسترسی‌های لازم را به هر تیم بدهید.",
     create: "ایجاد فروشنده",
     total: "همه فروشنده‌ها",
     active: "فعال",
@@ -304,15 +318,16 @@ const copy = {
     ownerEmail: "ایمیل مالک",
     shopName: "نام فروشگاه",
     phone: "شماره تماس",
-    goghdiAgentId: "شناسه عامل Goghdi",
-    goghdiAgentHint: "شناسه ۲۴ نویسه‌ای عامل از حساب Goghdi فروشنده. گفت‌وگوی سفارش مستقیم به این عامل اختصاص می‌یابد.",
+    goghdiAgentId: "یوزر آیدی در جغدی",
+    goghdiAgentHint:
+      "شناسه ۲۴ نویسه‌ای عامل از حساب Goghdi فروشنده. گفت‌وگوی سفارش مستقیم به این عامل اختصاص می‌یابد.",
     password: "رمز عبور موقت",
     optionalPassword: "رمز عبور جدید (اختیاری)",
     status: "وضعیت حساب",
     commission: "کمیسیون",
-    holdback: "وجه تضمین",
     accessTitle: "دسترسی فروشنده",
-    accessHint: "دسترسی‌ها بلافاصله پس از ذخیره برای این فروشنده اعمال می‌شوند.",
+    accessHint:
+      "دسترسی‌ها بلافاصله پس از ذخیره برای این فروشنده اعمال می‌شوند.",
     cancel: "انصراف",
     save: "ذخیره تغییرات",
     creating: "در حال ایجاد…",
@@ -327,14 +342,17 @@ const copy = {
     productsManage: "مدیریت محصولات",
     productsManageHint: "ساخت، ویرایش، انتشار و بایگانی محصولات.",
     physicalProductsManage: "فروش محصولات فیزیکی",
-    physicalProductsManageHint: "اجازه ثبت موجودی فیزیکی و تنظیم اطلاعات ارسال توسط فروشنده.",
+    physicalProductsManageHint:
+      "اجازه ثبت موجودی فیزیکی و تنظیم اطلاعات ارسال توسط فروشنده.",
     productsPublish: "انتشار بدون بررسی",
     productsPublishHint: "محصول جدید یا ویرایش‌شده را بلافاصله عمومی کنید.",
     blogManage: "مدیریت نوشته‌های وبلاگ",
     blogAi: "هوش مصنوعی وبلاگ",
-    blogAiHint: "نوشتن و ویرایش مقاله با هوش مصنوعی؛ نیازمند دسترسی مدیریت وبلاگ.",
+    blogAiHint:
+      "نوشتن و ویرایش مقاله با هوش مصنوعی؛ نیازمند دسترسی مدیریت وبلاگ.",
     productsAi: "هوش مصنوعی محصول",
-    productsAiHint: "نوشتن متن محصول با هوش مصنوعی؛ نیازمند دسترسی مدیریت محصولات.",
+    productsAiHint:
+      "نوشتن متن محصول با هوش مصنوعی؛ نیازمند دسترسی مدیریت محصولات.",
     blogManageHint: "ساخت و انتشار نوشته‌های وبلاگ فروشنده.",
     couponsManage: "مدیریت کدهای تخفیف",
     couponsManageHint: "ساخت و زمان‌بندی کدهای تخفیف فروشگاه.",
@@ -348,7 +366,8 @@ const copy = {
     payoutsRequestHint: "ثبت درخواست تسویه برای بررسی.",
     allAccess: "دسترسی کامل",
     limitedAccess: "دسترسی محدود",
-    catalogHint: "رکوردهای محصول را بررسی کنید و نشانی عمومی آن‌ها را باز کنید.",
+    catalogHint:
+      "رکوردهای محصول را بررسی کنید و نشانی عمومی آن‌ها را باز کنید.",
     productUrl: "نشانی محصول",
     listings: "فهرست‌ها",
     catalogEmpty: "هنوز محصولی ساخته نشده است.",
@@ -360,7 +379,12 @@ const copy = {
     allKinds: "همه ساختارها",
     productType: "نوع محصول",
     productKind: "ساختار محصول",
-    digital: "دیجیتال", physical: "فیزیکی", service: "خدمات", bridge: "بریج", simple: "ساده", variable: "متغیر",
+    digital: "دیجیتال",
+    physical: "فیزیکی",
+    service: "خدمات",
+    bridge: "بریج",
+    simple: "ساده",
+    variable: "متغیر",
     categoryFilter: "فیلتر دسته‌بندی",
     sellerFilter: "نام فروشگاه فروشنده",
     stockFilter: "موجودی محصول فیزیکی",
@@ -386,7 +410,8 @@ const copy = {
     noMatchingProducts: "محصولی با این فیلترها پیدا نشد.",
     loadMore: "بارگذاری بیشتر",
     editProduct: "ویرایش محصول",
-    editProductHint: "رکورد مشترک کاتالوگ را ویرایش کنید. تغییرات روی فهرست همه فروشندگان این محصول اعمال می‌شود.",
+    editProductHint:
+      "رکورد مشترک کاتالوگ را ویرایش کنید. تغییرات روی فهرست همه فروشندگان این محصول اعمال می‌شود.",
     productTitle: "عنوان محصول",
     category: "دسته‌بندی",
     description: "توضیحات",
@@ -396,7 +421,7 @@ const copy = {
     statusPublished: "منتشرشده",
     statusArchived: "بایگانی‌شده",
     productUpdated: "محصول با موفقیت به‌روزرسانی شد.",
-    productUpdateError: "محصول به‌روزرسانی نشد."
+    productUpdateError: "محصول به‌روزرسانی نشد.",
   },
   ar: {
     admin: "مدير المنصة",
@@ -437,7 +462,8 @@ const copy = {
     skip: "انتقل إلى إدارة البائعين",
     titleStart: "البائعون،",
     titleEnd: "تحت السيطرة.",
-    subtitle: "أنشئ حسابات البائعين واضبط الشروط التجارية وامنح كل فريق الصلاحيات التي يحتاجها فقط.",
+    subtitle:
+      "أنشئ حسابات البائعين واضبط الشروط التجارية وامنح كل فريق الصلاحيات التي يحتاجها فقط.",
     create: "إنشاء بائع",
     total: "جميع البائعين",
     active: "نشط الآن",
@@ -464,12 +490,12 @@ const copy = {
     shopName: "اسم المتجر",
     phone: "رقم الهاتف",
     goghdiAgentId: "معرّف وكيل Goghdi",
-    goghdiAgentHint: "معرّف الوكيل المكوّن من 24 حرفاً من حساب Goghdi للبائع. تُسند محادثات الطلب مباشرة إلى هذا الوكيل.",
+    goghdiAgentHint:
+      "معرّف الوكيل المكوّن من 24 حرفاً من حساب Goghdi للبائع. تُسند محادثات الطلب مباشرة إلى هذا الوكيل.",
     password: "كلمة مرور مؤقتة",
     optionalPassword: "كلمة مرور جديدة (اختياري)",
     status: "حالة الحساب",
     commission: "العمولة",
-    holdback: "الحجز",
     accessTitle: "صلاحيات البائع",
     accessHint: "تطبق الصلاحيات على حساب البائع فور الحفظ.",
     cancel: "إلغاء",
@@ -486,7 +512,8 @@ const copy = {
     productsManage: "إدارة المنتجات",
     productsManageHint: "إنشاء القوائم وتعديلها ونشرها وأرشفتها.",
     physicalProductsManage: "بيع المنتجات المادية",
-    physicalProductsManageHint: "منح إدارة المخزون المادي وإعداد الشحن بواسطة البائع.",
+    physicalProductsManageHint:
+      "منح إدارة المخزون المادي وإعداد الشحن بواسطة البائع.",
     productsPublish: "النشر دون مراجعة",
     productsPublishHint: "السماح بنشر المنتجات الجديدة والمعدلة فوراً.",
     blogManage: "إدارة مقالات المدونة",
@@ -519,7 +546,12 @@ const copy = {
     allKinds: "كل البنى",
     productType: "نوع المنتج",
     productKind: "بنية المنتج",
-    digital: "رقمي", physical: "مادي", service: "خدمة", bridge: "جسر", simple: "بسيط", variable: "متغير",
+    digital: "رقمي",
+    physical: "مادي",
+    service: "خدمة",
+    bridge: "جسر",
+    simple: "بسيط",
+    variable: "متغير",
     categoryFilter: "تصفية الفئة",
     sellerFilter: "اسم متجر البائع",
     stockFilter: "مخزون المنتج المادي",
@@ -545,7 +577,8 @@ const copy = {
     noMatchingProducts: "لا توجد منتجات تطابق هذه المرشحات.",
     loadMore: "تحميل المزيد",
     editProduct: "تعديل المنتج",
-    editProductHint: "حدّث سجل الكتالوج المشترك. تؤثر التغييرات على قوائم جميع البائعين لهذا المنتج.",
+    editProductHint:
+      "حدّث سجل الكتالوج المشترك. تؤثر التغييرات على قوائم جميع البائعين لهذا المنتج.",
     productTitle: "اسم المنتج",
     category: "الفئة",
     description: "الوصف",
@@ -555,8 +588,8 @@ const copy = {
     statusPublished: "منشور",
     statusArchived: "مؤرشف",
     productUpdated: "تم تحديث المنتج بنجاح.",
-    productUpdateError: "تعذر تحديث المنتج."
-  }
+    productUpdateError: "تعذر تحديث المنتج.",
+  },
 } as const;
 
 type Copy = (typeof copy)["en"];
@@ -570,7 +603,6 @@ type VendorFormState = {
   password: string;
   status: VendorStatus;
   commission: string;
-  holdbackRate: string;
   blogReviewRequired: boolean;
   permissions: VendorPermission[];
 };
@@ -584,9 +616,15 @@ const emptyForm: VendorFormState = {
   password: "",
   status: "active",
   commission: "10",
-  holdbackRate: "5",
   blogReviewRequired: true,
-  permissions: ["products_manage", "products_publish", "blog_manage", "coupons_manage", "orders_manage", "analytics_view"]
+  permissions: [
+    "products_manage",
+    "products_publish",
+    "blog_manage",
+    "coupons_manage",
+    "orders_manage",
+    "analytics_view",
+  ],
 };
 
 const permissionCopy: Record<
@@ -594,7 +632,10 @@ const permissionCopy: Record<
   { title: keyof Copy; hint: keyof Copy }
 > = {
   products_manage: { title: "productsManage", hint: "productsManageHint" },
-  physical_products_manage: { title: "physicalProductsManage", hint: "physicalProductsManageHint" },
+  physical_products_manage: {
+    title: "physicalProductsManage",
+    hint: "physicalProductsManageHint",
+  },
   products_publish: { title: "productsPublish", hint: "productsPublishHint" },
   blog_manage: { title: "blogManage", hint: "blogManageHint" },
   blog_ai: { title: "blogAi", hint: "blogAiHint" },
@@ -603,7 +644,7 @@ const permissionCopy: Record<
   orders_manage: { title: "ordersManage", hint: "ordersManageHint" },
   staff_manage: { title: "staffManage", hint: "staffManageHint" },
   analytics_view: { title: "analyticsView", hint: "analyticsViewHint" },
-  payouts_request: { title: "payoutsRequest", hint: "payoutsRequestHint" }
+  payouts_request: { title: "payoutsRequest", hint: "payoutsRequestHint" },
 };
 
 function formFromVendor(vendor: Vendor): VendorFormState {
@@ -616,20 +657,16 @@ function formFromVendor(vendor: Vendor): VendorFormState {
     password: "",
     status: vendor.status,
     commission: String(vendor.commission * 100),
-    holdbackRate: String(vendor.holdbackRate * 100),
     blogReviewRequired: vendor.blogReviewRequired,
-    permissions: [...vendor.permissions]
+    permissions: [...vendor.permissions],
   };
 }
 
 function requestMessage(error: unknown, fallback: string) {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "response" in error
-  ) {
-    const response = (error as { response?: { data?: { message?: string | string[] } } })
-      .response;
+  if (typeof error === "object" && error !== null && "response" in error) {
+    const response = (
+      error as { response?: { data?: { message?: string | string[] } } }
+    ).response;
     const message = response?.data?.message;
     if (Array.isArray(message)) return message.join(" ");
     if (typeof message === "string") return message;
@@ -650,7 +687,7 @@ export function VendorManagement({
   orderId,
   userId,
   ownerNavigation,
-  platformPermissions
+  platformPermissions,
 }: {
   locale: Locale;
   adminName: string;
@@ -679,9 +716,13 @@ export function VendorManagement({
   const [products, setProducts] = useState<AdminProductSummary[]>([]);
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [productBulkNotice, setProductBulkNotice] = useState("");
-  const [productStatusCounts, setProductStatusCounts] = useState<AdminProductsPage["statusCounts"] | null>(null);
+  const [productStatusCounts, setProductStatusCounts] = useState<
+    AdminProductsPage["statusCounts"] | null
+  >(null);
   const [productsCursor, setProductsCursor] = useState<string | null>(null);
-  const [productPageCursors, setProductPageCursors] = useState<Array<string | null>>([null]);
+  const [productPageCursors, setProductPageCursors] = useState<
+    Array<string | null>
+  >([null]);
   const [productPage, setProductPage] = useState(0);
   const [productSearch, setProductSearch] = useState("");
   const [debouncedProductSearch, setDebouncedProductSearch] = useState("");
@@ -692,8 +733,12 @@ export function VendorManagement({
   const [productStatus, setProductStatus] = useState<ProductStatus | "">("");
   const [productType, setProductType] = useState<ProductType | "">("");
   const [productKind, setProductKind] = useState<ProductKind | "">("");
-  const [productStock, setProductStock] = useState<"" | "in_stock" | "out_of_stock">("");
-  const [productDateField, setProductDateField] = useState<"created" | "updated">("updated");
+  const [productStock, setProductStock] = useState<
+    "" | "in_stock" | "out_of_stock"
+  >("");
+  const [productDateField, setProductDateField] = useState<
+    "created" | "updated"
+  >("updated");
   const [productDateFrom, setProductDateFrom] = useState("");
   const [productDateTo, setProductDateTo] = useState("");
   const [productSort, setProductSort] = useState("updated_desc");
@@ -710,77 +755,167 @@ export function VendorManagement({
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
   const [securityOpen, setSecurityOpen] = useState(false);
   const [usdRateFailed, setUsdRateFailed] = useState(false);
-  const { count: newOrderCount, markSeen: markOrdersSeen } = useNewOrderCount(ownerNavigation);
+  const { count: newOrderCount, markSeen: markOrdersSeen } =
+    useNewOrderCount(ownerNavigation);
+  const [notificationCount, setNotificationCount] = useState<number | null>(null);
+  const updateNotificationCount = useCallback((counts: AdminNotificationCounts) => {
+    setNotificationCount(Object.values(counts).reduce((total, count) => total + count, 0));
+  }, []);
+
+  useEffect(() => {
+    if (!ownerNavigation || section === "notifications") return;
+    const controller = new AbortController();
+    let requestId = 0;
+    const refresh = async () => {
+      const currentRequest = ++requestId;
+      try {
+        const { data } = await api.get<AdminNotificationCounts>("/admin/notifications/counts", { signal: controller.signal });
+        if (!controller.signal.aborted && currentRequest === requestId) updateNotificationCount(data);
+      } catch {
+        if (!controller.signal.aborted && currentRequest === requestId) setNotificationCount(null);
+      }
+    };
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 60_000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [ownerNavigation, section, updateNotificationCount]);
 
   useEffect(() => {
     if (section === "orders") void markOrdersSeen();
   }, [markOrdersSeen, section]);
 
-  const canManageBlog = ownerNavigation || platformPermissions.includes("blog_manage");
-  const canManageUploads = ownerNavigation || platformPermissions.includes("uploads_manage");
-  const isUsersSection = section === "vendors" || section === "staff" || section === "users";
+  const canManageBlog =
+    ownerNavigation || platformPermissions.includes("blog_manage");
+  const canManageUploads =
+    ownerNavigation || platformPermissions.includes("uploads_manage");
+  const isUsersSection =
+    section === "vendors" || section === "staff" || section === "users";
   const usersExpanded = isUsersSection || usersOpen;
-  const isProductServiceSection = section === "products" || section === "product-categories" || section === "product-changes";
+  const isProductServiceSection =
+    section === "products" ||
+    section === "product-categories" ||
+    section === "product-changes";
   const productServiceExpanded = isProductServiceSection || productServiceOpen;
-  const isSalesServiceSection = section === "statistics" || section === "coupons" || section === "club" || section === "orders" || section === "order-detail";
+  const isSalesServiceSection =
+    section === "statistics" ||
+    section === "coupons" ||
+    section === "club" ||
+    section === "orders" ||
+    section === "order-detail";
   const salesServiceExpanded = isSalesServiceSection || salesServiceOpen;
-  const isPaymentServiceSection = section === "payment-transactions" || section === "payment-methods" || section === "settings-usd";
+  const isPaymentServiceSection =
+    section === "payment-transactions" ||
+    section === "payment-methods" ||
+    section === "settings-usd";
   const paymentServiceExpanded = isPaymentServiceSection || paymentServiceOpen;
   const isAiSection = section === "ai-models" || section === "ai-assistant";
   const aiExpanded = isAiSection || aiOpen;
-  const isWebsiteSection = section === "settings-seo" || section === "settings-homepage" || section === "settings-notice" || section === "settings-stories" || section === "settings-blog-sidebar";
+  const isWebsiteSection =
+    section === "settings-seo" ||
+    section === "settings-homepage" ||
+    section === "settings-notice" ||
+    section === "settings-stories" ||
+    section === "settings-blog-sidebar";
   const websiteExpanded = isWebsiteSection || websiteOpen;
-  const isContentSection = section === "uploads" || section === "editorial" || section === "blog-categories" || section === "blog-tags" || section === "settings-comments";
+  const isContentSection =
+    section === "uploads" ||
+    section === "editorial" ||
+    section === "blog-categories" ||
+    section === "blog-tags" ||
+    section === "settings-comments";
   const contentExpanded = isContentSection || contentOpen;
-  const isIntegrationsSection = section === "settings-sms" || section === "settings-goghdi" || section === "settings-shipping" || section === "bridge";
+  const isIntegrationsSection =
+    section === "settings-sms" ||
+    section === "settings-goghdi" ||
+    section === "settings-shipping" ||
+    section === "bridge";
   const integrationsExpanded = isIntegrationsSection || integrationsOpen;
-  const isSecuritySection = section === "security-rate-limit" || section === "security-login" || section === "security-captcha" || section === "settings-backup";
+  const isSecuritySection =
+    section === "security-rate-limit" ||
+    section === "security-login" ||
+    section === "security-captcha" ||
+    section === "settings-backup";
   const securityExpanded = isSecuritySection || securityOpen;
-  const currentSectionLabel = ({
-    overview: c.overview,
-    notifications: c.notifications,
-    statistics: c.statistics,
-    vendors: c.vendors,
-    users: c.users,
-    products: c.products,
-    "product-categories": c.productCategories,
-    "product-changes": c.productChanges,
-    coupons: c.coupons,
-    club: locale === "fa" ? "باشگاه مشتریان" : locale === "ar" ? "نادي العملاء" : "Customer club",
-    orders: c.orders,
-    "order-detail": c.orders,
-    "payment-transactions": c.paymentTransactions,
-    "payment-methods": c.paymentMethods,
-    staff: c.staff,
-    bridge: "Bridge",
-    "ai-models": c.aiModels,
-    "ai-assistant": c.aiAssistant,
-    "settings-sms": c.sms,
-    "settings-goghdi": c.goghdi,
-    "security-rate-limit": c.rateLimit,
-    "security-login": c.auth,
-    "security-captcha": c.captcha,
-    "settings-shipping": c.shipping,
-    "settings-usd": c.usd,
-    "settings-comments": c.comments,
-    "settings-notice": locale === "fa" ? "اطلاعیه" : locale === "ar" ? "الإشعار" : "Notice",
-    "settings-stories": locale === "fa" ? "استوری‌ها" : locale === "ar" ? "القصص" : "Stories",
-    "settings-blog-sidebar": locale === "fa" ? "تبلیغ کنار مقاله" : locale === "ar" ? "إعلان جانب المقال" : "Article sidebar",
-    "settings-homepage": locale === "fa" ? "صفحه اصلی" : locale === "ar" ? "الصفحة الرئيسية" : "Homepage",
-    "settings-seo": locale === "fa" ? "سئو" : locale === "ar" ? "تحسين البحث" : "SEO",
-    "settings-backup": c.backupRestore,
-    editorial: c.editorial,
-    "blog-categories": locale === "fa" ? "دسته‌بندی‌ها" : locale === "ar" ? "التصنيفات" : "Categories",
-    "blog-tags": locale === "fa" ? "برچسب‌ها" : locale === "ar" ? "الوسوم" : "Tags",
-    uploads: c.uploads
-  } satisfies Record<AdminSection, string>)[section];
+  const currentSectionLabel = (
+    {
+      overview: c.overview,
+      notifications: c.notifications,
+      statistics: c.statistics,
+      vendors: c.vendors,
+      users: c.users,
+      products: c.products,
+      "product-categories": c.productCategories,
+      "product-changes": c.productChanges,
+      coupons: c.coupons,
+      club:
+        locale === "fa"
+          ? "باشگاه مشتریان"
+          : locale === "ar"
+            ? "نادي العملاء"
+            : "Customer club",
+      orders: c.orders,
+      "order-detail": c.orders,
+      "payment-transactions": c.paymentTransactions,
+      "payment-methods": c.paymentMethods,
+      staff: c.staff,
+      bridge: "Bridge",
+      "ai-models": c.aiModels,
+      "ai-assistant": c.aiAssistant,
+      "settings-sms": c.sms,
+      "settings-goghdi": c.goghdi,
+      "security-rate-limit": c.rateLimit,
+      "security-login": c.auth,
+      "security-captcha": c.captcha,
+      "settings-shipping": c.shipping,
+      "settings-usd": c.usd,
+      "settings-comments": c.comments,
+      "settings-notice":
+        locale === "fa" ? "اطلاعیه" : locale === "ar" ? "الإشعار" : "Notice",
+      "settings-upload-centers":
+        locale === "fa" ? "مراکز آپلود" : locale === "ar" ? "مراكز الرفع" : "Upload centers",
+      "settings-stories":
+        locale === "fa" ? "استوری‌ها" : locale === "ar" ? "القصص" : "Stories",
+      "settings-blog-sidebar":
+        locale === "fa"
+          ? "تبلیغ کنار مقاله"
+          : locale === "ar"
+            ? "إعلان جانب المقال"
+            : "Article sidebar",
+      "settings-homepage":
+        locale === "fa"
+          ? "صفحه اصلی"
+          : locale === "ar"
+            ? "الصفحة الرئيسية"
+            : "Homepage",
+      "settings-seo":
+        locale === "fa" ? "سئو" : locale === "ar" ? "تحسين البحث" : "SEO",
+      "settings-backup": c.backupRestore,
+      editorial: c.editorial,
+      "blog-categories":
+        locale === "fa"
+          ? "دسته‌بندی‌ها"
+          : locale === "ar"
+            ? "التصنيفات"
+            : "Categories",
+      "blog-tags":
+        locale === "fa" ? "برچسب‌ها" : locale === "ar" ? "الوسوم" : "Tags",
+      uploads: c.uploads,
+    } satisfies Record<AdminSection, string>
+  )[section];
 
   useEffect(() => {
     if (!ownerNavigation) return;
     let active = true;
     const checkUsdRate = async () => {
       try {
-        const response = await api.get<AdminUsdRateSettings>("/admin/settings/usd");
+        const response = await api.get<AdminUsdRateSettings>(
+          "/admin/settings/usd",
+        );
         if (active) setUsdRateFailed(response.data.cronStatus === "failed");
       } catch {
         // The settings workspace owns full request errors; navigation only mirrors a persisted cron failure.
@@ -816,39 +951,72 @@ export function VendorManagement({
     return () => window.clearTimeout(timer);
   }, [productSearch, productCategory, productSeller]);
 
-  const loadProducts = useCallback(async (cursor: string | null = null, page = 0) => {
-    const requestId = ++productRequestId.current;
-    setProductsLoading(true);
-    setProductsError("");
-    setProductStatusCounts(null);
-    try {
-      const response = await api.get<AdminProductsPage>("/products/admin", {
-        params: { limit: 20, ...(cursor ? { cursor } : {}),
-          ...(debouncedProductSearch ? { search: debouncedProductSearch } : {}),
-          ...(debouncedProductCategory ? { category: debouncedProductCategory } : {}),
-          ...(debouncedProductSeller ? { seller: debouncedProductSeller } : {}),
-          ...(productStatus ? { status: productStatus } : {}),
-          ...(productType ? { type: productType } : {}),
-          ...(productKind ? { kind: productKind } : {}),
-          ...(productStock ? { stock: productStock } : {}),
-          ...(productDateFrom ? { dateFrom: localProductDayBoundary(productDateFrom) } : {}),
-          ...(productDateTo ? { dateTo: localProductDayBoundary(productDateTo, true) } : {}),
-          ...(productDateFrom || productDateTo ? { dateField: productDateField } : {}),
-          sort: productSort }
-      });
-      if (requestId !== productRequestId.current) return;
-      setProducts(response.data.items);
-      setProductStatusCounts(response.data.statusCounts);
-      setProductsCursor(response.data.nextCursor);
-      setProductPage(page);
-      setProductPageCursors((current) => page === 0 ? [null] : current.slice(0, page + 1));
-    } catch {
-      if (requestId !== productRequestId.current) return;
-      setProductsError(c.catalogLoadError);
-    } finally {
-      if (requestId === productRequestId.current) setProductsLoading(false);
-    }
-  }, [c.catalogLoadError, debouncedProductSearch, debouncedProductCategory, debouncedProductSeller, productStatus, productType, productKind, productStock, productDateField, productDateFrom, productDateTo, productSort]);
+  const loadProducts = useCallback(
+    async (cursor: string | null = null, page = 0) => {
+      const requestId = ++productRequestId.current;
+      setProductsLoading(true);
+      setProductsError("");
+      setProductStatusCounts(null);
+      try {
+        const response = await api.get<AdminProductsPage>("/products/admin", {
+          params: {
+            limit: 20,
+            ...(cursor ? { cursor } : {}),
+            ...(debouncedProductSearch
+              ? { search: debouncedProductSearch }
+              : {}),
+            ...(debouncedProductCategory
+              ? { category: debouncedProductCategory }
+              : {}),
+            ...(debouncedProductSeller
+              ? { seller: debouncedProductSeller }
+              : {}),
+            ...(productStatus ? { status: productStatus } : {}),
+            ...(productType ? { type: productType } : {}),
+            ...(productKind ? { kind: productKind } : {}),
+            ...(productStock ? { stock: productStock } : {}),
+            ...(productDateFrom
+              ? { dateFrom: localProductDayBoundary(productDateFrom) }
+              : {}),
+            ...(productDateTo
+              ? { dateTo: localProductDayBoundary(productDateTo, true) }
+              : {}),
+            ...(productDateFrom || productDateTo
+              ? { dateField: productDateField }
+              : {}),
+            sort: productSort,
+          },
+        });
+        if (requestId !== productRequestId.current) return;
+        setProducts(response.data.items);
+        setProductStatusCounts(response.data.statusCounts);
+        setProductsCursor(response.data.nextCursor);
+        setProductPage(page);
+        setProductPageCursors((current) =>
+          page === 0 ? [null] : current.slice(0, page + 1),
+        );
+      } catch {
+        if (requestId !== productRequestId.current) return;
+        setProductsError(c.catalogLoadError);
+      } finally {
+        if (requestId === productRequestId.current) setProductsLoading(false);
+      }
+    },
+    [
+      c.catalogLoadError,
+      debouncedProductSearch,
+      debouncedProductCategory,
+      debouncedProductSeller,
+      productStatus,
+      productType,
+      productKind,
+      productStock,
+      productDateField,
+      productDateFrom,
+      productDateTo,
+      productSort,
+    ],
+  );
 
   const closePanel = useCallback(() => {
     setPanelMode(null);
@@ -875,8 +1043,8 @@ export function VendorManagement({
 
       const focusable = Array.from(
         panel.current.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
-        )
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+        ),
       ).filter((element) => element.getAttribute("aria-hidden") !== "true");
       const first = focusable[0];
       const last = focusable.at(-1);
@@ -911,11 +1079,22 @@ export function VendorManagement({
     if (!needle) return vendors;
     return vendors.filter((vendor) =>
       [vendor.shopName, vendor.ownerName, vendor.ownerEmail].some((value) =>
-        value.toLocaleLowerCase(locale).includes(needle)
-      )
+        value.toLocaleLowerCase(locale).includes(needle),
+      ),
     );
   }, [locale, query, vendors]);
-  const activeProductFilterCount = [productSearch.trim(), productCategory.trim(), productSeller.trim(), productStatus, productType, productKind, productStock, productDateFrom, productDateTo, productSort !== "updated_desc"].filter(Boolean).length;
+  const activeProductFilterCount = [
+    productSearch.trim(),
+    productCategory.trim(),
+    productSeller.trim(),
+    productStatus,
+    productType,
+    productKind,
+    productStock,
+    productDateFrom,
+    productDateTo,
+    productSort !== "updated_desc",
+  ].filter(Boolean).length;
   function clearProductFilters() {
     setProductSearch("");
     setProductCategory("");
@@ -930,12 +1109,42 @@ export function VendorManagement({
     setProductSort("updated_desc");
   }
   const productStatusOptions = [
-    { value: "" as const, label: c.allStatuses, count: productStatusCounts ? Object.values(productStatusCounts).reduce((total, count) => total + count, 0) : null },
-    { value: "draft" as const, label: c.statusDraft, count: productStatusCounts?.draft ?? null },
-    { value: "pending_review" as const, label: c.statusPendingReview, count: productStatusCounts?.pending_review ?? null },
-    { value: "active" as const, label: c.statusPublished, count: productStatusCounts?.active ?? null },
-    { value: "archived" as const, label: c.statusArchived, count: productStatusCounts?.archived ?? null },
-    { value: "trashed" as const, label: locale === "fa" ? "زباله‌دان" : locale === "ar" ? "المهملات" : "Trash", count: productStatusCounts?.trashed ?? null }
+    {
+      value: "" as const,
+      label: c.allStatuses,
+      count: productStatusCounts
+        ? Object.values(productStatusCounts).reduce(
+            (total, count) => total + count,
+            0,
+          )
+        : null,
+    },
+    {
+      value: "draft" as const,
+      label: c.statusDraft,
+      count: productStatusCounts?.draft ?? null,
+    },
+    {
+      value: "pending_review" as const,
+      label: c.statusPendingReview,
+      count: productStatusCounts?.pending_review ?? null,
+    },
+    {
+      value: "active" as const,
+      label: c.statusPublished,
+      count: productStatusCounts?.active ?? null,
+    },
+    {
+      value: "archived" as const,
+      label: c.statusArchived,
+      count: productStatusCounts?.archived ?? null,
+    },
+    {
+      value: "trashed" as const,
+      label:
+        locale === "fa" ? "زباله‌دان" : locale === "ar" ? "المهملات" : "Trash",
+      count: productStatusCounts?.trashed ?? null,
+    },
   ];
 
   function openCreate(trigger: HTMLButtonElement) {
@@ -958,7 +1167,7 @@ export function VendorManagement({
 
   function updateField<K extends keyof VendorFormState>(
     field: K,
-    value: VendorFormState[K]
+    value: VendorFormState[K],
   ) {
     setForm((current) => ({ ...current, [field]: value }));
   }
@@ -968,7 +1177,7 @@ export function VendorManagement({
       ...current,
       permissions: current.permissions.includes(permission)
         ? current.permissions.filter((item) => item !== permission)
-        : [...current.permissions, permission]
+        : [...current.permissions, permission],
     }));
   }
 
@@ -986,19 +1195,19 @@ export function VendorManagement({
       ...(form.password ? { password: form.password } : {}),
       status: form.status,
       commission: Number(form.commission) / 100,
-      holdbackRate: Number(form.holdbackRate) / 100,
       blogReviewRequired: form.blogReviewRequired,
-      permissions: form.permissions
+      permissions: form.permissions,
     };
 
     try {
-      const response = panelMode === "create"
-        ? await api.post<Vendor>("/seller/vendors", payload)
-        : await api.patch<Vendor>(`/seller/vendors/${editingId}`, payload);
+      const response =
+        panelMode === "create"
+          ? await api.post<Vendor>("/seller/vendors", payload)
+          : await api.patch<Vendor>(`/seller/vendors/${editingId}`, payload);
       setVendors((current) => {
         if (panelMode === "create") return [response.data, ...current];
         return current.map((vendor) =>
-          vendor.id === response.data.id ? response.data : vendor
+          vendor.id === response.data.id ? response.data : vendor,
         );
       });
       setMessage(panelMode === "create" ? c.created : c.updated);
@@ -1018,631 +1227,1616 @@ export function VendorManagement({
 
   return (
     <div className="admin-dashboard-shell">
-      <a className="skip-link" href="#admin-content">{c.skip}</a>
-      <DashboardMobileNavigation locale={locale} title={ownerNavigation ? c.admin : c.staff} currentLabel={currentSectionLabel} shortcuts={ownerNavigation ? [
-        { label: c.overview, icon: <OverviewIcon />, active: section === "overview", href: `/${locale}/admin` as Route },
-        { label: c.notifications, icon: <NotificationsIcon />, active: section === "notifications", href: `/${locale}/admin/notifications` as Route },
-        { label: c.orders, icon: <OrdersIcon />, active: section === "orders" || section === "order-detail", count: newOrderCount, href: `/${locale}/admin/orders` as Route }
-      ] : [
-        ...(canManageUploads ? [{ label: c.uploads, icon: <UploadsIcon />, active: section === "uploads", href: `/${locale}/admin/uploads` as Route }] : []),
-        ...(canManageBlog ? [{ label: c.editorial, icon: <EditorialIcon />, active: section === "editorial", href: `/${locale}/admin/blog` as Route }] : [])
-      ]}>
-      <aside className="admin-rail" data-navigation-surface data-mobile-open={true}>
-        <Link className="admin-brand" href={`/${locale}`} aria-label="Top GSM">
-          <span className="admin-brand-symbol"><DesignIcon name="layers" /></span>
-          <span dir="ltr" translate="no">topgsm.</span>
-        </Link>
-        <nav id="admin-panel-navigation" className={navigationStyles.navigation} aria-label={c.navigation} data-mobile-open={true}>
-          {ownerNavigation ? <>
+      <a className="skip-link" href="#admin-content">
+        {c.skip}
+      </a>
+      <DashboardMobileNavigation
+        locale={locale}
+        title={ownerNavigation ? c.admin : c.staff}
+        currentLabel={currentSectionLabel}
+        shortcuts={
+          ownerNavigation
+            ? [
+                {
+                  label: c.overview,
+                  icon: <OverviewIcon />,
+                  active: section === "overview",
+                  href: `/${locale}/admin` as Route,
+                },
+                {
+                  label: c.notifications,
+                  icon: <NotificationsIcon />,
+                  active: section === "notifications",
+                  count: notificationCount ?? undefined,
+                  href: `/${locale}/admin/notifications` as Route,
+                },
+                {
+                  label: c.orders,
+                  icon: <OrdersIcon />,
+                  active: section === "orders" || section === "order-detail",
+                  count: newOrderCount,
+                  href: `/${locale}/admin/orders` as Route,
+                },
+              ]
+            : [
+                ...(canManageUploads
+                  ? [
+                      {
+                        label: c.uploads,
+                        icon: <UploadsIcon />,
+                        active: section === "uploads",
+                        href: `/${locale}/admin/uploads` as Route,
+                      },
+                    ]
+                  : []),
+                ...(canManageBlog
+                  ? [
+                      {
+                        label: c.editorial,
+                        icon: <EditorialIcon />,
+                        active: section === "editorial",
+                        href: `/${locale}/admin/blog` as Route,
+                      },
+                    ]
+                  : []),
+              ]
+        }
+      >
+        <aside
+          className="admin-rail"
+          data-navigation-surface
+          data-mobile-open={true}
+        >
           <Link
-            className={navigationStyles.item}
-            href={`/${locale}/admin`}
-            aria-current={section === "overview" ? "page" : undefined}
+            className="admin-brand"
+            href={`/${locale}`}
+            aria-label="Top GSM"
           >
-            <OverviewIcon />
-            <span>{c.overview}</span>
+            <span className="admin-brand-symbol">
+              <DesignIcon name="layers" />
+            </span>
+            <span dir="ltr" translate="no">
+              topgsm.
+            </span>
           </Link>
-          <Link className={navigationStyles.item} href={`/${locale}/admin/notifications` as Route} aria-current={section === "notifications" ? "page" : undefined}>
-            <NotificationsIcon /><span>{c.notifications}</span>
-          </Link>
-          <div
-            className={navigationStyles.group}
-            data-active={isUsersSection}
-            data-open={usersExpanded}
+          <nav
+            id="admin-panel-navigation"
+            className={navigationStyles.navigation}
+            aria-label={c.navigation}
+            data-mobile-open={true}
           >
-            <button
-              className={navigationStyles.groupTrigger}
-              type="button"
-              aria-expanded={usersExpanded}
-              aria-controls="admin-users-navigation"
-              onClick={() => setUsersOpen((current) => !current)}
-            >
-              <UsersGroupIcon />
-              <span>{c.users}</span>
-              <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
-            </button>
-            <div className={navigationStyles.subNavigation} id="admin-users-navigation">
-              <Link
-                className={navigationStyles.item}
-                href={`/${locale}/admin/vendors` as Route}
-                aria-current={section === "vendors" ? "page" : undefined}
-              >
-                <VendorsIcon />
-                <span>{c.vendors}</span>
-              </Link>
-              <Link
-                className={navigationStyles.item}
-                href={`/${locale}/admin/staff` as Route}
-                aria-current={section === "staff" ? "page" : undefined}
-              >
-                <StaffIcon />
-                <span>{c.staff}</span>
-              </Link>
-              <Link
-                className={navigationStyles.item}
-                href={`/${locale}/admin/users` as Route}
-                aria-current={section === "users" ? "page" : undefined}
-              >
-                <CustomersIcon />
-                <span>{c.users}</span>
-              </Link>
-            </div>
-          </div>
-          <div
-            className={navigationStyles.group}
-            data-active={isProductServiceSection}
-            data-open={productServiceExpanded}
-          >
-            <button
-              className={navigationStyles.groupTrigger}
-              type="button"
-              aria-expanded={productServiceExpanded}
-              aria-controls="admin-product-service-navigation"
-              onClick={() => setProductServiceOpen((current) => !current)}
-            >
-              <ProductsIcon />
-              <span>{c.productService}</span>
-              <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
-            </button>
-            <div className={navigationStyles.subNavigation} id="admin-product-service-navigation">
-              <Link
-                className={navigationStyles.item}
-                href={`/${locale}/admin/products` as Route}
-                aria-current={section === "products" ? "page" : undefined}
-              >
-                <ProductsIcon />
-                <span>{c.products}</span>
-              </Link>
-              <Link className={navigationStyles.item} href={`/${locale}/admin/product-categories` as Route} aria-current={section === "product-categories" ? "page" : undefined}>
-                <ProductsIcon /><span>{c.productCategories}</span>
-              </Link>
-              <Link
-                className={navigationStyles.item}
-                href={`/${locale}/admin/product-changes` as Route}
-                aria-current={section === "product-changes" ? "page" : undefined}
-              >
-                <ProductChangesIcon />
-                <span>{c.productChanges}</span>
-              </Link>
-            </div>
-          </div>
-          <div
-            className={navigationStyles.group}
-            data-active={isSalesServiceSection}
-            data-open={salesServiceExpanded}
-          >
-            <button
-              className={navigationStyles.groupTrigger}
-              type="button"
-              aria-expanded={salesServiceExpanded}
-              aria-controls="admin-sales-service-navigation"
-              onClick={() => setSalesServiceOpen((current) => !current)}
-            >
-              <SalesServiceIcon />
-              <span>{c.sellService}</span>
-              <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
-            </button>
-            <div className={navigationStyles.subNavigation} id="admin-sales-service-navigation">
-              <Link className={navigationStyles.item} href={`/${locale}/admin/statistics` as Route} aria-current={section === "statistics" ? "page" : undefined}>
-                <StatisticsIcon />
-                <span>{c.statistics}</span>
-              </Link>
-              <Link
-                className={navigationStyles.item}
-                href={`/${locale}/admin/coupons` as Route}
-                aria-current={section === "coupons" ? "page" : undefined}
-              >
-                <CouponIcon />
-                <span>{c.coupons}</span>
-              </Link>
-              <Link className={navigationStyles.item} href={`/${locale}/admin/club` as Route} aria-current={section === "club" ? "page" : undefined}>
-                <CouponIcon />
-                <span>{locale === "fa" ? "باشگاه مشتریان" : locale === "ar" ? "نادي العملاء" : "Customer club"}</span>
-              </Link>
-              <Link
-                className={navigationStyles.item}
-                href={`/${locale}/admin/orders` as Route}
-                aria-current={section === "orders" || section === "order-detail" ? "page" : undefined}
-              >
-                <OrdersIcon />
-                <span>{c.orders}</span>
-                <strong
-                  className={navigationStyles.count}
-                  aria-label={`${newOrderCount.toLocaleString(locale)} ${c.newOrders}`}
-                  title={`${newOrderCount.toLocaleString(locale)} ${c.newOrders}`}
+            {ownerNavigation ? (
+              <>
+                <Link
+                  className={navigationStyles.item}
+                  href={`/${locale}/admin`}
+                  aria-current={section === "overview" ? "page" : undefined}
                 >
-                  {newOrderCount.toLocaleString(locale)}
-                </strong>
-              </Link>
-            </div>
-          </div>
-          <div
-            className={navigationStyles.group}
-            data-active={isPaymentServiceSection}
-            data-open={paymentServiceExpanded}
-          >
-            <button
-              className={navigationStyles.groupTrigger}
-              type="button"
-              aria-expanded={paymentServiceExpanded}
-              aria-controls="admin-payment-service-navigation"
-              onClick={() => setPaymentServiceOpen((current) => !current)}
-            >
-              <PaymentServiceIcon />
-              <span>{c.paymentService}</span>
-              <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
-            </button>
-            <div className={navigationStyles.subNavigation} id="admin-payment-service-navigation">
-              <Link
-                className={navigationStyles.item}
-                href={`/${locale}/admin/payments/transactions` as Route}
-                aria-current={section === "payment-transactions" ? "page" : undefined}
-              >
-                <TransactionsIcon />
-                <span>{c.paymentTransactions}</span>
-              </Link>
-              <Link
-                className={navigationStyles.item}
-                href={`/${locale}/admin/payments/methods` as Route}
-                aria-current={section === "payment-methods" ? "page" : undefined}
-              >
-                <PaymentMethodsIcon />
-                <span>{c.paymentMethods}</span>
-              </Link>
-              <Link
-                className={navigationStyles.item}
-                href={`/${locale}/admin/settings/usd` as Route}
-                aria-current={section === "settings-usd" ? "page" : undefined}
-                data-alert={usdRateFailed}
-              >
-                <UsdIcon />
-                <span>{c.usd}</span>
-                {usdRateFailed ? <strong className={navigationStyles.alert} aria-label={c.usdAlert} title={c.usdAlert}>!</strong> : null}
-              </Link>
-            </div>
-          </div>
-          </> : null}
-          {canManageUploads || canManageBlog ? <div className={navigationStyles.group} data-active={isContentSection} data-open={contentExpanded}>
-            <button className={navigationStyles.groupTrigger} type="button" aria-expanded={contentExpanded} aria-controls="admin-content-navigation" onClick={() => setContentOpen((current) => !current)}>
-              <EditorialIcon /><span>{c.content}</span><span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
-            </button>
-            <div className={navigationStyles.subNavigation} id="admin-content-navigation">
-              {canManageUploads ? <Link className={navigationStyles.item} href={`/${locale}/admin/uploads` as Route} aria-current={section === "uploads" ? "page" : undefined}>
-                <UploadsIcon />
-                <span>{c.uploads}</span>
-              </Link> : null}
-              {canManageBlog ? <Link className={navigationStyles.item} href={`/${locale}/admin/blog` as Route} aria-current={section === "editorial" ? "page" : undefined}>
-                <EditorialIcon />
-                <span>{c.editorial}</span>
-              </Link> : null}
-              {canManageBlog ? <Link className={`${navigationStyles.item} ${navigationStyles.nestedItem}`} href={`/${locale}/admin/blog/categories` as Route} aria-current={section === "blog-categories" ? "page" : undefined}>
-                <span>{locale === "fa" ? "دسته‌بندی‌ها" : locale === "ar" ? "التصنيفات" : "Categories"}</span>
-              </Link> : null}
-              {canManageBlog ? <Link className={`${navigationStyles.item} ${navigationStyles.nestedItem}`} href={`/${locale}/admin/blog/tags` as Route} aria-current={section === "blog-tags" ? "page" : undefined}>
-                <span>{locale === "fa" ? "برچسب‌ها" : locale === "ar" ? "الوسوم" : "Tags"}</span>
-              </Link> : null}
-              {ownerNavigation ? <Link className={navigationStyles.item} href={`/${locale}/admin/settings/comments` as Route} aria-current={section === "settings-comments" ? "page" : undefined}>
-                <EditorialIcon /><span>{c.comments}</span>
-              </Link> : null}
-            </div>
-          </div> : null}
-          {ownerNavigation ? <>
-          <div
-            className={navigationStyles.group}
-            data-active={isAiSection}
-            data-open={aiExpanded}
-          >
-            <button
-              className={navigationStyles.groupTrigger}
-              type="button"
-              aria-expanded={aiExpanded}
-              aria-controls="admin-ai-navigation"
-              onClick={() => setAiOpen((current) => !current)}
-            >
-              <AiServiceIcon />
-              <span>{c.ai}</span>
-              <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
-            </button>
-            <div className={navigationStyles.subNavigation} id="admin-ai-navigation">
-              <Link className={navigationStyles.item} href={`/${locale}/admin/ai/models` as Route} aria-current={section === "ai-models" ? "page" : undefined}>
-                <AiModelsIcon />
-                <span>{c.aiModels}</span>
-              </Link>
-              <Link className={navigationStyles.item} href={`/${locale}/admin/ai/assistant` as Route} aria-current={section === "ai-assistant" ? "page" : undefined}>
-                <AiAssistantIcon />
-                <span>{c.aiAssistant}</span>
-              </Link>
-            </div>
-          </div>
-          <div className={navigationStyles.group} data-active={isWebsiteSection} data-open={websiteExpanded}>
-            <button className={navigationStyles.groupTrigger} type="button" aria-expanded={websiteExpanded} aria-controls="admin-website-navigation" onClick={() => setWebsiteOpen((current) => !current)}>
-              <EditorialIcon /><span>{c.website}</span><span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
-            </button>
-            <div className={navigationStyles.subNavigation} id="admin-website-navigation">
-              <Link className={navigationStyles.item} href={`/${locale}/admin/settings/seo` as Route} aria-current={section === "settings-seo" ? "page" : undefined}>
-                <EditorialIcon /><span>{locale === "fa" ? "سئو" : locale === "ar" ? "تحسين البحث" : "SEO"}</span>
-              </Link>
-              <Link className={navigationStyles.item} href={`/${locale}/admin/settings/homepage` as Route} aria-current={section === "settings-homepage" ? "page" : undefined}>
-                <EditorialIcon /><span>{locale === "fa" ? "صفحه اصلی" : locale === "ar" ? "الصفحة الرئيسية" : "Homepage"}</span>
-              </Link>
-              <Link className={navigationStyles.item} href={`/${locale}/admin/settings/notice` as Route} aria-current={section === "settings-notice" ? "page" : undefined}>
-                <EditorialIcon /><span>{locale === "fa" ? "اطلاعیه" : locale === "ar" ? "الإشعار" : "Notice"}</span>
-              </Link>
-              <Link className={navigationStyles.item} href={`/${locale}/admin/settings/stories` as Route} aria-current={section === "settings-stories" ? "page" : undefined}>
-                <EditorialIcon /><span>{locale === "fa" ? "استوری‌ها" : locale === "ar" ? "القصص" : "Stories"}</span>
-              </Link>
-              <Link className={navigationStyles.item} href={`/${locale}/admin/settings/blog-sidebar` as Route} aria-current={section === "settings-blog-sidebar" ? "page" : undefined}>
-                <EditorialIcon /><span>{locale === "fa" ? "تبلیغ کنار مقاله" : locale === "ar" ? "إعلان جانب المقال" : "Article sidebar"}</span>
-              </Link>
-            </div>
-          </div>
-          <div className={navigationStyles.group} data-active={isIntegrationsSection} data-open={integrationsExpanded}>
-            <button className={navigationStyles.groupTrigger} type="button" aria-expanded={integrationsExpanded} aria-controls="admin-integrations-navigation" onClick={() => setIntegrationsOpen((current) => !current)}>
-              <SettingsIcon /><span>{c.integrations}</span><span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
-            </button>
-            <div className={navigationStyles.subNavigation} id="admin-integrations-navigation">
-              <Link
-                className={navigationStyles.item}
-                href={`/${locale}/admin/settings/shipping` as Route}
-                aria-current={section === "settings-shipping" ? "page" : undefined}
-              >
-                <ShippingIcon />
-                <span>{c.shipping}</span>
-              </Link>
-              <Link
-                className={navigationStyles.item}
-                href={`/${locale}/admin/settings/sms` as Route}
-                aria-current={section === "settings-sms" ? "page" : undefined}
-              >
-                <SmsIcon />
-                <span>{c.sms}</span>
-              </Link>
-              <Link className={navigationStyles.item} href={`/${locale}/admin/settings/goghdi` as Route} aria-current={section === "settings-goghdi" ? "page" : undefined}>
-                <SmsIcon />
-                <span>{c.goghdi}</span>
-              </Link>
-              {process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true" ? (
-                <Link className={navigationStyles.item} href={`/${locale}/admin/bridge` as Route} aria-current={section === "bridge" ? "page" : undefined}>
-                  <BridgeIcon />
-                  <span>Bridge</span>
+                  <OverviewIcon />
+                  <span>{c.overview}</span>
                 </Link>
-              ) : null}
+                <Link
+                  className={navigationStyles.item}
+                  href={`/${locale}/admin/notifications` as Route}
+                  aria-current={
+                    section === "notifications" ? "page" : undefined
+                  }
+                >
+                  <NotificationsIcon />
+                  <span>{c.notifications}</span>
+                  {notificationCount !== null ? (
+                    <strong className={navigationStyles.count} aria-label={`${notificationCount.toLocaleString(locale)} ${c.notifications}`}>
+                      {notificationCount.toLocaleString(locale)}
+                    </strong>
+                  ) : null}
+                </Link>
+                <div
+                  className={navigationStyles.group}
+                  data-active={isUsersSection}
+                  data-open={usersExpanded}
+                >
+                  <button
+                    className={navigationStyles.groupTrigger}
+                    type="button"
+                    aria-expanded={usersExpanded}
+                    aria-controls="admin-users-navigation"
+                    onClick={() => setUsersOpen((current) => !current)}
+                  >
+                    <UsersGroupIcon />
+                    <span>{c.users}</span>
+                    <span
+                      className={navigationStyles.chevron}
+                      aria-hidden="true"
+                    >
+                      ⌄
+                    </span>
+                  </button>
+                  <div
+                    className={navigationStyles.subNavigation}
+                    id="admin-users-navigation"
+                  >
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/vendors` as Route}
+                      aria-current={section === "vendors" ? "page" : undefined}
+                    >
+                      <VendorsIcon />
+                      <span>{c.vendors}</span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/staff` as Route}
+                      aria-current={section === "staff" ? "page" : undefined}
+                    >
+                      <StaffIcon />
+                      <span>{c.staff}</span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/users` as Route}
+                      aria-current={section === "users" ? "page" : undefined}
+                    >
+                      <CustomersIcon />
+                      <span>{c.users}</span>
+                    </Link>
+                  </div>
+                </div>
+                <div
+                  className={navigationStyles.group}
+                  data-active={isProductServiceSection}
+                  data-open={productServiceExpanded}
+                >
+                  <button
+                    className={navigationStyles.groupTrigger}
+                    type="button"
+                    aria-expanded={productServiceExpanded}
+                    aria-controls="admin-product-service-navigation"
+                    onClick={() => setProductServiceOpen((current) => !current)}
+                  >
+                    <ProductsIcon />
+                    <span>{c.productService}</span>
+                    <span
+                      className={navigationStyles.chevron}
+                      aria-hidden="true"
+                    >
+                      ⌄
+                    </span>
+                  </button>
+                  <div
+                    className={navigationStyles.subNavigation}
+                    id="admin-product-service-navigation"
+                  >
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/products` as Route}
+                      aria-current={section === "products" ? "page" : undefined}
+                    >
+                      <ProductsIcon />
+                      <span>{c.products}</span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/product-categories` as Route}
+                      aria-current={
+                        section === "product-categories" ? "page" : undefined
+                      }
+                    >
+                      <ProductsIcon />
+                      <span>{c.productCategories}</span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/product-changes` as Route}
+                      aria-current={
+                        section === "product-changes" ? "page" : undefined
+                      }
+                    >
+                      <ProductChangesIcon />
+                      <span>{c.productChanges}</span>
+                    </Link>
+                  </div>
+                </div>
+                <div
+                  className={navigationStyles.group}
+                  data-active={isSalesServiceSection}
+                  data-open={salesServiceExpanded}
+                >
+                  <button
+                    className={navigationStyles.groupTrigger}
+                    type="button"
+                    aria-expanded={salesServiceExpanded}
+                    aria-controls="admin-sales-service-navigation"
+                    onClick={() => setSalesServiceOpen((current) => !current)}
+                  >
+                    <SalesServiceIcon />
+                    <span>{c.sellService}</span>
+                    <span
+                      className={navigationStyles.chevron}
+                      aria-hidden="true"
+                    >
+                      ⌄
+                    </span>
+                  </button>
+                  <div
+                    className={navigationStyles.subNavigation}
+                    id="admin-sales-service-navigation"
+                  >
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/statistics` as Route}
+                      aria-current={
+                        section === "statistics" ? "page" : undefined
+                      }
+                    >
+                      <StatisticsIcon />
+                      <span>{c.statistics}</span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/coupons` as Route}
+                      aria-current={section === "coupons" ? "page" : undefined}
+                    >
+                      <CouponIcon />
+                      <span>{c.coupons}</span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/club` as Route}
+                      aria-current={section === "club" ? "page" : undefined}
+                    >
+                      <CouponIcon />
+                      <span>
+                        {locale === "fa"
+                          ? "باشگاه مشتریان"
+                          : locale === "ar"
+                            ? "نادي العملاء"
+                            : "Customer club"}
+                      </span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/orders` as Route}
+                      aria-current={
+                        section === "orders" || section === "order-detail"
+                          ? "page"
+                          : undefined
+                      }
+                    >
+                      <OrdersIcon />
+                      <span>{c.orders}</span>
+                      <strong
+                        className={navigationStyles.count}
+                        aria-label={`${newOrderCount.toLocaleString(locale)} ${c.newOrders}`}
+                        title={`${newOrderCount.toLocaleString(locale)} ${c.newOrders}`}
+                      >
+                        {newOrderCount.toLocaleString(locale)}
+                      </strong>
+                    </Link>
+                  </div>
+                </div>
+                <div
+                  className={navigationStyles.group}
+                  data-active={isPaymentServiceSection}
+                  data-open={paymentServiceExpanded}
+                >
+                  <button
+                    className={navigationStyles.groupTrigger}
+                    type="button"
+                    aria-expanded={paymentServiceExpanded}
+                    aria-controls="admin-payment-service-navigation"
+                    onClick={() => setPaymentServiceOpen((current) => !current)}
+                  >
+                    <PaymentServiceIcon />
+                    <span>{c.paymentService}</span>
+                    <span
+                      className={navigationStyles.chevron}
+                      aria-hidden="true"
+                    >
+                      ⌄
+                    </span>
+                  </button>
+                  <div
+                    className={navigationStyles.subNavigation}
+                    id="admin-payment-service-navigation"
+                  >
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/payments/transactions` as Route}
+                      aria-current={
+                        section === "payment-transactions" ? "page" : undefined
+                      }
+                    >
+                      <TransactionsIcon />
+                      <span>{c.paymentTransactions}</span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/payments/methods` as Route}
+                      aria-current={
+                        section === "payment-methods" ? "page" : undefined
+                      }
+                    >
+                      <PaymentMethodsIcon />
+                      <span>{c.paymentMethods}</span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/settings/usd` as Route}
+                      aria-current={
+                        section === "settings-usd" ? "page" : undefined
+                      }
+                      data-alert={usdRateFailed}
+                    >
+                      <UsdIcon />
+                      <span>{c.usd}</span>
+                      {usdRateFailed ? (
+                        <strong
+                          className={navigationStyles.alert}
+                          aria-label={c.usdAlert}
+                          title={c.usdAlert}
+                        >
+                          !
+                        </strong>
+                      ) : null}
+                    </Link>
+                  </div>
+                </div>
+              </>
+            ) : null}
+            {canManageUploads || canManageBlog ? (
+              <div
+                className={navigationStyles.group}
+                data-active={isContentSection}
+                data-open={contentExpanded}
+              >
+                <button
+                  className={navigationStyles.groupTrigger}
+                  type="button"
+                  aria-expanded={contentExpanded}
+                  aria-controls="admin-content-navigation"
+                  onClick={() => setContentOpen((current) => !current)}
+                >
+                  <EditorialIcon />
+                  <span>{c.content}</span>
+                  <span className={navigationStyles.chevron} aria-hidden="true">
+                    ⌄
+                  </span>
+                </button>
+                <div
+                  className={navigationStyles.subNavigation}
+                  id="admin-content-navigation"
+                >
+                  {canManageUploads ? (
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/uploads` as Route}
+                      aria-current={section === "uploads" ? "page" : undefined}
+                    >
+                      <UploadsIcon />
+                      <span>{c.uploads}</span>
+                    </Link>
+                  ) : null}
+                  {canManageBlog ? (
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/blog` as Route}
+                      aria-current={
+                        section === "editorial" ? "page" : undefined
+                      }
+                    >
+                      <EditorialIcon />
+                      <span>{c.editorial}</span>
+                    </Link>
+                  ) : null}
+                  {canManageBlog ? (
+                    <Link
+                      className={`${navigationStyles.item} ${navigationStyles.nestedItem}`}
+                      href={`/${locale}/admin/blog/categories` as Route}
+                      aria-current={
+                        section === "blog-categories" ? "page" : undefined
+                      }
+                    >
+                      <span>
+                        {locale === "fa"
+                          ? "دسته‌بندی‌ها"
+                          : locale === "ar"
+                            ? "التصنيفات"
+                            : "Categories"}
+                      </span>
+                    </Link>
+                  ) : null}
+                  {canManageBlog ? (
+                    <Link
+                      className={`${navigationStyles.item} ${navigationStyles.nestedItem}`}
+                      href={`/${locale}/admin/blog/tags` as Route}
+                      aria-current={
+                        section === "blog-tags" ? "page" : undefined
+                      }
+                    >
+                      <span>
+                        {locale === "fa"
+                          ? "برچسب‌ها"
+                          : locale === "ar"
+                            ? "الوسوم"
+                            : "Tags"}
+                      </span>
+                    </Link>
+                  ) : null}
+                  {ownerNavigation ? (
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/settings/comments` as Route}
+                      aria-current={
+                        section === "settings-comments" ? "page" : undefined
+                      }
+                    >
+                      <EditorialIcon />
+                      <span>{c.comments}</span>
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+            {ownerNavigation ? (
+              <>
+                <div
+                  className={navigationStyles.group}
+                  data-active={isAiSection}
+                  data-open={aiExpanded}
+                >
+                  <button
+                    className={navigationStyles.groupTrigger}
+                    type="button"
+                    aria-expanded={aiExpanded}
+                    aria-controls="admin-ai-navigation"
+                    onClick={() => setAiOpen((current) => !current)}
+                  >
+                    <AiServiceIcon />
+                    <span>{c.ai}</span>
+                    <span
+                      className={navigationStyles.chevron}
+                      aria-hidden="true"
+                    >
+                      ⌄
+                    </span>
+                  </button>
+                  <div
+                    className={navigationStyles.subNavigation}
+                    id="admin-ai-navigation"
+                  >
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/ai/models` as Route}
+                      aria-current={
+                        section === "ai-models" ? "page" : undefined
+                      }
+                    >
+                      <AiModelsIcon />
+                      <span>{c.aiModels}</span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/ai/assistant` as Route}
+                      aria-current={
+                        section === "ai-assistant" ? "page" : undefined
+                      }
+                    >
+                      <AiAssistantIcon />
+                      <span>{c.aiAssistant}</span>
+                    </Link>
+                  </div>
+                </div>
+                <div
+                  className={navigationStyles.group}
+                  data-active={isWebsiteSection}
+                  data-open={websiteExpanded}
+                >
+                  <button
+                    className={navigationStyles.groupTrigger}
+                    type="button"
+                    aria-expanded={websiteExpanded}
+                    aria-controls="admin-website-navigation"
+                    onClick={() => setWebsiteOpen((current) => !current)}
+                  >
+                    <EditorialIcon />
+                    <span>{c.website}</span>
+                    <span
+                      className={navigationStyles.chevron}
+                      aria-hidden="true"
+                    >
+                      ⌄
+                    </span>
+                  </button>
+                  <div
+                    className={navigationStyles.subNavigation}
+                    id="admin-website-navigation"
+                  >
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/settings/seo` as Route}
+                      aria-current={
+                        section === "settings-seo" ? "page" : undefined
+                      }
+                    >
+                      <EditorialIcon />
+                      <span>
+                        {locale === "fa"
+                          ? "سئو"
+                          : locale === "ar"
+                            ? "تحسين البحث"
+                            : "SEO"}
+                      </span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/settings/homepage` as Route}
+                      aria-current={
+                        section === "settings-homepage" ? "page" : undefined
+                      }
+                    >
+                      <EditorialIcon />
+                      <span>
+                        {locale === "fa"
+                          ? "صفحه اصلی"
+                          : locale === "ar"
+                            ? "الصفحة الرئيسية"
+                            : "Homepage"}
+                      </span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/settings/notice` as Route}
+                      aria-current={
+                        section === "settings-notice" ? "page" : undefined
+                      }
+                    >
+                      <EditorialIcon />
+                      <span>
+                        {locale === "fa"
+                          ? "اطلاعیه"
+                          : locale === "ar"
+                            ? "الإشعار"
+                            : "Notice"}
+                      </span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/settings/stories` as Route}
+                      aria-current={
+                        section === "settings-stories" ? "page" : undefined
+                      }
+                    >
+                      <EditorialIcon />
+                      <span>
+                        {locale === "fa"
+                          ? "استوری‌ها"
+                          : locale === "ar"
+                            ? "القصص"
+                            : "Stories"}
+                      </span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/settings/blog-sidebar` as Route}
+                      aria-current={
+                        section === "settings-blog-sidebar" ? "page" : undefined
+                      }
+                    >
+                      <EditorialIcon />
+                      <span>
+                        {locale === "fa"
+                          ? "تبلیغ کنار مقاله"
+                          : locale === "ar"
+                            ? "إعلان جانب المقال"
+                            : "Article sidebar"}
+                      </span>
+                    </Link>
+                  </div>
+                </div>
+                <div
+                  className={navigationStyles.group}
+                  data-active={isIntegrationsSection}
+                  data-open={integrationsExpanded}
+                >
+                  <button
+                    className={navigationStyles.groupTrigger}
+                    type="button"
+                    aria-expanded={integrationsExpanded}
+                    aria-controls="admin-integrations-navigation"
+                    onClick={() => setIntegrationsOpen((current) => !current)}
+                  >
+                    <SettingsIcon />
+                    <span>{c.integrations}</span>
+                    <span
+                      className={navigationStyles.chevron}
+                      aria-hidden="true"
+                    >
+                      ⌄
+                    </span>
+                  </button>
+                  <div
+                    className={navigationStyles.subNavigation}
+                    id="admin-integrations-navigation"
+                  >
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/settings/shipping` as Route}
+                      aria-current={
+                        section === "settings-shipping" ? "page" : undefined
+                      }
+                    >
+                      <ShippingIcon />
+                      <span>{c.shipping}</span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/settings/sms` as Route}
+                      aria-current={
+                        section === "settings-sms" ? "page" : undefined
+                      }
+                    >
+                      <SmsIcon />
+                      <span>{c.sms}</span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/settings/goghdi` as Route}
+                      aria-current={
+                        section === "settings-goghdi" ? "page" : undefined
+                      }
+                    >
+                      <SmsIcon />
+                      <span>{c.goghdi}</span>
+                    </Link>
+                    {process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED ===
+                    "true" ? (
+                      <Link
+                        className={navigationStyles.item}
+                        href={`/${locale}/admin/bridge` as Route}
+                        aria-current={section === "bridge" ? "page" : undefined}
+                      >
+                        <BridgeIcon />
+                        <span>Bridge</span>
+                      </Link>
+                    ) : null}
+                  </div>
+                </div>
+                <div
+                  className={navigationStyles.group}
+                  data-active={isSecuritySection}
+                  data-open={securityExpanded}
+                >
+                  <button
+                    className={navigationStyles.groupTrigger}
+                    type="button"
+                    aria-expanded={securityExpanded}
+                    aria-controls="admin-security-navigation"
+                    onClick={() => setSecurityOpen((current) => !current)}
+                  >
+                    <SettingsIcon />
+                    <span>{c.security}</span>
+                    <span
+                      className={navigationStyles.chevron}
+                      aria-hidden="true"
+                    >
+                      ⌄
+                    </span>
+                  </button>
+                  <div
+                    className={navigationStyles.subNavigation}
+                    id="admin-security-navigation"
+                  >
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/security/rate-limit` as Route}
+                      aria-current={
+                        section === "security-rate-limit" ? "page" : undefined
+                      }
+                    >
+                      <SettingsIcon />
+                      <span>{c.rateLimit}</span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/security/login` as Route}
+                      aria-current={
+                        section === "security-login" ? "page" : undefined
+                      }
+                    >
+                      <SettingsIcon />
+                      <span>{c.auth}</span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/security/captcha` as Route}
+                      aria-current={
+                        section === "security-captcha" ? "page" : undefined
+                      }
+                    >
+                      <SettingsIcon />
+                      <span>{c.captcha}</span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/settings/backup` as Route}
+                      aria-current={
+                        section === "settings-backup" ? "page" : undefined
+                      }
+                    >
+                      <SettingsIcon />
+                      <span>{c.backupRestore}</span>
+                    </Link>
+                  </div>
+                </div>
+              </>
+            ) : null}
+            <UploadCenterNavigation
+              locale={locale}
+              settingsHref={ownerNavigation ? `/${locale}/admin/settings/upload-centers` : undefined}
+              active={section === "settings-upload-centers"}
+            />
+          </nav>
+          <div className="admin-rail-account" data-mobile-open={true}>
+            <span>{c.account}</span>
+            <div className="admin-identity">
+              <span>{ownerNavigation ? c.admin : c.staff}</span>
+              <strong>{adminName}</strong>
             </div>
+            <Link className={navigationStyles.item} href={`/${locale}/account` as Route}>
+              <span>{locale === "fa" ? "حساب شخصی و خریدها" : locale === "ar" ? "حسابي ومشترياتي" : "My account and purchases"}</span>
+            </Link>
+            <LogoutButton locale={locale} />
           </div>
-          <div className={navigationStyles.group} data-active={isSecuritySection} data-open={securityExpanded}>
-            <button className={navigationStyles.groupTrigger} type="button" aria-expanded={securityExpanded} aria-controls="admin-security-navigation" onClick={() => setSecurityOpen((current) => !current)}>
-              <SettingsIcon /><span>{c.security}</span><span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
-            </button>
-            <div className={navigationStyles.subNavigation} id="admin-security-navigation">
-              <Link className={navigationStyles.item} href={`/${locale}/admin/security/rate-limit` as Route} aria-current={section === "security-rate-limit" ? "page" : undefined}><SettingsIcon /><span>{c.rateLimit}</span></Link>
-              <Link className={navigationStyles.item} href={`/${locale}/admin/security/login` as Route} aria-current={section === "security-login" ? "page" : undefined}><SettingsIcon /><span>{c.auth}</span></Link>
-              <Link className={navigationStyles.item} href={`/${locale}/admin/security/captcha` as Route} aria-current={section === "security-captcha" ? "page" : undefined}><SettingsIcon /><span>{c.captcha}</span></Link>
-              <Link className={navigationStyles.item} href={`/${locale}/admin/settings/backup` as Route} aria-current={section === "settings-backup" ? "page" : undefined}>
-                <SettingsIcon /><span>{c.backupRestore}</span>
-              </Link>
-            </div>
-          </div>
-
-          </> : null}
-        </nav>
-        <div className="admin-rail-account" data-mobile-open={true}>
-          <span>{c.account}</span>
-          <div className="admin-identity">
-            <span>{ownerNavigation ? c.admin : c.staff}</span>
-            <strong>{adminName}</strong>
-          </div>
-          <LogoutButton locale={locale} />
-        </div>
-      </aside>
+        </aside>
       </DashboardMobileNavigation>
 
       <main className="admin-shell" id="admin-content" ref={root}>
-
-      {section === "overview" ? <PanelOverview locale={locale} audience="admin" analytics={ownerNavigation} canManageOrders={ownerNavigation} canManageProducts={ownerNavigation} newOrderCount={newOrderCount} /> : null}
-      {section === "notifications" ? <AdminNotificationsWorkspace locale={locale} /> : null}
-      {section === "statistics" ? <AnalyticsOverview locale={locale} audience="admin" /> : null}
-
-      {section === "vendors" ? <section className="vendor-workspace grid-flow-dense" data-vendor-workspace>
-        <header className="vendor-workspace-intro" data-admin-summary>
-          <div className="vendor-workspace-heading"><h1>{c.workspace}</h1><p>{c.workspaceHint}</p></div>
-          <label className="vendor-search"><SearchIcon /><span className="sr-only">{c.search}</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={c.search} name="vendorSearch" autoComplete="off" spellCheck={false} /></label>
-          <button className="admin-primary-button" type="button" onClick={(event) => openCreate(event.currentTarget)}>
-            <PlusIcon />
-            {c.create}
-          </button>
-        </header>
-
-        <div className="vendor-list" aria-busy={loading}>
-          {error && !panelMode ? <p className="admin-notice is-error" role="alert">{error}</p> : null}
-          {message ? <p className="admin-notice is-success" role="status">{message}</p> : null}
-          {loading ? <VendorSkeleton /> : null}
-          {!loading && filteredVendors.length === 0 ? (
-            <div className="vendor-empty">
-              <span>0</span>
-              <p>{c.empty}</p>
-            </div>
-          ) : null}
-          {filteredVendors.map((vendor) => {
-            const expanded = expandedId === vendor.id;
-            return (
-              <article className="vendor-card" key={vendor.id} data-vendor-card data-admin-box-key={`vendor:${vendor.id}`}>
-                <div className="vendor-card-main">
-                  <div className="vendor-avatar" aria-hidden="true">
-                    {vendor.shopName.trim().slice(0, 2).toLocaleUpperCase(locale)}
-                  </div>
-                  <div className="vendor-primary">
-                    <div>
-                      <h3>{vendor.shopName}</h3>
-                      <span className={`vendor-status is-${vendor.status}`}>
-                        <i />{statusLabel(vendor.status)}
-                      </span>
-                    </div>
-                    <p>{vendor.ownerName} · <span translate="no">{vendor.ownerEmail}</span></p>
-                  </div>
-                  <dl className="vendor-stats">
-                    <div><dt>{c.products}</dt><dd>{vendor.productCount}</dd></div>
-                    <div><dt>{c.orders}</dt><dd>{vendor.orderCount}</dd></div>
-                    <div><dt>{c.permissions}</dt><dd>{vendor.permissions.length}/{permissionOrder.length}</dd></div>
-                  </dl>
-                  <button className="vendor-manage-button" type="button" onClick={(event) => openEdit(vendor, event.currentTarget)}>
-                    {c.manage}<ArrowIcon />
-                  </button>
-                  <button
-                    className="vendor-disclosure"
-                    type="button"
-                    aria-expanded={expanded}
-                    aria-controls={`vendor-access-${vendor.id}`}
-                    onClick={() => setExpandedId(expanded ? null : vendor.id)}
-                  >
-                    <span>{vendor.permissions.length === permissionOrder.length ? c.allAccess : c.limitedAccess}</span>
-                    <span>{expanded ? c.hideAccess : c.showAccess}</span>
-                    <ChevronIcon />
-                  </button>
-                </div>
-                <div
-                  className="vendor-access-accordion"
-                  id={`vendor-access-${vendor.id}`}
-                  data-expanded={expanded}
-                  aria-hidden={!expanded}
-                >
-                  <div>
-                    {permissionOrder.map((permission) => (
-                      <span
-                        key={permission}
-                        className={vendor.permissions.includes(permission) ? "is-granted" : ""}
-                      >
-                        <CheckIcon />
-                        {c[permissionCopy[permission].title]}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      </section> : null}
-
-      {section === "product-categories" ? <ProductCategoriesWorkspace locale={locale} /> : null}
-      {section === "products" ? <section className="admin-product-catalog" aria-labelledby="admin-products-title">
-        <header>
-          <div>
-            <h2 id="admin-products-title">{c.catalog}</h2>
-            <p>{c.catalogHint}</p>
-          </div>
-        </header>
-        <div className="admin-product-statuses" role="group" aria-label={c.productStatus} aria-busy={productsLoading}>
-          {productStatusOptions.map(({ value, label, count }) => (
-            <button key={value} type="button" className="admin-product-status" aria-pressed={productStatus === value} onClick={() => setProductStatus(value)}>
-              <span>{label}</span><bdi>{count === null ? "—" : count.toLocaleString(locale)}</bdi>
-            </button>
-          ))}
-        </div>
-        <CollapsibleFilters className="admin-product-filter-panel" locale={locale} activeCount={activeProductFilterCount}><div className="admin-product-filters">
-          <label><span>{c.productSearch}</span><input type="search" maxLength={100} value={productSearch} onChange={(event) => setProductSearch(event.target.value)} /></label>
-          <label><span>{c.categoryFilter}</span><input maxLength={100} value={productCategory} onChange={(event) => setProductCategory(event.target.value)} /></label>
-          <label><span>{c.sellerFilter}</span><input type="search" maxLength={100} value={productSeller} onChange={(event) => setProductSeller(event.target.value)} /></label>
-          <label><span>{c.productType}</span><select value={productType} onChange={(event) => { const next = event.target.value as ProductType | ""; setProductType(next); if (next && next !== "physical") setProductStock(""); }}><option value="">{c.allTypes}</option><option value="digital">{c.digital}</option><option value="physical">{c.physical}</option><option value="service">{c.service}</option><option value="bridge">{c.bridge}</option></select></label>
-          <label><span>{c.productKind}</span><select value={productKind} onChange={(event) => setProductKind(event.target.value as ProductKind | "")}><option value="">{c.allKinds}</option><option value="simple">{c.simple}</option><option value="variable">{c.variable}</option></select></label>
-          <label><span>{c.stockFilter}</span><select value={productStock} onChange={(event) => { const next = event.target.value as "" | "in_stock" | "out_of_stock"; setProductStock(next); if (next) setProductType("physical"); }}><option value="">{c.allStock}</option><option value="in_stock">{c.inStock}</option><option value="out_of_stock">{c.outOfStock}</option></select></label>
-          <label><span>{c.dateField}</span><select value={productDateField} onChange={(event) => setProductDateField(event.target.value as "created" | "updated")}><option value="updated">{c.updatedDate}</option><option value="created">{c.createdDate}</option></select></label>
-          <div className="admin-product-date-field"><span>{c.dateFrom}</span><JalaliDatePicker locale={locale} value={productDateFrom} max={productDateTo || undefined} label={c.dateFrom} onChange={setProductDateFrom} /></div>
-          <div className="admin-product-date-field"><span>{c.dateTo}</span><JalaliDatePicker locale={locale} value={productDateTo} min={productDateFrom || undefined} label={c.dateTo} onChange={setProductDateTo} /></div>
-          <label><span>{c.sortBy}</span><select value={productSort} onChange={(event) => setProductSort(event.target.value)}><option value="updated_desc">{c.newestUpdated}</option><option value="updated_asc">{c.oldestUpdated}</option><option value="created_desc">{c.newestCreated}</option><option value="created_asc">{c.oldestCreated}</option><option value="title_asc">{c.titleAscending}</option><option value="title_desc">{c.titleDescending}</option></select></label>
-        </div>{activeProductFilterCount ? <button className="admin-product-clear" type="button" onClick={clearProductFilters}>{c.clearProductFilters}</button> : null}</CollapsibleFilters>
-        {productsError ? <p className="admin-notice is-error" role="alert">{productsError}</p> : null}
-        {productBulkNotice ? <p className="admin-notice" role="status">{productBulkNotice}</p> : null}
-        {products.length ? <div className="admin-product-selection"><label><input type="checkbox" checked={products.length > 0 && products.every((product) => selectedProductIds.includes(product.id))} onChange={(event) => { setProductBulkNotice(""); setSelectedProductIds((current) => event.target.checked ? [...new Set([...current, ...products.map((product) => product.id)])] : current.filter((id) => !products.some((product) => product.id === id))); }} disabled={selectedProductIds.length + products.filter((product) => !selectedProductIds.includes(product.id)).length > 50 && !products.every((product) => selectedProductIds.includes(product.id))} /><span>{locale === "fa" ? "انتخاب همه محصولات این صفحه" : locale === "ar" ? "تحديد منتجات هذه الصفحة" : "Select this page"}</span></label><span>{selectedProductIds.length.toLocaleString(locale)} / 50</span></div> : null}
-        {selectedProductIds.length ? <ProductBulkEdit locale={locale} selectedIds={selectedProductIds} onClear={() => setSelectedProductIds([])} onDone={() => { setProductBulkNotice(locale === "fa" ? "ویرایش گروهی انجام شد." : locale === "ar" ? "اكتمل التعديل الجماعي." : "Bulk edit completed."); void loadProducts(productPageCursors[productPage], productPage); }} /> : null}
-        {!productsLoading && !products.length ? <p className="vendor-empty">{activeProductFilterCount ? c.noMatchingProducts : c.catalogEmpty}</p> : null}
-        {products.length ? (
-          <div className="admin-product-list">
-            {products.map((product) => (
-              <article className="admin-product-row" key={product.id} data-admin-box-key={`product:${product.id}`}>
-                <label className="admin-product-select"><input type="checkbox" checked={selectedProductIds.includes(product.id)} disabled={!selectedProductIds.includes(product.id) && selectedProductIds.length >= 50} onChange={(event) => { setProductBulkNotice(""); setSelectedProductIds((current) => event.target.checked ? [...current, product.id] : current.filter((id) => id !== product.id)); }} /><span className="sr-only">{locale === "fa" ? "انتخاب" : locale === "ar" ? "تحديد" : "Select"} {product.title}</span></label>
-                <div>
-                  <h3>{product.title}</h3>
-                  <span>{product.category ?? c[product.type]} · {product.seller.shopName}</span>
-                  {product.tags?.length ? <small className="admin-product-tags">{product.tags.join(" · ")}</small> : null}
-                </div>
-                <ProductPublicUrl
-                  className="admin-product-url"
-                  locale={locale}
-                  slug={product.slug}
-                  label={`${c.productUrl} — ${product.title}`}
-                />
-                <dl>
-                  <div><dt>{c.listings}</dt><dd>{product.listingCount}</dd></div>
-                  <div><dt>{c.productStatus}</dt><dd>{productStatusOptions.find((option) => option.value === product.status)?.label}</dd></div>
-                </dl>
-                <Link
-                  className="admin-secondary-button admin-product-edit"
-                  href={`/${locale}/admin/products/${product.id}` as Route}
-                >
-                  {c.editProduct}
-                </Link>
-              </article>
-            ))}
-          </div>
+        {section === "overview" ? (
+          <PanelOverview
+            locale={locale}
+            audience="admin"
+            analytics={ownerNavigation}
+            canManageOrders={ownerNavigation}
+            canManageProducts={ownerNavigation}
+            newOrderCount={newOrderCount}
+          />
         ) : null}
-        <nav className="admin-product-pagination" aria-label={c.catalog}>
-          <button className="admin-secondary-button" type="button" disabled={productsLoading || productPage === 0} onClick={() => void loadProducts(productPageCursors[productPage - 1], productPage - 1)}>{c.previousPage}</button>
-          <span aria-live="polite">{c.page} {productPage + 1}</span>
-          <button className="admin-secondary-button" type="button" disabled={productsLoading || !productsCursor} onClick={() => { if (!productsCursor) return; setProductPageCursors((current) => [...current.slice(0, productPage + 1), productsCursor]); void loadProducts(productsCursor, productPage + 1); }}>{c.nextPage}</button>
-        </nav>
-      </section> : null}
+        {section === "notifications" ? (
+          <AdminNotificationsWorkspace locale={locale} onCountsChange={updateNotificationCount} />
+        ) : null}
+        {section === "statistics" ? (
+          <AnalyticsOverview locale={locale} audience="admin" />
+        ) : null}
 
-      {section === "product-changes" ? <ProductChangesWorkspace locale={locale} /> : null}
-
-      {section === "coupons" ? <CouponWorkspace locale={locale} /> : null}
-      {section === "club" ? <ClubWorkspace locale={locale} /> : null}
-
-      {section === "orders" ? <AdminOrdersWorkspace locale={locale} /> : null}
-      {section === "order-detail" && orderId ? <AdminOrderDetails locale={locale} orderId={orderId} /> : null}
-
-      {section === "payment-transactions" ? <PaymentServiceWorkspace locale={locale} view="transactions" /> : null}
-
-      {section === "payment-methods" ? <PaymentServiceWorkspace locale={locale} view="methods" /> : null}
-
-      {section === "staff" ? <StaffWorkspace locale={locale} /> : null}
-
-      {section === "users" ? <UsersWorkspace locale={locale} initialUserId={userId} /> : null}
-
-      {section === "bridge" ? <AdminBridgeWorkspace locale={locale} /> : null}
-
-      {section === "editorial" ? <AdminBlogWorkspace locale={locale} /> : null}
-      {section === "blog-categories" ? <BlogTaxonomyWorkspace locale={locale} kind="category" /> : null}
-      {section === "blog-tags" ? <BlogTaxonomyWorkspace locale={locale} kind="tag" /> : null}
-      {section === "uploads" ? <UploadsWorkspace locale={locale} /> : null}
-      {section === "ai-models" ? <AiWorkspace locale={locale} view="models" /> : null}
-      {section === "ai-assistant" ? <AiWorkspace locale={locale} view="assistant" /> : null}
-      {section === "settings-sms" ? <SmsSettingsWorkspace locale={locale} /> : null}
-      {section === "settings-goghdi" ? <GoghdiSettingsWorkspace locale={locale} /> : null}
-      {section === "security-login" ? <AuthLoginSettingsWorkspace locale={locale} /> : null}
-      {section === "security-rate-limit" ? <SecuritySettingsWorkspace locale={locale} view="rate-limit" /> : null}
-      {section === "security-captcha" ? <SecuritySettingsWorkspace locale={locale} view="captcha" /> : null}
-      {section === "settings-shipping" ? <ShippingSettingsWorkspace locale={locale} /> : null}
-      {section === "settings-usd" ? <UsdSettingsWorkspace locale={locale} /> : null}
-      {section === "settings-comments" ? <AdminCommentsWorkspace locale={locale} /> : null}
-      {section === "settings-notice" ? <NoticeSettingsWorkspace locale={locale} /> : null}
-      {section === "settings-stories" ? <HomepageStoriesWorkspace locale={locale} /> : null}
-      {section === "settings-blog-sidebar" ? <BlogSidebarWorkspace locale={locale} /> : null}
-      {section === "settings-homepage" ? <HomepageContentWorkspace locale={locale} /> : null}
-      {section === "settings-seo" ? <SeoSettingsWorkspace locale={locale} /> : null}
-      {section === "settings-backup" ? <BackupRestoreWorkspace locale={locale} /> : null}
-
-      {panelMode ? (
-        <div className="vendor-panel-layer" role="presentation">
-          <button className="vendor-panel-scrim" type="button" aria-label={c.cancel} onClick={closePanel} />
-          <section ref={panel} className="vendor-panel" role="dialog" aria-modal="true" aria-labelledby="vendor-panel-title">
-            <header>
-              <div>
-                <h2 id="vendor-panel-title">{panelMode === "create" ? c.newVendor : c.editVendor}</h2>
-                <p>{c.panelHint}</p>
+        {section === "vendors" ? (
+          <section
+            className="vendor-workspace grid-flow-dense"
+            data-vendor-workspace
+          >
+            <header className="vendor-workspace-intro" data-admin-summary>
+              <div className="vendor-workspace-heading">
+                <h1>{c.workspace}</h1>
+                <p>{c.workspaceHint}</p>
               </div>
-              <button className="vendor-panel-close" type="button" onClick={closePanel} aria-label={c.cancel}>
-                <CloseIcon />
-              </button>
-            </header>
-            <form onSubmit={submitVendor}>
-              <div className="vendor-form-grid">
-                <Field name="shopName" label={c.shopName} value={form.shopName} onChange={(value) => updateField("shopName", value)} autoComplete="off" />
-                <Field name="ownerName" label={c.ownerName} value={form.ownerName} onChange={(value) => updateField("ownerName", value)} autoComplete="name" />
-                <Field name="ownerEmail" label={c.ownerEmail} type="email" value={form.ownerEmail} onChange={(value) => updateField("ownerEmail", value)} autoComplete="email" spellCheck={false} />
-                <Field name="phoneNumber" label={c.phone} type="tel" value={form.phoneNumber} onChange={(value) => updateField("phoneNumber", value)} required={false} autoComplete="tel" />
-                <Field name="goghdiAgentId" label={c.goghdiAgentId} value={form.goghdiAgentId} onChange={(value) => updateField("goghdiAgentId", value)} required={false} minLength={24} maxLength={24} autoComplete="off" spellCheck={false} />
-                <Field
-                  name="password"
-                  label={panelMode === "create" ? c.password : c.optionalPassword}
-                  type="password"
-                  value={form.password}
-                  onChange={(value) => updateField("password", value)}
-                  required={panelMode === "create"}
-                  minLength={8}
-                  autoComplete="new-password"
+              <label className="vendor-search">
+                <SearchIcon />
+                <span className="sr-only">{c.search}</span>
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder={c.search}
+                  name="vendorSearch"
+                  autoComplete="off"
                   spellCheck={false}
                 />
-                <label className="vendor-field">
-                  <span>{c.status}</span>
-                  <select name="status" value={form.status} onChange={(event) => updateField("status", event.target.value as VendorStatus)}>
-                    <option value="active">{c.statusActive}</option>
-                    <option value="invited">{c.statusInvited}</option>
-                    <option value="suspended">{c.statusSuspended}</option>
+              </label>
+              <button
+                className="admin-primary-button"
+                type="button"
+                onClick={(event) => openCreate(event.currentTarget)}
+              >
+                <PlusIcon />
+                {c.create}
+              </button>
+            </header>
+
+            <div className="vendor-list" aria-busy={loading}>
+              {error && !panelMode ? (
+                <p className="admin-notice is-error" role="alert">
+                  {error}
+                </p>
+              ) : null}
+              {message ? (
+                <p className="admin-notice is-success" role="status">
+                  {message}
+                </p>
+              ) : null}
+              {loading ? <VendorSkeleton /> : null}
+              {!loading && filteredVendors.length === 0 ? (
+                <div className="vendor-empty">
+                  <span>0</span>
+                  <p>{c.empty}</p>
+                </div>
+              ) : null}
+              {filteredVendors.map((vendor) => {
+                const expanded = expandedId === vendor.id;
+                return (
+                  <article
+                    className="vendor-card"
+                    key={vendor.id}
+                    data-vendor-card
+                    data-admin-box-key={`vendor:${vendor.id}`}
+                  >
+                    <div className="vendor-card-main">
+                      <SellerAvatar className="vendor-avatar" name={vendor.shopName} picture={vendor.profilePicture} locale={locale} />
+                      <div className="vendor-primary">
+                        <div>
+                          <h3>{vendor.shopName}</h3>
+                          <span className={`vendor-status is-${vendor.status}`}>
+                            <i />
+                            {statusLabel(vendor.status)}
+                          </span>
+                        </div>
+                        <p>
+                          {vendor.ownerName} ·{" "}
+                          <span translate="no">{vendor.ownerEmail}</span>
+                        </p>
+                      </div>
+                      <dl className="vendor-stats">
+                        <div>
+                          <dt>{c.products}</dt>
+                          <dd>{vendor.productCount}</dd>
+                        </div>
+                        <div>
+                          <dt>{c.orders}</dt>
+                          <dd>{vendor.orderCount}</dd>
+                        </div>
+                        <div>
+                          <dt>{c.permissions}</dt>
+                          <dd>
+                            {vendor.permissions.length}/{permissionOrder.length}
+                          </dd>
+                        </div>
+                      </dl>
+                      <button
+                        className="vendor-manage-button"
+                        type="button"
+                        onClick={(event) =>
+                          openEdit(vendor, event.currentTarget)
+                        }
+                      >
+                        {c.manage}
+                        <ArrowIcon />
+                      </button>
+                      <button
+                        className="vendor-disclosure"
+                        type="button"
+                        aria-expanded={expanded}
+                        aria-controls={`vendor-access-${vendor.id}`}
+                        onClick={() =>
+                          setExpandedId(expanded ? null : vendor.id)
+                        }
+                      >
+                        <span>
+                          {vendor.permissions.length === permissionOrder.length
+                            ? c.allAccess
+                            : c.limitedAccess}
+                        </span>
+                        <span>{expanded ? c.hideAccess : c.showAccess}</span>
+                        <ChevronIcon />
+                      </button>
+                    </div>
+                    <div
+                      className="vendor-access-accordion"
+                      id={`vendor-access-${vendor.id}`}
+                      data-expanded={expanded}
+                      aria-hidden={!expanded}
+                    >
+                      <div>
+                        {permissionOrder.map((permission) => (
+                          <span
+                            key={permission}
+                            className={
+                              vendor.permissions.includes(permission)
+                                ? "is-granted"
+                                : ""
+                            }
+                          >
+                            <CheckIcon />
+                            {c[permissionCopy[permission].title]}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+
+        {section === "product-categories" ? (
+          <ProductCategoriesWorkspace locale={locale} />
+        ) : null}
+        {section === "products" ? (
+          <section
+            className="admin-product-catalog"
+            aria-labelledby="admin-products-title"
+          >
+            <header>
+              <div>
+                <h2 id="admin-products-title">{c.catalog}</h2>
+                <p>{c.catalogHint}</p>
+              </div>
+            </header>
+            <div
+              className="admin-product-statuses"
+              role="group"
+              aria-label={c.productStatus}
+              aria-busy={productsLoading}
+            >
+              {productStatusOptions.map(({ value, label, count }) => (
+                <button
+                  key={value}
+                  type="button"
+                  className="admin-product-status"
+                  aria-pressed={productStatus === value}
+                  onClick={() => setProductStatus(value)}
+                >
+                  <span>{label}</span>
+                  <bdi>
+                    {count === null ? "—" : count.toLocaleString(locale)}
+                  </bdi>
+                </button>
+              ))}
+            </div>
+            <CollapsibleFilters
+              className="admin-product-filter-panel"
+              locale={locale}
+              activeCount={activeProductFilterCount}
+            >
+              <div className="admin-product-filters">
+                <label>
+                  <span>{c.productSearch}</span>
+                  <input
+                    type="search"
+                    maxLength={100}
+                    value={productSearch}
+                    onChange={(event) => setProductSearch(event.target.value)}
+                  />
+                </label>
+                <label>
+                  <span>{c.categoryFilter}</span>
+                  <input
+                    maxLength={100}
+                    value={productCategory}
+                    onChange={(event) => setProductCategory(event.target.value)}
+                  />
+                </label>
+                <label>
+                  <span>{c.sellerFilter}</span>
+                  <input
+                    type="search"
+                    maxLength={100}
+                    value={productSeller}
+                    onChange={(event) => setProductSeller(event.target.value)}
+                  />
+                </label>
+                <label>
+                  <span>{c.productType}</span>
+                  <select
+                    value={productType}
+                    onChange={(event) => {
+                      const next = event.target.value as ProductType | "";
+                      setProductType(next);
+                      if (next && next !== "physical") setProductStock("");
+                    }}
+                  >
+                    <option value="">{c.allTypes}</option>
+                    <option value="digital">{c.digital}</option>
+                    <option value="physical">{c.physical}</option>
+                    <option value="service">{c.service}</option>
+                    <option value="bridge">{c.bridge}</option>
                   </select>
                 </label>
-                <PercentField name="commission" label={c.commission} value={form.commission} onChange={(value) => updateField("commission", value)} />
-                <PercentField name="holdbackRate" label={c.holdback} value={form.holdbackRate} onChange={(value) => updateField("holdbackRate", value)} />
+                <label>
+                  <span>{c.productKind}</span>
+                  <select
+                    value={productKind}
+                    onChange={(event) =>
+                      setProductKind(event.target.value as ProductKind | "")
+                    }
+                  >
+                    <option value="">{c.allKinds}</option>
+                    <option value="simple">{c.simple}</option>
+                    <option value="variable">{c.variable}</option>
+                  </select>
+                </label>
+                <label>
+                  <span>{c.stockFilter}</span>
+                  <select
+                    value={productStock}
+                    onChange={(event) => {
+                      const next = event.target.value as
+                        | ""
+                        | "in_stock"
+                        | "out_of_stock";
+                      setProductStock(next);
+                      if (next) setProductType("physical");
+                    }}
+                  >
+                    <option value="">{c.allStock}</option>
+                    <option value="in_stock">{c.inStock}</option>
+                    <option value="out_of_stock">{c.outOfStock}</option>
+                  </select>
+                </label>
+                <label>
+                  <span>{c.dateField}</span>
+                  <select
+                    value={productDateField}
+                    onChange={(event) =>
+                      setProductDateField(
+                        event.target.value as "created" | "updated",
+                      )
+                    }
+                  >
+                    <option value="updated">{c.updatedDate}</option>
+                    <option value="created">{c.createdDate}</option>
+                  </select>
+                </label>
+                <div className="admin-product-date-field">
+                  <span>{c.dateFrom}</span>
+                  <JalaliDatePicker
+                    locale={locale}
+                    value={productDateFrom}
+                    max={productDateTo || undefined}
+                    label={c.dateFrom}
+                    onChange={setProductDateFrom}
+                  />
+                </div>
+                <div className="admin-product-date-field">
+                  <span>{c.dateTo}</span>
+                  <JalaliDatePicker
+                    locale={locale}
+                    value={productDateTo}
+                    min={productDateFrom || undefined}
+                    label={c.dateTo}
+                    onChange={setProductDateTo}
+                  />
+                </div>
+                <label>
+                  <span>{c.sortBy}</span>
+                  <select
+                    value={productSort}
+                    onChange={(event) => setProductSort(event.target.value)}
+                  >
+                    <option value="updated_desc">{c.newestUpdated}</option>
+                    <option value="updated_asc">{c.oldestUpdated}</option>
+                    <option value="created_desc">{c.newestCreated}</option>
+                    <option value="created_asc">{c.oldestCreated}</option>
+                    <option value="title_asc">{c.titleAscending}</option>
+                    <option value="title_desc">{c.titleDescending}</option>
+                  </select>
+                </label>
               </div>
-
-              <p className="vendor-form-hint">{c.goghdiAgentHint}</p>
-
-              <fieldset className="permission-fieldset">
-                <legend>{c.accessTitle}</legend>
-                <p>{c.accessHint}</p>
-                <div className="permission-list">
-                  {permissionOrder.map((permission) => (
-                    <label key={permission} className="permission-option">
-                      <span>
-                        <strong>{c[permissionCopy[permission].title]}</strong>
-                        <small>{c[permissionCopy[permission].hint]}</small>
-                      </span>
+              {activeProductFilterCount ? (
+                <button
+                  className="admin-product-clear"
+                  type="button"
+                  onClick={clearProductFilters}
+                >
+                  {c.clearProductFilters}
+                </button>
+              ) : null}
+            </CollapsibleFilters>
+            {productsError ? (
+              <p className="admin-notice is-error" role="alert">
+                {productsError}
+              </p>
+            ) : null}
+            {productBulkNotice ? (
+              <p className="admin-notice" role="status">
+                {productBulkNotice}
+              </p>
+            ) : null}
+            {products.length ? (
+              <div className="admin-product-selection">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={
+                      products.length > 0 &&
+                      products.every((product) =>
+                        selectedProductIds.includes(product.id),
+                      )
+                    }
+                    onChange={(event) => {
+                      setProductBulkNotice("");
+                      setSelectedProductIds((current) =>
+                        event.target.checked
+                          ? [
+                              ...new Set([
+                                ...current,
+                                ...products.map((product) => product.id),
+                              ]),
+                            ]
+                          : current.filter(
+                              (id) =>
+                                !products.some((product) => product.id === id),
+                            ),
+                      );
+                    }}
+                    disabled={
+                      selectedProductIds.length +
+                        products.filter(
+                          (product) => !selectedProductIds.includes(product.id),
+                        ).length >
+                        50 &&
+                      !products.every((product) =>
+                        selectedProductIds.includes(product.id),
+                      )
+                    }
+                  />
+                  <span>
+                    {locale === "fa"
+                      ? "انتخاب همه محصولات این صفحه"
+                      : locale === "ar"
+                        ? "تحديد منتجات هذه الصفحة"
+                        : "Select this page"}
+                  </span>
+                </label>
+                <span>
+                  {selectedProductIds.length.toLocaleString(locale)} / 50
+                </span>
+              </div>
+            ) : null}
+            {selectedProductIds.length ? (
+              <ProductBulkEdit
+                locale={locale}
+                selectedIds={selectedProductIds}
+                onClear={() => setSelectedProductIds([])}
+                onDone={() => {
+                  setProductBulkNotice(
+                    locale === "fa"
+                      ? "ویرایش گروهی انجام شد."
+                      : locale === "ar"
+                        ? "اكتمل التعديل الجماعي."
+                        : "Bulk edit completed.",
+                  );
+                  void loadProducts(
+                    productPageCursors[productPage],
+                    productPage,
+                  );
+                }}
+              />
+            ) : null}
+            {!productsLoading && !products.length ? (
+              <p className="vendor-empty">
+                {activeProductFilterCount
+                  ? c.noMatchingProducts
+                  : c.catalogEmpty}
+              </p>
+            ) : null}
+            {products.length ? (
+              <div className="admin-product-list">
+                {products.map((product) => (
+                  <article
+                    className="admin-product-row"
+                    key={product.id}
+                    data-admin-box-key={`product:${product.id}`}
+                  >
+                    <label className="admin-product-select">
                       <input
                         type="checkbox"
-                        name="permissions"
-                        value={permission}
-                        checked={form.permissions.includes(permission)}
-                        onChange={() => togglePermission(permission)}
+                        checked={selectedProductIds.includes(product.id)}
+                        disabled={
+                          !selectedProductIds.includes(product.id) &&
+                          selectedProductIds.length >= 50
+                        }
+                        onChange={(event) => {
+                          setProductBulkNotice("");
+                          setSelectedProductIds((current) =>
+                            event.target.checked
+                              ? [...current, product.id]
+                              : current.filter((id) => id !== product.id),
+                          );
+                        }}
                       />
-                      <i aria-hidden="true" />
+                      <span className="sr-only">
+                        {locale === "fa"
+                          ? "انتخاب"
+                          : locale === "ar"
+                            ? "تحديد"
+                            : "Select"}{" "}
+                        {product.title}
+                      </span>
                     </label>
-                  ))}
-                </div>
-              </fieldset>
-
-              <fieldset className="permission-fieldset">
-                <legend>{locale === "fa" ? "سیاست انتشار وبلاگ" : locale === "ar" ? "سياسة نشر المدونة" : "Blog publishing policy"}</legend>
-                <p>{locale === "fa" ? "بررسی پیش از انتشار به‌صورت پیش‌فرض فعال است." : locale === "ar" ? "المراجعة قبل النشر مفعلة افتراضياً." : "Review before publication is enabled by default."}</p>
-                <label className="permission-option">
-                  <span>
-                    <strong>{locale === "fa" ? "نیازمند بررسی تحریریه" : locale === "ar" ? "يتطلب مراجعة التحرير" : "Require editorial review"}</strong>
-                    <small>{locale === "fa" ? "با خاموش‌کردن این گزینه، فروشنده می‌تواند مستقیم منتشر کند." : locale === "ar" ? "عند إيقافه يمكن للبائع النشر مباشرة." : "Turn off only for sellers trusted to publish directly."}</small>
-                  </span>
-                  <input type="checkbox" checked={form.blogReviewRequired} onChange={(event) => updateField("blogReviewRequired", event.target.checked)} />
-                  <i aria-hidden="true" />
-                </label>
-              </fieldset>
-
-              {error ? <p className="admin-notice is-error" role="alert">{error}</p> : null}
-              <footer>
-                <button className="admin-secondary-button" type="button" onClick={closePanel}>{c.cancel}</button>
-                <button className="admin-primary-button" type="submit" disabled={submitting}>
-                  {submitting ? (panelMode === "create" ? c.creating : c.saving) : c.save}
-                </button>
-              </footer>
-            </form>
+                    <div>
+                      <h3>{product.title}</h3>
+                      <span>
+                        {product.category ?? c[product.type]} ·{" "}
+                        {product.seller.shopName}
+                      </span>
+                      {product.tags?.length ? (
+                        <small className="admin-product-tags">
+                          {product.tags.join(" · ")}
+                        </small>
+                      ) : null}
+                    </div>
+                    <ProductPublicUrl
+                      className="admin-product-url"
+                      locale={locale}
+                      slug={product.slug}
+                      label={`${c.productUrl} — ${product.title}`}
+                    />
+                    <dl>
+                      <div>
+                        <dt>{c.listings}</dt>
+                        <dd>{product.listingCount}</dd>
+                      </div>
+                      <div>
+                        <dt>{c.productStatus}</dt>
+                        <dd>
+                          {
+                            productStatusOptions.find(
+                              (option) => option.value === product.status,
+                            )?.label
+                          }
+                        </dd>
+                      </div>
+                    </dl>
+                    <Link
+                      className="admin-secondary-button admin-product-edit"
+                      href={`/${locale}/admin/products/${product.id}` as Route}
+                    >
+                      {c.editProduct}
+                    </Link>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+            <nav className="admin-product-pagination" aria-label={c.catalog}>
+              <button
+                className="admin-secondary-button"
+                type="button"
+                disabled={productsLoading || productPage === 0}
+                onClick={() =>
+                  void loadProducts(
+                    productPageCursors[productPage - 1],
+                    productPage - 1,
+                  )
+                }
+              >
+                {c.previousPage}
+              </button>
+              <span aria-live="polite">
+                {c.page} {productPage + 1}
+              </span>
+              <button
+                className="admin-secondary-button"
+                type="button"
+                disabled={productsLoading || !productsCursor}
+                onClick={() => {
+                  if (!productsCursor) return;
+                  setProductPageCursors((current) => [
+                    ...current.slice(0, productPage + 1),
+                    productsCursor,
+                  ]);
+                  void loadProducts(productsCursor, productPage + 1);
+                }}
+              >
+                {c.nextPage}
+              </button>
+            </nav>
           </section>
-        </div>
-      ) : null}
+        ) : null}
+
+        {section === "product-changes" ? (
+          <ProductChangesWorkspace locale={locale} />
+        ) : null}
+
+        {section === "coupons" ? <CouponWorkspace locale={locale} /> : null}
+        {section === "club" ? <ClubWorkspace locale={locale} /> : null}
+
+        {section === "orders" ? <AdminOrdersWorkspace locale={locale} /> : null}
+        {section === "order-detail" && orderId ? (
+          <AdminOrderDetails locale={locale} orderId={orderId} />
+        ) : null}
+
+        {section === "payment-transactions" ? (
+          <PaymentServiceWorkspace locale={locale} view="transactions" />
+        ) : null}
+
+        {section === "payment-methods" ? (
+          <PaymentServiceWorkspace locale={locale} view="methods" />
+        ) : null}
+
+        {section === "staff" ? <StaffWorkspace locale={locale} /> : null}
+
+        {section === "users" ? (
+          <UsersWorkspace locale={locale} initialUserId={userId} />
+        ) : null}
+
+        {section === "bridge" ? <AdminBridgeWorkspace locale={locale} /> : null}
+
+        {section === "editorial" ? (
+          <AdminBlogWorkspace locale={locale} />
+        ) : null}
+        {section === "blog-categories" ? (
+          <BlogTaxonomyWorkspace locale={locale} kind="category" />
+        ) : null}
+        {section === "blog-tags" ? (
+          <BlogTaxonomyWorkspace locale={locale} kind="tag" />
+        ) : null}
+        {section === "uploads" ? <UploadsWorkspace locale={locale} /> : null}
+        {section === "ai-models" ? (
+          <AiWorkspace locale={locale} view="models" />
+        ) : null}
+        {section === "ai-assistant" ? (
+          <AiWorkspace locale={locale} view="assistant" />
+        ) : null}
+        {section === "settings-sms" ? (
+          <SmsSettingsWorkspace locale={locale} />
+        ) : null}
+        {section === "settings-goghdi" ? (
+          <GoghdiSettingsWorkspace locale={locale} />
+        ) : null}
+        {section === "security-login" ? (
+          <AuthLoginSettingsWorkspace locale={locale} />
+        ) : null}
+        {section === "security-rate-limit" ? (
+          <SecuritySettingsWorkspace locale={locale} view="rate-limit" />
+        ) : null}
+        {section === "security-captcha" ? (
+          <SecuritySettingsWorkspace locale={locale} view="captcha" />
+        ) : null}
+        {section === "settings-shipping" ? (
+          <ShippingSettingsWorkspace locale={locale} />
+        ) : null}
+        {section === "settings-usd" ? (
+          <UsdSettingsWorkspace locale={locale} />
+        ) : null}
+        {section === "settings-comments" ? (
+          <AdminCommentsWorkspace locale={locale} />
+        ) : null}
+        {section === "settings-notice" ? (
+          <NoticeSettingsWorkspace locale={locale} />
+        ) : null}
+        {section === "settings-upload-centers" ? (
+          <UploadCenterSettingsWorkspace locale={locale} />
+        ) : null}
+        {section === "settings-stories" ? (
+          <HomepageStoriesWorkspace locale={locale} />
+        ) : null}
+        {section === "settings-blog-sidebar" ? (
+          <BlogSidebarWorkspace locale={locale} />
+        ) : null}
+        {section === "settings-homepage" ? (
+          <HomepageContentWorkspace locale={locale} />
+        ) : null}
+        {section === "settings-seo" ? (
+          <SeoSettingsWorkspace locale={locale} />
+        ) : null}
+        {section === "settings-backup" ? (
+          <BackupRestoreWorkspace locale={locale} />
+        ) : null}
+
+        {panelMode ? (
+          <div className="vendor-panel-layer" role="presentation">
+            <button
+              className="vendor-panel-scrim"
+              type="button"
+              aria-label={c.cancel}
+              onClick={closePanel}
+            />
+            <section
+              ref={panel}
+              className="vendor-panel"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="vendor-panel-title"
+            >
+              <header>
+                <div>
+                  <h2 id="vendor-panel-title">
+                    {panelMode === "create" ? c.newVendor : c.editVendor}
+                  </h2>
+                  <p>{c.panelHint}</p>
+                </div>
+                <button
+                  className="vendor-panel-close"
+                  type="button"
+                  onClick={closePanel}
+                  aria-label={c.cancel}
+                >
+                  <CloseIcon />
+                </button>
+              </header>
+              <form onSubmit={submitVendor}>
+                {panelMode === "edit" && editingId ? (() => {
+                  const vendor = vendors.find((item) => item.id === editingId);
+                  return vendor ? <VendorPictureControl key={vendor.id} vendor={vendor} locale={locale} onChange={(picture) => setVendors((current) => current.map((item) => item.id === vendor.id ? { ...item, profilePicture: picture } : item))} /> : null;
+                })() : null}
+                <div className="vendor-form-grid">
+                  <Field
+                    name="shopName"
+                    label={c.shopName}
+                    value={form.shopName}
+                    onChange={(value) => updateField("shopName", value)}
+                    autoComplete="off"
+                  />
+                  <Field
+                    name="ownerName"
+                    label={c.ownerName}
+                    value={form.ownerName}
+                    onChange={(value) => updateField("ownerName", value)}
+                    autoComplete="name"
+                  />
+                  <Field
+                    name="ownerEmail"
+                    label={c.ownerEmail}
+                    type="email"
+                    value={form.ownerEmail}
+                    onChange={(value) => updateField("ownerEmail", value)}
+                    autoComplete="email"
+                    spellCheck={false}
+                  />
+                  <Field
+                    name="phoneNumber"
+                    label={c.phone}
+                    type="tel"
+                    value={form.phoneNumber}
+                    onChange={(value) => updateField("phoneNumber", value)}
+                    required={false}
+                    autoComplete="tel"
+                  />
+                  <Field
+                    name="goghdiAgentId"
+                    label={c.goghdiAgentId}
+                    value={form.goghdiAgentId}
+                    onChange={(value) => updateField("goghdiAgentId", value)}
+                    required={false}
+                    minLength={24}
+                    maxLength={24}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <Field
+                    name="password"
+                    label={
+                      panelMode === "create" ? c.password : c.optionalPassword
+                    }
+                    type="password"
+                    value={form.password}
+                    onChange={(value) => updateField("password", value)}
+                    required={panelMode === "create"}
+                    minLength={8}
+                    autoComplete="new-password"
+                    spellCheck={false}
+                  />
+                  <label className="vendor-field">
+                    <span>{c.status}</span>
+                    <select
+                      name="status"
+                      value={form.status}
+                      onChange={(event) =>
+                        updateField(
+                          "status",
+                          event.target.value as VendorStatus,
+                        )
+                      }
+                    >
+                      <option value="active">{c.statusActive}</option>
+                      <option value="invited">{c.statusInvited}</option>
+                      <option value="suspended">{c.statusSuspended}</option>
+                    </select>
+                  </label>
+                  <PercentField
+                    name="commission"
+                    label={c.commission}
+                    value={form.commission}
+                    onChange={(value) => updateField("commission", value)}
+                  />
+                </div>
+
+                <p className="vendor-form-hint">{c.goghdiAgentHint}</p>
+
+                <fieldset className="permission-fieldset">
+                  <legend>{c.accessTitle}</legend>
+                  <p>{c.accessHint}</p>
+                  <div className="permission-list">
+                    {permissionOrder.map((permission) => (
+                      <label key={permission} className="permission-option">
+                        <span>
+                          <strong>{c[permissionCopy[permission].title]}</strong>
+                          <small>{c[permissionCopy[permission].hint]}</small>
+                        </span>
+                        <input
+                          type="checkbox"
+                          name="permissions"
+                          value={permission}
+                          checked={form.permissions.includes(permission)}
+                          onChange={() => togglePermission(permission)}
+                        />
+                        <i aria-hidden="true" />
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <fieldset className="permission-fieldset">
+                  <legend>
+                    {locale === "fa"
+                      ? "سیاست انتشار وبلاگ"
+                      : locale === "ar"
+                        ? "سياسة نشر المدونة"
+                        : "Blog publishing policy"}
+                  </legend>
+                  <p>
+                    {locale === "fa"
+                      ? "بررسی پیش از انتشار به‌صورت پیش‌فرض فعال است."
+                      : locale === "ar"
+                        ? "المراجعة قبل النشر مفعلة افتراضياً."
+                        : "Review before publication is enabled by default."}
+                  </p>
+                  <label className="permission-option">
+                    <span>
+                      <strong>
+                        {locale === "fa"
+                          ? "نیازمند بررسی تحریریه"
+                          : locale === "ar"
+                            ? "يتطلب مراجعة التحرير"
+                            : "Require editorial review"}
+                      </strong>
+                      <small>
+                        {locale === "fa"
+                          ? "با خاموش‌کردن این گزینه، فروشنده می‌تواند مستقیم منتشر کند."
+                          : locale === "ar"
+                            ? "عند إيقافه يمكن للبائع النشر مباشرة."
+                            : "Turn off only for sellers trusted to publish directly."}
+                      </small>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={form.blogReviewRequired}
+                      onChange={(event) =>
+                        updateField("blogReviewRequired", event.target.checked)
+                      }
+                    />
+                    <i aria-hidden="true" />
+                  </label>
+                </fieldset>
+
+                {error ? (
+                  <p className="admin-notice is-error" role="alert">
+                    {error}
+                  </p>
+                ) : null}
+                <footer>
+                  <button
+                    className="admin-secondary-button"
+                    type="button"
+                    onClick={closePanel}
+                  >
+                    {c.cancel}
+                  </button>
+                  <button
+                    className="admin-primary-button"
+                    type="submit"
+                    disabled={submitting}
+                  >
+                    {submitting
+                      ? panelMode === "create"
+                        ? c.creating
+                        : c.saving
+                      : c.save}
+                  </button>
+                </footer>
+              </form>
+            </section>
+          </div>
+        ) : null}
       </main>
     </div>
   );
@@ -1658,7 +2852,7 @@ function Field({
   minLength,
   maxLength,
   autoComplete = "off",
-  spellCheck
+  spellCheck,
 }: {
   name: string;
   label: string;
@@ -1689,11 +2883,32 @@ function Field({
   );
 }
 
-function PercentField({ name, label, value, onChange }: { name: string; label: string; value: string; onChange(value: string): void }) {
+function PercentField({
+  name,
+  label,
+  value,
+  onChange,
+}: {
+  name: string;
+  label: string;
+  value: string;
+  onChange(value: string): void;
+}) {
   return (
     <label className="vendor-field vendor-percent-field">
       <span>{label}</span>
-      <input name={name} type="number" inputMode="decimal" min="0" max="100" step="0.01" value={value} onChange={(event) => onChange(event.target.value)} required autoComplete="off" />
+      <input
+        name={name}
+        type="number"
+        inputMode="decimal"
+        min="0"
+        max="100"
+        step="0.01"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        required
+        autoComplete="off"
+      />
       <b aria-hidden="true">%</b>
     </label>
   );
@@ -1702,61 +2917,128 @@ function PercentField({ name, label, value, onChange }: { name: string; label: s
 function VendorSkeleton() {
   return (
     <div className="vendor-skeleton" aria-hidden="true">
-      <i /><i /><i />
+      <i />
+      <i />
+      <i />
     </div>
   );
 }
 
 function PlusIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg>;
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <path d="M10 4v12M4 10h12" />
+    </svg>
+  );
 }
 
 function OverviewIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="5" height="5" rx="1" /><rect x="12" y="3" width="5" height="5" rx="1" /><rect x="3" y="12" width="5" height="5" rx="1" /><rect x="12" y="12" width="5" height="5" rx="1" /></svg>;
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <rect x="3" y="3" width="5" height="5" rx="1" />
+      <rect x="12" y="3" width="5" height="5" rx="1" />
+      <rect x="3" y="12" width="5" height="5" rx="1" />
+      <rect x="12" y="12" width="5" height="5" rx="1" />
+    </svg>
+  );
 }
 
 function NotificationsIcon() {
-  return <NavIcon><path d="M4 7h16v10H4zM4 10l8 5 8-5M7 4h10" /></NavIcon>;
+  return (
+    <NavIcon>
+      <path d="M4 7h16v10H4zM4 10l8 5 8-5M7 4h10" />
+    </NavIcon>
+  );
 }
 
 function StatisticsIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 17V9M8 17V4M13 17v-6M18 17V7M2 17h17" /></svg>;
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <path d="M3 17V9M8 17V4M13 17v-6M18 17V7M2 17h17" />
+    </svg>
+  );
 }
 
 function NavIcon({ children }: { children: ReactNode }) {
-  return <svg viewBox="0 0 24 24" aria-hidden="true">{children}</svg>;
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      {children}
+    </svg>
+  );
 }
 
 function UsersGroupIcon() {
-  return <NavIcon><circle cx="9" cy="8" r="3" /><circle cx="17" cy="9" r="2.25" /><path d="M3.5 19c.5-4 2.3-6 5.5-6s5 2 5.5 6M15 14c2.8.1 4.5 1.8 5 5" /></NavIcon>;
+  return (
+    <NavIcon>
+      <circle cx="9" cy="8" r="3" />
+      <circle cx="17" cy="9" r="2.25" />
+      <path d="M3.5 19c.5-4 2.3-6 5.5-6s5 2 5.5 6M15 14c2.8.1 4.5 1.8 5 5" />
+    </NavIcon>
+  );
 }
 
 function VendorsIcon() {
-  return <NavIcon><path d="M4 10v10h16V10M3 10l2-6h14l2 6" /><path d="M3 10c0 1.5 1 2.5 2.5 2.5S8 11.5 8 10c0 1.5 1 2.5 2.5 2.5S13 11.5 13 10c0 1.5 1 2.5 2.5 2.5S18 11.5 18 10c0 1.5 1 2.5 2.5 2.5M9 20v-4h6v4" /></NavIcon>;
+  return (
+    <NavIcon>
+      <path d="M4 10v10h16V10M3 10l2-6h14l2 6" />
+      <path d="M3 10c0 1.5 1 2.5 2.5 2.5S8 11.5 8 10c0 1.5 1 2.5 2.5 2.5S13 11.5 13 10c0 1.5 1 2.5 2.5 2.5S18 11.5 18 10c0 1.5 1 2.5 2.5 2.5M9 20v-4h6v4" />
+    </NavIcon>
+  );
 }
 
 function StaffIcon() {
-  return <NavIcon><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M9 5V3h6v2M8 11h8M8 15h5" /></NavIcon>;
+  return (
+    <NavIcon>
+      <rect x="4" y="5" width="16" height="15" rx="2" />
+      <path d="M9 5V3h6v2M8 11h8M8 15h5" />
+    </NavIcon>
+  );
 }
 
 function CustomersIcon() {
-  return <NavIcon><circle cx="12" cy="12" r="9" /><circle cx="12" cy="9" r="3" /><path d="M6.5 19c.7-3.4 2.5-5 5.5-5s4.8 1.6 5.5 5" /></NavIcon>;
+  return (
+    <NavIcon>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="9" r="3" />
+      <path d="M6.5 19c.7-3.4 2.5-5 5.5-5s4.8 1.6 5.5 5" />
+    </NavIcon>
+  );
 }
 
 function SalesServiceIcon() {
-  return <NavIcon><path d="M5 8h14l1 12H4L5 8Z" /><path d="M9 9V7a3 3 0 0 1 6 0v2M8 14h8" /></NavIcon>;
+  return (
+    <NavIcon>
+      <path d="M5 8h14l1 12H4L5 8Z" />
+      <path d="M9 9V7a3 3 0 0 1 6 0v2M8 14h8" />
+    </NavIcon>
+  );
 }
 
 function ProductsIcon() {
-  return <NavIcon><path d="m4 7 8-4 8 4-8 4-8-4Z" /><path d="M4 7v10l8 4 8-4V7M12 11v10" /></NavIcon>;
+  return (
+    <NavIcon>
+      <path d="m4 7 8-4 8 4-8 4-8-4Z" />
+      <path d="M4 7v10l8 4 8-4V7M12 11v10" />
+    </NavIcon>
+  );
 }
 
 function ProductChangesIcon() {
-  return <NavIcon><path d="m3 7 6-3 6 3-6 3-6-3ZM3 7v7l6 3.5 3-1.75M9 10v7.5" /><path d="M15 12.5a4 4 0 0 1 5.5 1.5M20.5 14v-3M20.5 14h-3M21 18a4 4 0 0 1-5.5 1.5M15.5 19.5v3M15.5 19.5h3" /></NavIcon>;
+  return (
+    <NavIcon>
+      <path d="m3 7 6-3 6 3-6 3-6-3ZM3 7v7l6 3.5 3-1.75M9 10v7.5" />
+      <path d="M15 12.5a4 4 0 0 1 5.5 1.5M20.5 14v-3M20.5 14h-3M21 18a4 4 0 0 1-5.5 1.5M15.5 19.5v3M15.5 19.5h3" />
+    </NavIcon>
+  );
 }
 
 function CouponIcon() {
-  return <NavIcon><path d="M4 7a2 2 0 0 0 2-2h12a2 2 0 0 0 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 0-2 2H6a2 2 0 0 0-2-2v-2a3 3 0 0 0 0-6V7Z" /><path d="m9 15 6-6M9.5 9h.01M14.5 15h.01" /></NavIcon>;
+  return (
+    <NavIcon>
+      <path d="M4 7a2 2 0 0 0 2-2h12a2 2 0 0 0 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 0-2 2H6a2 2 0 0 0-2-2v-2a3 3 0 0 0 0-6V7Z" />
+      <path d="m9 15 6-6M9.5 9h.01M14.5 15h.01" />
+    </NavIcon>
+  );
 }
 
 function OrdersIcon() {
@@ -1769,73 +3051,163 @@ function OrdersIcon() {
 }
 
 function PaymentServiceIcon() {
-  return <NavIcon><path d="M4 7.5h14a2 2 0 0 1 2 2V19H6a2 2 0 0 1-2-2V7.5Z" /><path d="m5 7 11-3v3.5M15 12h6v4h-6a2 2 0 0 1 0-4Z" /></NavIcon>;
+  return (
+    <NavIcon>
+      <path d="M4 7.5h14a2 2 0 0 1 2 2V19H6a2 2 0 0 1-2-2V7.5Z" />
+      <path d="m5 7 11-3v3.5M15 12h6v4h-6a2 2 0 0 1 0-4Z" />
+    </NavIcon>
+  );
 }
 
 function TransactionsIcon() {
-  return <NavIcon><circle cx="12" cy="12" r="9" /><path d="M8 9h8l-2.5-2.5M16 15H8l2.5 2.5" /></NavIcon>;
+  return (
+    <NavIcon>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8 9h8l-2.5-2.5M16 15H8l2.5 2.5" />
+    </NavIcon>
+  );
 }
 
 function PaymentMethodsIcon() {
-  return <NavIcon><rect x="3" y="5" width="15" height="11" rx="2" /><path d="M3 9h15M7 13h3" /><path d="M7 19h14V8" /></NavIcon>;
+  return (
+    <NavIcon>
+      <rect x="3" y="5" width="15" height="11" rx="2" />
+      <path d="M3 9h15M7 13h3" />
+      <path d="M7 19h14V8" />
+    </NavIcon>
+  );
 }
 
 function EditorialIcon() {
-  return <NavIcon><path d="M5 4h14v16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" /><path d="M7 8h8M7 12h8M7 16h5M19 6h2v12a2 2 0 0 1-2 2" /></NavIcon>;
+  return (
+    <NavIcon>
+      <path d="M5 4h14v16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
+      <path d="M7 8h8M7 12h8M7 16h5M19 6h2v12a2 2 0 0 1-2 2" />
+    </NavIcon>
+  );
 }
 
 function UploadsIcon() {
-  return <NavIcon><path d="M4 5h16v14H4z" /><path d="m7 15 3-3 2 2 3-4 3 5M8 9h.01" /></NavIcon>;
+  return (
+    <NavIcon>
+      <path d="M4 5h16v14H4z" />
+      <path d="m7 15 3-3 2 2 3-4 3 5M8 9h.01" />
+    </NavIcon>
+  );
 }
 
 function AiServiceIcon() {
-  return <NavIcon><rect x="5" y="5" width="14" height="14" rx="3" /><path d="M9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M19 9h4M1 15h4M19 15h4M12 8l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3Z" /></NavIcon>;
+  return (
+    <NavIcon>
+      <rect x="5" y="5" width="14" height="14" rx="3" />
+      <path d="M9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M19 9h4M1 15h4M19 15h4M12 8l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3Z" />
+    </NavIcon>
+  );
 }
 
 function AiModelsIcon() {
-  return <NavIcon><ellipse cx="12" cy="6" rx="7" ry="3" /><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" /></NavIcon>;
+  return (
+    <NavIcon>
+      <ellipse cx="12" cy="6" rx="7" ry="3" />
+      <path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" />
+    </NavIcon>
+  );
 }
 
 function AiAssistantIcon() {
-  return <NavIcon><path d="M4 5h16v12H9l-5 4V5Z" /><path d="m13 8 .7 2.3L16 11l-2.3.7L13 14l-.7-2.3L10 11l2.3-.7L13 8Z" /></NavIcon>;
+  return (
+    <NavIcon>
+      <path d="M4 5h16v12H9l-5 4V5Z" />
+      <path d="m13 8 .7 2.3L16 11l-2.3.7L13 14l-.7-2.3L10 11l2.3-.7L13 8Z" />
+    </NavIcon>
+  );
 }
 
 function SettingsIcon() {
-  return <NavIcon><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 8.94 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.57 15 1.7 1.7 0 0 0 3 14H3v-4h.08A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.57 1.7 1.7 0 0 0 10 3h4v.08A1.7 1.7 0 0 0 15.06 4.6a1.7 1.7 0 0 0 1.88-.34L17 4.2 19.83 7l-.06.06A1.7 1.7 0 0 0 19.43 9 1.7 1.7 0 0 0 21 10v4h-.08A1.7 1.7 0 0 0 19.4 15Z" /></NavIcon>;
+  return (
+    <NavIcon>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 8.94 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.57 15 1.7 1.7 0 0 0 3 14H3v-4h.08A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.57 1.7 1.7 0 0 0 10 3h4v.08A1.7 1.7 0 0 0 15.06 4.6a1.7 1.7 0 0 0 1.88-.34L17 4.2 19.83 7l-.06.06A1.7 1.7 0 0 0 19.43 9 1.7 1.7 0 0 0 21 10v4h-.08A1.7 1.7 0 0 0 19.4 15Z" />
+    </NavIcon>
+  );
 }
 
 function SmsIcon() {
-  return <NavIcon><path d="M4 5.5h16v11H8l-4 3v-14Z" /><path d="M8 10h8M8 13h5" /></NavIcon>;
+  return (
+    <NavIcon>
+      <path d="M4 5.5h16v11H8l-4 3v-14Z" />
+      <path d="M8 10h8M8 13h5" />
+    </NavIcon>
+  );
 }
 
 function ShippingIcon() {
-  return <NavIcon><path d="M3 6h11v10H3V6Zm11 4h4l3 3v3h-7v-6Z" /><circle cx="7" cy="18" r="2" /><circle cx="18" cy="18" r="2" /></NavIcon>;
+  return (
+    <NavIcon>
+      <path d="M3 6h11v10H3V6Zm11 4h4l3 3v3h-7v-6Z" />
+      <circle cx="7" cy="18" r="2" />
+      <circle cx="18" cy="18" r="2" />
+    </NavIcon>
+  );
 }
 
 function UsdIcon() {
-  return <NavIcon><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5c-.8-.7-2-1-3.4-1-1.8 0-3.1.8-3.1 2s1.1 1.8 3.2 2.2 3.1.9 3.1 2.4-1.3 2.4-3.3 2.4c-1.5 0-2.9-.5-3.8-1.4M12 5.5v13" /></NavIcon>;
+  return (
+    <NavIcon>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M15.5 8.5c-.8-.7-2-1-3.4-1-1.8 0-3.1.8-3.1 2s1.1 1.8 3.2 2.2 3.1.9 3.1 2.4-1.3 2.4-3.3 2.4c-1.5 0-2.9-.5-3.8-1.4M12 5.5v13" />
+    </NavIcon>
+  );
 }
 
 function BridgeIcon() {
-  return <NavIcon><circle cx="6" cy="12" r="3" /><circle cx="18" cy="6" r="3" /><circle cx="18" cy="18" r="3" /><path d="m8.7 10.7 6.6-3.4M8.7 13.3l6.6 3.4" /></NavIcon>;
+  return (
+    <NavIcon>
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="6" r="3" />
+      <circle cx="18" cy="18" r="3" />
+      <path d="m8.7 10.7 6.6-3.4M8.7 13.3l6.6 3.4" />
+    </NavIcon>
+  );
 }
 
 function SearchIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" /><path d="m13 13 4 4" /></svg>;
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <circle cx="8.5" cy="8.5" r="5.5" />
+      <path d="m13 13 4 4" />
+    </svg>
+  );
 }
 
 function ArrowIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12m-4-4 4 4-4 4" /></svg>;
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <path d="M4 10h12m-4-4 4 4-4 4" />
+    </svg>
+  );
 }
 
 function ChevronIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4" /></svg>;
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <path d="m6 8 4 4 4-4" />
+    </svg>
+  );
 }
 
 function CheckIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 10 3 3 7-7" /></svg>;
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <path d="m5 10 3 3 7-7" />
+    </svg>
+  );
 }
 
 function CloseIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" /></svg>;
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <path d="m5 5 10 10M15 5 5 15" />
+    </svg>
+  );
 }

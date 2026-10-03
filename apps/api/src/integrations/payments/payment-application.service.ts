@@ -32,21 +32,24 @@ export class PaymentApplicationService {
   ) {}
 
   async initiate(actor: AppUser, orderId: string, idempotencyKey: string, providerCode: string) {
-    if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can pay for orders");
     const adapter = this.payments.get(providerCode);
     const order = await this.prisma.orders.findFirst({
       where: { id: orderId, buyer_id: actor.id },
       select: {
         id: true,
+        checkout_id: true,
         buyer_id: true,
         seller_id: true,
         status: true,
         total_amount: true,
         currency: true,
-        items: { select: { product_type: true }, take: 1 }
+        items: { select: { product_type: true }, take: 2 }
       }
     });
     if (!order) throw new NotFoundException("Order was not found");
+    if (order.checkout_id || order.items.length !== 1 || order.items[0]?.product_type !== "bridge") {
+      throw new ConflictException("Use the checkout payment group to pay for this order");
+    }
     if (order.status !== "pending") throw new ConflictException("Order is not awaiting payment");
     const productType = order.items[0]?.product_type;
     if (!productType) throw new ConflictException("Order has no payable item");
@@ -107,10 +110,16 @@ export class PaymentApplicationService {
       throw new ConflictException("This payment attempt cannot be initiated again");
     }
 
-    const claimed = await this.prisma.payment_attempts.updateMany({
-      where: { id: attempt.id, status: "created", authority: null },
-      data: { status: "initiating", initiation_started_at: new Date(), failure_code: null }
-    });
+    const claimed = await this.prisma.$transaction(async (tx) => {
+      const payable = await tx.orders.updateMany({
+        where: { id: order.id, buyer_id: actor.id, checkout_id: null, status: "pending" }, data: { status: "pending" }
+      });
+      if (payable.count !== 1) throw new ConflictException("Order is not awaiting payment");
+      return tx.payment_attempts.updateMany({
+        where: { id: attempt!.id, status: "created", authority: null },
+        data: { status: "initiating", initiation_started_at: new Date(), failure_code: null }
+      });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     if (claimed.count !== 1) {
       throw new ConflictException("Payment initiation is already in progress");
     }
@@ -145,7 +154,6 @@ export class PaymentApplicationService {
   }
 
   async initiateCheckoutGroup(actor: AppUser, checkoutId: string, groupId: string, idempotencyKey: string, walletAmount = "0") {
-    if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can pay for checkouts");
     const group = await this.prisma.checkout_payment_groups.findFirst({
       where: { id: groupId, checkout_id: checkoutId, checkout: { buyer_id: actor.id } },
       select: {
@@ -213,7 +221,17 @@ export class PaymentApplicationService {
     if (attempt.status === "initiating") throw new ConflictException("Payment initiation is already in progress");
     if (attempt.status === "initiation_unknown") throw new ConflictException("Payment initiation requires reconciliation");
     if (attempt.status !== "created") throw new ConflictException("This payment attempt cannot be initiated again");
-    const claimed = await this.prisma.payment_attempts.updateMany({ where: { id: attempt.id, status: "created" }, data: { status: "initiating", initiation_started_at: new Date(), failure_code: null } });
+    const claimed = await this.prisma.$transaction(async (tx) => {
+      const payable = await tx.checkout_payment_groups.updateMany({
+        where: { id: group.id, status: "pending", expires_at: { gt: new Date() } }, data: { status: "pending" }
+      });
+      if (payable.count !== 1) throw new ConflictException("Checkout payment group is no longer payable");
+      const payableOrders = await tx.orders.updateMany({
+        where: { id: { in: group.orders.map(({ order }) => order.id) }, buyer_id: actor.id, status: "pending" }, data: { status: "pending" }
+      });
+      if (payableOrders.count !== group.orders.length) throw new ConflictException("Checkout orders are not awaiting payment");
+      return tx.payment_attempts.updateMany({ where: { id: attempt!.id, status: "created" }, data: { status: "initiating", initiation_started_at: new Date(), failure_code: null } });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     if (claimed.count !== 1) throw new ConflictException("Payment initiation is already in progress");
     let result;
     try {
@@ -277,7 +295,10 @@ export class PaymentApplicationService {
       });
       if (current.status === "succeeded") return current;
       if (current.status !== "pending") throw new ConflictException("Payment is not awaiting verification");
-      if (current.order.status !== "pending") throw new ConflictException("Order is not awaiting payment");
+      if (current.order.status !== "pending") {
+        await this.recordLatePayment(transaction, current.id, verification.referenceId);
+        return null;
+      }
       const paymentChanged = await transaction.payment_attempts.updateMany({
         where: { id: current.id, status: "pending" },
         data: { status: "succeeded", provider_ref_id: verification.referenceId, verified_at: new Date(), failure_code: null }
@@ -337,11 +358,11 @@ export class PaymentApplicationService {
       });
       return transaction.payment_attempts.findUniqueOrThrow({ where: { id: current.id } });
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    if (!result) throw new ConflictException("Payment received after the order changed; operator refund review is required");
     return this.result(attempt.order_id, attempt.provider, authority, result.provider_ref_id, "succeeded");
   }
 
   async localPayment(actor: AppUser, authority: string) {
-    if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can use the local gateway");
     if (!/^local-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(authority)) {
       throw new BadRequestException("Local payment authority is invalid");
     }
@@ -407,7 +428,7 @@ export class PaymentApplicationService {
     const group = attempt?.checkout_payment_group;
     if (!attempt || !group || attempt.provider !== providerCode) throw new NotFoundException("Checkout payment attempt was not found");
     if (attempt.status === "succeeded") return { checkoutId: group.checkout_id, paymentGroupId: group.id, authority, referenceId: attempt.provider_ref_id, status: "succeeded" };
-    if (attempt.status !== "pending" || group.status !== "pending") throw new ConflictException("Payment is not awaiting verification");
+    if (attempt.status !== "pending") throw new ConflictException("Payment is not awaiting verification");
     const allocated = group.orders.reduce((sum, item) => sum.add(item.order.total_amount), new Prisma.Decimal(0));
     if (allocated.comparedTo(group.amount) !== 0 || attempt.amount.add(group.wallet_amount).comparedTo(group.amount) !== 0 || attempt.currency.trim() !== group.currency.trim()) {
       throw new ConflictException("Checkout payment amount integrity check failed");
@@ -417,13 +438,16 @@ export class PaymentApplicationService {
       const failureCode = callbackStatus?.toUpperCase() === "NOK" ? "BUYER_CANCELLED" : "VERIFICATION_FAILED";
       return { checkoutId: group.checkout_id, paymentGroupId: group.id, authority, status: "failed", failureCode };
     }
-    await this.prisma.$transaction(async (tx) => {
+    const settled = await this.prisma.$transaction(async (tx) => {
       const current = await tx.checkout_payment_groups.findUniqueOrThrow({
         where: { id: group.id },
         select: { status: true, checkout_id: true, wallet_amount: true, orders: { select: { order: { select: { id: true, buyer_id: true, seller_id: true, status: true, items: { select: { id: true, digital_delivery_url: true, digital_delivery_urls: true, digital_max_downloads: true } } } } } } }
       });
-      if (current.status === "paid") return;
-      if (current.status !== "pending" || current.orders.some(({ order }) => order.status !== "pending")) throw new ConflictException("Checkout orders are not awaiting payment");
+      if (current.status === "paid") return true;
+      if (current.status !== "pending" || current.orders.some(({ order }) => order.status !== "pending")) {
+        await this.recordLatePayment(tx, attempt.id, verification.referenceId);
+        return false;
+      }
       if (current.wallet_amount.comparedTo(group.wallet_amount) !== 0) throw new ConflictException("Wallet payment allocation changed");
       if (current.wallet_amount.greaterThan(0)) {
         const debit = await tx.wallet_entries.findUnique({ where: { operation_key: `checkout-debit:${group.id}` }, select: { user_id: true, amount: true } });
@@ -452,7 +476,9 @@ export class PaymentApplicationService {
       }
       const unpaid = await tx.checkout_payment_groups.count({ where: { checkout_id: current.checkout_id, status: { not: "paid" } } });
       await tx.checkouts.update({ where: { id: current.checkout_id }, data: { status: unpaid === 0 ? "paid" : "partially_paid" } });
+      return true;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    if (!settled) throw new ConflictException("Payment received after checkout changed; operator refund review is required");
     return { checkoutId: group.checkout_id, paymentGroupId: group.id, authority, referenceId: verification.referenceId, status: "succeeded" };
   }
 
@@ -462,17 +488,78 @@ export class PaymentApplicationService {
       select: { id: true, provider: true, authority: true, amount: true }
     });
     if (!attempt?.authority) return;
+    // Touch before remote work, including errors or unsupported inquiry, so one unresolved
+    // attempt cannot monopolize each oldest-first reconciliation batch.
+    const claimed = await this.prisma.payment_attempts.updateMany({
+      where: { id: attempt.id, status: "pending", updated_at: { lt: new Date(Date.now() - 30 * 60 * 1000) } },
+      data: { updated_at: new Date() }
+    });
+    if (claimed.count !== 1) return;
     const adapter = this.payments.get(attempt.provider);
-    if (!adapter.inquiry) return;
+    if (!adapter.inquiry) {
+      await this.prisma.payment_attempts.updateMany({ where: { id: attempt.id, status: "pending" }, data: { failure_code: "RECONCILIATION_REQUIRED" } });
+      return;
+    }
     const paid = await adapter.inquiry(attempt.authority, attempt.amount.toString());
-    if (paid) {
+    if (paid === true) {
       await this.callbackCheckoutGroup(attempt.id, attempt.provider, attempt.authority, "OK");
       return;
     }
     await this.prisma.payment_attempts.updateMany({
       where: { id: attempt.id, status: "pending" },
-      data: { status: "failed", failure_code: "STALE_UNPAID" }
+      data: paid === false ? { status: "failed", failure_code: "PROVIDER_TERMINAL_UNPAID" } : { failure_code: "RECONCILIATION_REQUIRED" }
     });
+  }
+
+  private async recordLatePayment(tx: Prisma.TransactionClient, attemptId: string, referenceId: string | undefined) {
+    const changed = await tx.payment_attempts.updateMany({
+      where: { id: attemptId, status: "pending" },
+      data: { provider_ref_id: referenceId, verified_at: new Date(), failure_code: "PAYMENT_RECEIVED_REVIEW_REQUIRED" }
+    });
+    if (changed.count !== 1) throw new ConflictException("Payment changed during recovery");
+    await tx.outbox_events.upsert({
+      where: { dedupe_key: `payment.recovery:${attemptId}` }, update: {},
+      create: { aggregate: "payment", aggregate_id: attemptId, event_type: "payment.recovery.required", dedupe_key: `payment.recovery:${attemptId}`, payload: { paymentAttemptId: attemptId, reason: "payment_received_after_order_changed" } }
+    });
+  }
+
+  async resolveAttempt(actor: AppUser, attemptId: string, input: { outcome: "cancelled" | "refunded"; providerEvidence: string; confirm: boolean }, idempotencyKey: string) {
+    if (actor.role !== "platform-admin") throw new ForbiddenException("Platform administrator access is required");
+    const evidence = input.providerEvidence.trim();
+    if (!input.confirm || evidence.length < 10 || evidence.length > 500 || !["cancelled", "refunded"].includes(input.outcome)) throw new BadRequestException("Confirm the provider outcome and supply its evidence reference");
+    const requestHash = this.hash({ attemptId, outcome: input.outcome, evidence });
+    const dedupeKey = `payment.resolved:${actor.id}:${idempotencyKey}`;
+    return this.prisma.$transaction(async (tx) => {
+      const previous = await tx.outbox_events.findUnique({ where: { dedupe_key: dedupeKey }, select: { payload: true } });
+      if (previous) {
+        const payload = previous.payload as { requestHash?: string };
+        if (payload.requestHash !== requestHash) throw new ConflictException("Idempotency key belongs to another resolution");
+        return { resolved: true };
+      }
+      const attempt = await tx.payment_attempts.findUnique({ where: { id: attemptId }, select: { status: true, verified_at: true, authority: true } });
+      if (!attempt) throw new NotFoundException("Payment attempt was not found");
+      if (!["created", "pending", "initiation_unknown"].includes(attempt.status)) throw new ConflictException("Only unresolved payment attempts can be resolved");
+      if (attempt.status === "created") {
+        if (input.outcome !== "cancelled") throw new ConflictException("An unstarted payment can only be cancelled");
+      } else {
+        // Never resolve a request that may still be executing at the provider.
+        const stale = await tx.payment_attempts.findFirst({ where: { id: attemptId, initiation_started_at: { lt: new Date(Date.now() - 30 * 60 * 1000) } }, select: { id: true } });
+        if (!stale) throw new ConflictException("Wait for the provider request to finish before resolving it");
+      }
+      if (attempt.verified_at && input.outcome !== "refunded") throw new ConflictException("A captured payment requires confirmed refund evidence");
+      const changed = await tx.payment_attempts.updateMany({ where: { id: attemptId, status: attempt.status }, data: {
+        // The database requires an authority for refunded attempts. An initiation
+        // with a lost authority is closed as failed, with its refund preserved in the audit.
+        status: input.outcome === "refunded" && attempt.authority ? "refunded" : "failed",
+        failure_code: input.outcome === "refunded" ? "OPERATOR_CONFIRMED_REFUND" : "OPERATOR_CONFIRMED_CANCELLATION",
+        ...(input.outcome === "refunded" ? { refunded_at: new Date() } : {})
+      } });
+      if (changed.count !== 1) throw new ConflictException("Payment changed during resolution");
+      await tx.outbox_events.create({ data: { aggregate: "payment", aggregate_id: attemptId, event_type: "payment.resolved", dedupe_key: dedupeKey,
+        payload: { paymentAttemptId: attemptId, actorId: actor.id, outcome: input.outcome, providerEvidence: evidence, requestHash }
+      } });
+      return { resolved: true };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
   async refund(actor: AppUser, attemptId: string, reason: string, idempotencyKey: string) {

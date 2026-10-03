@@ -18,7 +18,7 @@ function offer(input: { id: string; sellerId: string; type: "digital" | "physica
     service: input.type === "service" ? { input_schema: input.serviceInputs ?? [] } : null,
     listing: {
       seller_id: input.sellerId,
-      seller: { id: input.sellerId, shop_name: `Seller ${input.sellerId}`, commission: new Prisma.Decimal("0.1"), holdback_rate: new Prisma.Decimal("0.05"), permissions: input.type === "physical" && input.physicalGranted !== false ? [{ permission: "physical_products_manage" }] : [], shipping_profile: { enabled: input.shippingReady !== false, latitude: 35, longitude: 51 } },
+      seller: { id: input.sellerId, shop_name: `Seller ${input.sellerId}`, commission: new Prisma.Decimal("0.1"), permissions: input.type === "physical" && input.physicalGranted !== false ? [{ permission: "physical_products_manage" }] : [], shipping_profile: { enabled: input.shippingReady !== false, latitude: 35, longitude: 51 } },
       product: {
         id: `product-${input.id}`,
         title: `Product ${input.id}`,

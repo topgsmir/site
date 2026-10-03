@@ -100,16 +100,14 @@ export function PanelOverview({ locale, audience, analytics = true, canManageOrd
     ...(seller ? [{ key: "payouts" as const, label: c.payouts, hint: c.payoutsHint, icon: "payouts" }] : []),
   ];
 
-  return <section className={styles.overview} aria-labelledby="panel-overview-title">
+  return <section className={styles.overview} aria-labelledby="panel-overview-title" data-admin-box-ignore>
     <header className={styles.heading}>
       <div><h1 id="panel-overview-title">{seller ? c.seller : c.admin}</h1><p>{seller ? c.sellerIntro : c.adminIntro}</p></div>
       <div className={styles.headingActions}>
-        {canManageOrders ? <UserHistoryLookup locale={locale} audience={audience} /> : null}
+        {seller && canManageOrders ? <UserHistoryLookup locale={locale} audience={audience} /> : null}
         {seller && canManageProducts ? <Link className={styles.primary} href={`/${locale}/seller-dashboard/products/new` as Route}><span aria-hidden="true">＋</span>{c.add}</Link> : analytics ? destination("statistics", c.report, styles.primary) : null}
       </div>
     </header>
-
-    {!seller ? <AdminReviewPreview locale={locale} /> : null}
 
     {analytics ? <div className={styles.toolbar}>
       <div className={styles.periods} role="group" aria-label={c.period}>{((seller ? ["month", "week"] : ["month", "week", "90d"]) as OverviewPeriod[]).map((value) => <button type="button" key={value} aria-pressed={period === value} onClick={() => setPeriod(value)}>{value === "week" ? c.thisWeek : value === "month" ? c.thisMonth : c.days90}</button>)}</div>
@@ -118,7 +116,8 @@ export function PanelOverview({ locale, audience, analytics = true, canManageOrd
 
     {error ? <div className={styles.error} role="alert"><span>{data ? c.stale : c.error}</span><button type="button" disabled={loading} onClick={() => setRefresh((value) => value + 1)}>{c.retry}</button></div> : null}
 
-    <div className={styles.layout}>
+    <div className={`${styles.layout} ${seller ? styles.sellerLayout : styles.adminLayout}`}>
+      {!seller ? <div className={styles.reviewSlot}><AdminReviewPreview locale={locale} /></div> : null}
       <div className={styles.performance} aria-busy={loading}>
         {analytics && !data ? <div className={styles.loading} role="status"><p>{error ? c.error : c.loading}</p>{!error ? <><i /><div><i /><i /><i /></div></> : null}</div> : null}
         {analytics && data ? <>
@@ -129,7 +128,7 @@ export function PanelOverview({ locale, audience, analytics = true, canManageOrd
             <div className={styles.metrics}>{metrics.map(({ label, metric, monetary }) => <div key={label}><h3>{label}</h3><strong>{monetary ? money(metric.value) : number(metric.value)}{monetary ? <small>{unit}</small> : null}</strong>{change(metric)}</div>)}</div>
           </article>
           <article className={styles.chartCard}>
-            <div className={styles.sectionHead}><div><h2>{c.trend}</h2><p>{c.trendHint}</p></div>{destination("statistics", c.report)}</div>
+            <div className={styles.sectionHead}><div><h2>{c.trend}</h2><p>{c.trendHint}</p></div>{seller ? destination("statistics", c.report) : null}</div>
             {maximum > 0n ? <>
               <div className={styles.chartScale}><span>{money(maximum.toString())} {unit}</span><span>{c.sales}</span></div>
               <svg className={styles.chart} viewBox="0 0 640 190" role="img" aria-label={c.trend} preserveAspectRatio="none"><path className={styles.gridline} d="M8 24H632M8 74H632M8 124H632M8 174H632" /><polygon className={styles.area} points={`${points.split(" ")[0]?.split(",")[0]},174 ${points} ${points.split(" ").at(-1)?.split(",")[0]},174`} /><polyline points={points} />{series.length === 1 ? <circle cx="320" cy="24" r="4" /> : null}</svg>
@@ -138,6 +137,7 @@ export function PanelOverview({ locale, audience, analytics = true, canManageOrd
             </> : <div className={styles.empty}><strong>{c.empty}</strong><p>{c.emptyHint}</p>{canManageProducts ? destination("products", c.products) : null}</div>}
           </article>
         </> : !analytics ? <div className={styles.welcome}><h2>{c.access}</h2><p>{c.accessHint}</p>{canManageProducts ? destination("products", c.products, styles.primary) : null}</div> : null}
+        {!seller && canManageOrders ? <UserHistoryLookup locale={locale} audience={audience} wide /> : null}
       </div>
 
       <aside className={styles.operations} aria-labelledby="overview-operations">

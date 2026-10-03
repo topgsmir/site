@@ -45,9 +45,9 @@
 .productAmount { color: var(--ink-soft); font-size: .79rem; font-weight: 650; white-space: nowrap; }
 .productAmount small, .orderBottom small, .groupAmount small, .totalBlock small, .totals small { font-size: .68em; font-weight: 500; }
 .delivery { display: grid; justify-items: start; gap: 4px; margin-top: 9px; }
-.delivery a { display: inline-flex; min-height: 40px; align-items: center; gap: 7px; color: var(--signal-dark); font-size: .72rem; font-weight: 650; }
-.delivery a svg { width: 15px; height: 15px; transform: rotate(-45deg); }
-.page[dir="rtl"] .delivery a svg { transform: rotate(-135deg); }
+.delivery button { display: inline-flex; min-height: 40px; align-items: center; gap: 7px; padding: 0; border: 0; background: transparent; color: var(--signal-dark); font: inherit; font-size: .72rem; font-weight: 650; cursor: pointer; }
+.delivery button svg { width: 15px; height: 15px; transform: rotate(-45deg); }
+.page[dir="rtl"] .delivery button svg { transform: rotate(-135deg); }
 .orderBottom { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; padding: 15px 24px; }
 .orderBottom > span { color: var(--status-muted); font-size: .67rem; }
 .orderBottom > strong { margin-inline-start: auto; font-size: .85rem; white-space: nowrap; }
@@ -80,7 +80,7 @@
 .page button:disabled { cursor: wait; opacity: .56; }
 .page button:active { transform: translateY(1px); }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (hover: hover) and (pointer: fine) { .navLink:hover, .summaryLinks a:hover, .delivery a:hover { color: var(--signal); } .primary:hover:not(:disabled) { background: var(--signal-bright); } .orderBottom button:hover:not(:disabled) { background: var(--signal-soft); } }
+@media (hover: hover) and (pointer: fine) { .navLink:hover, .summaryLinks a:hover, .delivery button:hover { color: var(--signal); } .primary:hover:not(:disabled) { background: var(--signal-bright); } .orderBottom button:hover:not(:disabled) { background: var(--signal-soft); } }
 @media (max-width: 960px) { .hero { grid-template-columns: 1fr; gap: 20px; } .layout { grid-template-columns: 1fr; } .summary { position: static; } }
 @media (max-width: 600px) { .shell { width: calc(100% - 32px); padding-bottom: 64px; } .topbar { min-height: 66px; } .hero { padding: 37px 0 31px; } .hero h1 { font-size: clamp(2rem, 9vw, 3rem); } .meta { font-size: .66rem; } .meta bdi { overflow-wrap: anywhere; } .layout { gap: 35px; padding-top: 34px; } .sectionHead { align-items: start; } .orderTop, .product, .orderBottom { padding-inline: 16px; } .product { grid-template-columns: 38px minmax(0, 1fr); gap: 11px; } .productIcon { width: 38px; height: 38px; } .productAmount { grid-column: 2; } .orderBottom { align-items: start; } .orderBottom button { width: 100%; } .summary { padding: 22px 20px; } .error { align-items: start; flex-direction: column; } }
 @media (prefers-reduced-motion: reduce) { .loader { animation: none; } .primary { transition: none; } }

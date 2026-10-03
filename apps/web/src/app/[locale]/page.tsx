@@ -7,7 +7,7 @@ import {
   type HomepageProduct
 } from "@/components/landing/LandingPage";
 import { SERVER_API_BASE } from "@/lib/api/server";
-import { dashboardFor, getCurrentUser } from "@/lib/auth/server";
+import { getCurrentUser } from "@/lib/auth/server";
 import { isLocale, localizePath } from "@/lib/i18n";
 import { getSeoConfiguration, managedSeoMetadata } from "@/lib/seo-settings-server";
 
@@ -140,7 +140,7 @@ export default async function HomePage({ params }: HomePageProps) {
         experts={experts.items}
         expertsUnavailable={experts.unavailable}
         stories={stories.items}
-        accountHref={user ? dashboardFor(user, locale) : null}
+        accountHref={user ? `/${locale}/account` : null}
         content={homepage?.content ?? undefined}
         editable={user?.role === "platform-admin"}
       />

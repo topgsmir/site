@@ -5,9 +5,10 @@ import { useCallback, useEffect, useState } from "react";
 import type { CheckoutDetail, OrderStatus } from "@topgsm/shared-types";
 import { DesignIcon } from "@/components/DesignIcon";
 import { RelativeOrderTime } from "@/components/orders/RelativeOrderTime";
-import { API_BASE, api } from "@/lib/api/client";
+import { api } from "@/lib/api/client";
 import { removePurchasedOffers } from "@/lib/cart";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
+import { openDigitalDownload } from "@/lib/digital-download";
 import type { Locale } from "@/lib/i18n";
 import { safePaymentHref } from "@/lib/safe-navigation";
 import styles from "./CheckoutStatus.module.css";
@@ -64,8 +65,15 @@ export function CheckoutStatus({ locale, checkoutId }: { locale: Locale; checkou
 
   async function confirm(orderId: string) {
     setBusy(orderId); setError("");
-    try { await api.patch(`/orders/${orderId}/status`, { status: "delivered" }, { headers: { "Idempotency-Key": crypto.randomUUID() } }); await load(); }
+    try { await api.patch(`/orders/purchases/${orderId}/status`, { status: "delivered" }, { headers: { "Idempotency-Key": crypto.randomUUID() } }); await load(); }
     catch { setError(c.actionError); } finally { setBusy(""); }
+  }
+
+  async function download(path: string) {
+    setBusy(path); setError("");
+    try { await openDigitalDownload(path); await load(); }
+    catch { setError(c.actionError); }
+    finally { setBusy(""); }
   }
 
   const complete = checkout?.status === "paid";
@@ -87,7 +95,7 @@ export function CheckoutStatus({ locale, checkoutId }: { locale: Locale; checkou
       <div className={styles.orderList}>{checkout.orders.map((order) => {
         const canConfirm = order.items.every((item) => item.productType !== "digital") && (order.status === "shipped" || order.status === "awaiting_confirmation");
         return <article className={styles.orderCard} key={order.id}><div className={styles.orderTop}><div><span className={styles.sellerLabel}>{c.seller}</span><h3>{order.seller.shopName}</h3></div><span className={styles.orderStatus} data-status={order.status}>{statusLabel(order.status)}</span></div>
-          <div className={styles.orderItems}>{order.items.map((item) => <div className={styles.product} key={item.id}><span className={styles.productIcon}><DesignIcon name={item.productType === "digital" ? "file" : "bag"} /></span><div className={styles.productDetails}><strong>{item.productTitle}</strong><span>{c.quantity} {number.format(item.quantity)}</span>{(item.digitalDeliveries ?? (item.digitalDelivery ? [item.digitalDelivery] : [])).map((file, index, files) => <div className={styles.delivery} key={file.downloadUrl}><a href={`${API_BASE}${file.downloadUrl}`} target="_blank" rel="noopener noreferrer"><DesignIcon name="arrow" /> {c.download} {files.length > 1 ? number.format(index + 1) : null}</a><small>{file.destinationHost} · {number.format(file.downloadCount)}/{file.maxDownloads ? number.format(file.maxDownloads) : "∞"} {c.limit}</small><small>{c.external}</small></div>)}</div><strong className={styles.productAmount}>{money(item.totalAmount, checkout.currency, locale)}</strong></div>)}</div>
+          <div className={styles.orderItems}>{order.items.map((item) => <div className={styles.product} key={item.id}><span className={styles.productIcon}><DesignIcon name={item.productType === "digital" ? "file" : "bag"} /></span><div className={styles.productDetails}><strong>{item.productTitle}</strong><span>{c.quantity} {number.format(item.quantity)}</span>{(item.digitalDeliveries ?? (item.digitalDelivery ? [item.digitalDelivery] : [])).map((file, index, files) => <div className={styles.delivery} key={file.downloadUrl}><button type="button" disabled={busy === file.downloadUrl} onClick={() => void download(file.downloadUrl)}><DesignIcon name="arrow" /> {c.download} {files.length > 1 ? number.format(index + 1) : null}</button><small>{file.destinationHost} · {number.format(file.downloadCount)}/{file.maxDownloads ? number.format(file.maxDownloads) : "∞"} {c.limit}</small><small>{c.external}</small></div>)}</div><strong className={styles.productAmount}>{money(item.totalAmount, checkout.currency, locale)}</strong></div>)}</div>
           {order.shippingFee !== "0" ? <div className={styles.postalLine}><span>{c.postalFee}</span><strong>{money(order.shippingFee, checkout.currency, locale)}</strong></div> : null}
           <div className={styles.orderBottom}><span>{c.order} <bdi>#{order.id.slice(0, 8)}</bdi></span>{order.discountAmount !== "0" ? <span>{discountLabel}: −{money(order.discountAmount, checkout.currency, locale)}</span> : null}<strong>{money(order.totalAmount, checkout.currency, locale)}</strong>{canConfirm ? <button type="button" disabled={busy === order.id} onClick={() => void confirm(order.id)}>{busy === order.id ? c.confirming : c.confirm}</button> : null}</div></article>;
       })}</div></section>

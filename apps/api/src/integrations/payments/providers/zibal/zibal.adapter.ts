@@ -6,6 +6,7 @@ import type { PaymentIntentInput, PaymentRefundInput } from "../../payment.inter
 
 type ZibalResponse = {
   result: number;
+  status?: number;
   trackId?: string;
   amount?: string;
   refNumber?: string;
@@ -59,9 +60,10 @@ export class ZibalAdapter extends BasePaymentAdapter {
     if (!this.validTrackId(trackId)) throw new BadGatewayException("Invalid Zibal track ID");
     const expectedAmount = this.toRials(amount, "TOMAN");
     const { merchantId } = await this.credentials.zibal();
-    const result = await this.call("verify", { merchant: merchantId, trackId: Number(trackId) });
+    let result = await this.call("verify", { merchant: merchantId, trackId: Number(trackId) });
     if (result.result === 201) {
-      throw new ServiceUnavailableException("Zibal already verified this payment; reconciliation is required");
+      result = await this.inquire(trackId, amount);
+      if (result.status !== 1) throw new ServiceUnavailableException("Zibal reconciliation is required");
     }
     if (result.result === 202) return { verified: false };
     if (result.result !== 100) throw new BadGatewayException("Zibal could not verify the payment");
@@ -72,6 +74,23 @@ export class ZibalAdapter extends BasePaymentAdapter {
       verified: true,
       ...(result.refNumber ? { referenceId: result.refNumber } : {})
     };
+  }
+
+  // Provider contract: https://help.zibal.ir/ipg/ (inquiry result and payment status are distinct).
+  async inquiry(trackId: string, amount: string): Promise<boolean | null> {
+    const result = await this.inquire(trackId, amount);
+    if (result.status === 1 || result.status === 2) return true;
+    if (result.status === 3 || result.status === 15 || result.status === 18) return false;
+    return null;
+  }
+
+  private async inquire(trackId: string, amount: string) {
+    if (!this.validTrackId(trackId)) throw new BadGatewayException("Invalid Zibal track ID");
+    const { merchantId } = await this.credentials.zibal();
+    const result = await this.call("inquiry", { merchant: merchantId, trackId: Number(trackId) });
+    if (result.result !== 100) throw new BadGatewayException("Zibal inquiry was not successful");
+    if (result.amount !== String(this.toRials(amount, "TOMAN"))) throw new BadGatewayException("Zibal reported a different payment amount");
+    return result;
   }
 
   async refund(_input: PaymentRefundInput): Promise<null> {
@@ -91,7 +110,7 @@ export class ZibalAdapter extends BasePaymentAdapter {
     return Number(rials);
   }
 
-  private async call(path: "request" | "verify", body: Record<string, unknown>): Promise<ZibalResponse> {
+  private async call(path: "request" | "verify" | "inquiry", body: Record<string, unknown>): Promise<ZibalResponse> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 12_000);
     try {
@@ -129,6 +148,9 @@ export class ZibalAdapter extends BasePaymentAdapter {
       }
       return value;
     };
+    if (response.status !== undefined && (typeof response.status !== "number" || !Number.isSafeInteger(response.status))) {
+      throw new BadGatewayException("Zibal returned an invalid payment status");
+    }
     const trackId = numericString(response.trackId, 16);
     if (trackId && !this.validTrackId(trackId)) throw new BadGatewayException("Zibal returned an invalid track ID");
     const refNumber = response.refNumber === undefined || response.refNumber === null
@@ -141,6 +163,7 @@ export class ZibalAdapter extends BasePaymentAdapter {
     }
     return {
       result: response.result,
+      status: response.status as number | undefined,
       trackId,
       amount: numericString(response.amount, 16),
       refNumber

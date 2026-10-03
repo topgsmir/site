@@ -18,7 +18,7 @@ function readPreferences(key: string): Record<string, boolean> {
 }
 
 function boxAnchor(box: HTMLElement): HTMLElement | null {
-  if (box.closest("[role='dialog'], dialog") || box.hasAttribute("data-admin-box-ignore")) return null;
+  if (box.closest("[role='dialog'], dialog, [data-admin-box-ignore]")) return null;
   if (box.tagName === "DIV" && !box.dataset.adminBoxKey && !BOX_CLASS.test(box.className)) return null;
   const first = box.firstElementChild;
   if (!(first instanceof HTMLElement) || box.children.length < 2) return null;

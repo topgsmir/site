@@ -78,8 +78,7 @@ before(async () => {
         user_id: sellerUser.id,
         shop_name: "Payment Concurrency Shop",
         approved: true,
-        commission: "0.10",
-        holdback_rate: "0.05"
+        commission: "0.10"
       }
     });
     const product = await transaction.products.create({
@@ -88,7 +87,7 @@ before(async () => {
         title: "Concurrent Payment Product",
         slug: `concurrent-payment-${suffix}`,
         kind: "simple",
-        type: "physical",
+        type: "bridge",
         status: "active"
       }
     });
@@ -105,7 +104,7 @@ before(async () => {
         price: "1000",
         currency: "TOMAN",
         status: "active",
-        physical: { create: { stock: 20, weight_grams: 100 } }
+        bridge: { create: {} }
       }
     });
     await transaction.payment_method_configs.upsert({
@@ -192,6 +191,65 @@ describe("payment provider concurrency", () => {
     assert.equal((await prisma.payment_attempts.findFirstOrThrow({ where: { order_id: order.id } })).status, "initiation_unknown");
   });
 
+  it("serializes cancellation against initiation before any provider charge can start", async () => {
+    const order = await createOrder();
+    const outcomes = await Promise.allSettled([
+      application.initiate(buyer, order.id, randomUUID(), "zarinpal"),
+      orders.transition(buyer, order.id, { status: "cancelled" }, randomUUID())
+    ]);
+    const current = await prisma.orders.findUniqueOrThrow({ where: { id: order.id } });
+    if (current.status === "cancelled") {
+      assert.equal(initiateCalls, 0);
+      assert.equal(outcomes[0]!.status, "rejected");
+    } else {
+      assert.equal(current.status, "pending");
+      assert.equal(outcomes[1]!.status, "rejected");
+      assert.equal(initiateCalls, 1);
+    }
+  });
+
+  it("rejects cancellation while a verified callback settles the payment", async () => {
+    const order = await createOrder();
+    const payment = await application.initiate(buyer, order.id, randomUUID(), "zarinpal");
+    const outcomes = await Promise.allSettled([
+      application.callback("zarinpal", payment.authority!, "OK"),
+      orders.transition(buyer, order.id, { status: "cancelled" }, randomUUID())
+    ]);
+    assert.equal(outcomes[0]!.status, "fulfilled");
+    assert.equal(outcomes[1]!.status, "rejected");
+    assert.equal((await prisma.orders.findUniqueOrThrow({ where: { id: order.id } })).status, "paid");
+  });
+
+  it("durably records historical late payments and requires a confirmed refund to resolve them", async () => {
+    const order = await createOrder();
+    const payment = await application.initiate(buyer, order.id, randomUUID(), "zarinpal");
+    // Reproduce an order cancelled before the cancellation guard was deployed.
+    await prisma.orders.update({ where: { id: order.id }, data: { status: "cancelled" } });
+    await assert.rejects(() => application.callback("zarinpal", payment.authority!, "OK"), /operator refund review/);
+    const attempt = await prisma.payment_attempts.findFirstOrThrow({ where: { order_id: order.id } });
+    assert.equal(attempt.failure_code, "PAYMENT_RECEIVED_REVIEW_REQUIRED");
+    assert.ok(attempt.verified_at);
+    await prisma.payment_attempts.update({ where: { id: attempt.id }, data: { initiation_started_at: new Date(Date.now() - 60 * 60 * 1000) } });
+    await assert.rejects(() => application.resolveAttempt(admin, attempt.id, { outcome: "cancelled", providerEvidence: "provider-ticket-123", confirm: true }, randomUUID()), /confirmed refund evidence/);
+    const key = randomUUID();
+    const input = { outcome: "refunded" as const, providerEvidence: "provider-refund-ticket-123", confirm: true };
+    await application.resolveAttempt(admin, attempt.id, input, key);
+    await application.resolveAttempt(admin, attempt.id, input, key);
+    assert.equal((await prisma.payment_attempts.findUniqueOrThrow({ where: { id: attempt.id } })).status, "refunded");
+    assert.equal(await prisma.outbox_events.count({ where: { aggregate_id: attempt.id, event_type: "payment.resolved" } }), 1);
+  });
+
+  it("cancels an order and releases an abandoned created attempt before any provider call", async () => {
+    const order = await createOrder();
+    const attempt = await prisma.payment_attempts.create({ data: {
+      order_id: order.id, provider: "zarinpal", amount: order.totalAmount, currency: order.currency, idempotency_key: randomUUID()
+    } });
+    const cancelled = await orders.transition(buyer, order.id, { status: "cancelled" }, randomUUID());
+    assert.equal(cancelled.status, "cancelled");
+    assert.equal((await prisma.payment_attempts.findUniqueOrThrow({ where: { id: attempt.id } })).status, "failed");
+    assert.equal(initiateCalls, 0);
+  });
+
   it("calls refund once and replays the completed operation", async () => {
     const attempt = await paidAttempt();
     const key = randomUUID();
@@ -232,7 +290,13 @@ describe("payment provider concurrency", () => {
 });
 
 async function createOrder() {
-  return orders.create(buyer, { offerId, quantity: 1 }, randomUUID());
+  // Payment tests seed a valid standalone Bridge order; physical purchases must use checkout.
+  const row = await prisma.orders.create({ data: {
+    buyer_id: buyer.id, seller_id: sellerId, status: "pending", currency: "TOMAN", total_amount: "1000", commission_rate: "0.1",
+    idempotency_key: randomUUID(), request_hash: "a".repeat(64),
+    items: { create: { offer_id: offerId, product_type: "bridge", product_title: "Bridge fixture", quantity: 1, unit_price: "1000", total_amount: "1000" } }
+  } });
+  return { id: row.id, totalAmount: row.total_amount.toString(), currency: row.currency };
 }
 
 async function paidAttempt() {

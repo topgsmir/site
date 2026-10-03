@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Ip, Param, ParseUUIDPipe, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Ip, Param, ParseUUIDPipe, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { AuthenticatedGuard } from "../auth/authenticated.guard";
 import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
 import { IdempotencyKey } from "../auth/idempotency-key.decorator";
@@ -14,21 +14,18 @@ export class WalletController {
   @Get()
   @UseGuards(AuthenticatedGuard)
   balance(@Req() request: AuthenticatedRequest) {
-    if (request.authenticatedUser!.role !== "buyer") throw new ForbiddenException("Only buyers have wallets");
     return this.ledger.balance(request.authenticatedUser!.id);
   }
 
   @Get("transactions")
   @UseGuards(AuthenticatedGuard)
   transactions(@Req() request: AuthenticatedRequest, @Query() query: WalletHistoryQueryDto) {
-    if (request.authenticatedUser!.role !== "buyer") throw new ForbiddenException("Only buyers have wallets");
     return this.ledger.history(request.authenticatedUser!.id, query.cursor, query.limit);
   }
 
   @Get("topup-methods")
   @UseGuards(AuthenticatedGuard)
-  topupMethods(@Req() request: AuthenticatedRequest) {
-    if (request.authenticatedUser!.role !== "buyer") throw new ForbiddenException("Only buyers can fund wallets");
+  topupMethods() {
     return this.wallet.topupMethods();
   }
 

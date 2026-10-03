@@ -92,7 +92,7 @@ export class ZarinpalAdapter extends BasePaymentAdapter {
       "https://payment.zarinpal.com/pg/v4/payment/inquiry.json",
       { merchant_id: credentials.merchantId, authority }
     );
-    return result.data?.code === 100 || result.data?.code === 101;
+    return result.data?.code === 100 || result.data?.code === 101 ? true : null;
   }
 
   async refund(input: PaymentRefundInput) {

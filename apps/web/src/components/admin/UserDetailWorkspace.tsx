@@ -587,7 +587,7 @@ const initialForm = (user: AdminUserSummary) => ({
   fullName: user.fullName,
   username: user.username ?? "",
   email: user.email ?? "",
-  phoneNumber: user.phoneNumber ?? "",
+  phoneNumber: user.pendingPhoneNumber ?? user.phoneNumber ?? "",
 });
 
 function displayTitle(entry: HistoryEntry, section: Section, locale: Locale) {
@@ -845,7 +845,7 @@ export function UserDetailWorkspace({
     form.fullName !== user.fullName ||
     form.username !== (user.username ?? "") ||
     form.email !== user.email ||
-    form.phoneNumber !== (user.phoneNumber ?? "");
+    form.phoneNumber !== (user.pendingPhoneNumber ?? user.phoneNumber ?? "");
   const loadHistory = useCallback(
     async (signal?: AbortSignal) => {
       setLoading(true);
@@ -1043,6 +1043,10 @@ export function UserDetailWorkspace({
             <dt>{c.phoneNumber}</dt>
             <dd dir="ltr">{user.phoneNumber ?? c.none}</dd>
           </div>
+          {user.pendingPhoneNumber ? <div>
+            <dt>{locale === "fa" ? "شماره در انتظار تأیید" : locale === "ar" ? "رقم بانتظار التأكيد" : "Pending phone verification"}</dt>
+            <dd dir="ltr">{user.pendingPhoneNumber}</dd>
+          </div> : null}
           <div>
             <dt>{c.username}</dt>
             <dd dir="ltr">{user.username ?? c.none}</dd>
@@ -1136,6 +1140,7 @@ export function UserDetailWorkspace({
                     setForm({ ...form, phoneNumber: event.target.value })
                   }
                 />
+                <small>{locale === "fa" ? "شماره جدید پس از تأیید پیامکی توسط خریدار فعال می‌شود. شماره فعلی تا آن زمان حفظ می‌شود." : locale === "ar" ? "يصبح الرقم الجديد نشطًا بعد تأكيد المشتري عبر الرسائل. يبقى الرقم الحالي حتى ذلك الحين." : "The buyer must confirm the new number by SMS. Their current number stays active until then."}</small>
               </label>
             </div>
             <div className={styles.editActions}>
@@ -1335,7 +1340,7 @@ export function UserDetailWorkspace({
           />
 
           <AdminUserNotes userId={user.id} locale={locale} />
-          {user.role === "buyer" ? <AdminWalletPanel userId={user.id} locale={locale} /> : null}
+          <AdminWalletPanel userId={user.id} locale={locale} />
 
           <details className={`${styles.editPanel} ${styles.securityPanel}`}>
             <summary id="user-security-title">{c.security}</summary>

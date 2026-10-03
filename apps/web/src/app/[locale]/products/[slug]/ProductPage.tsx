@@ -15,7 +15,7 @@ import { ProductComments } from "@/components/comments/ProductComments";
 import { OfferPicker } from "@/components/product/OfferPicker";
 import { PublicHeader } from "@/components/PublicHeader";
 import { productPageCopy } from "./product-copy";
-import { DigitalProductHeading, DigitalProductPreview, DigitalDownloadGuide, DigitalDownloadQuestions } from "@/components/product/DigitalProductDetails";
+import { DigitalProductHeading, DigitalDeliveryNote, DigitalProductDescription, DigitalDownloadGuide, DigitalDownloadQuestions } from "@/components/product/DigitalProductDetails";
 import { digitalProductCopy, downloadAllowance } from "@/components/product/digital-product-copy";
 import { ProductDescription } from "@/components/product/ProductDescription";
 
@@ -207,7 +207,7 @@ export function ProductPage({
 
         <section className={styles.hero} aria-labelledby="product-title">
           <div className={styles.productIntro}>
-            {isDigital ? <DigitalProductPreview product={product} locale={locale} /> : isPhysical ? <figure className={styles.mediaStage}>
+            {isDigital ? <DigitalProductDescription description={product.description} locale={locale} /> : isPhysical ? <figure className={styles.mediaStage}>
               <span className={styles.mediaCategory}>{category}</span>
               {productImage ? <Image className={styles.equipmentImage} unoptimized src={productImage.url} alt={product.title} width={productImage.width} height={productImage.height} priority /> : <div className={styles.imagePlaceholder}><DesignIcon name="layers" /><p>{c.noImage}</p></div>}
               <figcaption>{c.imageCaption}<span>{typeLabel}</span></figcaption>
@@ -226,10 +226,12 @@ export function ProductPage({
             </div> : null}
           </div>
 
-          <aside className={styles.purchasePanel} id="purchase" aria-labelledby="purchase-title">
+          <aside className={styles.purchasePanel} id="purchase" aria-labelledby="purchase-title" tabIndex={-1}>
             <h2 id="purchase-title">{isDigital ? d.purchase : isService ? c.orderService : copy.chooseOffer}</h2>
             {isBridge ? bridgeCheckout : <>
             <p>{isDigital ? d.offerHelp : copy.offerHelp}</p>
+            <div className={isDigital ? styles.digitalPurchaseGrid : styles.purchaseContents}>
+            <div className={isDigital ? styles.digitalOfferSelection : styles.purchaseContents}>
             <OfferPicker
               offers={offers.map((offer) => ({ id: offer.id, variant: offer.variantName, seller: offer.seller.shopName, price: offer.price, currency: offer.currency, unavailable: offer.physical?.inStock === false }))}
               value={selectedOffer?.id ?? ""}
@@ -239,7 +241,10 @@ export function ProductPage({
               sellerLabel={isService ? c.provider : copy.seller}
               unavailableLabel={c.unavailable}
             />
+            {isDigital ? <DigitalDeliveryNote locale={locale} /> : null}
+            </div>
 
+            <div className={isDigital ? styles.digitalPurchaseAction : styles.purchaseContents}>
             {selectedOffer ? (
               <div className={styles.offerSummary}>
                 <div><span>{copy.availability}</span><strong className={styles.availability} data-available={!unavailable}>{unavailable ? c.unavailable : isDigital ? d.ready : isService ? c.ready : copy.inStock}</strong></div>
@@ -277,6 +282,8 @@ export function ProductPage({
               {buttonState === "error" ? cartError || copy.addFailed : buttonState === "success" ? c.added : copy.priceAvailability}
             </p>
             {isPhysical ? <div className={styles.deliveryNote}><DesignIcon name="bag" /><div><strong>{c.shipping}</strong><p>{c.shippingBody}</p></div></div> : selectedOffer?.service ? <p className={styles.purchaseNote}>{c.estimateNote}</p> : null}
+            </div>
+            </div>
             </>}
           </aside>
         </section>
@@ -338,8 +345,8 @@ export function ProductPage({
         <small>© {new Date().getFullYear()} Top GSM</small>
       </footer>
 
-      <aside className={styles.mobileCart} aria-label={isService ? c.orderService : copy.addToCart}>
-        {isDigital ? <><span>{selectedOffer ? total : copy.outOfStock}</span><a href="#purchase">{d.review}</a></> : isBridge ? <><span>{c.bridge}</span><a href="#purchase">{c.configure}</a></> : <>
+      {!isDigital ? <aside className={styles.mobileCart} aria-label={isService ? c.orderService : copy.addToCart}>
+        {isBridge ? <><span>{c.bridge}</span><a href="#purchase">{c.configure}</a></> : <>
         <span>{selectedOffer ? total : copy.outOfStock}</span>
         <button
           type="button"
@@ -350,7 +357,7 @@ export function ProductPage({
           {actionLabel}
         </button>
         </>}
-      </aside>
+      </aside> : null}
     </div>
   );
 }

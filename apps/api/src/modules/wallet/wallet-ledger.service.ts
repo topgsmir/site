@@ -19,8 +19,18 @@ export class WalletLedgerService {
   constructor(private readonly prisma: PrismaService) {}
 
   async balance(userId: string) {
-    const account = await this.prisma.wallet_accounts.findUnique({ where: { user_id: userId }, select: { balance: true } });
-    return { currency: "TOMAN", balance: account?.balance.toString() ?? "0", withdrawalsEnabled: false };
+    const [account, expired] = await Promise.all([
+      this.prisma.wallet_accounts.findUnique({ where: { user_id: userId }, select: { balance: true } }),
+      this.prisma.club_wallet_credits.aggregate({
+        where: { user_id: userId, remaining_toman: { gt: 0 }, expires_at: { lte: new Date() } },
+        _sum: { remaining_toman: true }
+      })
+    ]);
+    const spendable = Prisma.Decimal.max(
+      new Prisma.Decimal(0),
+      (account?.balance ?? new Prisma.Decimal(0)).minus(expired._sum.remaining_toman ?? 0)
+    );
+    return { currency: "TOMAN", balance: spendable.toString(), withdrawalsEnabled: false };
   }
 
   async history(userId: string, cursor: string | undefined, limit: number) {
@@ -42,17 +52,19 @@ export class WalletLedgerService {
     if (!change.amount.isInteger() || change.amount.isZero() || change.amount.abs().greaterThan("1000000000")) {
       throw new ConflictException("Wallet amount is invalid");
     }
+    const user = await tx.users.findUnique({ where: { id: change.userId }, select: { id: true, account_status: true } });
+    if (!user) throw new NotFoundException("Wallet was not found");
+    const blockedCredit = change.amount.isPositive() && ["topup", "checkout_release", "order_refund"].includes(change.kind);
+    const inactiveExpiry = change.amount.isNegative() && change.kind === "club_expiry";
+    if (user.account_status !== "active" && !inactiveExpiry && (user.account_status !== "blocked" || !blockedCredit)) {
+      throw new ConflictException("Account is unavailable for wallet changes");
+    }
     const existing = await tx.wallet_entries.findUnique({ where: { operation_key: change.operationKey }, select: { user_id: true, amount: true, kind: true, reference_type: true, reference_id: true, balance_after: true } });
     if (existing) {
       if (existing.user_id !== change.userId || existing.amount.comparedTo(change.amount) !== 0 || existing.kind !== change.kind || existing.reference_type !== change.referenceType || existing.reference_id !== change.referenceId) {
         throw new ConflictException("The wallet operation key belongs to a different transaction");
       }
       return existing.balance_after;
-    }
-    const user = await tx.users.findUnique({ where: { id: change.userId }, select: { id: true, role: true, account_status: true } });
-    if (!user || user.role !== "buyer") throw new NotFoundException("Buyer wallet was not found");
-    if (user.account_status !== "active" && (user.account_status !== "blocked" || change.amount.isNegative() || !["topup", "checkout_release", "order_refund"].includes(change.kind))) {
-      throw new ConflictException("Buyer account is unavailable for wallet changes");
     }
     await tx.wallet_accounts.upsert({ where: { user_id: change.userId }, create: { user_id: change.userId }, update: {} });
     if (change.amount.isNegative() && change.kind !== "club_expiry") {
@@ -64,14 +76,22 @@ export class WalletLedgerService {
       for (const credit of credits) {
         if (remaining.lte(0)) break;
         const used = Prisma.Decimal.min(remaining, credit.remaining_toman);
-        const claimed = await tx.club_wallet_credits.updateMany({ where: { id: credit.id, remaining_toman: { gte: used } }, data: { remaining_toman: { decrement: used } } });
+        const claimed = await tx.club_wallet_credits.updateMany({ where: { id: credit.id, remaining_toman: { gte: used }, expires_at: { gt: new Date() } }, data: { remaining_toman: { decrement: used } } });
         if (claimed.count !== 1) throw new ConflictException("Club credit changed during wallet payment");
         await tx.club_wallet_allocations.create({ data: { credit_id: credit.id, operation_key: change.operationKey, amount_toman: used } });
         remaining = remaining.minus(used);
       }
     }
     if (change.amount.isNegative()) {
-      const updated = await tx.wallet_accounts.updateMany({ where: { user_id: change.userId, balance: { gte: change.amount.abs() } }, data: { balance: { decrement: change.amount.abs() } } });
+      const expired = change.kind === "club_expiry" ? new Prisma.Decimal(0) :
+        (await tx.club_wallet_credits.aggregate({
+          where: { user_id: change.userId, remaining_toman: { gt: 0 }, expires_at: { lte: new Date() } },
+          _sum: { remaining_toman: true }
+        }))._sum.remaining_toman ?? new Prisma.Decimal(0);
+      const updated = await tx.wallet_accounts.updateMany({
+        where: { user_id: change.userId, balance: { gte: change.amount.abs().add(expired) } },
+        data: { balance: { decrement: change.amount.abs() } }
+      });
       if (updated.count !== 1) throw new ConflictException("Insufficient wallet balance");
     } else {
       await tx.wallet_accounts.update({ where: { user_id: change.userId }, data: { balance: { increment: change.amount } } });

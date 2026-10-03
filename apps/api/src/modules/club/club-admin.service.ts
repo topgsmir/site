@@ -106,7 +106,7 @@ export class ClubAdminService {
   }
 
   async members(cursor?: string, limit = 25) {
-    const rows = await this.prisma.users.findMany({ where: { role: "buyer", account_status: "active" }, orderBy: { id: "asc" }, take: limit + 1,
+    const rows = await this.prisma.users.findMany({ where: { account_status: "active" }, orderBy: { id: "asc" }, take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}), select: { id: true, full_name: true, created_at: true, club_member: { select: { balance: true, point_debt: true, override_until: true, override_tier: true } } } });
     return { items: rows.slice(0, limit), nextCursor: rows.length > limit ? rows[limit - 1]?.id : null };
   }
@@ -149,7 +149,7 @@ export class ClubAdminService {
 
   async reports() {
     const [members, issued, spent, expired, tiers, campaigns, balances, credits, subsidy, sales, campaignEarnings] = await Promise.all([
-      this.prisma.users.count({ where: { role: "buyer", account_status: "active" } }),
+      this.prisma.users.count({ where: { account_status: "active" } }),
       this.prisma.club_point_entries.aggregate({ where: { delta: { gt: 0 }, kind: { not: "release" } }, _sum: { delta: true } }),
       this.prisma.club_point_entries.aggregate({ where: { delta: { lt: 0 }, kind: { in: ["checkout", "wallet_reward"] } }, _sum: { delta: true } }),
       this.prisma.club_point_entries.aggregate({ where: { kind: "expiry" }, _sum: { delta: true } }),

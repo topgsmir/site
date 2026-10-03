@@ -8,6 +8,7 @@ import type { PaymentCredentialService } from "./payment-credential.service";
 describe("PaymentApplicationService admin transactions", () => {
   it("does not finalize a pending attempt from an untrusted unsuccessful callback", async () => {
     const prisma = {
+      wallet_topups: { findUnique: async () => null },
       payment_attempts: {
         findUnique: async () => ({
           id: "attempt-1", order_id: "order-1", checkout_payment_group_id: null,

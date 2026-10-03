@@ -33,6 +33,7 @@ export class SellerService {
     const sellers = await this.prisma.sellers.findMany({
       include: {
         user: { select: { full_name: true, email: true } },
+        profile_media: { select: { id: true, width: true, height: true } },
         permissions: { select: { permission: true } },
         _count: { select: { listings: true, orders: true } }
       },
@@ -290,7 +291,6 @@ export class SellerService {
             shop_name: input.shopName.trim(),
             phone_number: input.phoneNumber?.trim() || null,
             commission: input.commission,
-            holdback_rate: input.holdbackRate,
             blog_review_required: input.blogReviewRequired ?? true,
             goghdi_agent_id: input.goghdiAgentId?.trim().toLowerCase() || null,
             ...status
@@ -371,9 +371,6 @@ export class SellerService {
             ...(input.commission !== undefined
               ? { commission: input.commission }
               : {}),
-            ...(input.holdbackRate !== undefined
-              ? { holdback_rate: input.holdbackRate }
-              : {}),
             ...(input.blogReviewRequired !== undefined
               ? { blog_review_required: input.blogReviewRequired }
               : {}),
@@ -448,6 +445,7 @@ export class SellerService {
       where: { id: sellerId },
       include: {
         user: { select: { full_name: true, email: true } },
+        profile_media: { select: { id: true, width: true, height: true } },
         permissions: { select: { permission: true } },
         _count: { select: { listings: true, orders: true } }
       }
@@ -503,12 +501,12 @@ export class SellerService {
     approved: boolean;
     suspended_at: Date | null;
     commission: Prisma.Decimal;
-    holdback_rate: Prisma.Decimal;
     blog_review_required: boolean;
     goghdi_agent_id: string | null;
     created_at: Date;
     updated_at: Date;
     user: { full_name: string; email: string | null };
+    profile_media: { id: string; width: number; height: number } | null;
     permissions: Array<{ permission: Vendor["permissions"][number] }>;
     _count: { listings: number; orders: number };
   }): Vendor {
@@ -524,9 +522,9 @@ export class SellerService {
       ownerName: seller.user.full_name,
       ownerEmail: seller.user.email!,
       phoneNumber: seller.phone_number,
+      profilePicture: this.toProfilePicture(seller.profile_media),
       status,
       commission: Number(seller.commission),
-      holdbackRate: Number(seller.holdback_rate),
       blogReviewRequired: seller.blog_review_required,
       goghdiAgentId: seller.goghdi_agent_id,
       permissions: seller.permissions.map((item) => item.permission),

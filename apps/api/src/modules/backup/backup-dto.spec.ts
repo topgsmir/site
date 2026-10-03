@@ -33,4 +33,21 @@ describe("backup DTO validation", () => {
     });
     assert.ok((await validate(remote)).some((error) => error.property === "remoteName"));
   });
+
+  it("rejects FTP command separators in destination credentials and paths", async () => {
+    const base = {
+      name: "Offsite", protocol: "ftps", host: "backup.example.com", port: 21, username: "backup",
+      remotePath: "/topgsm", retentionCount: 30, allowInsecure: false, password: "secret"
+    };
+    for (const patch of [
+      { username: "backup\r\nDELE archive" },
+      { password: "secret\nNOOP" },
+      { password: "secret\n" },
+      { remotePath: "/topgsm\0other" },
+      { remotePath: "/topgsm\r\nDELE archive" }
+    ]) {
+      const invalid = await validate(plainToInstance(CreateBackupDestinationDto, { ...base, ...patch }));
+      assert.ok(invalid.some((error) => error.property === Object.keys(patch)[0]));
+    }
+  });
 });

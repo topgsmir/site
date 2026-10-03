@@ -1,0 +1,14 @@
+.field { border: 1px solid var(--border, #d8d8d8); border-radius: 12px; margin: 0 0 16px; padding: 10px 12px 12px; min-width: 0; }
+.field legend { padding: 0 4px; font-weight: 600; }
+.row { display: flex; align-items: center; gap: 12px; }
+.preview { width: 56px; height: 56px; flex: 0 0 56px; display: grid; place-items: center; overflow: hidden; border-radius: 12px; background: var(--signal-soft); }
+.preview img { width: 100%; height: 100%; object-fit: cover; }
+.controls { min-width: 0; }
+.controls p { margin: 0 0 6px; font-size: 13px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.choose, .actions button { display: inline-flex; align-items: center; min-height: 36px; border: 1px solid currentColor; border-radius: 8px; padding: 5px 10px; background: transparent; color: inherit; cursor: pointer; font: inherit; }
+.choose { position: relative; overflow: hidden; }
+.choose input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.choose:focus-within, .actions button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.field:disabled .choose, .field:disabled button { opacity: .6; cursor: wait; }
+.controls output { display: block; min-height: 1.4em; font-size: 13px; }

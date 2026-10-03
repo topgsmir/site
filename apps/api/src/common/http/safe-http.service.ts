@@ -22,10 +22,13 @@ export class SafeHttpService {
       const request = httpsRequest(target, { method: init.method ?? "GET", headers: Object.fromEntries(headers.entries()), timeout: timeoutMs, lookup, servername: target.hostname, family: pinnedAddress.includes(":") ? 6 : 4 }, (response) => {
         const chunks: Buffer[] = []; let length = 0;
         response.on("data", (chunk: Buffer) => { length += chunk.length; if (length > 2_000_000) request.destroy(new Error("response_too_large")); else chunks.push(chunk); });
-        response.on("end", () => { const status = response.statusCode ?? 0; if (status < 200 || status >= 300) { reject(new BadGatewayException(`Provider returned HTTP ${status}`)); return; } try { resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown); } catch { reject(new BadGatewayException("Provider returned malformed JSON")); } });
+        response.on("end", () => { const status = response.statusCode ?? 0; if (status < 200 || status >= 300) { rejectOnce(new BadGatewayException(`Provider returned HTTP ${status}`)); return; } try { resolveOnce(JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown); } catch { rejectOnce(new BadGatewayException("Provider returned malformed JSON")); } });
       });
+      const deadline = setTimeout(() => request.destroy(new Error("request_timeout")), timeoutMs);
+      const resolveOnce = (value: unknown) => { clearTimeout(deadline); resolve(value); };
+      const rejectOnce = (error: Error) => { clearTimeout(deadline); reject(error); };
       request.on("timeout", () => request.destroy(new Error("request_timeout")));
-      request.on("error", (error) => reject(error.message === "request_timeout" ? new RequestTimeoutException("Provider request timed out") : new BadGatewayException(error.message === "response_too_large" ? "Provider response is too large" : "Provider request failed")));
+      request.on("error", (error) => rejectOnce(error.message === "request_timeout" ? new RequestTimeoutException("Provider request timed out") : new BadGatewayException(error.message === "response_too_large" ? "Provider response is too large" : "Provider request failed")));
       if (body) request.write(body); request.end();
     });
   }

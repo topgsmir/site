@@ -26,6 +26,7 @@ import {
   ListOrdersQueryDto,
   SetOrderTrashDto,
   UpdateOrderShippingDto,
+  UpdatePurchaseStatusDto,
   UpdateOrderStatusDto
 } from "./dto/order.dto";
 import { OrderService } from "./order.service";
@@ -84,6 +85,30 @@ export class OrderController {
   async getLeaderboard(@Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
     await this.rateLimits.consumeAnalyticsRead(request.authenticatedUser!.id, clientIp);
     return this.leaderboard.get(request.authenticatedUser!);
+  }
+
+  @Get("purchases")
+  @Header("Cache-Control", "private, no-store")
+  listPurchases(@Req() request: AuthenticatedRequest, @Query() query: ListOrdersQueryDto) {
+    return this.orders.listPurchases(request.authenticatedUser!, query);
+  }
+
+  @Get("purchases/:id")
+  @Header("Cache-Control", "private, no-store")
+  getPurchase(@Req() request: AuthenticatedRequest, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string) {
+    return this.orders.getPurchase(request.authenticatedUser!, id);
+  }
+
+  @Patch("purchases/:id/status")
+  async updatePurchaseStatus(
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string,
+    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
+    @Body() body: UpdatePurchaseStatusDto,
+    @IdempotencyKey() idempotencyKey: string
+  ) {
+    await this.rateLimits.consumeOrderMutation(request.authenticatedUser!.id, clientIp);
+    return this.orders.transitionPurchase(request.authenticatedUser!, id, body, idempotencyKey);
   }
 
   @Get(":id")
@@ -183,17 +208,16 @@ export class OrderController {
     return this.shipping.sync(request.authenticatedUser!, id, idempotencyKey);
   }
 
-  @Get(":orderId/items/:itemId/download")
+  @Post(":orderId/items/:itemId/download")
   async download(
     @Query() query: DigitalDownloadQueryDto,
     @Req() request: AuthenticatedRequest,
     @Ip() clientIp: string,
     @Param("orderId", new ParseUUIDPipe({ version: "4" })) orderId: string,
-    @Param("itemId", new ParseUUIDPipe({ version: "4" })) itemId: string,
-    @Res() response: { redirect(url: string): void }
+    @Param("itemId", new ParseUUIDPipe({ version: "4" })) itemId: string
   ) {
     await this.rateLimits.consumeDigitalDownload(request.authenticatedUser!.id, clientIp);
     const url = await this.orders.claimDigitalDownload(request.authenticatedUser!, orderId, itemId, clientIp, query.fileIndex);
-    response.redirect(url);
+    return { url };
   }
 }

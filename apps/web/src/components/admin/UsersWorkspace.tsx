@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { AdminUserSummary, AdminUsersPage } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
+import { formatCurrencyAmount } from "@/lib/currency";
 import { CreateUserPanel } from "./CreateUserPanel";
 import { UserDetailWorkspace } from "./UserDetailWorkspace";
 import { lifecycleCopy } from "./user-lifecycle-copy";
@@ -22,6 +23,7 @@ const copy = {
     role: "Role",
     all: "All",
     orders: "Orders",
+    wallet: "Wallet balance",
     phone: "Phone",
     yes: "Has",
     no: "None",
@@ -63,6 +65,7 @@ const copy = {
     role: "نقش",
     all: "همه",
     orders: "سفارش‌ها",
+    wallet: "موجودی کیف پول",
     phone: "تلفن",
     yes: "دارد",
     no: "ندارد",
@@ -103,6 +106,7 @@ const copy = {
     role: "الدور",
     all: "الكل",
     orders: "الطلبات",
+    wallet: "رصيد المحفظة",
     phone: "الهاتف",
     yes: "يوجد",
     no: "لا يوجد",
@@ -539,6 +543,7 @@ export function UsersWorkspace({
                 <span>{c.account}</span>
                 <span>{c.contact}</span>
                 <span>{c.orders}</span>
+                <span>{c.wallet}</span>
                 <span>{c.joined}</span>
                 <span />
               </div>
@@ -552,7 +557,7 @@ export function UsersWorkspace({
                       openedUserId.current = user.id;
                       setSelected(user);
                     }}
-                    aria-label={`${c.view}: ${user.fullName}, ${c[user.role as keyof typeof c] ?? user.role}, ${lifecycleCopy[locale][user.accountStatus ?? "active"]}`}
+                    aria-label={`${c.view}: ${user.fullName}, ${c[user.role as keyof typeof c] ?? user.role}, ${lifecycleCopy[locale][user.accountStatus ?? "active"]}, ${c.wallet}: ${formatCurrencyAmount(user.walletBalance, "TOMAN", locale)} ${locale === "en" ? "Toman" : "تومان"}`}
                   >
                     <span className={styles.rowIdentity}>
                       <strong>{user.fullName}</strong>
@@ -565,11 +570,15 @@ export function UsersWorkspace({
                     </span>
                     <span className={styles.rowContact}>
                       <span dir="ltr">{user.email}</span>
-                      <small dir="ltr">{user.phoneNumber ?? "—"}</small>
+                      <small dir="ltr">{user.phoneNumber ?? user.pendingPhoneNumber ?? "—"}{user.pendingPhoneNumber ? (locale === "fa" ? " (در انتظار تأیید)" : locale === "ar" ? " (بانتظار التأكيد)" : " (pending)") : ""}</small>
                     </span>
                     <span className={styles.rowCount}>
                       <span className={styles.mobileLabel}>{c.orders}: </span>
                       {user.orderCount.toLocaleString(locale)}
+                    </span>
+                    <span className={styles.rowBalance}>
+                      <span className={styles.mobileLabel}>{c.wallet}: </span>
+                      <bdi>{formatCurrencyAmount(user.walletBalance, "TOMAN", locale)}</bdi> {locale === "en" ? "Toman" : "تومان"}
                     </span>
                     <time>
                       <span className={styles.mobileLabel}>{c.joined}: </span>

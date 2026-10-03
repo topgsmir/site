@@ -89,10 +89,6 @@ function destinationFor(user: AuthUser, locale: Locale, nextPath?: string) {
   ) {
     return fallback;
   }
-  if (safeNextPath.startsWith(`/${locale}/account`) && user.role !== "buyer") {
-    return fallback;
-  }
-
   return safeNextPath;
 }
 

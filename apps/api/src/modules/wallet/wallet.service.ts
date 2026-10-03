@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import type { AppUser } from "@topgsm/shared-types";
 import { createHash } from "node:crypto";
 import { PaymentService } from "../../integrations/payments/payment.service";
@@ -18,7 +18,6 @@ export class WalletService {
   }
 
   async topup(actor: AppUser, body: WalletTopupDto, key: string) {
-    if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can fund wallets");
     const adapter = this.payments.get(body.provider);
     const config = await this.prisma.payment_method_configs.findFirst({ where: { provider_code: body.provider, enabled: true }, select: { provider_code: true } });
     if (!config) throw new ServiceUnavailableException("Payment provider is disabled");
@@ -56,7 +55,6 @@ export class WalletService {
   }
 
   async topupStatus(actor: AppUser, id: string) {
-    if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can view wallet top-ups");
     const topup = await this.prisma.wallet_topups.findFirst({ where: { id, user_id: actor.id }, select: { id: true, amount: true, status: true, provider: true, created_at: true, verified_at: true } });
     if (!topup) throw new NotFoundException("Wallet top-up was not found");
     return { id: topup.id, amount: topup.amount.toString(), currency: "TOMAN", status: topup.status, provider: topup.provider, createdAt: topup.created_at.toISOString(), verifiedAt: topup.verified_at?.toISOString() ?? null };

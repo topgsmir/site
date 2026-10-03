@@ -75,10 +75,9 @@ export class MediaController {
     response.setHeader("Content-Type", "image/webp");
     response.setHeader("X-Content-Type-Options", "nosniff");
     response.setHeader("ETag", result.etag);
-    response.setHeader(
-      "Cache-Control",
-      result.published ? "public, max-age=31536000, immutable" : "private, no-store"
-    );
+    // Visibility can be revoked without changing the URL. Revalidate every
+    // request so a former public response cannot outlive that decision.
+    response.setHeader("Cache-Control", "no-store");
     if (ifNoneMatch === result.etag) return response.status(304).end();
     return response.send(result.buffer);
   }

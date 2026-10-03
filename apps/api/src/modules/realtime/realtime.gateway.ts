@@ -3,6 +3,7 @@ import {
   WebSocketGateway,
   WebSocketServer
 } from "@nestjs/websockets";
+import { UnauthorizedException } from "@nestjs/common";
 import { Server, Socket } from "socket.io";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuthService } from "../auth/auth.service";
@@ -95,14 +96,38 @@ export class RealtimeGateway implements OnGatewayConnection {
   private async emitAuthorized(rooms: string[], event: string, payload: Payload) {
     // Room membership is not a cached authorization decision. Recheck before
     // each private delivery, including sockets connected to another replica.
-    try {
-      const sockets = await this.server.in(rooms).fetchSockets();
-      for (const socket of sockets) {
+    const sockets = await this.server.in(rooms).fetchSockets();
+    for (const socket of sockets) {
+        let user;
         try {
-          await this.auth.getUserFromToken(readSessionToken(socket.handshake.headers.cookie, socket.handshake.headers.authorization));
-          socket.emit(event, payload);
-        } catch { socket.disconnect(true); }
-      }
-    } catch { /* Fail closed when the adapter/database is unavailable. */ }
+          user = await this.auth.getUserFromToken(readSessionToken(socket.handshake.headers.cookie, socket.handshake.headers.authorization));
+        } catch (error) {
+          if (!(error instanceof UnauthorizedException)) throw error;
+          socket.disconnect(true);
+          continue;
+        }
+          let authorized = false;
+          for (const room of rooms) {
+            if (!socket.rooms.has(room)) continue;
+            if (room === `user:${user.id}`) { authorized = true; break; }
+            if (room === "platform:orders" && (user.role === "platform-admin" || (user.role === "platform-staff" && user.platformPermissions?.includes("orders_manage")))) { authorized = true; break; }
+            if (room === "platform:payouts" && (user.role === "platform-admin" || (user.role === "platform-staff" && user.platformPermissions?.includes("payouts_manage")))) { authorized = true; break; }
+            const sellerRoom = /^seller:(.+):(orders|payouts)$/.exec(room);
+            if (sellerRoom && (user.role === "seller-admin" || user.role === "seller-staff")) {
+              if (await this.comments.isLockedUser(user)) continue;
+              const membership = await this.prisma.seller_memberships.findFirst({
+                where: {
+                  user_id: user.id, seller_id: sellerRoom[1], active: true,
+                  seller: { invited: false, approved: true, suspended_at: null,
+                    permissions: { some: { permission: sellerRoom[2] === "orders" ? "orders_manage" : "payouts_request" } } }
+                },
+                select: { seller_id: true }
+              });
+              if (membership) { authorized = true; break; }
+            }
+          }
+        if (authorized) socket.emit(event, payload);
+        else socket.disconnect(true);
+    }
   }
 }

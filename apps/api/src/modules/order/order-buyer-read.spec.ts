@@ -41,7 +41,7 @@ describe("buyer order reads", () => {
     }
   });
 
-  it("applies search, status, product and UTC date filters within the buyer scope", async () => {
+  it("applies search, status, product and Tehran date filters within the buyer scope", async () => {
     let query: { where: Record<string, unknown>; orderBy: unknown } | undefined;
     const prisma = { orders: { findMany: async (args: typeof query) => { query = args; return []; } } } as unknown as PrismaService;
     await new OrderService(prisma).list(buyer, {
@@ -52,8 +52,8 @@ describe("buyer order reads", () => {
     assert.equal(query?.where.status, "paid");
     assert.deepEqual(query?.where.items, { some: { product_type: "digital" } });
     assert.deepEqual(query?.where.created_at, {
-      gte: new Date("2026-09-19T00:00:00.000Z"),
-      lt: new Date("2026-09-21T00:00:00.000Z")
+      gte: new Date("2026-09-18T20:30:00.000Z"),
+      lt: new Date("2026-09-20T20:30:00.000Z")
     });
     assert.deepEqual(query?.orderBy, [{ created_at: "asc" }, { id: "asc" }]);
     assert.equal((query?.where.OR as Array<{ id?: { contains: string } }>)[0]?.id?.contains, "repair");

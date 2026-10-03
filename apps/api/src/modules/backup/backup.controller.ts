@@ -11,6 +11,7 @@ import { PlatformAdminGuard, type AuthenticatedRequest } from "../auth/platform-
 import { BackupDestinationService } from "./backup-destination.service";
 import { readRestoreProgress, readSystemStatus, verifyRestoreMonitorToken } from "./backup-maintenance";
 import { BackupRestoreService } from "./backup-restore.service";
+import { BackupUploadGuard } from "./backup-upload.guard";
 import { BackupRunService } from "./backup-run.service";
 import { BackupSettingsService } from "./backup-settings.service";
 import {
@@ -124,11 +125,11 @@ export class BackupController {
   @Post("restore-uploads")
   @HttpCode(HttpStatus.CREATED)
   @BrowserSessionMutation()
+  @UseGuards(BackupUploadGuard)
   @UseInterceptors(FileInterceptor("file"))
-  async uploadRestore(@UploadedFile() file: Express.Multer.File | undefined, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+  async uploadRestore(@UploadedFile() file: Express.Multer.File | undefined) {
     if (!file) throw new BadRequestException("An encrypted TopGSM backup package is required");
     try {
-      await this.rateLimits.consumeBackupRestore(request.authenticatedUser!.id, clientIp);
       return { uploadId: file.filename.replace(/[.]upload$/, ""), bytes: file.size };
     } catch (error) {
       await rm(file.path, { force: true });

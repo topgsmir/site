@@ -33,7 +33,7 @@ describe("new order count", () => {
 
     const result = await new OrderService(prisma).newOrderCount(seller);
 
-    assert.deepEqual(where, { seller_id: "seller-1", status: "paid", created_at: { gt: seenAt } });
+    assert.deepEqual(where, { seller_id: "seller-1", trashed_at: null, status: "paid", created_at: { gt: seenAt } });
     assert.deepEqual(result, { count: 4 });
   });
 
@@ -58,7 +58,7 @@ describe("new order count", () => {
     };
 
     assert.deepEqual(await new OrderService(prisma).newOrderCount(admin), { count: 9 });
-    assert.deepEqual(where, { status: "paid" });
+    assert.deepEqual(where, { trashed_at: null, status: "paid" });
   });
 
   it("marks only the authenticated seller user's visible orders as seen", async () => {
@@ -84,7 +84,7 @@ describe("new order count", () => {
     } as unknown as PrismaService;
 
     assert.deepEqual(await new OrderService(prisma).markOrdersSeen(seller), { count: 0 });
-    assert.deepEqual(findWhere, { seller_id: "seller-1" });
+    assert.deepEqual(findWhere, { seller_id: "seller-1", trashed_at: null });
     assert.deepEqual(update, {
       where: {
         id: seller.id,

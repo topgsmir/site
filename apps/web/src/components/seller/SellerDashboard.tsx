@@ -50,6 +50,7 @@ import { PanelOverview } from "@/components/dashboard/PanelOverview";
 import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
 import { useNewOrderCount } from "@/components/dashboard/useNewOrderCount";
 import { DashboardMobileNavigation } from "@/components/dashboard/DashboardMobileNavigation";
+import { UploadCenterNavigation } from "@/components/dashboard/UploadCenterNavigation";
 
 type DashboardSection = "overview" | "statistics" | "products" | "uploads" | "profile" | "blog" | "coupons" | "orders" | "customers" | "shipping" | "payouts" | "bridge";
 type RequestState = "idle" | "loading" | "error" | "success";
@@ -1181,6 +1182,11 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
             <Icon name="blog" />
             <span>{locale === "fa" ? "دیدگاه‌ها" : locale === "ar" ? "التعليقات" : "Comments"}</span>
           </Link>
+          <Link className={navigationStyles.item} href={`/${locale}/account` as Route}>
+            <Icon name="overview" />
+            <span>{locale === "fa" ? "حساب شخصی و خریدها" : locale === "ar" ? "حسابي ومشترياتي" : "My account and purchases"}</span>
+          </Link>
+          <UploadCenterNavigation locale={locale} />
         </nav>
         <div className={styles.accountBlock} data-mobile-open={true}>
           <span>{copy.account}</span>

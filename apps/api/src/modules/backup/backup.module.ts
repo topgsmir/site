@@ -17,6 +17,7 @@ import { BackupRunService } from "./backup-run.service";
 import { BackupSettingsService } from "./backup-settings.service";
 import { BackupWorkerService } from "./backup-worker.service";
 import { BackupCatalogService } from "./backup-catalog.service";
+import { BackupUploadGuard } from "./backup-upload.guard";
 
 @Module({
   imports: [
@@ -41,7 +42,7 @@ import { BackupCatalogService } from "./backup-catalog.service";
   controllers: [BackupController, BackupSystemController],
   providers: [
     CredentialCryptoService, BackupPathsService, BackupArchiveService, BackupCreatorService,
-    BackupDestinationService, BackupSettingsService, BackupRunService, BackupRestoreService, BackupCatalogService, BackupWorkerService
+    BackupDestinationService, BackupSettingsService, BackupRunService, BackupRestoreService, BackupCatalogService, BackupWorkerService, BackupUploadGuard
   ]
 })
 export class BackupModule {}

@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
-import type { AppUser } from "@topgsm/shared-types";
+import type { AppUser, Role } from "@topgsm/shared-types";
 import type { PrismaService } from "../../prisma/prisma.service";
 import { CommentsService } from "./comments.service";
 
@@ -9,6 +9,26 @@ const seller = { id: "staff-1", fullName: "Seller", email: "seller@example.com",
 const admin = { id: "admin-1", fullName: "Admin", email: "admin@example.com", role: "platform-admin" } as AppUser;
 
 describe("product comments", () => {
+  it("lets every shopper role comment on its own purchased product", async () => {
+    const roles: Role[] = ["buyer", "seller-admin", "seller-staff", "platform-admin", "platform-staff"];
+    for (const role of roles) {
+      const actor = { ...buyer, role } as AppUser;
+      let checkedBuyer: string | undefined;
+      let author: string | null | undefined;
+      const prisma = {
+        comment_settings: { findUnique: async () => ({ seller_lock_enabled: false, posting_policy: "purchasers", publication_policy: "approval", updated_at: new Date() }) },
+        order_items: { findFirst: async ({ where }: { where: { order: { buyer_id: string } } }) => { checkedBuyer = where.order.buyer_id; return { id: "purchased-item" }; } },
+        products: { findFirst: async () => ({ id: "product-1" }) },
+        comments: { create: async ({ data }: { data: { author_user_id: string | null } }) => { author = data.author_user_id; return { id: "comment-1", status: "pending" }; } },
+        $transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback(prisma)
+      } as unknown as PrismaService;
+      const result = await new CommentsService(prisma).create("product", "product-1", { body: "Works well" }, actor);
+      assert.equal(result.status, "pending");
+      assert.equal(checkedBuyer, actor.id);
+      assert.equal(author, actor.id);
+    }
+  });
+
   it("keeps guest comments pending even when signed-in comments publish immediately", async () => {
     let created: Record<string, unknown> | undefined;
     const prisma = {

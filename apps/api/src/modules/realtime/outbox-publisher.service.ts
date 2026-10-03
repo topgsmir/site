@@ -59,7 +59,7 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
         const delivery = rows[0];
         if (!delivery) break;
         try {
-          this.emit(delivery.event_type, this.objectPayload(delivery.payload));
+          await this.emit(delivery.event_type, this.objectPayload(delivery.payload));
           await this.prisma.$transaction([
             this.prisma.outbox_deliveries.update({ where: { event_id_consumer: { event_id: delivery.event_id, consumer: "realtime" } }, data: { status: "delivered", delivered_at: new Date(), locked_at: null, last_error: null } }),
             this.prisma.outbox_events.update({ where: { id: delivery.event_id }, data: { published_at: new Date(), attempts: { increment: 1 } } })
@@ -73,7 +73,7 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
     } finally { this.running = false; }
   }
 
-  private emit(eventType: string, payload: StoredPayload) {
+  private async emit(eventType: string, payload: StoredPayload) {
     if (
       ["order.created", "order.paid", "order.status.updated", "bridge.fulfillment.succeeded", "bridge.fulfillment.failed"].includes(eventType) &&
       typeof payload.buyerId === "string" && typeof payload.sellerId === "string"
@@ -82,13 +82,13 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
       const eventPayload = { ...payload };
       delete eventPayload.buyerId;
       delete eventPayload.sellerId;
-      if (eventType === "order.created") this.realtime.emitOrderCreated(audience, eventPayload);
-      else this.realtime.emitOrderStatusChanged(audience, eventPayload);
+      if (eventType === "order.created") await this.realtime.emitOrderCreated(audience, eventPayload);
+      else await this.realtime.emitOrderStatusChanged(audience, eventPayload);
       return;
     }
     if (eventType === "payout.status.updated" && typeof payload.sellerId === "string") {
       const { sellerId, ...eventPayload } = payload;
-      this.realtime.emitPayoutStatusChanged(sellerId, eventPayload);
+      await this.realtime.emitPayoutStatusChanged(sellerId, eventPayload);
       return;
     }
     throw new Error("unsupported_realtime_event");

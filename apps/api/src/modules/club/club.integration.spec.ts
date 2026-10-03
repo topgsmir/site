@@ -39,7 +39,7 @@ async function buyer() {
 
 async function paidOrder(buyerId: string, amount = "10000") {
   const owner = await prisma.users.create({ data: { full_name: "Club seller", email: `club-seller-${randomUUID()}@example.com`, role: "seller_admin" } });
-  const seller = await prisma.sellers.create({ data: { user_id: owner.id, shop_name: "Club shop", approved: true, commission: "0.1", holdback_rate: "0.05" } });
+  const seller = await prisma.sellers.create({ data: { user_id: owner.id, shop_name: "Club shop", approved: true, commission: "0.1" } });
   return prisma.orders.create({ data: { buyer_id: buyerId, seller_id: seller.id, status: "paid", currency: "TOMAN", total_amount: amount,
     shipping_fee: "0", commission_rate: "0.1", holdback_rate: "0.05", idempotency_key: randomUUID(), request_hash: randomUUID().replaceAll("-", "").repeat(2) } });
 }
@@ -108,7 +108,7 @@ describe("customer club ledger", () => {
   it("restores club wallet credit on refund with its original expiry", async () => {
     const user = await buyer();
     const owner = await prisma.users.create({ data: { full_name: "Club refund seller", email: `club-refund-${randomUUID()}@example.com`, role: "seller_admin" } });
-    const seller = await prisma.sellers.create({ data: { user_id: owner.id, shop_name: "Club refund shop", approved: true, commission: "0.1", holdback_rate: "0.05" } });
+    const seller = await prisma.sellers.create({ data: { user_id: owner.id, shop_name: "Club refund shop", approved: true, commission: "0.1" } });
     const checkout = await prisma.checkouts.create({ data: { buyer_id: user.id, currency: "TOMAN", total_amount: "600", idempotency_key: randomUUID(), request_hash: "a".repeat(64), expires_at: new Date(Date.now() + 600_000) } });
     const order = await prisma.orders.create({ data: { buyer_id: user.id, seller_id: seller.id, checkout_id: checkout.id, currency: "TOMAN", total_amount: "600",
       commission_rate: "0.1", holdback_rate: "0.05", idempotency_key: randomUUID(), request_hash: "b".repeat(64),
@@ -134,6 +134,30 @@ describe("customer club ledger", () => {
     await club.expireDue();
     await club.expireDue();
     assert.equal((await wallet.balance(user.id)).balance, "100");
+    assert.equal(await prisma.wallet_entries.count({ where: { operation_key: `club-wallet-expiry:${credit.id}` } }), 1);
+  });
+
+  it("blocks spending an overdue wallet reward and expires it for a blocked account", async () => {
+    const user = await buyer();
+    const credit = await prisma.club_wallet_credits.create({ data: {
+      user_id: user.id, source_key: `overdue-credit:${user.id}`,
+      original_toman: "500", remaining_toman: "500", expires_at: new Date(Date.now() + 60_000)
+    } });
+    await prisma.$transaction((tx) => wallet.apply(tx, {
+      userId: user.id, amount: new Prisma.Decimal(500), kind: "club_credit",
+      reason: "Test reward", referenceType: "club_credit", referenceId: credit.id,
+      operationKey: `overdue-credit:${credit.id}`
+    }));
+    await prisma.club_wallet_credits.update({ where: { id: credit.id }, data: { expires_at: new Date(Date.now() - 1000) } });
+    assert.equal((await wallet.balance(user.id)).balance, "0");
+    await assert.rejects(() => prisma.$transaction((tx) => wallet.apply(tx, {
+      userId: user.id, amount: new Prisma.Decimal(-500), kind: "checkout_debit",
+      reason: "Checkout", referenceType: "checkout_group", referenceId: randomUUID(),
+      operationKey: `overdue-debit:${credit.id}`
+    })), /Insufficient wallet balance/);
+    await prisma.users.update({ where: { id: user.id }, data: { account_status: "blocked" } });
+    await club.expireDue();
+    assert.equal((await prisma.club_wallet_credits.findUniqueOrThrow({ where: { id: credit.id } })).remaining_toman.toString(), "0");
     assert.equal(await prisma.wallet_entries.count({ where: { operation_key: `club-wallet-expiry:${credit.id}` } }), 1);
   });
 
@@ -171,7 +195,7 @@ describe("customer club ledger", () => {
   it("stacks coupon, club reward, direct points and mixed wallet payment without reducing seller proceeds", async () => {
     const user = await buyer();
     const owner = await prisma.users.create({ data: { full_name: "Club checkout seller", email: `club-stack-${randomUUID()}@example.com`, role: "seller_admin" } });
-    const seller = await prisma.sellers.create({ data: { user_id: owner.id, shop_name: "Club checkout shop", approved: true, commission: "0.1", holdback_rate: "0.05" } });
+    const seller = await prisma.sellers.create({ data: { user_id: owner.id, shop_name: "Club checkout shop", approved: true, commission: "0.1" } });
     const product = await prisma.products.create({ data: { created_by_seller_id: seller.id, title: "Club digital item", slug: `club-item-${randomUUID()}`, type: "digital" } });
     const variant = await prisma.product_variants.create({ data: { product_id: product.id, option_signature: "c".repeat(64) } });
     const listing = await prisma.seller_listings.create({ data: { seller_id: seller.id, product_id: product.id } });
@@ -219,7 +243,7 @@ describe("customer club ledger", () => {
     const user = await buyer();
     await prisma.$transaction((tx) => club.award(tx, user.id, 20, `expiry-points:${user.id}`, "admin_award", "test"));
     const owner = await prisma.users.create({ data: { full_name: "Expiry seller", email: `club-expiry-${randomUUID()}@example.com`, role: "seller_admin" } });
-    const seller = await prisma.sellers.create({ data: { user_id: owner.id, shop_name: "Expiry shop", approved: true, commission: "0.1", holdback_rate: "0.05" } });
+    const seller = await prisma.sellers.create({ data: { user_id: owner.id, shop_name: "Expiry shop", approved: true, commission: "0.1" } });
     const expiredAt = new Date(Date.now() - 1000);
     const checkout = await prisma.checkouts.create({ data: { buyer_id: user.id, currency: "TOMAN", total_amount: "700", idempotency_key: randomUUID(), request_hash: "e".repeat(64), expires_at: expiredAt } });
     const order = await prisma.orders.create({ data: { buyer_id: user.id, seller_id: seller.id, checkout_id: checkout.id, currency: "TOMAN", total_amount: "700", commission_rate: "0.1", holdback_rate: "0.05", idempotency_key: randomUUID(), request_hash: "f".repeat(64) } });
@@ -254,5 +278,28 @@ describe("customer club ledger", () => {
     assert.equal(await prisma.club_admin_events.count({ where: { actor_user_id: admin.id, action: "settings.update" } }), 1);
     const version = await prisma.club_rule_versions.findFirstOrThrow({ orderBy: { effective_at: "desc" } });
     await assert.rejects(prisma.club_rule_versions.update({ where: { id: version.id }, data: { first_purchase_points: 99 } }), /club audit records are immutable/);
+  });
+
+  it("funds and spends wallet and club balances for every shopper role", async () => {
+    const roles = ["buyer", "seller_admin", "seller_staff", "platform_admin", "platform_staff"] as const;
+    for (const role of roles) {
+      const user = await prisma.users.create({ data: { full_name: `Rewards ${role}`, email: `club-role-${role}-${randomUUID()}@example.com`, role } });
+      const creditKey = `role-credit:${user.id}`;
+      const debitKey = `role-debit:${user.id}`;
+      const pointKey = `role-points:${user.id}`;
+      await prisma.$transaction(async (tx) => {
+        await wallet.apply(tx, { userId: user.id, amount: new Prisma.Decimal(1000), kind: "topup", reason: "Test funding", referenceType: "test", referenceId: user.id, operationKey: creditKey });
+        await wallet.apply(tx, { userId: user.id, amount: new Prisma.Decimal(-300), kind: "checkout_debit", reason: "Test purchase", referenceType: "checkout", referenceId: user.id, operationKey: debitKey });
+        await club.award(tx, user.id, 10, pointKey, "admin_award", user.id);
+        await club.spend(tx, user.id, 5, `spend:${pointKey}`, "checkout", user.id);
+      });
+      assert.equal((await wallet.balance(user.id)).balance, "700");
+      assert.equal((await club.summary(user.id)).balance, 5);
+      if (role === "seller_staff") {
+        await prisma.users.update({ where: { id: user.id }, data: { account_status: "blocked" } });
+        await assert.rejects(prisma.$transaction((tx) => wallet.apply(tx, { userId: user.id, amount: new Prisma.Decimal(-300), kind: "checkout_debit", reason: "Test purchase", referenceType: "checkout", referenceId: user.id, operationKey: debitKey })), /Account is unavailable/);
+        await assert.rejects(prisma.$transaction((tx) => club.spend(tx, user.id, 5, `spend:${pointKey}`, "checkout", user.id)), /Active account not found/);
+      }
+    }
   });
 });

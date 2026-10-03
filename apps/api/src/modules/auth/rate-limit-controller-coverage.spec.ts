@@ -6,6 +6,8 @@ import ts from "typescript";
 
 const intentionalExceptions = new Set([
   "auth.controller.ts:AuthController.logout",
+  // BackupUploadGuard consumes the restore limit before FileInterceptor writes a multipart body.
+  "backup.controller.ts:BackupController.uploadRestore",
   "comments.controller.ts:CommentsController.create",
   "comments.controller.ts:CommentsController.createBlog",
   "content-ai.controller.ts:ContentAiController.generate",

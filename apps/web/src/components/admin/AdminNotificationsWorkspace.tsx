@@ -16,7 +16,7 @@ type Refund = { id: string; created_at: string; order_item: { order: { id: strin
 type RefundPage = { items: Refund[]; nextCursor: string | null };
 type Payout = { id: string; orderId: string; seller: { id: string; shopName: string }; payableAmount: string; currency: string; status: "requested" };
 type PayoutPage = { items: Payout[]; nextCursor: string | null };
-type AdminNotificationCounts = { comments: number; photos: number; products: number; articles: number; refunds: number; payouts: number };
+export type AdminNotificationCounts = { comments: number; photos: number; products: number; articles: number; refunds: number; payouts: number };
 type PendingDecision = { kind: "refund"; item: Refund } | { kind: "payout"; item: Payout; status: "approved" | "disputed" };
 const decisionCopy = {
   en: { refresh: "Refresh queue", reviewOrder: "Open order details", seller: "Seller", order: "Order", amount: "Amount", scope: "Scope", fullOrder: "Full order payment and cancellation", payout: "Payout request", close: "Cancel", confirm: "Confirm decision" },
@@ -41,7 +41,7 @@ function queueFromHash(): QueueKey | null {
   return queueKeys.find((key) => window.location.hash === `#notification-${key}`) ?? null;
 }
 
-export function AdminNotificationsWorkspace({ locale }: { locale: Locale }) {
+export function AdminNotificationsWorkspace({ locale, onCountsChange }: { locale: Locale; onCountsChange?: (counts: AdminNotificationCounts) => void }) {
   const c = copy[locale];
   const pc = payoutCopy[locale];
   const dc = decisionCopy[locale];
@@ -104,13 +104,16 @@ export function AdminNotificationsWorkspace({ locale }: { locale: Locale }) {
     setCountsError(false);
     try {
       const { data } = await api.get<AdminNotificationCounts>("/admin/notifications/counts", { signal });
-      if (!signal?.aborted && requestId === countsRequest.current) setCounts(data);
+      if (!signal?.aborted && requestId === countsRequest.current) {
+        setCounts(data);
+        onCountsChange?.(data);
+      }
     } catch {
       if (!signal?.aborted && requestId === countsRequest.current) setCountsError(true);
     } finally {
       if (!signal?.aborted && requestId === countsRequest.current) setCountsLoading(false);
     }
-  }, []);
+  }, [onCountsChange]);
 
   const loadProducts = useCallback(async (cursor?: string) => {
     const request = ++productRequest.current;
