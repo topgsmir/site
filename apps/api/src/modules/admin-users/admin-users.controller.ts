@@ -4,6 +4,8 @@ import { AuthService } from "../auth/auth.service";
 import { PlatformAdminGuard, type AuthenticatedRequest } from "../auth/platform-admin.guard";
 import { BrowserSessionMutation } from "../auth/browser-session-mutation.decorator";
 import { AdminUsersService } from "./admin-users.service";
+import { SellerStatisticsService } from "./seller-statistics.service";
+import { SellerStatisticsQueryDto } from "./dto/seller-statistics.dto";
 import { AdminUserHistoryQueryDto, ChangeAdminUserPasswordDto, CreateAdminUserDto, ListAdminUsersQueryDto, UpdateAdminUserDto, UserIdDto } from "./dto/admin-users.dto";
 
 @Controller("admin/users")
@@ -11,6 +13,7 @@ import { AdminUserHistoryQueryDto, ChangeAdminUserPasswordDto, CreateAdminUserDt
 export class AdminUsersController {
   constructor(
     private readonly users: AdminUsersService,
+    private readonly sellerStatistics: SellerStatisticsService,
     private readonly rateLimits: AuthRateLimitService,
     private readonly auth: AuthService
   ) {}
@@ -18,6 +21,12 @@ export class AdminUsersController {
   @Get()
   list(@Query() query: ListAdminUsersQueryDto) {
     return this.users.list(query);
+  }
+
+  @Get("seller-statistics")
+  async statistics(@Query() query: SellerStatisticsQueryDto, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+    await this.rateLimits.consumeAnalyticsRead(request.authenticatedUser!.id, clientIp);
+    return this.sellerStatistics.list(query);
   }
 
   @Post()

@@ -5,8 +5,21 @@ import type { AuthService } from "../auth/auth.service";
 import type { AuthenticatedRequest } from "../auth/platform-admin.guard";
 import { AdminUsersController } from "./admin-users.controller";
 import type { AdminUsersService } from "./admin-users.service";
+import type { SellerStatisticsService } from "./seller-statistics.service";
 
 describe("AdminUsersController", () => {
+  it("rate-limits seller statistics before the aggregate query", async () => {
+    const calls: string[] = [];
+    const controller = new AdminUsersController(
+      {} as AdminUsersService,
+      { list: async () => { calls.push("query"); return { items: [] }; } } as unknown as SellerStatisticsService,
+      { consumeAnalyticsRead: async () => { calls.push("limit"); } } as unknown as AuthRateLimitService,
+      {} as AuthService
+    );
+    await controller.statistics({ period: "7d", page: 1, limit: 20 }, { authenticatedUser: { id: "owner-id" } } as AuthenticatedRequest, "203.0.113.10");
+    assert.deepEqual(calls, ["limit", "query"]);
+  });
+
   it("rate-limits and confirms the owner password before replacing a user password", async () => {
     const calls: string[] = [];
     const users = {
@@ -21,7 +34,7 @@ describe("AdminUsersController", () => {
     const auth = {
       verifyCurrentPassword: async (actorId: string, password: string) => { calls.push(`verify:${actorId}:${password}`); }
     } as unknown as AuthService;
-    const controller = new AdminUsersController(users, rateLimits, auth);
+    const controller = new AdminUsersController(users, {} as SellerStatisticsService, rateLimits, auth);
     const request = { authenticatedUser: { id: "owner-id" } } as AuthenticatedRequest;
 
     const result = await controller.changePassword(

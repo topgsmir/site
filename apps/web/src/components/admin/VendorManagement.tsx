@@ -25,6 +25,7 @@ import { ProductPublicUrl } from "@/components/product/ProductPublicUrl";
 import { AdminBridgeWorkspace } from "@/components/bridge/AdminBridgeWorkspace";
 import { StaffWorkspace } from "@/components/admin/StaffWorkspace";
 import { UsersWorkspace } from "@/components/admin/UsersWorkspace";
+import { SellerStatisticsWorkspace } from "@/components/admin/SellerStatisticsWorkspace";
 import { AdminBlogWorkspace } from "@/components/admin/AdminBlogWorkspace";
 import { BlogTaxonomyWorkspace } from "@/components/admin/BlogTaxonomyWorkspace";
 import { AdminOrdersWorkspace } from "@/components/admin/AdminOrdersWorkspace";
@@ -90,6 +91,7 @@ const copy = {
     notifications: "Notifications",
     statistics: "Statistics",
     users: "Users",
+    sellerStatistics: "Seller statistics",
     vendors: "Vendors",
     productService: "Products service",
     sellService: "Sales service",
@@ -265,6 +267,7 @@ const copy = {
     notifications: "اعلان‌ها",
     statistics: "آمار",
     users: "کاربران",
+    sellerStatistics: "آمار فروشندگان",
     vendors: "فروشنده‌ها",
     productService: "سرویس محصولات",
     sellService: "سرویس فروش",
@@ -440,6 +443,7 @@ const copy = {
     notifications: "الإشعارات",
     statistics: "الإحصاءات",
     users: "المستخدمون",
+    sellerStatistics: "إحصاءات البائعين",
     vendors: "البائعون",
     productService: "خدمة المنتجات",
     sellService: "خدمة المبيعات",
@@ -816,7 +820,7 @@ export function VendorManagement({
   const canManageUploads =
     ownerNavigation || platformPermissions.includes("uploads_manage");
   const isUsersSection =
-    section === "vendors" || section === "staff" || section === "users";
+    section === "vendors" || section === "staff" || section === "users" || section === "seller-statistics";
   const usersExpanded = isUsersSection || usersOpen;
   const isProductServiceSection =
     section === "products" ||
@@ -872,6 +876,7 @@ export function VendorManagement({
       statistics: c.statistics,
       vendors: c.vendors,
       users: c.users,
+      "seller-statistics": c.sellerStatistics,
       products: c.products,
       "product-categories": c.productCategories,
       "product-templates": c.productTemplates,
@@ -1409,6 +1414,14 @@ export function VendorManagement({
                     >
                       <CustomersIcon />
                       <span>{c.users}</span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
+                      href={`/${locale}/admin/seller-statistics` as Route}
+                      aria-current={section === "seller-statistics" ? "page" : undefined}
+                    >
+                      <StatisticsIcon />
+                      <span>{c.sellerStatistics}</span>
                     </Link>
                   </div>
                 </div>
@@ -2608,6 +2621,7 @@ export function VendorManagement({
         {section === "users" ? (
           <UsersWorkspace locale={locale} initialUserId={userId} />
         ) : null}
+        {section === "seller-statistics" ? <SellerStatisticsWorkspace locale={locale} /> : null}
 
         {section === "bridge" ? <AdminBridgeWorkspace locale={locale} /> : null}
 

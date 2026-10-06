@@ -522,6 +522,27 @@ export interface AdminUsersPage {
   total: number;
 }
 
+export type SellerStatisticsPeriod = "7d" | "month" | "3months" | "all";
+
+export interface SellerStatisticsPage {
+  period: SellerStatisticsPeriod;
+  from: string | null;
+  to: string;
+  items: Array<{
+    id: string;
+    userId: string;
+    name: string;
+    productCount: number;
+    postCount: number;
+    commentCount: number;
+    income: string;
+    balance: string;
+  }>;
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface AdminUserHistoryPage {
   items: { id: string; at: string | null; title: string; details: Record<string, string | number | boolean | null> }[];
   page: number;

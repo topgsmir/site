@@ -9,6 +9,7 @@ export type AdminSection =
   | "statistics"
   | "vendors"
   | "users"
+  | "seller-statistics"
   | "products"
   | "product-categories"
   | "product-templates"

@@ -8,10 +8,11 @@ import { UserTransferWorker } from "./user-transfer.worker";
 import { UserLifecycleController } from "./user-lifecycle.controller";
 import { AdminUserNotesController } from "./admin-user-notes.controller";
 import { AdminUserNotesService } from "./admin-user-notes.service";
+import { SellerStatisticsService } from "./seller-statistics.service";
 
 @Module({
   imports: [AuthModule],
   controllers: [AdminUsersController, UserLifecycleController, AdminUserNotesController],
-  providers: [AdminUsersService, UserLifecycleService, UserDeletionService, UserTransferWorker, AdminUserNotesService]
+  providers: [AdminUsersService, SellerStatisticsService, UserLifecycleService, UserDeletionService, UserTransferWorker, AdminUserNotesService]
 })
 export class AdminUsersModule {}
