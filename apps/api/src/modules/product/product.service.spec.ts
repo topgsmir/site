@@ -558,11 +558,12 @@ describe("admin product editing", () => {
       description: null,
       category: "Tools",
       kind: "simple",
-      type: "service",
+      type: "bridge",
       status: "active",
       created_at: new Date("2026-09-01T08:00:00.000Z"),
       updated_at: new Date("2026-09-09T08:00:00.000Z"),
       _count: { listings: 2 },
+      bridge_binding: { minimum_quantity: 2, maximum_quantity: 8 },
       created_by: { id: "00000000-0000-4000-8000-000000000012", shop_name: "Creator" },
       options: [],
       variants: []
@@ -572,7 +573,8 @@ describe("admin product editing", () => {
       status: "active",
       created_at: new Date("2026-09-02T08:00:00.000Z"),
       updated_at: new Date("2026-09-02T08:00:00.000Z"),
-      seller: { id: "00000000-0000-4000-8000-000000000013", shop_name: "Seller" },
+      seller: { id: "00000000-0000-4000-8000-000000000013", shop_name: "Seller", commission: 0.1,
+        commission_bridge: 0.15, shipping_profile: { enabled: true, latitude: 35, longitude: 51 } },
       offers: []
     });
     const service = serviceWith({
@@ -591,5 +593,8 @@ describe("admin product editing", () => {
     assert.equal(result.listings.length, 1);
     assert.equal(result.nextListingCursor, listingOne);
     assert.equal(result.createdBy.shopName, "Creator");
+    assert.deepEqual(result.bridgePurchaseLimits, { minimumQuantity: 2, maximumQuantity: 8 });
+    assert.equal(result.listings[0]?.seller.commissionRate, 0.15);
+    assert.equal(result.listings[0]?.seller.shippingReady, true);
   });
 });

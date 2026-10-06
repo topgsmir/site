@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import { Test } from "@nestjs/testing";
 import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
 import { PlatformPermissionGuard } from "../auth/platform-permission.guard";
+import { PlatformAdminGuard } from "../auth/platform-admin.guard";
 import { MediaService } from "../media/media.service";
 import { SellerController } from "./seller.controller";
 import { SellerProfileGuard } from "./seller-profile.guard";
@@ -41,7 +42,7 @@ describe("seller profile picture upload", () => {
           }
         } }
       ]
-    }).overrideGuard(PlatformPermissionGuard).useValue({ canActivate: () => true }).overrideGuard(SellerProfileGuard).useValue({
+    }).overrideGuard(PlatformAdminGuard).useValue({ canActivate: () => false }).overrideGuard(PlatformPermissionGuard).useValue({ canActivate: () => true }).overrideGuard(SellerProfileGuard).useValue({
       canActivate: (context: { switchToHttp: () => { getRequest: () => Record<string, unknown> } }) => {
         const request = context.switchToHttp().getRequest();
         request.authenticatedUser = { id: "seller-admin-id" };

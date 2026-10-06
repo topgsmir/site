@@ -16,7 +16,13 @@ type Refund = { id: string; created_at: string; order_item: { order: { id: strin
 type RefundPage = { items: Refund[]; nextCursor: string | null };
 type Payout = { id: string; orderId: string; seller: { id: string; shopName: string }; payableAmount: string; currency: string; status: "requested" };
 type PayoutPage = { items: Payout[]; nextCursor: string | null };
-export type AdminNotificationCounts = { comments: number; photos: number; products: number; articles: number; refunds: number; payouts: number };
+type DownloadChange = { id: string; action: "edit" | "delete"; link_index: number; expected_url: string; expected_title: string; proposed_url: string | null; proposed_title: string | null; requested_by: { full_name: string }; offer: { listing: { product: { id: string; title: string }; seller: { shop_name: string } }; variant: { name: string | null } } };
+export type AdminNotificationCounts = { comments: number; photos: number; products: number; articles: number; refunds: number; payouts: number; downloadLinks: number };
+const downloadCopy = {
+  en: { title: "Download link changes", edit: "Edit", remove: "Delete", current: "Current", proposed: "Proposed", approve: "Approve", reject: "Reject", error: "Could not load or review download link requests.", done: "Download link request reviewed.", empty: "No pending download link requests." },
+  fa: { title: "تغییر لینک‌های دانلود", edit: "ویرایش", remove: "حذف", current: "لینک فعلی", proposed: "لینک پیشنهادی", approve: "تأیید", reject: "رد", error: "بارگذاری یا بررسی درخواست‌های لینک دانلود ممکن نبود.", done: "درخواست لینک دانلود بررسی شد.", empty: "درخواستی برای تغییر لینک دانلود وجود ندارد." },
+  ar: { title: "تغييرات روابط التنزيل", edit: "تعديل", remove: "حذف", current: "الرابط الحالي", proposed: "الرابط المقترح", approve: "موافقة", reject: "رفض", error: "تعذر تحميل أو مراجعة طلبات روابط التنزيل.", done: "تمت مراجعة طلب رابط التنزيل.", empty: "لا توجد طلبات معلقة لروابط التنزيل." }
+} as const;
 type PendingDecision = { kind: "refund"; item: Refund } | { kind: "payout"; item: Payout; status: "approved" | "disputed" };
 const decisionCopy = {
   en: { refresh: "Refresh queue", reviewOrder: "Open order details", seller: "Seller", order: "Order", amount: "Amount", scope: "Scope", fullOrder: "Full order payment and cancellation", payout: "Payout request", close: "Cancel", confirm: "Confirm decision" },
@@ -34,7 +40,7 @@ const copy = {
   ar: { title: "الإشعارات", intro: "راجع الطلبات التي تنتظر قرار المدير من مكان واحد.", chooseQueue: "قائمة المراجعة", countsError: "تعذر تحميل أعداد الطلبات.", products: "مراجعة المنتجات", articles: "مراجعة المقالات", photos: "طلبات حذف الصور", comments: "التعليقات", refunds: "طلبات استرداد بريدج", issueRefund: "استرداد الطلب كاملاً", refundConfirm: "هل تسترد كامل المبلغ وتلغي الطلب؟ راجع جميع عناصر الطلب وإجماليه أولاً.", refundDone: "تم إرسال الاسترداد.", orderTotal: "إجمالي الطلب", empty: "لا توجد طلبات تنتظر المراجعة.", error: "تعذر تحميل هذه القائمة.", retry: "إعادة المحاولة", more: "عرض المزيد", open: "مراجعة التفاصيل", approve: "اعتماد المنتج", reject: "إعادته إلى المسودة", reason: "سبب العودة إلى المسودة", cancel: "إلغاء", save: "تسجيل القرار", actionError: "تعذرت مراجعة المنتج. حدّث القائمة وحاول مجدداً.", done: "تمت مراجعة المنتج.", confirm: "هل تريد نشر هذا المنتج؟" }
 } as const;
 
-const queueKeys = ["comments", "photos", "products", "articles", "refunds", "payouts"] as const;
+const queueKeys = ["comments", "photos", "products", "articles", "refunds", "payouts", "downloadLinks"] as const;
 type QueueKey = (typeof queueKeys)[number];
 
 function queueFromHash(): QueueKey | null {
@@ -45,6 +51,7 @@ export function AdminNotificationsWorkspace({ locale, onCountsChange }: { locale
   const c = copy[locale];
   const pc = payoutCopy[locale];
   const dc = decisionCopy[locale];
+  const dlc = downloadCopy[locale];
   const [activeQueue, setActiveQueue] = useState<QueueKey>("comments");
   const [visitedQueues, setVisitedQueues] = useState<QueueKey[]>(["comments"]);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -61,7 +68,8 @@ export function AdminNotificationsWorkspace({ locale, onCountsChange }: { locale
     { id: "products", label: c.products },
     { id: "articles", label: c.articles },
     { id: "refunds", label: c.refunds },
-    { id: "payouts", label: pc.title }
+    { id: "payouts", label: pc.title },
+    { id: "downloadLinks", label: dlc.title }
   ] as const;
   const [products, setProducts] = useState<AdminProductsPage["items"]>([]);
   const productRequest = useRef(0);
@@ -83,6 +91,9 @@ export function AdminNotificationsWorkspace({ locale, onCountsChange }: { locale
   const [refundFailedCursor, setRefundFailedCursor] = useState<string | null>(null);
   const refundKeys = useRef<Record<string, string>>({});
   const [payouts, setPayouts] = useState<Payout[]>([]);
+  const [downloadChanges, setDownloadChanges] = useState<DownloadChange[]>([]);
+  const [downloadError, setDownloadError] = useState("");
+  const [downloadMessage, setDownloadMessage] = useState("");
   const payoutRequest = useRef(0);
   const [payoutCursor, setPayoutCursor] = useState<string | null>(null);
   const [payoutLoading, setPayoutLoading] = useState(true);
@@ -164,12 +175,20 @@ export function AdminNotificationsWorkspace({ locale, onCountsChange }: { locale
     finally { if (request === payoutRequest.current) setPayoutLoading(false); }
   }, [c.error]);
 
+  const loadDownloadChanges = useCallback(async () => {
+    try {
+      const { data } = await api.get<DownloadChange[]>("/products/admin/download-link-requests");
+      setDownloadChanges(data); setDownloadError("");
+    } catch { setDownloadError(downloadCopy[locale].error); }
+  }, [locale]);
+
   useEffect(() => {
     if (activeQueue === "products") void loadProducts();
     if (activeQueue === "articles") void loadArticles();
     if (activeQueue === "refunds") void loadRefunds();
     if (activeQueue === "payouts") void loadPayouts();
-  }, [activeQueue, refreshKey, loadArticles, loadProducts, loadRefunds, loadPayouts]);
+    if (activeQueue === "downloadLinks") void loadDownloadChanges();
+  }, [activeQueue, refreshKey, loadArticles, loadProducts, loadRefunds, loadPayouts, loadDownloadChanges]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -234,6 +253,15 @@ export function AdminNotificationsWorkspace({ locale, onCountsChange }: { locale
     finally { setBusy(null); }
   }
 
+  async function reviewDownloadChange(id: string, status: "approved" | "rejected") {
+    setBusy(id); setDownloadError(""); setDownloadMessage("");
+    try {
+      await api.patch(`/products/admin/download-link-requests/${id}`, { status, ...(status === "rejected" ? { reason: reason.trim() } : {}) });
+      setRejectId(null); setReason(""); setDownloadMessage(dlc.done); await loadDownloadChanges(); void loadCounts();
+    } catch { setDownloadError(dlc.error); }
+    finally { setBusy(null); }
+  }
+
   async function issueRefund(item: Refund) {
     const attempt = item.order_item.order.payment_attempts[0];
     if (!attempt) return;
@@ -290,6 +318,19 @@ export function AdminNotificationsWorkspace({ locale, onCountsChange }: { locale
         {rejectId === item.id ? <form className={styles.reason} onSubmit={(event) => { event.preventDefault(); void reviewProduct(item.id, "draft"); }}><label>{c.reason}<textarea autoFocus required minLength={3} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} /></label><button type="button" onClick={() => setRejectId(null)}>{c.cancel}</button><button type="submit" disabled={busy !== null || reason.trim().length < 3}>{c.save}</button></form> : null}
       </article>)}</div>
       {productCursor ? <button className={styles.more} type="button" disabled={productLoading} onClick={() => void loadProducts(productCursor)}>{c.more}</button> : null}
+    </section>
+    <section id="notification-downloadLinks" className={`${styles.panel} ${styles.queue}`} role="tabpanel" aria-labelledby="notification-tab-downloadLinks" hidden={activeQueue !== "downloadLinks"}>
+      <h2>{dlc.title}</h2>
+      {downloadMessage ? <p role="status" className={styles.message}>{downloadMessage}</p> : null}
+      {downloadError ? <p role="alert" className={styles.error}>{downloadError} <button type="button" onClick={() => void loadDownloadChanges()}>{c.retry}</button></p> : null}
+      {!downloadChanges.length && !downloadError ? <p className={styles.empty}>{dlc.empty}</p> : null}
+      <div className={styles.rows}>{downloadChanges.map((item) => <article className={`${styles.row} ${styles.downloadRow}`} key={item.id}>
+        <div><strong>{item.offer.listing.product.title} · {item.offer.variant.name || `${item.link_index + 1}`}</strong><small>{item.offer.listing.seller.shop_name} · {item.requested_by.full_name} · {item.action === "edit" ? dlc.edit : dlc.remove}</small></div>
+        <Link href={`/${locale}/admin/products/${item.offer.listing.product.id}` as Route}>{c.open}</Link>
+        <div className={styles.downloadDetails}><small>{dlc.current}: {item.expected_title}</small><p dir="ltr">{item.expected_url}</p>{item.proposed_url ? <><small>{dlc.proposed}: {item.proposed_title}</small><p dir="ltr">{item.proposed_url}</p></> : null}</div>
+        <div className={styles.actions}><button type="button" disabled={busy !== null} onClick={() => void reviewDownloadChange(item.id, "approved")}>{dlc.approve}</button><button type="button" disabled={busy !== null} onClick={() => { setRejectId(`download:${item.id}`); setReason(""); }}>{dlc.reject}</button></div>
+        {rejectId === `download:${item.id}` ? <form className={styles.reason} onSubmit={(event) => { event.preventDefault(); void reviewDownloadChange(item.id, "rejected"); }}><label>{c.reason}<textarea autoFocus required minLength={3} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} /></label><button type="button" onClick={() => setRejectId(null)}>{c.cancel}</button><button type="submit" disabled={busy !== null || reason.trim().length < 3}>{c.save}</button></form> : null}
+      </article>)}</div>
     </section>
     <section id="notification-articles" className={`${styles.panel} ${styles.queue}`} role="tabpanel" aria-labelledby="notification-tab-articles" hidden={activeQueue !== "articles"}>
       <h2 id="notification-articles-title">{c.articles}</h2>

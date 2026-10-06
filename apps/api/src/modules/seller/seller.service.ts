@@ -17,6 +17,8 @@ import { AuthService } from "../auth/auth.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { assertSellerCommissionRates } from "./seller-commission";
 import type { CreateVendorDto, UpdateVendorDto } from "./dto/vendor.dto";
+import { vendorPermissions } from "./dto/vendor.dto";
+import type { CreateOwnShopDto } from "./dto/own-shop.dto";
 import type {
   CreateSellerAgentDto,
   CreateSellerInviteDto,
@@ -29,6 +31,32 @@ export class SellerService {
     private readonly prisma: PrismaService,
     private readonly authService: AuthService
   ) {}
+
+  async createOwnShop(adminUserId: string, input: CreateOwnShopDto): Promise<{ sellerId: string }> {
+    return this.prisma.$transaction(async (tx) => {
+      // Serialize repeated setup requests and account changes on the existing user.
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${adminUserId} FOR UPDATE`;
+      const user = await tx.users.findUnique({ where: { id: adminUserId }, select: { role: true, account_status: true } });
+      if (user?.role !== "platform_admin" || user.account_status !== "active") {
+        throw new ForbiddenException("An active platform administrator is required");
+      }
+      const existing = await tx.sellers.findUnique({ where: { user_id: adminUserId }, select: { id: true } });
+      // Setup is idempotent and must never reset suspended shops or revoked permissions.
+      if (existing) return { sellerId: existing.id };
+      const membership = await tx.seller_memberships.findFirst({ where: { user_id: adminUserId, active: true }, select: { seller_id: true } });
+      if (membership) throw new ConflictException("Transfer the existing seller membership before creating your own shop");
+      const seller = await tx.sellers.create({
+        data: {
+          user_id: adminUserId, shop_name: input.shopName, approved: true,
+          commission: new Prisma.Decimal(0), blog_review_required: false,
+          memberships: { create: { user_id: adminUserId, role: "admin" } },
+          permissions: { create: vendorPermissions.map((permission) => ({ permission, granted_by_id: adminUserId })) }
+        },
+        select: { id: true }
+      });
+      return { sellerId: seller.id };
+    });
+  }
 
   async listVendors() {
     const sellers = await this.prisma.sellers.findMany({

@@ -1,7 +1,7 @@
 "use client";
 import { ProductAiPanel } from "@/components/ai/ProductAiPanel";
 import { splitDownloadUrls, validDownloadUrls } from "../../lib/download-urls";
-import { DownloadLinkRows } from "@/components/product/DownloadLinkRows";
+import { DownloadLinkManager } from "@/components/product/DownloadLinkManager";
 
 import type {
   AdminProductDetails,
@@ -26,8 +26,10 @@ import { ProductTranslations } from "./ProductTranslations";
 import { ProductDescriptionEditor } from "@/components/product/ProductDescriptionEditor";
 import { ProductDescriptionTemplatePicker } from "@/components/product/ProductDescriptionTemplatePicker";
 import { mergeProductAiDescription, productDescriptionText } from "@/lib/product-description";
+import { productSummary } from "@/lib/product-seo";
 import { ProductChangesWorkspace } from "./ProductChangesWorkspace";
 import { LiveSeoPanel } from "@/components/seo/LiveSeoPanel";
+import { ProductOperationalStatus } from "./ProductOperationalStatus";
 import styles from "./AdminProductEditor.module.css";
 
 const COPY = {
@@ -285,7 +287,7 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
       price: current.price, currency: current.currency.trim().toUpperCase(),
       sellerSku: current.sellerSku.trim() || null, status: current.status,
       ...(offer.digital ? { digital: { fileReferences: splitDownloadUrls(current.fileReference),
-        ...(offer.digital.fileTitles.length === offer.digital.fileReferences.length ? { fileTitles: offer.digital.fileTitles } : {}),
+        ...(offer.digital.fileTitles.length === offer.digital.fileReferences.length && offer.digital.fileTitles.every((title) => title.trim()) ? { fileTitles: offer.digital.fileTitles } : {}),
         maxDownloads: Number(current.maxDownloads) } } : {}),
       ...(offer.physical ? { physical: { stock: Number(current.stock), weightGrams: Number(current.weightGrams),
         lengthCm: current.lengthCm ? Number(current.lengthCm) : null, widthCm: current.widthCm ? Number(current.widthCm) : null, heightCm: current.heightCm ? Number(current.heightCm) : null } } : {}),
@@ -311,9 +313,9 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
   if (loading && !product) return <main className={styles.state}><p>{c.loading}</p></main>;
   if (!product || !draft) return <main className={styles.state}><p role="alert">{error || c.loadError}</p><button type="button" onClick={() => void load()}>{c.retry}</button></main>;
 
-  const descriptionSource = productDescriptionText(draft.description).replace(/\s+/gu, " ").trim();
+  const descriptionSource = productSummary(productDescriptionText(draft.description));
   const seoDescription = descriptionSource
-    ? descriptionSource.length > 158 ? `${descriptionSource.slice(0, 155).trimEnd()}…` : descriptionSource
+    ? descriptionSource
     : `${draft.title} — ${TYPE_COPY[locale][product.type]} ${draft.category ? `· ${draft.category}` : ""} | Top GSM`.replace(/\s+/gu, " ");
   const selectedCategory = draft.categoryId && !categoryChoices.some((choice) => choice.id === draft.categoryId)
     ? { id: draft.categoryId, name: draft.category } : null;
@@ -326,8 +328,9 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
           <h1>{product.title}</h1>
         </div>
         <div className={styles.headerActions}>
-          <span className={styles.statusBadge}>{c[product.status]}</span>
+          <span className={styles.statusBadge} data-status={product.status}>{c[product.status]}</span>
           <Link className={styles.publicLink} href={productPublicPath(locale, product.slug) as Route} target="_blank" rel="noopener noreferrer">{c.publicPage}</Link>
+          <button className={styles.primaryButton} type="submit" form="product-catalog-form" disabled={Boolean(busy)}>{busy === "core" ? c.saving : c.save}</button>
         </div>
       </header>
       {error ? <p className={styles.error} role="alert">{error}</p> : null}
@@ -335,7 +338,7 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
 
       <div className={styles.layout}>
         <div className={styles.primary}>
-          <form id="product-catalog-form" className={styles.panel} onSubmit={saveCore} aria-busy={busy === "core"}>
+          <form id="product-catalog-form" className={styles.panel} data-tone="content" onSubmit={saveCore} aria-busy={busy === "core"}>
             <header className={styles.panelHeader}><h2>{sectionCopy.content}</h2><p>{c.catalogHint}</p></header>
             <div className={styles.formGrid}>
               <label className={styles.titleField}><span>{c.productTitle}</span><input required minLength={2} maxLength={200} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></label>
@@ -345,7 +348,6 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
                 <ProductDescriptionEditor locale={locale} label={c.description} value={draft.description} onChange={(description) => setDraft((current) => current ? { ...current, description } : current)} disabled={Boolean(busy)} />
               </div>
             </div>
-            <footer><button className={styles.primaryButton} type="submit" disabled={Boolean(busy)}>{busy === "core" ? c.saving : c.save}</button></footer>
           </form>
           <section className={styles.panel} aria-labelledby="product-seo-title">
             <header><h2 id="product-seo-title">{sectionCopy.seo}</h2><p>{sectionCopy.seoHint}</p></header>
@@ -375,7 +377,10 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
                         <label><span>{c.currency} ({product.currency})</span><select required value={value.currency} disabled={offer.currency === product.currency} onChange={(event) => update("currency", event.target.value)}><option value="USD">USD</option><option value="TOMAN">تومان</option></select></label>
                         <label><span>{c.sku}</span><input dir="ltr" maxLength={100} value={value.sellerSku} onChange={(event) => update("sellerSku", event.target.value)} /></label>
                         <label><span>{c.offerStatus}</span><select value={value.status} onChange={(event) => update("status", event.target.value)}><option value="draft">{c.draft}</option><option value="active">{c.active}</option><option value="archived">{c.archived}</option></select></label>
-                        {offer.digital ? <><div className={styles.wide}><DownloadLinkRows locale={locale} links={offer.digital.fileReferences.map((url, index) => ({ url, title: offer.digital?.fileTitles[index] ?? "" }))} disabled /></div><label><span>{c.downloads}</span><input required type="number" min={0} max={2147483647} value={value.maxDownloads} onChange={(event) => update("maxDownloads", event.target.value)} /></label></> : null}
+                        {offer.digital ? <><div className={styles.wide}><DownloadLinkManager locale={locale} offer={offer} mode="admin" onUpdated={(links) => {
+                          setProduct((current) => current ? { ...current, listings: current.listings.map((entry) => ({ ...entry, offers: entry.offers.map((item) => item.id === offer.id && item.digital ? { ...item, digital: { ...item.digital, fileReference: links[0]!.url, fileReferences: links.map((link) => link.url), fileTitles: links.map((link) => link.title) } } : item) })) } : current);
+                          setOffers((current) => ({ ...current, [offer.id]: { ...current[offer.id], fileReference: links.map((link) => link.url).join("\n") } }));
+                        }} /></div><label><span>{c.downloads}</span><input required type="number" min={0} max={2147483647} value={value.maxDownloads} onChange={(event) => update("maxDownloads", event.target.value)} /></label></> : null}
                         {offer.physical ? <><label><span>{c.stock}</span><input required type="number" min={0} max={2147483647} value={value.stock} onChange={(event) => update("stock", event.target.value)} /></label><label><span>{c.weight}</span><input required type="number" min={0} max={2147483647} value={value.weightGrams} onChange={(event) => update("weightGrams", event.target.value)} /></label>{(["lengthCm", "widthCm", "heightCm"] as const).map((field) => <label key={field}><span>{({ en: { lengthCm: "Length", widthCm: "Width", heightCm: "Height" }, fa: { lengthCm: "طول", widthCm: "عرض", heightCm: "ارتفاع" }, ar: { lengthCm: "الطول", widthCm: "العرض", heightCm: "الارتفاع" } })[locale][field]} (cm)</span><input type="number" min={1} max={1000} value={value[field]} onChange={(event) => update(field, event.target.value)} /></label>)}</> : null}
                         {offer.service ? <><label><span>{c.serviceType}</span><input required maxLength={100} value={value.serviceType} onChange={(event) => update("serviceType", event.target.value)} /></label><label><span>{c.hours}</span><input required type="number" min={1} max={10000} value={value.estimatedHours} onChange={(event) => update("estimatedHours", event.target.value)} /></label><label className={styles.wide}><span>{c.instructions}</span><textarea maxLength={5000} value={value.instructions} onChange={(event) => update("instructions", event.target.value)} /></label></> : null}
                       </div>
@@ -394,18 +399,6 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
             <header><h2 id="product-publication-title">{sectionCopy.publication}</h2></header>
             <label className={styles.boxField}><span>{c.status}</span><select form="product-catalog-form" value={draft.status} disabled={Boolean(busy)} onChange={(event) => setDraft({ ...draft, status: event.target.value as ProductStatus })}><option value="draft">{c.draft}</option><option value="pending_review">{c.pending_review}</option><option value="active">{c.active}</option><option value="archived">{c.archived}</option></select></label>
             <footer><button className={styles.primaryButton} type="submit" form="product-catalog-form" disabled={Boolean(busy)}>{busy === "core" ? c.saving : c.save}</button></footer>
-          </section>
-          <LiveSeoPanel locale={locale} input={{ kind: "product", title: draft.title, body: draft.description, hasCover: Boolean(product.image) }} />
-          <section className={styles.panel}>
-            <header><h2>{sectionCopy.productState}</h2></header>
-            <dl className={styles.facts}><div><dt>{c.kind}</dt><dd>{c[product.kind]}</dd></div><div><dt>{c.type}</dt><dd>{TYPE_COPY[locale][product.type]}</dd></div><div><dt>{c.owner}</dt><dd>{product.createdBy.shopName}</dd></div><div><dt>{c.variants}</dt><dd>{product.variants.length}</dd></div></dl>
-            <ProductTypeChange key={product.type} locale={locale} currentType={product.type} disabled={Boolean(busy)} onApply={changeType} />
-            {product.options.map((option) => <div className={styles.option} key={option.id}><strong>{option.name}</strong><p>{option.values.map((value) => value.value).join(" · ")}</p></div>)}
-          </section>
-          <section className={styles.panel} aria-labelledby="product-comments-title">
-            <header><h2 id="product-comments-title">{sectionCopy.comments}</h2><p>{sectionCopy.commentsHint}</p></header>
-            {commentError ? <p className={styles.boxHint} role="alert">{auxCopy.commentsError} <button type="button" onClick={() => setCommentRefresh((value) => value + 1)}>{c.retry}</button></p> : comments === null ? <p className={styles.boxHint}>{auxCopy.commentsLoading}</p> : comments.length ? <ul className={styles.commentList}>{comments.map((comment) => <li key={comment.id}><strong>{comment.authorName}</strong><p>{comment.body}</p></li>)}</ul> : <p className={styles.boxHint}>{sectionCopy.noComments}</p>}
-            <Link className={styles.textLink} href={`/${locale}/admin/settings/comments` as Route}>{sectionCopy.allComments}</Link>
           </section>
           <section className={styles.panel} aria-labelledby="product-categories-title">
             <header><h2 id="product-categories-title">{sectionCopy.categories}</h2></header>
@@ -430,6 +423,15 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
               <label className={styles.secondaryButton}>{product.image ? imageCopy.replace : imageCopy.choose}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={Boolean(busy)} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file); event.currentTarget.value = ""; }} /></label>
               {product.image ? <button className={styles.secondaryButton} type="button" disabled={Boolean(busy)} onClick={() => void removeImage()}>{imageCopy.remove}</button> : null}
             </div></div>
+          </section>
+          <ProductOperationalStatus locale={locale} product={product}>
+            <ProductTypeChange key={product.type} locale={locale} currentType={product.type} disabled={Boolean(busy)} onApply={changeType} />
+          </ProductOperationalStatus>
+          <LiveSeoPanel locale={locale} input={{ kind: "product", title: draft.title, body: draft.description, hasCover: Boolean(product.image) }} />
+          <section className={styles.panel} aria-labelledby="product-comments-title">
+            <header><h2 id="product-comments-title">{sectionCopy.comments}</h2><p>{sectionCopy.commentsHint}</p></header>
+            {commentError ? <p className={styles.boxHint} role="alert">{auxCopy.commentsError} <button type="button" onClick={() => setCommentRefresh((value) => value + 1)}>{c.retry}</button></p> : comments === null ? <p className={styles.boxHint}>{auxCopy.commentsLoading}</p> : comments.length ? <ul className={styles.commentList}>{comments.map((comment) => <li key={comment.id}><strong>{comment.authorName}</strong><p>{comment.body}</p></li>)}</ul> : <p className={styles.boxHint}>{sectionCopy.noComments}</p>}
+            <Link className={styles.textLink} href={`/${locale}/admin/settings/comments` as Route}>{sectionCopy.allComments}</Link>
           </section>
           <section className={styles.panel} aria-labelledby="product-seller-title">
             <header><h2 id="product-seller-title">{transferCopy.title}</h2><p>{transferCopy.hint}</p></header>

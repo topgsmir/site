@@ -31,7 +31,7 @@ const COPY = {
     quoteFailed: "Current prices could not be confirmed.", unavailable: "Some items are no longer available. Remove them to continue.", stockChanged: "An item no longer has the requested quantity. Remove it or choose a lower quantity.", destinationUnavailable: "Postal delivery is unavailable for this destination. Choose another province.", quoteChanged: "The total changed. Review the updated price and try again.", retry: "Try again", removeUnavailable: "Remove unavailable items",
     usdRate: "USD items are converted for payment at 1 USD =",
     coupon: "Discount code", applyCoupon: "Apply", removeCoupon: "Remove code", couponInvalid: "This discount code cannot be used for this cart.", discount: "Discount",
-    removed: "Item removed from your cart.", removedMany: "Unavailable items removed from your cart.", undo: "Undo",
+    removed: "Item removed from your cart.", removedMany: "Items removed from your cart.", undo: "Undo", removeHint: "Remove from cart. Use Undo to restore it.",
     otpSent: "Code sent to", otpExpires: "Code expires in", otpExpired: "This code has expired.", otpInvalid: "The code is incorrect or expired. Check it or send a new one.", resend: "Send again", resendIn: "Send again in", changePhone: "Change number", newBuyerHint: "New buyers also need to enter their name.", profileRequired: "For a new account, enter your name, then try again.", newCode: "Send a new code"
   },
   fa: {
@@ -47,7 +47,7 @@ const COPY = {
     quoteFailed: "بررسی قیمت‌های فعلی ممکن نبود.", unavailable: "بعضی محصولات دیگر در دسترس نیستند. برای ادامه آن‌ها را حذف کنید.", stockChanged: "موجودی یکی از محصولات برای این تعداد کافی نیست. تعداد را کم کنید یا محصول را حذف کنید.", destinationUnavailable: "ارسال پستی به این مقصد ممکن نیست. استان دیگری انتخاب کنید.", quoteChanged: "مبلغ تغییر کرده است. قیمت تازه را بررسی کنید و دوباره ادامه دهید.", retry: "تلاش دوباره", removeUnavailable: "حذف محصولات ناموجود",
     usdRate: "محصولات دلاری برای پرداخت با نرخ هر ۱ دلار =",
     coupon: "کد تخفیف", applyCoupon: "اعمال کد", removeCoupon: "حذف کد", couponInvalid: "این کد تخفیف برای این سبد خرید قابل استفاده نیست.", discount: "تخفیف",
-    removed: "محصول از سبد خرید حذف شد.", removedMany: "محصولات ناموجود از سبد خرید حذف شدند.", undo: "برگرداندن",
+    removed: "محصول از سبد خرید حذف شد.", removedMany: "محصولات از سبد خرید حذف شدند.", undo: "برگرداندن", removeHint: "حذف از سبد خرید؛ با «برگرداندن» می‌توانید آن را بازیابی کنید.",
     otpSent: "کد به این شماره فرستاده شد:", otpExpires: "مهلت استفاده از کد:", otpExpired: "مهلت این کد تمام شده است.", otpInvalid: "کد نادرست است یا مهلتش تمام شده. کد را بررسی کنید یا کد تازه بگیرید.", resend: "ارسال دوباره", resendIn: "ارسال دوباره تا", changePhone: "تغییر شماره", newBuyerHint: "اگر حساب تازه می‌سازید، نام خود را هم وارد کنید.", profileRequired: "برای ساخت حساب، نام خود را وارد و دوباره تلاش کنید.", newCode: "ارسال کد جدید"
   },
   ar: {
@@ -63,7 +63,7 @@ const COPY = {
     quoteFailed: "تعذر تأكيد الأسعار الحالية.", unavailable: "بعض المنتجات لم تعد متاحة. أزلها للمتابعة.", stockChanged: "الكمية المطلوبة لأحد المنتجات لم تعد متاحة. قلل الكمية أو أزل المنتج.", destinationUnavailable: "الشحن البريدي غير متاح لهذه الوجهة. اختر محافظة أخرى.", quoteChanged: "تغير الإجمالي. راجع السعر الجديد وحاول مجددًا.", retry: "حاول مجددًا", removeUnavailable: "إزالة المنتجات غير المتاحة",
     usdRate: "تُحوّل المنتجات المسعّرة بالدولار للدفع بسعر 1 دولار =",
     coupon: "رمز الخصم", applyCoupon: "تطبيق", removeCoupon: "إزالة الرمز", couponInvalid: "لا يمكن استخدام رمز الخصم لهذه السلة.", discount: "الخصم",
-    removed: "تمت إزالة المنتج من سلة التسوق.", removedMany: "تمت إزالة المنتجات غير المتاحة من سلة التسوق.", undo: "تراجع",
+    removed: "تمت إزالة المنتج من سلة التسوق.", removedMany: "تمت إزالة المنتجات من سلة التسوق.", undo: "تراجع", removeHint: "إزالة من السلة. استخدم «تراجع» لاستعادته.",
     otpSent: "أُرسل الرمز إلى", otpExpires: "تنتهي صلاحية الرمز خلال", otpExpired: "انتهت صلاحية هذا الرمز.", otpInvalid: "الرمز غير صحيح أو انتهت صلاحيته. تحقّق منه أو أرسل رمزًا جديدًا.", resend: "إرسال مجددًا", resendIn: "إعادة الإرسال خلال", changePhone: "تغيير الرقم", newBuyerHint: "إذا كنت تنشئ حسابًا جديدًا، فأدخل اسمك أيضًا.", profileRequired: "لإنشاء حساب جديد، أدخل اسمك ثم حاول مجددًا.", newCode: "إرسال رمز جديد"
   }
 } as const;
@@ -110,7 +110,7 @@ export function CartCheckout({ locale, signedInUser }: { locale: Locale; signedI
   const [clock, setClock] = useState(() => Date.now());
   const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>({});
   const [serviceAnswers, setServiceAnswers] = useState<Record<string, Record<string, string>>>({});
-  const [removedLines, setRemovedLines] = useState<RemovedLine[]>([]);
+  const [removedBatches, setRemovedBatches] = useState<RemovedLine[][]>([]);
   const checkoutKey = useRef(crypto.randomUUID());
   const quoteRequest = useRef(0);
   const quoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -210,8 +210,10 @@ export function CartCheckout({ locale, signedInUser }: { locale: Locale; signedI
       } else {
         void refresh(next);
       }
+      return true;
     } catch {
       setError(c.cartSaveFailed);
+      return false;
     }
   }
 
@@ -257,19 +259,30 @@ export function CartCheckout({ locale, signedInUser }: { locale: Locale; signedI
     const removed = new Set(offerIds);
     const lines = items.flatMap((item, index) => removed.has(item.offerId) ? [{ item, index }] : []);
     if (!lines.length) return;
-    persist(items.filter((item) => !removed.has(item.offerId)));
-    setRemovedLines(lines);
+    if (!persist(items.filter((item) => !removed.has(item.offerId)))) return;
+    setRemovedBatches((current) => [...current, lines]);
+    scheduleUndoExpiry();
+  }
+
+  function pauseUndoExpiry() {
     if (undoTimer.current) clearTimeout(undoTimer.current);
-    undoTimer.current = setTimeout(() => setRemovedLines([]), 6000);
+    undoTimer.current = null;
+  }
+
+  function scheduleUndoExpiry() {
+    pauseUndoExpiry();
+    undoTimer.current = setTimeout(() => setRemovedBatches([]), 10000);
   }
 
   function undoRemove() {
-    if (!removedLines.length) return;
+    if (!removedBatches.length) return;
     const restored = [...items];
-    for (const line of [...removedLines].sort((a, b) => a.index - b.index)) restored.splice(Math.min(line.index, restored.length), 0, line.item);
-    setRemovedLines([]);
-    if (undoTimer.current) clearTimeout(undoTimer.current);
-    persist(restored);
+    for (const batch of [...removedBatches].reverse()) {
+      for (const line of batch) restored.splice(Math.min(line.index, restored.length), 0, line.item);
+    }
+    if (!persist(restored)) return;
+    setRemovedBatches([]);
+    pauseUndoExpiry();
   }
 
   function updateNote(offerId: string, serviceNote: string) {
@@ -376,6 +389,8 @@ export function CartCheckout({ locale, signedInUser }: { locale: Locale; signedI
   const clubDraftAmount = Number(clubDraft || "0");
   const clubDraftValid = /^\d*$/.test(clubDraft) && Number.isSafeInteger(clubDraftAmount) && clubDraftAmount <= clubBalance - selectedRewardCost
     && (clubDraftAmount === 0 || Boolean(clubLimits && clubDraftAmount >= clubLimits.minPoints && clubDraftAmount <= clubLimits.maxPoints));
+  const actionDisabled = busy || quoteUpdating || Boolean(quoteIssue) || !quote;
+  const actionLabel = busy ? c.busy : !authenticated && (!challenge || otpRemaining === 0) ? (challenge ? c.newCode : c.sendCode) : !authenticated ? c.verify : c.pay;
 
   if (!hydrated) return <main className={styles.page} id="cart-content"><div className={styles.loading} role="status"><span /><p>{c.loading}</p></div></main>;
 
@@ -407,7 +422,7 @@ export function CartCheckout({ locale, signedInUser }: { locale: Locale; signedI
               <span>{c[productType]}</span>
             </div>
             <div className={styles.itemBody}>
-              <div className={styles.itemTop}><div><p>{group ? `${c.seller} ${group.seller.shopName}` : c[productType]}</p><h3>{item?.title ?? cartItem.productName ?? (quoteIssue ? c.productUnavailable : c.loading)}</h3></div><button className={styles.remove} type="button" onClick={() => removeOffers([cartItem.offerId])}>{c.remove}</button></div>
+              <div className={styles.itemTop}><div><p>{group ? `${c.seller} ${group.seller.shopName}` : c[productType]}</p><h3>{item?.title ?? cartItem.productName ?? (quoteIssue ? c.productUnavailable : c.loading)}</h3></div><button className={styles.remove} type="button" aria-label={`${c.remove}: ${item?.title ?? cartItem.productName ?? c.productUnavailable}`} title={c.removeHint} onClick={() => removeOffers([cartItem.offerId])}><DesignIcon name="trash" /></button></div>
               <div className={styles.itemBottom}><div className={styles.price}><strong>{item ? `${formatCurrencyAmount(item.totalAmount, quote?.currency ?? "TOMAN", locale)} ${currencyLabel(quote?.currency ?? "TOMAN")}` : "—"}</strong>{item ? <small>{c.each}: {formatCurrencyAmount(item.unitPrice, quote?.currency ?? "TOMAN", locale)} {currencyLabel(quote?.currency ?? "TOMAN")}</small> : null}</div><div className={styles.quantity}><span>{c.quantity}</span><div><button type="button" aria-label={`${c.quantity} −`} disabled={cartItem.quantity <= 1 && !quantityDrafts[cartItem.offerId]} onClick={() => adjustQuantity(cartItem.offerId, -1)}>−</button><input aria-label={c.quantity} type="number" inputMode="numeric" min={1} max={100} value={quantityDrafts[cartItem.offerId] ?? String(cartItem.quantity)} onChange={(event) => { if (/^\d{0,3}$/.test(event.target.value)) setQuantityDrafts((current) => ({ ...current, [cartItem.offerId]: event.target.value })); }} onBlur={() => commitQuantity(cartItem.offerId)} onKeyDown={(event) => handleQuantityKeyDown(event, cartItem.offerId)} /><button type="button" aria-label={`${c.quantity} +`} disabled={cartItem.quantity >= 100 && !quantityDrafts[cartItem.offerId]} onClick={() => adjustQuantity(cartItem.offerId, 1)}>+</button></div></div></div>
               {item?.productType === "service" ? <section className={styles.serviceDetails} aria-label={c.serviceDetails}>{item.serviceInputs.length ? <><header><strong>{c.serviceDetails}</strong><small>{c.secretHint}</small></header><div>{item.serviceInputs.map((field) => <label key={field.key}><span>{field.label}{field.required ? " *" : ""}</span>{field.type === "textarea" ? <textarea required={field.required} minLength={field.minimumLength} maxLength={field.maximumLength} placeholder={field.placeholder} value={serviceAnswers[cartItem.offerId]?.[field.key] ?? ""} onChange={(event) => updateServiceAnswer(cartItem.offerId, field.key, event.target.value)} /> : <input type={field.type === "password" ? "password" : "text"} autoComplete={field.type === "password" ? "off" : undefined} required={field.required} minLength={field.minimumLength} maxLength={field.maximumLength} placeholder={field.placeholder} value={serviceAnswers[cartItem.offerId]?.[field.key] ?? ""} onChange={(event) => updateServiceAnswer(cartItem.offerId, field.key, event.target.value)} />}{field.helpText ? <small>{field.helpText}</small> : null}</label>)}</div></> : null}<label className={styles.note}><span>{c.serviceNote}</span><textarea maxLength={2000} value={cartItem.serviceNote ?? ""} placeholder={c.serviceNoteHint} onChange={(event) => updateNote(cartItem.offerId, event.target.value)} /></label></section> : null}
             </div>
@@ -415,7 +430,11 @@ export function CartCheckout({ locale, signedInUser }: { locale: Locale; signedI
         })}</div>
       </section>
       <aside className={styles.summary}>
-        <div className={styles.summaryTitle}><div><p>{c.summary}</p><span>{number.format(itemCount)} {itemCount === 1 ? c.item : c.items}</span></div>{quote ? <><strong>{formatCurrencyAmount(quote.totalAmount, quote.currency, locale)} <small>{currencyLabel(quote.currency)}</small></strong>{quoteUpdating ? <span className={styles.updating} role="status">{c.updating}</span> : null}</> : <span className={styles.pricePlaceholder}>{c.loading}</span>}</div>
+        <div className={styles.summaryPurchase}>
+          <div className={styles.summaryTitle}><div><p>{c.summary}</p><span>{number.format(itemCount)} {itemCount === 1 ? c.item : c.items}</span></div>{quote ? <><strong>{formatCurrencyAmount(quote.totalAmount, quote.currency, locale)} <small>{currencyLabel(quote.currency)}</small></strong>{quoteUpdating ? <span className={styles.updating} role="status">{c.updating}</span> : null}</> : <span className={styles.pricePlaceholder}>{c.loading}</span>}</div>
+          <button className={`${styles.primary} ${styles.desktopAction}`} type="submit" disabled={actionDisabled}>{actionLabel}<DesignIcon name="arrow" /></button>
+        </div>
+        <div className={styles.summaryDetails}>
         <div className={styles.couponControl}><label><span>{c.coupon}</span><input value={couponDraft} maxLength={32} pattern="[A-Za-z0-9][A-Za-z0-9_-]{2,31}" onChange={(event) => setCouponDraft(event.target.value.toUpperCase())} /></label><button type="button" disabled={!couponDraft.trim() || quoteUpdating} onClick={() => { checkoutKey.current = crypto.randomUUID(); setQuoteUpdating(true); const code = couponDraft.trim(); if (code === appliedCouponCode) void refresh(items); else setAppliedCouponCode(code); }}>{c.applyCoupon}</button>{appliedCouponCode ? <button type="button" onClick={() => { checkoutKey.current = crypto.randomUUID(); setQuoteUpdating(true); setAppliedCouponCode(""); setCouponDraft(""); }}>{c.removeCoupon}</button> : null}</div>
         {authenticated && clubEnabled ? <div className={styles.couponControl}><label><span>{locale === "fa" ? "امتیاز باشگاه" : locale === "ar" ? "نقاط النادي" : "Club points"} · {number.format(clubBalance)}</span><input type="number" min="0" max={Math.min(clubBalance - selectedRewardCost, clubLimits?.maxPoints ?? clubBalance)} step="1" inputMode="numeric" value={clubDraft} onChange={(event) => setClubDraft(event.target.value)} />{clubLimits ? <small>{locale === "fa" ? "حداقل / حداکثر" : locale === "ar" ? "الحد الأدنى / الأعلى" : "Minimum / maximum"}: {number.format(clubLimits.minPoints)} / {number.format(clubLimits.maxPoints)}</small> : null}</label><button type="button" disabled={quoteUpdating || !clubDraftValid} onClick={() => { checkoutKey.current = crypto.randomUUID(); setClubPoints(clubDraftAmount); }}>{locale === "fa" ? "اعمال" : locale === "ar" ? "تطبيق" : "Apply"}</button><label><span>{locale === "fa" ? "جایزه تخفیف" : locale === "ar" ? "مكافأة الخصم" : "Discount reward"}</span><select value={clubRewardId} onChange={(event) => { checkoutKey.current = crypto.randomUUID(); setClubRewardId(event.target.value); }}><option value="">{locale === "fa" ? "بدون جایزه" : locale === "ar" ? "دون مكافأة" : "No reward"}</option>{clubRewards.map((reward) => <option key={reward.id} value={reward.id} disabled={reward.points_cost + clubPoints > clubBalance}>{locale === "fa" ? reward.name_fa : locale === "ar" ? reward.name_ar : reward.name_en} · {number.format(reward.points_cost)}</option>)}</select></label></div> : null}
         {quote && quote.couponCode && quote.discountAmount !== "0" ? <p className={styles.discountLine}><span>{c.discount} ({quote.couponCode})</span><strong>−{formatCurrencyAmount((BigInt(quote.discountAmount) - BigInt(quote.clubDiscountAmount)).toString(), quote.currency, locale)} {currencyLabel(quote.currency)}</strong></p> : null}
@@ -427,10 +446,14 @@ export function CartCheckout({ locale, signedInUser }: { locale: Locale; signedI
         {!authenticated ? <fieldset><legend>{c.signin}</legend><p className={styles.fieldHint}>{c.signinHint}</p><label><span>{c.phone}</span><input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} inputMode="tel" autoComplete="tel" pattern="(?:\+98|0098|98|0)?9[0-9]{9}" disabled={Boolean(challenge)} required /></label>{challenge ? <><div className={styles.otpMeta}><p>{c.otpSent} <b dir="ltr">{challenge.requestedPhone}</b></p><button type="button" onClick={changePhone}>{c.changePhone}</button></div><p className={otpRemaining === 0 ? styles.otpExpired : styles.otpTimer} role={otpRemaining === 0 ? "status" : undefined}>{otpRemaining === 0 ? c.otpExpired : `${c.otpExpires} ${formatCountdown(otpRemaining, locale)}`}</p>{otpRemaining > 0 ? <label><span>{c.code}</span><input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" autoFocus required /></label> : null}<p className={styles.fieldHint}>{c.newBuyerHint}</p><label><span>{c.fullName}</span><input name="fullName" autoComplete="name" minLength={2} maxLength={120} /></label><button className={styles.resend} type="button" disabled={busy || resendRemaining > 0} onClick={() => void resendOtp()}>{resendRemaining > 0 ? `${c.resendIn} ${formatCountdown(resendRemaining, locale)}` : c.resend}</button></> : null}</fieldset> : null}
         {quoteIssue ? <div className={styles.quoteError} role="alert"><p>{quoteIssue.message}</p><div><button type="button" onClick={() => void refresh(items)} disabled={quoteUpdating}>{c.retry}</button>{quoteIssue.offerIds.length ? <button type="button" onClick={() => removeOffers(quoteIssue.offerIds)}>{c.removeUnavailable}</button> : null}{appliedCouponCode ? <button type="button" onClick={() => { checkoutKey.current = crypto.randomUUID(); setAppliedCouponCode(""); setCouponDraft(""); }}>{c.removeCoupon}</button> : null}</div></div> : null}
         {error ? <p className={styles.error} role="alert">{error}</p> : null}
-        <button className={styles.primary} type="submit" disabled={busy || quoteUpdating || Boolean(quoteIssue) || !quote}>{busy ? c.busy : !authenticated && (!challenge || otpRemaining === 0) ? (challenge ? c.newCode : c.sendCode) : !authenticated ? c.verify : c.pay}<DesignIcon name="arrow" /></button>
         <div className={styles.secureNote}><DesignIcon name="check" /><p>{c.secure}<small>{c.external}</small></p></div>
+        </div>
       </aside>
+      <div className={styles.mobileAction}>
+        <div className={styles.mobileActionTotal}><span>{quoteUpdating ? c.updating : c.summary}</span><strong>{quote ? `${formatCurrencyAmount(quote.totalAmount, quote.currency, locale)} ${currencyLabel(quote.currency)}` : c.loading}</strong></div>
+        <button className={styles.primary} type="submit" disabled={actionDisabled}>{actionLabel}<DesignIcon name="arrow" /></button>
+      </div>
     </form>}
-    {removedLines.length ? <div className={styles.undoNotice} role="status" aria-live="polite"><span>{removedLines.length > 1 ? c.removedMany : c.removed}</span><button type="button" onClick={undoRemove}>{c.undo}</button></div> : null}
+    {removedBatches.length ? <div className={styles.undoNotice} role="status" aria-live="polite" onMouseEnter={pauseUndoExpiry} onMouseLeave={(event) => { if (!event.currentTarget.contains(document.activeElement)) scheduleUndoExpiry(); }} onFocusCapture={pauseUndoExpiry} onBlurCapture={(event) => { if (!event.currentTarget.matches(":hover") && !event.currentTarget.contains(event.relatedTarget as Node | null)) scheduleUndoExpiry(); }}><span>{removedBatches.reduce((count, batch) => count + batch.length, 0) > 1 ? c.removedMany : c.removed}</span><button type="button" onClick={undoRemove}>{c.undo}</button></div> : null}
   </main>;
 }

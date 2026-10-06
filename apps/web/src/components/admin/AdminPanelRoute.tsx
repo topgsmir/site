@@ -17,6 +17,7 @@ export type AdminSection =
   | "coupons"
   | "marketing"
   | "club"
+  | "sales-configuration"
   | "orders"
   | "order-detail"
   | "payment-transactions"

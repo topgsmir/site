@@ -394,6 +394,7 @@ export interface AdminProductsPage {
 
 export interface AdminProductDetails extends AdminProductSummary {
   createdBy: { id: string; shopName: string };
+  bridgePurchaseLimits: { minimumQuantity: number; maximumQuantity: number } | null;
   options: Array<{
     id: string;
     name: string;
@@ -407,7 +408,7 @@ export interface AdminProductDetails extends AdminProductSummary {
   listings: Array<{
     id: string;
     status: SellerListingStatus;
-    seller: { id: string; shopName: string };
+    seller: { id: string; shopName: string; commissionRate: number; shippingProfileEnabled: boolean; shippingReady: boolean };
     offers: SellerProductOffer[];
     createdAt: string;
     updatedAt: string;

@@ -7,6 +7,7 @@ import { ProductTypeChange, type TypeChangePayload } from "@/components/product/
 import { mergeProductAiDescription, productDescriptionText } from "@/lib/product-description";
 import { validDownloadLinks, type DownloadLink } from "@/lib/download-links";
 import { DownloadLinkRows } from "@/components/product/DownloadLinkRows";
+import { DownloadLinkManager } from "@/components/product/DownloadLinkManager";
 
 import axios from "axios";
 import type { Route } from "next";
@@ -50,12 +51,14 @@ import creation from "./ProductCreation.module.css";
 import navigationStyles from "@/components/dashboard/DashboardNavigation.module.css";
 import { AnalyticsOverview } from "@/components/analytics/AnalyticsOverview";
 import { PanelOverview } from "@/components/dashboard/PanelOverview";
+import { PanelTopbar } from "@/components/dashboard/PanelTopbar";
+import panelStyles from "@/components/dashboard/PanelShell.module.css";
 import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
 import { useNewOrderCount } from "@/components/dashboard/useNewOrderCount";
 import { DashboardMobileNavigation } from "@/components/dashboard/DashboardMobileNavigation";
 import { UploadCenterNavigation } from "@/components/dashboard/UploadCenterNavigation";
 
-type DashboardSection = "overview" | "statistics" | "products" | "uploads" | "profile" | "blog" | "coupons" | "marketing" | "orders" | "customers" | "shipping" | "payouts" | "bridge";
+type DashboardSection = "overview" | "statistics" | "products" | "uploads" | "profile" | "blog" | "coupons" | "marketing" | "orders" | "customers" | "shipping" | "payouts" | "bridge" | "sales-configuration";
 type RequestState = "idle" | "loading" | "error" | "success";
 
 const FILTER_COPY = {
@@ -124,6 +127,10 @@ type DashboardCopy = {
   workspace: string;
   overview: string;
   statistics: string;
+  reports: string;
+  salesConfiguration: string;
+  salesConfigurationHint: string;
+  noSalesConfiguration: string;
   productService: string;
   sellService: string;
   products: string;
@@ -244,6 +251,10 @@ const COPY: Record<Locale, DashboardCopy> = {
     workspace: "Seller workspace",
     overview: "Overview",
     statistics: "Statistics",
+    reports: "Reports",
+    salesConfiguration: "Configuration",
+    salesConfigurationHint: "Manage the sales tools available to your shop.",
+    noSalesConfiguration: "No sales settings are available for this account.",
     productService: "Products service",
     sellService: "Sales service",
     products: "Products",
@@ -355,12 +366,16 @@ const COPY: Record<Locale, DashboardCopy> = {
     workspace: "فضای کاری فروشنده",
     overview: "نمای کلی",
     statistics: "آمار",
+    reports: "گزارشات",
+    salesConfiguration: "پیکربندی",
+    salesConfigurationHint: "ابزارهای فروش در دسترس فروشگاه را مدیریت کنید.",
+    noSalesConfiguration: "تنظیمات فروشی برای این حساب در دسترس نیست.",
     productService: "سرویس محصولات",
     sellService: "سرویس فروش",
     products: "محصولات",
     uploads: "بارگذاری‌ها",
     blog: "وبلاگ",
-    coupons: "کدهای تخفیف",
+    coupons: "کد تخفیف",
     marketing: "بازاریابی",
     orders: "سفارش‌ها",
     customers: "جستجوی مشتری",
@@ -466,6 +481,10 @@ const COPY: Record<Locale, DashboardCopy> = {
     workspace: "مساحة عمل البائع",
     overview: "نظرة عامة",
     statistics: "الإحصاءات",
+    reports: "التقارير",
+    salesConfiguration: "الإعدادات",
+    salesConfigurationHint: "إدارة أدوات المبيعات المتاحة لمتجرك.",
+    noSalesConfiguration: "لا تتوفر إعدادات مبيعات لهذا الحساب.",
     productService: "خدمة المنتجات",
     sellService: "خدمة المبيعات",
     products: "المنتجات",
@@ -628,6 +647,7 @@ function Icon({ name }: { name: DashboardSection | "sales" | "plus" | "search" |
     coupons: <><path d="M4 7a3 3 0 0 0 3-3h13v6a2 2 0 0 0 0 4v6H7a3 3 0 0 0-3-3z"/><path d="M12 7v2M12 11v2M12 15v2"/></>,
     marketing: <><circle cx="7" cy="12" r="3"/><circle cx="17" cy="7" r="3"/><path d="M10 11l4-3M9 14l6 5M15 19h5"/></>,
     orders: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></>,
+    "sales-configuration": <><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></>,
     customers: <><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 8a3 3 0 0 1 0 6M18 16a4 4 0 0 1 3 4"/></>,
     shipping: <><path d="M3 6h11v10H3z"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></>,
     profile: <><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></>,
@@ -1074,8 +1094,8 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
   }
 
   const sellServiceNavigation: Array<{ id: DashboardSection; label: string }> = [
-    ...(hasAnalytics
-      ? [{ id: "statistics" as const, label: copy.statistics }]
+    ...(canManageOrders
+      ? [{ id: "orders" as const, label: copy.orders }]
       : []),
     ...(user.permissions?.includes("coupons_manage")
       ? [{ id: "coupons" as const, label: copy.coupons }]
@@ -1083,20 +1103,15 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
     ...(user.permissions?.includes("products_manage")
       ? [{ id: "marketing" as const, label: copy.marketing }]
       : []),
-    ...(canManageOrders
-      ? [{ id: "orders" as const, label: copy.orders }, { id: "customers" as const, label: copy.customers }]
+    ...(hasAnalytics
+      ? [{ id: "statistics" as const, label: copy.reports }]
       : []),
-    ...(user.permissions?.includes("physical_products_manage")
-      ? [{ id: "shipping" as const, label: copy.shipping }]
-      : []),
-    ...(process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true"
-      ? [{ id: "bridge" as const, label: copy.bridge }]
-      : [])
+    { id: "sales-configuration", label: copy.salesConfiguration }
   ];
   const productServiceExpanded = section === "products" || productServiceOpen;
   const secondaryNavigation: Array<{ id: DashboardSection; label: string }> = [
     { id: "uploads", label: copy.uploads },
-    ...(user.role === "seller-admin"
+    ...(user.role === "seller-admin" || user.role === "platform-admin"
       ? [{ id: "profile" as const, label: copy.profile }]
       : []),
     ...(user.permissions?.includes("blog_manage")
@@ -1104,17 +1119,18 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
       : []),
     { id: "payouts", label: copy.payouts }
   ];
-  const isSellServiceSection = sellServiceNavigation.some((item) => item.id === section);
+  const isSellServiceSection = sellServiceNavigation.some((item) => item.id === section) || section === "customers" || section === "shipping" || section === "bridge";
   const sellServiceExpanded = isSellServiceSection || sellServiceOpen;
+  const sectionLabel = section === "sales-configuration" ? copy.salesConfiguration : section === "statistics" ? copy.reports : copy[section];
 
   return (
-    <div className={styles.shell}>
-      <DashboardMobileNavigation locale={locale} title={copy.workspace} currentLabel={copy[section]} shortcuts={[
+    <div className={`${styles.shell} ${panelStyles.shell}`}>
+      <DashboardMobileNavigation locale={locale} title={copy.workspace} currentLabel={sectionLabel} shortcuts={[
         { label: copy.overview, icon: <Icon name="overview" />, active: section === "overview", onClick: () => selectSection("overview") },
         ...(canManageOrders ? [{ label: copy.orders, icon: <Icon name="orders" />, active: section === "orders", count: newOrderCount, onClick: () => selectSection("orders") }] : []),
         { label: copy.products, icon: <Icon name="products" />, active: section === "products", onClick: () => selectSection("products") }
       ]}>
-      <aside className={styles.rail} data-navigation-surface data-mobile-open={true}>
+      <aside className={`${styles.rail} ${panelStyles.rail}`} data-navigation-surface data-mobile-open={true}>
         <div className={styles.brandBlock}>
           <span className={styles.brandIdentity}>
             <strong dir="ltr" translate="no">topgsm.</strong>
@@ -1177,7 +1193,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
                   className={navigationStyles.item}
                   type="button"
                   key={item.id}
-                  aria-current={section === item.id ? "page" : undefined}
+                  aria-current={section === item.id || (item.id === "orders" && section === "customers") || (item.id === "sales-configuration" && (section === "shipping" || section === "bridge")) ? "page" : undefined}
                   onClick={() => selectSection(item.id)}
                   data-state="default"
                 >
@@ -1229,10 +1245,11 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
       </aside>
       </DashboardMobileNavigation>
 
-      <main className={styles.main} tabIndex={-1}>
+      <main className={`${styles.main} ${panelStyles.main}`} tabIndex={-1}>
+        <PanelTopbar locale={locale} name={user.fullName} audience="seller" canSwitchWorkspace={user.role === "platform-admin"} />
         {(["products", "bridge", "payouts"] as DashboardSection[]).includes(section) ? <header className={styles.pageHeader}>
           <div>
-            <h1 id={section === "products" ? "products-title" : undefined}>{copy[section]}</h1>
+            <h1 id={section === "products" ? "products-title" : undefined}>{sectionLabel}</h1>
             {section === "products" ? <p>{copy.productsDescription}</p> : null}
           </div>
           {section === "products" ? (
@@ -1319,12 +1336,32 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
           {section === "coupons" ? <SellerCoupons locale={locale} /> : null}
           {section === "marketing" ? <MarketingWorkspace locale={locale} admin={false} /> : null}
 
+          {section === "sales-configuration" ? (
+            <section className={styles.salesConfiguration} aria-labelledby="sales-configuration-title">
+              <header>
+                <h1 id="sales-configuration-title">{copy.salesConfiguration}</h1>
+                <p>{copy.salesConfigurationHint}</p>
+              </header>
+              <div className={styles.salesActions}>
+                {user.permissions?.includes("physical_products_manage") ? <button type="button" className={styles.secondaryButton} onClick={() => selectSection("shipping")}><Icon name="shipping" />{copy.shipping}</button> : null}
+                {process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true" ? <button type="button" className={styles.secondaryButton} onClick={() => selectSection("bridge")}><Icon name="bridge" />{copy.bridge}</button> : null}
+              </div>
+              {!user.permissions?.includes("physical_products_manage") && process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED !== "true" ? <p>{copy.noSalesConfiguration}</p> : null}
+            </section>
+          ) : null}
+
           {section === "blog" ? <SellerBlogPanel locale={locale} /> : null}
           {section === "uploads" ? <SellerUploads locale={locale} /> : null}
 
           {section === "bridge" ? <SellerBridgeWorkspace locale={locale} /> : null}
 
-          {section === "orders" ? <SellerOrders locale={locale} onOrderUpdated={refreshNewOrderCount} /> : null}
+          {section === "orders" ? <>
+            <div className={styles.salesActions}>
+              <button type="button" className={styles.secondaryButton} onClick={() => selectSection("customers")}><Icon name="customers" />{copy.customers}</button>
+              {process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED === "true" ? <button type="button" className={styles.secondaryButton} onClick={() => selectSection("bridge")}><Icon name="bridge" />{copy.bridge}</button> : null}
+            </div>
+            <SellerOrders locale={locale} onOrderUpdated={refreshNewOrderCount} />
+          </> : null}
 
           {section === "customers" ? <SellerCustomers locale={locale} initialCustomerId={initialCustomerId} /> : null}
 
@@ -1356,7 +1393,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
           <section ref={productEditorRef} className={styles.productEditor} role="dialog" aria-modal="true" aria-labelledby="product-editor-title">
             <header><div><h2 id="product-editor-title">{copy.editProduct}</h2><p>{copy.editProductDescription}</p></div><button className={styles.textButton} type="button" onClick={() => setEditingProduct(null)}>{copy.cancel}</button></header>
             {editError ? <p className={styles.inlineError} role="alert">{editError}</p> : null}
-            <ProductTypeChange key={`${editingProduct.product.id}:${editingProduct.product.type}`} locale={locale} currentType={editingProduct.product.type} disabled={editState === "loading"} physicalAllowed={Boolean(user.permissions?.includes("physical_products_manage"))} onApply={changeProductType} />
+            {editingProduct.product.canEdit ? <><ProductTypeChange key={`${editingProduct.product.id}:${editingProduct.product.type}`} locale={locale} currentType={editingProduct.product.type} disabled={editState === "loading"} physicalAllowed={Boolean(user.permissions?.includes("physical_products_manage"))} onApply={changeProductType} />
             <form onSubmit={updateProduct} aria-busy={editState === "loading"}>
               <ProductAiPanel key={editingProduct.product.id} locale={locale} disabled={editState === "loading"} value={{ title: editDraft.title, description: productDescriptionText(editDraft.description), category: editDraft.category }} onChange={(value) => setEditDraft((current) => mergeProductAiDescription(current, value))} />
               <section className={styles.productImageEditor}>
@@ -1379,7 +1416,12 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
               <LiveSeoPanel key={editingProduct.product.id} locale={locale} input={{ kind: "product", title: editDraft.title, body: editDraft.description, hasCover: Boolean(editingProduct.product.image) }} />
               <label className={styles.field}><span>{copy.publishState}</span><select value={editDraft.status} onChange={(event) => setEditDraft((current) => ({ ...current, status: event.target.value as ProductStatus }))}><option value="draft">{copy.draft}</option><option value="active">{copy.active}</option><option value="pending_review">{copy.pending_review}</option><option value="archived">{copy.archived}</option></select></label>
               <footer><button className={styles.secondaryButton} type="button" onClick={() => setEditingProduct(null)}>{copy.cancel}</button><button className={styles.primaryButton} type="submit" disabled={editState === "loading"}>{editState === "loading" ? copy.savingChanges : copy.saveChanges}</button></footer>
-            </form>
+            </form></> : null}
+            {editingProduct.product.type === "digital" ? editingProduct.offers.filter((offer) => offer.digital).map((offer) => <DownloadLinkManager key={offer.id} locale={locale} offer={offer} mode="seller" onUpdated={(links) => {
+                const update = (listing: SellerListing) => ({ ...listing, offers: listing.offers.map((item) => item.id === offer.id && item.digital ? { ...item, digital: { ...item.digital, fileReference: links[0]!.url, fileReferences: links.map((link) => link.url), fileTitles: links.map((link) => link.title) } } : item) });
+                setEditingProduct((current) => current ? update(current) : current);
+                setListings((current) => current.map((listing) => listing.id === editingProduct.id ? update(listing) : listing));
+              }} />) : null}
           </section>
         </div>
       ) : null}
@@ -1707,7 +1749,7 @@ function ProductList({
                 <span className={styles.statusBadge} data-status={listing.product.status}>{statusLabel(listing.product.status, copy)}</span>
               </td>
               <td data-label={copy.actions}>
-                {listing.product.canEdit ? (
+                {listing.product.canEdit || (listing.product.type === "digital" && listing.offers.some((offer) => offer.digital)) ? (
                   <button className={styles.textButton} type="button" onClick={() => onEdit(listing)}>
                     {copy.editProduct}
                   </button>

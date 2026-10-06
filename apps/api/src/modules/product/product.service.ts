@@ -138,6 +138,7 @@ const adminProductSelect = {
 const adminProductDetailSelect = {
   ...adminProductSelect,
   created_by: { select: { id: true, shop_name: true } },
+  bridge_binding: { select: { minimum_quantity: true, maximum_quantity: true } },
   options: {
     orderBy: [{ position: "asc" }, { id: "asc" }],
     select: {
@@ -164,7 +165,11 @@ const adminListingSelect = {
   status: true,
   created_at: true,
   updated_at: true,
-  seller: { select: { id: true, shop_name: true } },
+  seller: { select: {
+    id: true, shop_name: true, commission: true, commission_digital: true,
+    commission_physical: true, commission_service: true, commission_bridge: true,
+    shipping_profile: { select: { enabled: true, latitude: true, longitude: true } }
+  } },
   offers: sellerListingSelect.offers
 } satisfies Prisma.seller_listingsSelect;
 
@@ -1862,7 +1867,7 @@ export class ProductService {
     if (input.digital) {
       const hosts = this.config.get<string>("UPLOAD_DOWNLOAD_HOSTS") ?? "";
       const urls = input.digital.fileReferences ?? [input.digital.fileReference!];
-      if (hosts && !urls.every((url) => isAllowedUnsignedFileUrl(url, hosts))) {
+      if (!hosts || !urls.every((url) => isAllowedUnsignedFileUrl(url, hosts))) {
         throw new BadRequestException("Download links must be unsigned HTTPS file URLs on a configured upload host");
       }
     }
@@ -2183,7 +2188,11 @@ export class ProductService {
       for (const offer of offers) {
         if (nextType === "digital" && input.typeChangeDigital) {
           const urls = input.typeChangeDigital.fileReferences ?? [input.typeChangeDigital.fileReference!];
-          await tx.seller_offer_digital.create({ data: { offer_id: offer.id, file_reference: urls[0]!, file_references: urls, max_downloads: input.typeChangeDigital.maxDownloads } });
+          const hosts = this.config.get<string>("UPLOAD_DOWNLOAD_HOSTS") ?? "";
+          if (!hosts || !urls.every((url) => isAllowedUnsignedFileUrl(url, hosts))) {
+            throw new BadRequestException("Download links must be unsigned HTTPS file URLs on a configured upload host");
+          }
+          await tx.seller_offer_digital.create({ data: { offer_id: offer.id, file_reference: urls[0]!, file_references: urls, file_titles: this.downloadTitles(input.typeChangeDigital), max_downloads: input.typeChangeDigital.maxDownloads } });
         }
         if (nextType === "physical" && input.typeChangePhysical) await tx.seller_offer_physical.create({ data: { offer_id: offer.id, stock: input.typeChangePhysical.stock, weight_grams: input.typeChangePhysical.weightGrams } });
         if (nextType === "service" && input.typeChangeService) await tx.seller_offer_service.create({ data: { offer_id: offer.id, service_type: this.clean(input.typeChangeService.serviceType), estimated_hours: input.typeChangeService.estimatedHours, instructions: this.cleanOptional(input.typeChangeService.instructions), input_schema: this.serviceInputSchema(input.typeChangeService.inputs) } });
@@ -2233,6 +2242,10 @@ export class ProductService {
         id: product.created_by.id,
         shopName: product.created_by.shop_name
       },
+      bridgePurchaseLimits: product.bridge_binding ? {
+        minimumQuantity: product.bridge_binding.minimum_quantity,
+        maximumQuantity: product.bridge_binding.maximum_quantity
+      } : null,
       options: product.options.map((option) => ({
         id: option.id,
         name: option.name,
@@ -2248,7 +2261,11 @@ export class ProductService {
         status: listing.status,
         seller: {
           id: listing.seller.id,
-          shopName: listing.seller.shop_name
+          shopName: listing.seller.shop_name,
+          commissionRate: Number(listing.seller[`commission_${product.type}`] ?? listing.seller.commission),
+          shippingProfileEnabled: listing.seller.shipping_profile?.enabled ?? false,
+          shippingReady: Boolean(listing.seller.shipping_profile?.enabled &&
+            listing.seller.shipping_profile.latitude != null && listing.seller.shipping_profile.longitude != null)
         },
         offers: listing.offers.map((offer) => ({
           id: offer.id,

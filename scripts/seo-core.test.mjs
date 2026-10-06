@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { partitionCount, partitionEntries, sitemapXml, sitemapIndexXml, staticEntries } from "../apps/web/src/lib/sitemap-core.ts";
 import { catalogQuery, cursorFrom, listingHref } from "../apps/web/src/lib/seo.ts";
-import { schemaPrice } from "../apps/web/src/lib/product-seo.ts";
+import { productSummary, schemaPrice } from "../apps/web/src/lib/product-seo.ts";
 import { multiplyCurrencyAmount } from "../apps/web/src/lib/currency.ts";
 
 describe("purchase totals", () => {
@@ -22,6 +22,19 @@ describe("product structured-data currency", () => {
     assert.equal(schemaPrice("0.05", "TOMAN").price, "0.5");
     assert.deepEqual(schemaPrice("12.50", "USD"), { price: "12.50", priceCurrency: "USD" });
     assert.throws(() => schemaPrice("invalid", "TOMAN"));
+  });
+});
+
+describe("product summary and meta description", () => {
+  it("uses the first paragraph as the shared description and responds to edits", () => {
+    assert.equal(productSummary("  First paragraph.  \n\nSecond paragraph."), "First paragraph.");
+    assert.equal(productSummary("Updated summary.\n\nSecond paragraph."), "Updated summary.");
+    assert.equal(productSummary("  \n Second paragraph."), "Second paragraph.");
+  });
+  it("limits the shared description by Unicode characters", () => {
+    const summary = productSummary("😀".repeat(160));
+    assert.equal(Array.from(summary).length, 158);
+    assert.equal(summary, `${"😀".repeat(157)}…`);
   });
 });
 

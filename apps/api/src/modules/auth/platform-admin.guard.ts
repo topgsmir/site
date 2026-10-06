@@ -13,6 +13,7 @@ export type AuthenticatedRequest = {
   headers: {
     cookie?: string;
     authorization?: string;
+    "x-topgsm-workspace"?: string;
     origin?: string;
     "sec-fetch-site"?: string;
   };

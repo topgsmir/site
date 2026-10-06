@@ -60,6 +60,7 @@ type Evidence = {
   durationMs?: number;
 };
 type BrowserToolRequest = {
+  workspace?: "seller";
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   path: string;
   query?: Record<string, string | number | boolean | Array<string | number | boolean>>;
@@ -589,6 +590,7 @@ async function executeBrowserTool(request: BrowserToolRequest, secureValues: Rec
       headers: {
         ...(hasBody && !multipart ? { "Content-Type": "application/json" } : {}),
         ...(request.idempotencyKey ? { "Idempotency-Key": request.idempotencyKey } : {}),
+        ...(request.workspace === "seller" ? { "X-TopGSM-Workspace": "seller" } : {}),
       },
       body: hasBody ? multipart ? multipartBody(resolvedBody) : JSON.stringify(resolvedBody) : undefined,
     });

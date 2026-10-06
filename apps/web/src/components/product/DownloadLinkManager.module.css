@@ -1,0 +1,15 @@
+.manager { display: grid; gap: 10px; min-width: 0; padding: 12px; border: 1px solid var(--color-dashboard-rule); border-radius: 10px; }
+.manager > strong { font-size: .95rem; }
+.manager p { margin: 0; line-height: 1.6; }
+.links { display: grid; gap: 10px; }
+.link, .add { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto; gap: 8px; align-items: end; min-width: 0; }
+.link { padding-block: 8px; border-bottom: 1px solid var(--color-dashboard-rule); }
+.link label, .add label { display: grid; gap: 4px; min-width: 0; font-size: .84rem; }
+.link input, .add input { min-width: 0; width: 100%; min-height: 40px; padding-inline: 8px; border: 1px solid var(--color-dashboard-rule); border-radius: 6px; background: var(--color-dashboard-paper); color: var(--color-dashboard-ink); font: inherit; }
+.link input:focus-visible, .add input:focus-visible, .manager button:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.manager button { min-height: 40px; padding-inline: 10px; border: 1px solid var(--color-dashboard-rule); border-radius: 6px; background: var(--color-dashboard-surface); color: var(--color-dashboard-ink); font: inherit; cursor: pointer; }
+.manager button:disabled { opacity: .5; cursor: not-allowed; }
+.action { justify-self: start; }
+.link small { grid-column: 1 / -1; }
+@media (max-width: 680px) { .link, .add { grid-template-columns: minmax(0, 1fr); } }

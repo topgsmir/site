@@ -31,7 +31,7 @@ export default async function SellerProductCreationPage({ params, searchParams }
     notFound();
   }
 
-  const user = await requireUser(locale, ["seller-admin", "seller-staff"]);
+  const user = await requireUser(locale, ["seller-admin", "seller-staff", "platform-admin"]);
 
   return query.grant
     ? <BridgeProductForm locale={locale} initialGrantId={query.grant} />

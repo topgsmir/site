@@ -3,7 +3,7 @@
 import type { AnalyticsMetric, AnalyticsOverview } from "@topgsm/shared-types";
 import type { Route } from "next";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { api } from "@/lib/api/client";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import type { Locale } from "@/lib/i18n";
@@ -11,6 +11,7 @@ import { overviewRange, overviewDailySales, type OverviewPeriod } from "./overvi
 import { OVERVIEW_COPY } from "./overview-copy";
 import { AdminReviewPreview } from "./AdminReviewPreview";
 import { UserHistoryLookup } from "./UserHistoryLookup";
+import { PanelIcon } from "./PanelIcon";
 import styles from "./PanelOverview.module.css";
 
 type Destination = "orders" | "products" | "payouts" | "statistics";
@@ -30,6 +31,7 @@ function Arrow() {
 
 export function PanelOverview({ locale, audience, analytics = true, canManageOrders, canManageProducts, newOrderCount, onNavigate }: Props) {
   const c = OVERVIEW_COPY[locale];
+  const chartGradient = useId();
   const [period, setPeriod] = useState<OverviewPeriod>("month");
   const [refresh, setRefresh] = useState(0);
   const [data, setData] = useState<AnalyticsOverview | null>(null);
@@ -102,7 +104,7 @@ export function PanelOverview({ locale, audience, analytics = true, canManageOrd
 
   return <section className={styles.overview} aria-labelledby="panel-overview-title" data-admin-box-ignore>
     <header className={styles.heading}>
-      <div><h1 id="panel-overview-title">{seller ? c.seller : c.admin}</h1><p>{seller ? c.sellerIntro : c.adminIntro}</p></div>
+      <div className={styles.headingIdentity}><span className={styles.welcomeIcon}><PanelIcon name="store" /></span><div><h1 id="panel-overview-title">{seller ? c.seller : c.admin}</h1><p>{seller ? c.sellerIntro : c.adminIntro}</p></div></div>
       <div className={styles.headingActions}>
         {seller && canManageOrders ? <UserHistoryLookup locale={locale} audience={audience} /> : null}
         {seller && canManageProducts ? <Link className={styles.primary} href={`/${locale}/seller-dashboard/products/new` as Route}><span aria-hidden="true">＋</span>{c.add}</Link> : analytics ? destination("statistics", c.report, styles.primary) : null}
@@ -111,48 +113,50 @@ export function PanelOverview({ locale, audience, analytics = true, canManageOrd
 
     {analytics ? <div className={styles.toolbar}>
       <div className={styles.periods} role="group" aria-label={c.period}>{((seller ? ["month", "week"] : ["month", "week", "90d"]) as OverviewPeriod[]).map((value) => <button type="button" key={value} aria-pressed={period === value} onClick={() => setPeriod(value)}>{value === "week" ? c.thisWeek : value === "month" ? c.thisMonth : c.days90}</button>)}</div>
-      <div className={styles.tools}><span>{c.timezone}</span><button className={styles.refresh} type="button" disabled={loading} onClick={() => setRefresh((value) => value + 1)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1" /></svg>{loading ? c.updating : c.refresh}</button></div>
+      <div className={styles.tools}><span className={styles.dateLabel}><PanelIcon name="clock" />{c.timezone}</span><button className={styles.refresh} type="button" disabled={loading} onClick={() => setRefresh((value) => value + 1)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1" /></svg>{loading ? c.updating : c.refresh}</button></div>
     </div> : null}
 
     {error ? <div className={styles.error} role="alert"><span>{data ? c.stale : c.error}</span><button type="button" disabled={loading} onClick={() => setRefresh((value) => value + 1)}>{c.retry}</button></div> : null}
 
     <div className={`${styles.layout} ${seller ? styles.sellerLayout : styles.adminLayout}`}>
-      {!seller ? <div className={styles.reviewSlot}><AdminReviewPreview locale={locale} /></div> : null}
       <div className={styles.performance} aria-busy={loading}>
         {analytics && !data ? <div className={styles.loading} role="status"><p>{error ? c.error : c.loading}</p>{!error ? <><i /><div><i /><i /><i /></div></> : null}</div> : null}
         {analytics && data ? <>
           <article className={styles.hero}>
-            <div className={styles.heroTop}><h2>{c.sales}</h2><span>{date(data.range.from)} — {date(data.range.to)}</span></div>
+            <div className={styles.heroTop}><h2><span className={styles.sectionIcon} data-tone="blue"><PanelIcon name="chart" /></span>{c.sales}</h2><span className={styles.dateLabel}><PanelIcon name="calendar" />{date(data.range.from)} — {date(data.range.to)}</span></div>
             <div className={styles.total}><strong>{money(data.summary.grossSales.value)}</strong><span>{unit}</span></div>
             {change(data.summary.grossSales)}
-            <div className={styles.metrics}>{metrics.map(({ label, metric, monetary }) => <div key={label}><h3>{label}</h3><strong>{monetary ? money(metric.value) : number(metric.value)}{monetary ? <small>{unit}</small> : null}</strong>{change(metric)}</div>)}</div>
-          </article>
-          <article className={styles.chartCard}>
-            <div className={styles.sectionHead}><div><h2>{c.trend}</h2><p>{c.trendHint}</p></div>{seller ? destination("statistics", c.report) : null}</div>
+          <div className={styles.chartCard}>
             {maximum > 0n ? <>
               <div className={styles.chartScale}><span>{money(maximum.toString())} {unit}</span><span>{c.sales}</span></div>
-              <svg className={styles.chart} viewBox="0 0 640 190" role="img" aria-label={c.trend} preserveAspectRatio="none"><path className={styles.gridline} d="M8 24H632M8 74H632M8 124H632M8 174H632" /><polygon className={styles.area} points={`${points.split(" ")[0]?.split(",")[0]},174 ${points} ${points.split(" ").at(-1)?.split(",")[0]},174`} /><polyline points={points} />{series.length === 1 ? <circle cx="320" cy="24" r="4" /> : null}</svg>
+              <svg className={styles.chart} viewBox="0 0 640 190" role="img" aria-label={c.trend} preserveAspectRatio="none"><defs><linearGradient id={chartGradient} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--color-brand-blue)" stopOpacity=".38" /><stop offset="100%" stopColor="var(--color-brand-teal)" stopOpacity=".04" /></linearGradient></defs><path className={styles.gridline} d="M8 24H632M8 74H632M8 124H632M8 174H632" /><polygon className={styles.area} fill={`url(#${chartGradient})`} points={`${points.split(" ")[0]?.split(",")[0]},174 ${points} ${points.split(" ").at(-1)?.split(",")[0]},174`} /><polyline points={points} />{points.split(" ").filter((_, index) => index % Math.max(1, Math.ceil(series.length / 10)) === 0 || index === series.length - 1).map((point) => { const [cx, cy] = point.split(","); return <circle key={point} cx={cx} cy={cy} r="3.5" />; })}</svg>
               <div className={styles.chartDates} dir="ltr"><span>{date(data.range.from)}</span><span>{date(data.range.to)}</span></div>
               <details className={styles.daily}><summary>{c.details}</summary><div className={styles.dailyRows}>{series.map((point) => <div key={point.bucket}><span>{date(point.bucket)}</span><strong>{money(point.grossSales)} {unit}</strong></div>)}</div></details>
             </> : <div className={styles.empty}><strong>{c.empty}</strong><p>{c.emptyHint}</p>{canManageProducts ? destination("products", c.products) : null}</div>}
+          </div>
           </article>
+          <div className={styles.metrics}>{metrics.map(({ label, metric, monetary }, index) => <article key={label}>
+            <span className={styles.metricIcon} data-tone={index} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{index === 0 ? <><rect x="4" y="3" width="16" height="18" rx="4" /><path d="M15 8h-4a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4H9m3-10v2m0 8v2" /></> : index === 1 ? <><path d="M3 4h2l3 12h11l2-9H6" /><circle cx="9" cy="20" r="1" /><circle cx="18" cy="20" r="1" /></> : <><path d="M4 19V9m8 10V4m8 15v-7M2 21h20" /></>}</svg></span>
+            <h3>{label}</h3><strong>{monetary ? money(metric.value) : number(metric.value)}{monetary ? <small>{unit}</small> : null}</strong>{change(metric)}
+          </article>)}</div>
         </> : !analytics ? <div className={styles.welcome}><h2>{c.access}</h2><p>{c.accessHint}</p>{canManageProducts ? destination("products", c.products, styles.primary) : null}</div> : null}
         {!seller && canManageOrders ? <UserHistoryLookup locale={locale} audience={audience} wide /> : null}
       </div>
 
+      {!seller ? <div className={styles.reviewSlot}><AdminReviewPreview locale={locale} /></div> : null}
       <aside className={styles.operations} aria-labelledby="overview-operations">
-        <div className={styles.sectionHead}><div><h2 id="overview-operations">{c.operations}</h2><p>{c.operationsHint}</p></div></div>
+        <div className={styles.sectionHead}><div><h2 id="overview-operations"><span className={styles.sectionIcon} data-tone="pink"><PanelIcon name="spark" /></span>{c.operations}</h2><p>{c.operationsHint}</p></div></div>
         <div className={styles.actions}>{actions.map((action) => <div className={styles.action} key={action.key}><span className={styles.actionIcon} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">{action.icon === "orders" ? <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Zm3 5h6m-6 4h6" /> : action.icon === "products" ? <path d="m12 3 9 5v9l-9 5-9-5V8l9-5Zm0 10 9-5m-9 5L3 8m9 5v9M7 6l9 5" /> : <><rect x="3" y="5" width="18" height="15" rx="2" /><path d="M3 9h18m-6 6h3" /></>}</svg></span><div>{destination(action.key, action.label)}<p>{action.hint}</p>{action.key === "orders" && newOrderCount > 0 ? <span className={styles.orderBadge}>{number(newOrderCount)} {c.newOrders}</span> : null}</div></div>)}
           {!seller && analytics ? <div className={styles.action}><span className={styles.actionIcon} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="7" r="4" /><path d="M4 21v-3a8 8 0 0 1 16 0v3" /></svg></span><div><Link className={styles.textLink} href={`/${locale}/admin/vendors` as Route}>{c.vendors}<Arrow /></Link><p>{c.vendorsHint}</p></div></div> : null}
         </div>
-        {analytics && data ? <section className={styles.settlement}><h2>{c.finances}</h2><p>{c.liability}</p><strong>{money(data.summary.outstandingLiability)} <small>{unit}</small></strong><details className={styles.settlementDetails}><summary>{c.settled} · {c.refunds}</summary><span>{c.liabilityHint}</span><dl><div><dt>{c.settled}</dt><dd>{money(data.summary.settledPayouts.value)} <small>{unit}</small></dd></div><div><dt>{c.refunds}</dt><dd>{money(data.summary.refunds.value)} <small>{unit}</small></dd></div></dl></details></section> : null}
+        {analytics && data ? <section className={styles.settlement}><h2><span className={styles.sectionIcon} data-tone="teal"><PanelIcon name="wallet" /></span>{c.finances}</h2><p>{c.liability}</p><strong>{money(data.summary.outstandingLiability)} <small>{unit}</small></strong><details className={styles.settlementDetails}><summary>{c.settled} · {c.refunds}</summary><span>{c.liabilityHint}</span><dl><div><dt>{c.settled}</dt><dd>{money(data.summary.settledPayouts.value)} <small>{unit}</small></dd></div><div><dt>{c.refunds}</dt><dd>{money(data.summary.refunds.value)} <small>{unit}</small></dd></div></dl></details></section> : null}
       </aside>
     </div>
 
     {analytics && data ? <>
       <div className={styles.bottomGrid}>
-        <article className={styles.listCard}><div className={styles.sectionHead}><div><h2>{c.activity}</h2><p>{c.activityHint}</p></div></div>{data.recentActivity.length ? <ul className={styles.activity}>{data.recentActivity.slice(0, 5).map((item) => <li key={`${item.kind}:${item.id}`}><span className={styles.kind} data-kind={item.kind}>{c[item.kind]}</span><div><strong>{item.label}</strong><time dateTime={item.occurredAt}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Tehran" }).format(new Date(item.occurredAt))}</time></div><b>{money(item.amount)}<small>{unit}</small></b></li>)}</ul> : <p className={styles.empty}>{c.noActivity}</p>}</article>
-        <article className={styles.listCard}><div className={styles.sectionHead}><div><h2>{c.leaders}</h2><p>{c.leadersHint}</p></div></div>{data.topProducts.length ? <ol className={styles.ranking}>{data.topProducts.slice(0, 5).map((item, index) => <li key={item.id}><span>{new Intl.NumberFormat(locale, { minimumIntegerDigits: 2 }).format(index + 1)}</span><div><strong>{item.label}</strong><small>{number(item.units)} {c.units}</small></div><b>{money(item.amount)}<small>{unit}</small></b></li>)}</ol> : <p className={styles.empty}>{c.noProducts}</p>}</article>
+        <article className={styles.listCard}><div className={styles.sectionHead}><div><h2><span className={styles.sectionIcon} data-tone="teal"><PanelIcon name="activity" /></span>{c.activity}</h2><p>{c.activityHint}</p></div></div>{data.recentActivity.length ? <ul className={styles.activity}>{data.recentActivity.slice(0, 5).map((item) => <li key={`${item.kind}:${item.id}`}><span className={styles.kind} data-kind={item.kind}><PanelIcon name={item.kind === "refund" ? "wallet" : "activity"} />{c[item.kind]}</span><div><strong>{item.label}</strong><time dateTime={item.occurredAt}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Tehran" }).format(new Date(item.occurredAt))}</time></div><b>{money(item.amount)}<small>{unit}</small></b></li>)}</ul> : <p className={styles.empty}>{c.noActivity}</p>}</article>
+        <article className={styles.listCard}><div className={styles.sectionHead}><div><h2><span className={styles.sectionIcon} data-tone="amber"><PanelIcon name="trophy" /></span>{c.leaders}</h2><p>{c.leadersHint}</p></div></div>{data.topProducts.length ? <ol className={styles.ranking}>{data.topProducts.slice(0, 5).map((item, index) => <li key={item.id}><span>{new Intl.NumberFormat(locale, { minimumIntegerDigits: 2 }).format(index + 1)}</span><div><strong>{item.label}</strong><small>{number(item.units)} {c.units}</small></div><b>{money(item.amount)}<small>{unit}</small></b></li>)}</ol> : <p className={styles.empty}>{c.noProducts}</p>}</article>
       </div>
       <p className={styles.updated} role="status">{loading ? c.updating : <>{c.updated}: {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Tehran" }).format(new Date(data.generatedAt))} · {c.timezone}</>}</p>
     </> : null}

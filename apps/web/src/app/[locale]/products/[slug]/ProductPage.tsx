@@ -16,9 +16,10 @@ import { api, API_BASE } from "@/lib/api/client";
 import { marketingVisitFor, rememberMarketingVisit } from "@/lib/marketing-attribution";
 import { ProductComments } from "@/components/comments/ProductComments";
 import { OfferPicker } from "@/components/product/OfferPicker";
+import { DigitalOfferTable } from "@/components/product/DigitalOfferTable";
 import { PublicHeader } from "@/components/PublicHeader";
 import { productPageCopy } from "./product-copy";
-import { DigitalProductHeading, DigitalDeliveryNote, DigitalProductDescription, DigitalDownloadGuide, DigitalDownloadQuestions } from "@/components/product/DigitalProductDetails";
+import { DigitalProductHeading, DigitalProductDescription } from "@/components/product/DigitalProductDetails";
 import { digitalProductCopy, downloadAllowance } from "@/components/product/digital-product-copy";
 import { ProductDescription } from "@/components/product/ProductDescription";
 
@@ -125,6 +126,7 @@ export function ProductPage({
     ? unavailable ? c.unavailable : c.orderService : buttonLabel(buttonState, unavailable, copy);
 
   function selectOffer(id: string) {
+    if (isDigital && buttonState === "loading") return;
     if (resetTimer.current) clearTimeout(resetTimer.current);
     setSelectedOfferId(id);
     setButtonState("idle");
@@ -275,6 +277,30 @@ export function ProductPage({
     );
   }
 
+  const purchaseAction = <button
+    className={styles.addButton}
+    type="button"
+    onClick={isDigital ? () => { void downloadDigital(); } : () => addToCart()}
+    disabled={unavailable || buttonState === "loading"}
+    data-state={buttonState}
+    aria-busy={buttonState === "loading"}
+    aria-describedby={buttonState === "error" ? "cart-feedback" : undefined}
+  >{actionLabel}</button>;
+
+  const purchaseFeedback = <>
+    {!isDigital || buttonState === "error" ? <p id="cart-feedback" className={buttonState === "error" ? styles.errorMessage : styles.purchaseNote}
+      role={buttonState === "error" ? "alert" : "status"} aria-live="polite">
+      {buttonState === "error" ? cartError || copy.addFailed : buttonState === "success" ? c.added : copy.priceAvailability}
+    </p> : null}
+    {isDigital && accessOrderId && buttonState === "error" ? <Link href={`/${locale}/orders/${accessOrderId}` as Route}>{d.viewOrder}</Link> : null}
+    {isDigital && downloadChoices.length > 1 ? <div id="download-choices" className={styles.downloadChoices} role="group" aria-label={d.chooseFile} tabIndex={-1}>
+      <span>{d.chooseFile}</span>
+      {downloadChoices.map((file, index) => file.available
+        ? <a key={file.href} href={file.href} target="_blank" rel="noopener noreferrer">{d.file} {new Intl.NumberFormat(locale).format(index + 1)}</a>
+        : <span key={file.href}>{d.file} {new Intl.NumberFormat(locale).format(index + 1)} · {d.limitReached}</span>)}
+    </div> : null}
+  </>;
+
   return (
     <div className={styles.page} data-product-type={product.type} dir={locale === "en" ? "ltr" : "rtl"}>
       <a className={styles.skipLink} href="#product-main">{copy.skipToContent}</a>
@@ -331,11 +357,18 @@ export function ProductPage({
           </div>
 
           <aside className={styles.purchasePanel} id="purchase" aria-labelledby="purchase-title" tabIndex={-1}>
-            <h2 id="purchase-title">{isDigital ? d.purchase : isService ? c.orderService : copy.chooseOffer}</h2>
+            {isDigital ? <DigitalOfferTable
+              offers={offers}
+              optionNames={product.options.map((option) => option.name)}
+              value={selectedOffer?.id ?? ""}
+              onChange={selectOffer}
+              locale={locale}
+              disabled={buttonState === "loading"}
+              action={purchaseAction}
+            >{purchaseFeedback}</DigitalOfferTable> : <>
+            <h2 id="purchase-title">{isService ? c.orderService : copy.chooseOffer}</h2>
             {isBridge ? bridgeCheckout : <>
-            <p>{isDigital ? d.offerHelp : copy.offerHelp}</p>
-            <div className={isDigital ? styles.digitalPurchaseGrid : styles.purchaseContents}>
-            <div className={isDigital ? styles.digitalOfferSelection : styles.purchaseContents}>
+            <p>{copy.offerHelp}</p>
             <OfferPicker
               offers={offers.map((offer) => ({ id: offer.id, variant: offer.variantName, seller: offer.seller.shopName, price: offer.price, currency: offer.currency, unavailable: offer.physical?.inStock === false }))}
               value={selectedOffer?.id ?? ""}
@@ -345,17 +378,12 @@ export function ProductPage({
               sellerLabel={isService ? c.provider : copy.seller}
               unavailableLabel={c.unavailable}
             />
-            {isDigital ? <DigitalDeliveryNote locale={locale} /> : null}
-            </div>
-
-            <div className={isDigital ? styles.digitalPurchaseAction : styles.purchaseContents}>
             {selectedOffer ? (
               <div className={styles.offerSummary}>
-                <div><span>{copy.availability}</span><strong className={styles.availability} data-available={!unavailable}>{unavailable ? c.unavailable : isFreeDigital ? d.freeReady : isDigital ? d.ready : isService ? c.ready : copy.inStock}</strong></div>
-                {isDigital && selectedOffer.digital && !isFreeDigital ? <div aria-live="polite"><span>{d.allowance}</span><strong>{downloadAllowance(selectedOffer.digital.maxDownloads, locale)}</strong></div> : null}
+                <div><span>{copy.availability}</span><strong className={styles.availability} data-available={!unavailable}>{unavailable ? c.unavailable : isService ? c.ready : copy.inStock}</strong></div>
                 {selectedOffer.service ? <div><span>{c.turnaround}</span><strong>{new Intl.NumberFormat(locale).format(selectedOffer.service.estimatedHours)} {copy.hours}</strong></div> : null}
                 <span>{isService ? c.orderPrice : c.unitPrice}</span>
-                <p className={styles.price}>{isFreeDigital ? d.free : formatPrice(selectedOffer.price, selectedOffer.currency, locale)}</p>
+                <p className={styles.price}>{formatPrice(selectedOffer.price, selectedOffer.currency, locale)}</p>
               </div>
             ) : <p className={styles.emptyOffers}>{c.empty}</p>}
 
@@ -366,35 +394,10 @@ export function ProductPage({
             </div></div> : null}
             {isPhysical && quantity > 1 ? <p className={styles.orderTotal}><span>{c.total}</span><strong>{total}</strong></p> : null}
 
-            <button
-              className={styles.addButton}
-              type="button"
-              onClick={isDigital ? () => { void downloadDigital(); } : () => addToCart()}
-              disabled={unavailable || buttonState === "loading"}
-              data-state={buttonState}
-              aria-busy={buttonState === "loading"}
-              aria-describedby={buttonState === "error" ? "cart-feedback" : undefined}
-            >
-              {actionLabel}
-            </button>
-            <p
-              id="cart-feedback"
-              className={buttonState === "error" ? styles.errorMessage : styles.purchaseNote}
-              role={buttonState === "error" ? "alert" : "status"}
-              aria-live="polite"
-            >
-              {buttonState === "error" ? cartError || copy.addFailed : isDigital ? d.downloadHint : buttonState === "success" ? c.added : copy.priceAvailability}
-            </p>
-            {isDigital && accessOrderId && buttonState === "error" ? <Link href={`/${locale}/orders/${accessOrderId}` as Route}>{d.viewOrder}</Link> : null}
-            {isDigital && downloadChoices.length > 1 ? <div id="download-choices" className={styles.downloadChoices} role="group" aria-label={d.chooseFile} tabIndex={-1}>
-              <span>{d.chooseFile}</span>
-              {downloadChoices.map((file, index) => file.available
-                ? <a key={file.href} href={file.href} target="_blank" rel="noopener noreferrer">{d.file} {new Intl.NumberFormat(locale).format(index + 1)}</a>
-                : <span key={file.href}>{d.file} {new Intl.NumberFormat(locale).format(index + 1)} · {d.limitReached}</span>)}
-            </div> : null}
+            {purchaseAction}
+            {purchaseFeedback}
             {isPhysical ? <div className={styles.deliveryNote}><DesignIcon name="bag" /><div><strong>{c.shipping}</strong><p>{c.shippingBody}</p></div></div> : selectedOffer?.service ? <p className={styles.purchaseNote}>{c.estimateNote}</p> : null}
-            </div>
-            </div>
+            </>}
             </>}
           </aside>
         </section>
@@ -405,10 +408,10 @@ export function ProductPage({
         </section> : null}
 
         <section className={styles.details} aria-labelledby={isDigital ? "download-details-title" : "overview-title"}>
-          {isDigital ? <DigitalDownloadGuide locale={locale} /> : <article className={styles.description}>
+          {!isDigital ? <article className={styles.description}>
             <h2 id="overview-title">{isService ? c.overview : copy.overview}</h2>
             <ProductDescription description={product.description} fallback={copy.noDescription} />
-          </article>}
+          </article> : null}
 
           <div className={styles.specification}>
             <h2 id={isDigital ? "download-details-title" : undefined}>{isDigital ? d.details : isService ? c.details : copy.technicalDetails}</h2>
@@ -426,7 +429,6 @@ export function ProductPage({
           </div>
         </section>
 
-        {isDigital ? <DigitalDownloadQuestions locale={locale} free={isFreeDigital} /> : null}
         {isPhysical || isService ? <section className={styles.questions} aria-labelledby="questions-title"><h2 id="questions-title">{c.questions}</h2>
           <div><details><summary>{isPhysical ? c.shipping : c.preparation}</summary><p>{isPhysical ? c.shippingBody : c.serviceFaq}</p></details>
           <details><summary>{isPhysical ? c.compatibility : c.timeFaq}</summary><p>{isPhysical ? c.compatibilityBody : c.timeAnswer}</p></details></div>
@@ -437,7 +439,7 @@ export function ProductPage({
         <section className={styles.support} aria-labelledby="support-title">
           <div>
             <h2 id="support-title">{copy.supportTitle}</h2>
-            <p>{copy.supportBody}</p>
+            {!isDigital ? <p>{copy.supportBody}</p> : null}
           </div>
           <a href="tel:09925739312">{copy.contactSupport}<span aria-hidden="true">↗</span></a>
         </section>

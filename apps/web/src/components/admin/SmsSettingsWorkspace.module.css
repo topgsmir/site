@@ -56,6 +56,7 @@
 @container (max-width: 52rem) { .header { grid-template-columns: minmax(0, 1fr); } .header p { grid-column: 1; grid-row: auto; margin-block-start: var(--space-dashboard-xs); } }
 @container (max-width: 52rem) { .credentials { grid-template-columns: minmax(0, 1fr); } .credentials > div { grid-row: auto; } .credentials > label, .credentials fieldset { grid-column: auto; } }
 @media (max-width: 40rem) { .credentials fieldset, .settingRow { grid-template-columns: minmax(0, 1fr); } .toggle { justify-self: start; } .actions { align-items: stretch; flex-direction: column; } .actions button { width: 100%; } }
+@media (max-width: 40rem) { .smsWorkspace .header { padding-block-end: var(--space-dashboard-xs); } .smsWorkspace .header span, .smsWorkspace .header p { display: none; } .smsWorkspace .header h1 { margin-block-start: 0; } .smsWorkspace .smsTabs { margin-block-start: var(--space-dashboard-xs); } }
 @media (prefers-reduced-motion: reduce) { .toggle > span:last-child, .toggle i, .actions button, .error button { transition-duration: var(--dur-dashboard-reduced); } .skeleton i { animation: none; } .actions button:active:not(:disabled), .error button:active { transform: none; } }
 
 .profiles { display: grid; gap: var(--space-dashboard-lg); margin-block-start: var(--space-dashboard-lg); padding-block-start: var(--space-dashboard-md); border-block-start: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }

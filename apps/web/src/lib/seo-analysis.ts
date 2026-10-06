@@ -1,5 +1,6 @@
 import type { RichTextDocument, RichTextNode } from "@topgsm/shared-types";
 import { productDescriptionDocument, productDescriptionText } from "@/lib/product-description";
+import { productSummary } from "@/lib/product-seo";
 
 export type SeoInput = {
   kind: "blog" | "product";
@@ -77,10 +78,10 @@ export function analyzeSeo(input: SeoInput, htmlSource?: string): SeoAnalysis {
   const body = content.text.trim();
   const title = input.title.trim();
   const short = input.kind === "product" && typeof input.body === "string"
-    ? productDescriptionText(input.body).split(/\n+/)[0].trim()
+    ? productSummary(productDescriptionText(input.body))
     : input.shortDescription?.trim() ?? "";
   const metaTitle = (input.metaTitle ?? title).trim();
-  const metaDescription = (input.metaDescription ?? body.slice(0, 158)).trim();
+  const metaDescription = (input.metaDescription ?? (input.kind === "product" ? short : body.slice(0, 158))).trim();
   const keyword = normalized(input.keyword);
   const contains = (value: string) => Boolean(keyword && normalized(value).includes(keyword));
   const checks: SeoCheck[] = [];

@@ -17,6 +17,7 @@ export class SellerCommentLockGuard implements CanActivate {
     let user;
     try {
       user = await this.auth.getUserFromToken(token);
+      if (request.headers["x-topgsm-workspace"] === "seller") user = await this.auth.inSellerWorkspace(user);
     } catch (error) {
       if (error instanceof UnauthorizedException) return true;
       throw error;

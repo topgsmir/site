@@ -32,10 +32,10 @@ export default async function SellerDashboardPage({ params, searchParams }: Sell
     notFound();
   }
 
-  const user = await requireUser(locale, ["seller-admin", "seller-staff"]);
+  const user = await requireUser(locale, ["seller-admin", "seller-staff", "platform-admin"]);
   const requestedSection = query?.section;
   const initialSection = requestedSection === "products" || requestedSection === "uploads" ||
-    (requestedSection === "profile" && user.role === "seller-admin") ||
+    (requestedSection === "profile" && (user.role === "seller-admin" || user.role === "platform-admin")) ||
     (requestedSection === "statistics" && user.permissions?.includes("analytics_view")) ||
     (requestedSection === "orders" && user.permissions?.includes("orders_manage")) ||
     (requestedSection === "customers" && user.permissions?.includes("orders_manage")) ||

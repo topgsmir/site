@@ -35,8 +35,8 @@ const COPY = {
   ...BLOG_EDITOR_COPY[AUTHORING_LOCALE],
   format: "JPEG، PNG یا WebP · حداکثر ۸ مگابایت",
   uploadError: "بارگذاری انجام نشد. از تصویر ثابت JPEG، PNG یا WebP با حجم کمتر از ۸ مگابایت و ابعاد کمتر از ۲۴ مگاپیکسل استفاده کنید.",
-  visual: "پیش‌نمایش",
-  html: "کد",
+  visual: "نوشتن",
+  html: "HTML",
   htmlHint: "از HTML مقاله مانند پاراگراف، تیترهای H2 و H3، فهرست، جدول، تراز متن، نقل‌قول، پیوند، کد و تصاویر بارگذاری‌شده استفاده کنید. اسکریپت، embed، رویدادها و نشانی‌های ناامن ذخیره نمی‌شوند.",
   strike: "خط‌خورده",
   inlineCode: "کد درون‌خطی",
@@ -48,7 +48,6 @@ const COPY = {
   link: "پیوند",
   linkPrompt: "پیوند http، https، mailto یا tel را وارد کنید",
   publishedUrl: "نشانی نسخه منتشرشده",
-  imageAltPrompt: "توضیح جایگزین تصویر را بنویسید (برای تصویر تزئینی خالی بگذارید)",
   table: "جدول", addRow: "افزودن سطر", addColumn: "افزودن ستون", deleteTable: "حذف جدول",
   alignment: "تراز", alignStart: "ابتدای سطر", alignCenter: "وسط", alignEnd: "انتهای سطر", alignJustify: "دوطرفه",
   undo: "بازگشت", redo: "انجام مجدد"
@@ -86,7 +85,7 @@ function hasArticleContent(node: RichTextNode): boolean {
 type ProductOption = { id: string; title: string; slug: string };
 type TaxonomyResponse = { categories: BlogTaxonomyTerm[]; tags: BlogTaxonomyTerm[] };
 
-export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { postId: string; backHref: string; canRestoreHistory?: boolean }) {
+export function BlogEditor({ postId, backHref, canRestoreHistory = false, newlyCreated = false }: { postId: string; backHref: string; canRestoreHistory?: boolean; newlyCreated?: boolean }) {
   const copy = COPY;
   const [post, setPost] = useState<ManagedBlogPost | null>(null);
   const [translations, setTranslations] = useState<BlogTranslationDraft[]>([]);
@@ -104,6 +103,7 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
   const [loadedContent, setLoadedContent] = useState(0);
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingInline, setUploadingInline] = useState(false);
   const [editorMode, setEditorMode] = useState<"visual" | "html">("visual");
   const [htmlSource, setHtmlSource] = useState("");
   const [seoKeywords, setSeoKeywords] = useState<Record<BlogLocale, string>>({ fa: "", en: "", ar: "" });
@@ -215,7 +215,7 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
   }
 
   async function save() {
-    if (!post || saving) return post;
+    if (!post || saving || uploadingInline) return null;
     setSaving(true); setError(false); setMessage(copy.saving);
     try {
       const translationsToSave = editorMode === "html" ? applyHtmlSource() : translations;
@@ -239,7 +239,7 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
   }
 
   async function restoreChange(change: BlogChangeEvent, side: "before" | "after") {
-    if (!post || saving) return;
+    if (!post || saving || uploadingInline) return;
     const key = `${change.id}:${side}`;
     if (confirmRestoreKey !== key) {
       setConfirmRestoreKey(key);
@@ -277,8 +277,7 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
   }
 
   async function upload(file: File, kind: "cover" | "inline") {
-    const alt = kind === "inline" ? window.prompt(COPY.imageAltPrompt, "") : null;
-    if (kind === "inline" && alt === null) return;
+    if (kind === "inline") setUploadingInline(true);
     const body = new FormData();
     body.append("file", file); body.append("kind", kind); body.append("focalX", "0.5"); body.append("focalY", "0.5");
     setError(false); setMessage(copy.processing);
@@ -287,10 +286,12 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
       if (kind === "cover") setCover(response.data);
       else {
         const variant = response.data.variants.find((item) => item.name === "lg") ?? response.data.variants[0];
-        if (variant) editor?.chain().focus().setImage({ src: variant.url, alt: (alt ?? "").trim().slice(0, 300) }).run();
+        if (variant) { setMessage(copy.imageReady); return { src: variant.url }; }
       }
       setMessage(copy.imageReady);
-    } catch { setError(true); setMessage(copy.uploadError); }
+      return null;
+    } catch { setError(true); setMessage(copy.uploadError); return null; }
+    finally { if (kind === "inline") setUploadingInline(false); }
   }
 
   const current = translations.find((item) => item.locale === active);
@@ -304,22 +305,23 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
   if (!post || !current) return <div className={styles.loading} dir="rtl" lang={AUTHORING_LOCALE}><DesignIcon name="file" /><p role={error ? "alert" : "status"}>{message}</p>{error ? <button type="button" onClick={() => void load()}>{copy.retry}</button> : null}</div>;
   const coverVariant = cover?.variants.find((item) => item.name === "wide") ?? cover?.variants[0];
   const checks = [...translations.map((translation) => ({ label: LABELS[translation.locale], done: complete(translation) })), { label: copy.attached, done: Boolean(cover) }, { label: copy.selected, done: Boolean(categoryId) }];
+  const selectedCategory = categories.find((category) => category.id === categoryId);
   return (
     <div className={styles.shell} dir="rtl" lang={AUTHORING_LOCALE}>
       <header className={styles.topbar}>
         <NextLink className={styles.backLink} href={backHref as Route}><DesignIcon name="arrow" /><span>{copy.back}</span></NextLink>
         <span className={styles.studio}><DesignIcon name="file" />{copy.studio}</span>
         <div className={styles.actions}>
-          <button type="button" onClick={() => void save()} disabled={saving}>{copy.save}</button>
-          <button type="button" onClick={() => void submit()} disabled={saving || post.state === "pending_review"}>{post.state === "pending_review" ? copy.review : copy.publish}<DesignIcon name="arrow" /></button>
+          <button type="button" onClick={() => void save()} disabled={saving || uploadingInline}>{copy.save}</button>
+          <button type="button" onClick={() => void submit()} disabled={saving || uploadingInline || post.state === "pending_review"}>{post.state === "pending_review" ? copy.review : copy.publish}<DesignIcon name="arrow" /></button>
         </div>
       </header>
-      <div className={styles.pageHeading}><div><h1>{copy.title}</h1><p>{copy.intro}</p></div><p className={styles.status} role={error ? "alert" : "status"} data-error={error}><span aria-hidden="true" />{message}</p></div>
+      <div className={styles.pageHeading}><div><h1>{newlyCreated ? "افزودن مقاله" : "ویرایش مقاله"}</h1><p>{copy.intro}</p></div><div className={styles.headingMeta}><span className={styles.draftBadge}>{post.archivedAt ? "بایگانی‌شده" : post.state === "draft" ? copy.draft : post.state === "pending_review" ? copy.review : post.state === "published" ? copy.published : "نیازمند اصلاح"}</span><p className={styles.status} role={error ? "alert" : "status"} data-error={error}><span aria-hidden="true" />{message}</p></div></div>
       <div className={styles.workspace}>
         <main className={styles.main}>
-          <section className={styles.identityCard} aria-label="عنوان و نشانی مقاله">
-            <div className={styles.languageBar}><span>{copy.language}</span><div className={styles.languageTabs} role="group" aria-label={copy.language}>
-              {(["fa", "en", "ar"] as const).map((code) => <button key={code} type="button" aria-pressed={active === code} lang={code} onClick={() => changeLanguage(code)}>{LABELS[code]}</button>)}
+          <section className={styles.identityCard} aria-labelledby="article-identity-title">
+            <div className={styles.languageBar}><div><h2 id="article-identity-title">اطلاعات اصلی</h2><span>{copy.language}</span></div><div className={styles.languageTabs} role="group" aria-label={copy.language}>
+              {(["fa", "en", "ar"] as const).map((code) => <button key={code} type="button" disabled={uploadingInline} aria-pressed={active === code} lang={code} onClick={() => changeLanguage(code)}>{LABELS[code]}</button>)}
             </div></div>
             <div className={styles.identityFields} dir={active === "en" ? "ltr" : "rtl"} lang={active}>
               <label className={styles.titleField}><span>{copy.headline}</span><textarea rows={1} value={current.title} maxLength={200} placeholder={copy.titleHint} onChange={(event) => updateTranslation("title", event.target.value)} /></label>
@@ -327,7 +329,29 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
               {post.publicSlugs[active] && !post.archivedAt ? <div className={styles.publishedUrl}><span>{COPY.publishedUrl}</span><BlogPublicUrl locale={active} slug={post.publicSlugs[active]} label={COPY.publishedUrl} /></div> : null}
             </div>
           </section>
-          <ContentAiPanel key={postId} locale={AUTHORING_LOCALE} kind="blog" disabled={saving || !editor || editorMode === "html"}
+          {post.moderationNote ? <p className={styles.moderation}><strong>{copy.note}:</strong> {post.moderationNote}</p> : null}
+          <section className={styles.writingCard} aria-labelledby="article-body-title">
+            <header className={styles.cardHeader}><span className={styles.cardIcon}><DesignIcon name="file" /></span><div><h2 id="article-body-title">{copy.body}</h2><p>{copy.excerpt}</p></div></header>
+            <div className={styles.writingFields} dir={active === "en" ? "ltr" : "rtl"} lang={active}>
+              <label className={styles.excerptField}><span>{copy.excerpt}</span><textarea value={current.excerpt} maxLength={500} placeholder={copy.excerptHint} onChange={(event) => updateTranslation("excerpt", event.target.value)} /><small>{current.excerpt.length}/500</small></label>
+            </div>
+            <div className={styles.editorModes} role="group" aria-label={copy.body}>
+              <button type="button" disabled={uploadingInline} aria-pressed={editorMode === "visual"} onClick={() => setMode("visual")}>{COPY.visual}</button>
+              <button type="button" disabled={uploadingInline} aria-pressed={editorMode === "html"} onClick={() => setMode("html")}>{COPY.html}</button>
+            </div>
+            {editorMode === "visual" ? <RichTextVisualEditor key={active} editor={editor} compact language={active} locale={AUTHORING_LOCALE} articleTools labels={{
+              body: copy.body, bold: copy.bold, italic: copy.italic, strike: COPY.strike, inlineCode: COPY.inlineCode,
+              heading: copy.heading, subheading: COPY.subheading, list: copy.list, orderedList: COPY.orderedList,
+              quote: COPY.quote, codeBlock: COPY.codeBlock, rule: COPY.rule, link: COPY.link, linkPrompt: COPY.linkPrompt, image: copy.image,
+              table: COPY.table, addRow: COPY.addRow, addColumn: COPY.addColumn, deleteTable: COPY.deleteTable,
+              alignment: COPY.alignment, alignStart: COPY.alignStart, alignCenter: COPY.alignCenter, alignEnd: COPY.alignEnd, alignJustify: COPY.alignJustify,
+              undo: COPY.undo, redo: COPY.redo
+            }} onUpload={(file) => upload(file, "inline")} /> : <div className={styles.htmlEditor}>
+              <textarea dir="ltr" lang="en" spellCheck={false} aria-label={`${copy.body} HTML`} value={htmlSource} onChange={(event) => { setHtmlSource(event.target.value); setMessage(copy.unsaved); }} />
+              <p>{COPY.htmlHint}</p>
+            </div>}
+          </section>
+          <ContentAiPanel key={postId} locale={AUTHORING_LOCALE} kind="blog" disabled={saving || uploadingInline || !editor || editorMode === "html"}
             disabledHint={editorMode === "html" ? "برای استفاده از دستیار، ابتدا به حالت دیداری برگردید تا تغییرات HTML وارد ویرایشگر شوند." : undefined}
             fields={["title", "slug", "excerpt", "content", "seoTitle", "seoDescription", "coverAltText", "category", "tags"]}
             snapshot={JSON.stringify({ translations, categoryId, tagIds, editorMode, htmlSource })}
@@ -349,27 +373,6 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
               translationsRef.current = previous.translations; setTranslations(previous.translations); setCategoryId(previous.categoryId); setTagIds(previous.tagIds);
               editor?.commands.setContent(previous.translations.find((translation) => translation.locale === active)?.content ?? EMPTY, { emitUpdate: false }); setMessage(copy.unsaved);
             }} />
-          {post.moderationNote ? <p className={styles.moderation}><strong>{copy.note}:</strong> {post.moderationNote}</p> : null}
-          <section className={styles.writingCard} aria-label={copy.body}>
-            <div className={styles.writingFields} dir={active === "en" ? "ltr" : "rtl"} lang={active}>
-              <label className={styles.excerptField}><span>{copy.excerpt}</span><textarea value={current.excerpt} maxLength={500} placeholder={copy.excerptHint} onChange={(event) => updateTranslation("excerpt", event.target.value)} /><small>{current.excerpt.length}/500</small></label>
-            </div>
-            <div className={styles.editorModes} role="group" aria-label={copy.body}>
-              <button type="button" aria-pressed={editorMode === "visual"} onClick={() => setMode("visual")}>{COPY.visual}</button>
-              <button type="button" aria-pressed={editorMode === "html"} onClick={() => setMode("html")}>{COPY.html}</button>
-            </div>
-            {editorMode === "visual" ? <RichTextVisualEditor editor={editor} language={active} articleTools labels={{
-              body: copy.body, bold: copy.bold, italic: copy.italic, strike: COPY.strike, inlineCode: COPY.inlineCode,
-              heading: copy.heading, subheading: COPY.subheading, list: copy.list, orderedList: COPY.orderedList,
-              quote: COPY.quote, codeBlock: COPY.codeBlock, rule: COPY.rule, link: COPY.link, linkPrompt: COPY.linkPrompt, image: copy.image,
-              table: COPY.table, addRow: COPY.addRow, addColumn: COPY.addColumn, deleteTable: COPY.deleteTable,
-              alignment: COPY.alignment, alignStart: COPY.alignStart, alignCenter: COPY.alignCenter, alignEnd: COPY.alignEnd, alignJustify: COPY.alignJustify,
-              undo: COPY.undo, redo: COPY.redo
-            }} onInvalidLink={() => { setError(true); setMessage("این نوع نشانی برای پیوند مجاز نیست."); }} onUpload={(file) => void upload(file, "inline")} /> : <div className={styles.htmlEditor}>
-              <textarea dir="ltr" lang="en" spellCheck={false} aria-label={`${copy.body} HTML`} value={htmlSource} onChange={(event) => { setHtmlSource(event.target.value); setMessage(copy.unsaved); }} />
-              <p>{COPY.htmlHint}</p>
-            </div>}
-          </section>
           <section className={styles.searchPanel} aria-labelledby="search-appearance">
             <header className={styles.sectionHeading}><span className={styles.sectionIcon}><DesignIcon name="search" /></span><div><h2 id="search-appearance">{copy.search}</h2><p>{copy.searchHint}</p></div></header>
             <div className={styles.fields}>
@@ -379,9 +382,9 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
           </section>
         </main>
         <aside className={styles.sidebar}>
+          <section className={`${styles.panel} ${styles.previewPanel}`} aria-labelledby="article-preview-title"><span className={styles.previewEyebrow} id="article-preview-title">پیش‌نمایش مقاله</span><div className={styles.previewContent}>{coverVariant ? <NextImage unoptimized src={coverVariant.url} alt="" width={coverVariant.width} height={coverVariant.height} sizes="64px" /> : <span className={styles.previewIcon}><DesignIcon name="file" /></span>}<div><small>{selectedCategory ? termName(selectedCategory) : copy.choose}</small><h2 dir="auto">{current.title.trim() || copy.titleHint}</h2></div></div><p dir="auto">{current.excerpt.trim() || copy.excerptHint}</p></section>
           <section className={`${styles.panel} ${styles.publishPanel}`}><div className={styles.panelTitle}><h2>{copy.ready}</h2><span className={styles.progressCount}>{checks.filter((check) => check.done).length}/{checks.length}</span></div><p>{copy.readyHint}</p><ul className={styles.checks}>{checks.map((check) => <li key={check.label} data-complete={check.done}><span className={styles.checkIcon}>{check.done ? <DesignIcon name="check" /> : null}</span><span>{check.label}</span><small>{check.done ? copy.complete : copy.incomplete}</small></li>)}</ul></section>
-          <LiveSeoPanel locale={active} keyword={seoKeywords[active]} onKeywordChange={(value) => setSeoKeywords((current) => ({ ...current, [active]: value }))} input={{ kind: "blog", title: current.title, body: current.content, shortDescription: current.excerpt, metaTitle: current.seoTitle, metaDescription: current.seoDescription, hasCover: Boolean(cover), coverAlt: current.coverAltText }} htmlSource={editorMode === "html" ? htmlSource : undefined} />
-          <section className={styles.panel}>
+          <section className={`${styles.panel} ${styles.coverPanel}`}>
             <h2>{copy.cover}</h2><p>{copy.coverHint}</p>
             <label className={styles.coverUpload}>
               {coverVariant ? <NextImage unoptimized src={coverVariant.url} alt={current.coverAltText} width={coverVariant.width} height={coverVariant.height} sizes="(max-width: 900px) 100vw, 320px" /> : <span className={styles.coverPlaceholder}><DesignIcon name="layers" /><strong>{copy.upload}</strong><small>{copy.format}</small></span>}
@@ -390,10 +393,11 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
             </label>
             <label className={styles.field}><span>{copy.alt}</span><input dir={active === "en" ? "ltr" : "rtl"} value={current.coverAltText} maxLength={300} onChange={(event) => updateTranslation("coverAltText", event.target.value)} /><small>{copy.altHint}</small></label>
           </section>
-          <section className={styles.panel}><h2>{copy.organize}</h2><label className={styles.field}><span>{copy.category}</span><select value={categoryId} onChange={(event) => { setCategoryId(event.target.value); setMessage(copy.unsaved); }}><option value="">{copy.choose}</option>{categories.map((category) => <option key={category.id} value={category.id}>{termName(category)}</option>)}</select></label><span className={styles.groupLabel}>{copy.tags}</span><div className={styles.tagList}>{tags.length ? tags.map((tag) => <label key={tag.id}><input type="checkbox" checked={tagIds.includes(tag.id)} onChange={(event) => { setTagIds((currentIds) => event.target.checked ? [...currentIds, tag.id] : currentIds.filter((id) => id !== tag.id)); setMessage(copy.unsaved); }} />{termName(tag)}</label>) : <p>{copy.noTags}</p>}</div></section>
-          <section className={styles.panel}><div className={styles.panelTitle}><h2>{copy.related}</h2><span>{products.length}/8</span></div><input className={styles.searchInput} value={productQuery} onChange={(event) => setProductQuery(event.target.value)} placeholder={copy.productSearch} aria-label={copy.productSearch} /><div className={styles.productResults}>{productOptions.filter((option) => !products.some((product) => product.id === option.id)).map((option) => <button key={option.id} type="button" disabled={products.length >= 8} onClick={() => { setProducts((currentProducts) => [...currentProducts, { ...option, startingPrices: [] }]); setProductQuery(""); setMessage(copy.unsaved); }}>{option.title}</button>)}</div><div className={styles.selectedProducts}>{products.map((product) => <button key={product.id} type="button" aria-label={`${copy.remove} ${product.title}`} onClick={() => { setProducts((currentProducts) => currentProducts.filter((item) => item.id !== product.id)); setMessage(copy.unsaved); }}><span>{product.title}</span><span aria-hidden="true">×</span></button>)}</div></section>
-          <section className={`${styles.panel} ${styles.historyPanel}`}>
-            <div className={styles.panelTitle}><h2>تاریخچه ویرایش</h2><span>{changes.length}</span></div>
+          <section className={`${styles.panel} ${styles.organizePanel}`}><h2>{copy.organize}</h2><label className={styles.field}><span>{copy.category}</span><select value={categoryId} onChange={(event) => { setCategoryId(event.target.value); setMessage(copy.unsaved); }}><option value="">{copy.choose}</option>{categories.map((category) => <option key={category.id} value={category.id}>{termName(category)}</option>)}</select></label><span className={styles.groupLabel}>{copy.tags}</span><div className={styles.tagList}>{tags.length ? tags.map((tag) => <label key={tag.id}><input type="checkbox" checked={tagIds.includes(tag.id)} onChange={(event) => { setTagIds((currentIds) => event.target.checked ? [...currentIds, tag.id] : currentIds.filter((id) => id !== tag.id)); setMessage(copy.unsaved); }} />{termName(tag)}</label>) : <p>{copy.noTags}</p>}</div></section>
+          <details className={`${styles.panel} ${styles.disclosurePanel}`}><summary><span>{copy.related}</span><small>{products.length}/8</small></summary><div className={styles.disclosureContent}><input className={styles.searchInput} value={productQuery} onChange={(event) => setProductQuery(event.target.value)} placeholder={copy.productSearch} aria-label={copy.productSearch} /><div className={styles.productResults}>{productOptions.filter((option) => !products.some((product) => product.id === option.id)).map((option) => <button key={option.id} type="button" disabled={products.length >= 8} onClick={() => { setProducts((currentProducts) => [...currentProducts, { ...option, startingPrices: [] }]); setProductQuery(""); setMessage(copy.unsaved); }}>{option.title}</button>)}</div><div className={styles.selectedProducts}>{products.map((product) => <button key={product.id} type="button" aria-label={`${copy.remove} ${product.title}`} onClick={() => { setProducts((currentProducts) => currentProducts.filter((item) => item.id !== product.id)); setMessage(copy.unsaved); }}><span>{product.title}</span><span aria-hidden="true">×</span></button>)}</div></div></details>
+          <LiveSeoPanel locale={AUTHORING_LOCALE} keyword={seoKeywords[active]} onKeywordChange={(value) => setSeoKeywords((current) => ({ ...current, [active]: value }))} input={{ kind: "blog", title: current.title, body: current.content, shortDescription: current.excerpt, metaTitle: current.seoTitle, metaDescription: current.seoDescription, hasCover: Boolean(cover), coverAlt: current.coverAltText }} htmlSource={editorMode === "html" ? htmlSource : undefined} />
+          <details className={`${styles.panel} ${styles.disclosurePanel} ${styles.historyPanel}`}>
+            <summary><span>تاریخچه ویرایش</span><small>{changes.length}</small></summary><div className={styles.disclosureContent}>
             <p>هر ذخیره با نام ویرایشگر و فیلدهای تغییرکرده ثبت می‌شود.</p>
             {historyError ? <p role="alert">{historyError}</p> : null}
             <ol className={styles.historyList}>
@@ -402,13 +406,13 @@ export function BlogEditor({ postId, backHref, canRestoreHistory = false }: { po
                   <div><strong>{change.action === "create" ? "ایجاد" : change.action === "restore" ? "بازگردانی" : "ویرایش"}</strong><time dateTime={change.createdAt}>{new Intl.DateTimeFormat("fa", { dateStyle: "medium", timeStyle: "short" }).format(new Date(change.createdAt))}</time></div>
                   <small>{change.actor.name} · {change.changedFields.length} تغییر</small>
                   {canRestoreHistory ? <div className={styles.historyActions}>
-                    <button type="button" disabled={saving} onClick={() => void restoreChange(change, "after")}>{confirmRestoreKey === `${change.id}:after` ? "تأیید بازگردانی" : "بازگردانی این نسخه"}</button>
-                    {change.before ? <button type="button" disabled={saving} onClick={() => void restoreChange(change, "before")}>{confirmRestoreKey === `${change.id}:before` ? "تأیید بازگردانی" : "لغو این تغییر"}</button> : null}
+                    <button type="button" disabled={saving || uploadingInline} onClick={() => void restoreChange(change, "after")}>{confirmRestoreKey === `${change.id}:after` ? "تأیید بازگردانی" : "بازگردانی این نسخه"}</button>
+                    {change.before ? <button type="button" disabled={saving || uploadingInline} onClick={() => void restoreChange(change, "before")}>{confirmRestoreKey === `${change.id}:before` ? "تأیید بازگردانی" : "لغو این تغییر"}</button> : null}
                   </div> : null}
                 </li>
               ))}
-            </ol>
-          </section>
+            </ol></div>
+          </details>
         </aside>
       </div>
     </div>

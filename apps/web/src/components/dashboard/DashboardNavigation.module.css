@@ -13,7 +13,7 @@
   min-width: 0;
   grid-column: 1 / -1;
   padding-block: var(--space-dashboard-2xs);
-  border-block: var(--rule-dashboard-thin) solid var(--color-dashboard-rule);
+  border-block-end: var(--rule-dashboard-thin) solid var(--color-dashboard-rule);
 }
 
 .groupTrigger,
@@ -26,7 +26,7 @@
   gap: var(--space-dashboard-xs);
   padding-inline: var(--space-dashboard-sm);
   border: 0;
-  border-radius: var(--radius-dashboard-xs);
+  border-radius: var(--radius-dashboard-sm);
   outline: 2px solid transparent;
   outline-offset: 2px;
   color: var(--color-dashboard-ink-soft);
@@ -35,7 +35,10 @@
   font-size: var(--text-dashboard-xs);
   font-weight: 500;
   text-align: start;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+  padding-block: .5rem;
   cursor: pointer;
   transition:
     color var(--dur-dashboard-short) var(--ease-dashboard-out),
@@ -104,6 +107,7 @@
   color: var(--color-navigation-selected-ink);
   background: var(--color-navigation-selected);
   font-weight: 650;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-navigation-selected) 18%, transparent);
 }
 
 .nestedItem { padding-inline-start: calc(var(--space-dashboard-sm) + 1rem); }
@@ -308,3 +312,29 @@
     transition-duration: var(--dur-dashboard-reduced);
   }
 }
+
+/* Consistent icon tiles across admin, seller, and the mobile section menu. */
+.navigation :is(.groupTrigger, .item) > svg {
+  box-sizing: content-box;
+  width: 1.125rem;
+  height: 1.125rem;
+  padding: .375rem;
+  border-radius: .625rem;
+  color: var(--color-panel-navigation-accent);
+  background: color-mix(in srgb, var(--color-brand-blue) 16%, transparent);
+}
+.navigation > :nth-child(3n + 2) > svg,
+.navigation > .group:nth-child(3n + 2) > .groupTrigger > svg {
+  color: var(--color-brand-teal);
+  background: color-mix(in srgb, var(--color-brand-teal) 16%, transparent);
+}
+.navigation > :nth-child(3n) > svg,
+.navigation > .group:nth-child(3n) > .groupTrigger > svg {
+  color: color-mix(in srgb, var(--color-brand-pink) 72%, white);
+  background: color-mix(in srgb, var(--color-brand-pink) 16%, transparent);
+}
+.navigation .item[aria-current="page"] > svg {
+  color: var(--color-navigation-selected-ink);
+  background: color-mix(in srgb, white 25%, transparent);
+}
+.navigation .subNavigation .item > svg { padding: .25rem; width: 1rem; height: 1rem; }

@@ -7,10 +7,11 @@ import { ProductController } from "./product.controller";
 import { ProductService } from "./product.service";
 import { ProductBulkService } from "./product-bulk.service";
 import { SellerProductsGuard } from "./seller-products.guard";
+import { ProductDownloadLinksService } from "./product-download-links.service";
 
 @Module({
   imports: [AuthModule, MediaModule],
   controllers: [ProductController],
-  providers: [ProductTranslationsService, ProductDescriptionTemplatesService, ProductService, ProductBulkService, SellerProductsGuard]
+  providers: [ProductTranslationsService, ProductDescriptionTemplatesService, ProductService, ProductBulkService, ProductDownloadLinksService, SellerProductsGuard]
 })
 export class ProductModule {}

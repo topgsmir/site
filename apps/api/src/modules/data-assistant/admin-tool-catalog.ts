@@ -5,6 +5,7 @@ export type AdminToolRisk = "read" | "write" | "destructive" | "critical";
 export type AdminToolMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 export type AdminToolJson = null | boolean | number | string | AdminToolJson[] | { [key: string]: AdminToolJson };
 export type AdminToolInput = {
+  workspace?: "seller";
   path?: Record<string, string>;
   query?: Record<string, string | number | boolean | Array<string | number | boolean>>;
   body?: AdminToolJson;
@@ -23,6 +24,7 @@ export type AdminToolDefinition = {
 };
 
 export type PreparedAdminTool = {
+  workspace?: "seller";
   name: string;
   domain: string;
   method: AdminToolMethod;
@@ -79,6 +81,7 @@ const SEARCH_ALIASES: ReadonlyArray<{ pattern: RegExp; terms: readonly string[] 
  * dedicated user flows.
  */
 export const ADMIN_TOOL_CATALOG: readonly AdminToolDefinition[] = [
+  tool("admin_own_shop_create", "sellers", "POST", "/seller/own-shop", "write", "Create the current platform owner's shop without changing their admin role. Repeated setup preserves the existing shop and permissions. New shops have zero platform commission. Use workspace=seller on subsequent seller API tools.", "body: shopName 2..120 characters. No user ID, seller ID, role or permissions accepted."),
   tool("club_me", "club", "GET", "/club/me", "read", "Read the current actor's personal club balance and tier."),
   tool("club_history", "club", "GET", "/club/me/history", "read", "Read the current actor's point history.", "query: cursor UUID, limit 1..100."),
   tool("club_rewards", "club", "GET", "/club/rewards", "read", "List currently active club rewards."),
@@ -200,7 +203,7 @@ export const ADMIN_TOOL_CATALOG: readonly AdminToolDefinition[] = [
   tool("admin_product_description_template_update", "catalog", "PATCH", "/products/admin/templates/:templateId", "write", "Edit or activate/deactivate a product description template.", "path: templateId UUID; body: optional name, content and active boolean."),
   tool("admin_products_bulk_edit_preview", "catalog", "POST", "/products/admin/bulk-edit/preview", "write", "Preview a bounded selection of product and offer edits, including before and after values and a revision.", "body: 1-50 productIds and one action with its bounded value."),
   tool("admin_products_bulk_edit_apply", "catalog", "POST", "/products/admin/bulk-edit", "destructive", "Apply a previewed product bulk edit atomically with an operation ID and exact revision.", "body: 1-50 productIds, one action and value, UUID operationId, and 64-character preview revision."),
-  tool("admin_product_get", "catalog", "GET", "/products/admin/:productId", "read", "Read complete administrative product details.", "path: productId."),
+  tool("admin_product_get", "catalog", "GET", "/products/admin/:productId", "read", "Read administrative product details, Bridge purchase limits, and paginated seller offers with effective commission and shipping readiness.", "path: productId; query: cursor and limit for seller listings."),
     tool("admin_product_update", "catalog", "PATCH", "/products/admin/:productId", "write", "Update product catalog fields, including its formatted description, tags, managed category, and unique public slug.", "path: productId; body: title, slug, categoryId (UUID or null) or category name, up to 20 tags of 50 characters each, status, description (plain text or versioned rich-text document string up to 10000 characters)."),
   tool("admin_product_transfer", "catalog", "POST", "/products/admin/:productId/transfer", "destructive", "Transfer product ownership and its unsold listing to another approved seller, with an audit record.", "path: productId; body: {sellerId: approved seller UUID}."),
   tool("admin_product_slug_availability", "catalog", "GET", "/products/admin/slug-availability", "read", "Check whether a product slug is available, including historic reserved slugs.", "query: slug and optional currentProductId UUID."),
@@ -216,6 +219,9 @@ export const ADMIN_TOOL_CATALOG: readonly AdminToolDefinition[] = [
   tool("admin_product_bulk_undo", "catalog", "POST", "/products/admin/changes/bulk-undo", "destructive", "Apply an approved bounded bulk product-change rollback.", "body: preview token and exact rollback selection."),
   tool("admin_product_listing_update", "catalog", "PATCH", "/products/admin/listings/:listingId", "write", "Change a seller listing's administrative status.", "path: listingId; body: {status}."),
   tool("admin_product_offer_update", "catalog", "PATCH", "/products/admin/offers/:offerId", "write", "Update an offer's price, stock, status, or download limit while enforcing the product currency and immutable download links.", "path: offerId; body: allowlisted offer fields; digital updates must repeat the original fileReferences and fileTitles; currency, when given, must match the product."),
+  tool("admin_download_link_requests", "catalog", "GET", "/products/admin/download-link-requests", "read", "List up to 50 pending seller requests to edit or delete digital offer download links.", "No input."),
+  tool("admin_download_link_request_review", "catalog", "PATCH", "/products/admin/download-link-requests/:requestId", "write", "Approve or reject a pending download link change after checking the current link and seller.", "path: requestId UUID; body: status approved or rejected, reason 3-500 characters required for rejection."),
+  tool("admin_download_links_replace", "catalog", "PUT", "/products/admin/offers/:offerId/download-links", "destructive", "Replace a digital offer's download URL and title list directly as platform admin.", "path: offerId UUID; body: 1-50 unique unsigned HTTPS fileReferences and paired nonempty fileTitles."),
   tool("admin_product_category_update", "catalog", "PATCH", "/products/admin/categories/:categoryId", "write", "Update a product category, its parent, SEO fields and localized labels.", "path: categoryId; body: name, slug, description, metaTitle, metaDescription, parentId, translations."),
   tool("admin_product_categories_list", "catalog", "GET", "/products/admin/categories", "read", "List product categories with parent links and product counts.", "query: search, cursor, limit."),
   tool("admin_product_category_create", "catalog", "POST", "/products/admin/categories", "write", "Create a product category.", "body: name, slug, description, metaTitle, metaDescription, parentId, translations."),
@@ -232,6 +238,9 @@ export const ADMIN_TOOL_CATALOG: readonly AdminToolDefinition[] = [
   tool("seller_product_image_remove", "catalog", "DELETE", "/products/:productId/image", "write", "Request admin approval to remove the image from a seller-owned product.", "path: productId."),
   tool("seller_product_offer_create", "catalog", "POST", "/products/:productId/offers", "write", "Create an offer using the product's existing price currency.", "path: productId; body: validated variant, price, matching currency, stock or digital delivery with 1-50 HTTPS fileReferences and paired fileTitles."),
   tool("seller_product_offer_update", "catalog", "PATCH", "/products/offers/:offerId", "write", "Update a seller-owned offer without changing the product currency or registered download links.", "path: offerId; body: allowlisted offer fields; digital updates must repeat the original fileReferences and fileTitles; currency, when given, must match the product."),
+  tool("seller_download_link_add", "catalog", "POST", "/products/offers/:offerId/download-links", "write", "Add a new download URL to a digital offer owned by the current seller.", "path: offerId UUID; body: unsigned HTTPS url up to 2048 characters and nonempty title up to 120 characters."),
+  tool("seller_download_link_requests", "catalog", "GET", "/products/offers/:offerId/download-link-requests", "read", "Read recent edit or deletion requests for a digital offer owned by the current seller.", "path: offerId UUID."),
+  tool("seller_download_link_change_request", "catalog", "POST", "/products/offers/:offerId/download-link-requests", "write", "Request admin approval to edit or delete one download link on a seller-owned digital offer.", "path: offerId UUID; body: action edit or delete, zero-based linkIndex 0-49, and for edit an unsigned HTTPS url and nonempty title."),
 
   tool("admin_orders_list", "orders", "GET", "/orders", "read", "Search and paginate orders visible to the authenticated admin; seller order items include their product ID, and directory responses include counts for each order status group.", "query: view=directory for platform order counts, trash active|trashed, status or statusGroup (pending, processing, completed, cancelled, returned, other), productType, search, dateFrom, dateTo, sort, cursor, limit."),
   tool("purchase_orders_list", "orders", "GET", "/orders/purchases", "read", "List only the current actor's personal purchases with buyer-safe fields.", "query: cursor UUID, limit 1..50, optional status, productType, search, dateFrom, dateTo, sort; management filters are rejected."),
@@ -505,7 +514,7 @@ export class AdminToolCatalogService {
 
   compactPrompt(query: string) {
     const shortlist = this.search(query, undefined, 16);
-    return `Domains: ${this.domainSummary()}\nLikely tools for the current request:\n${shortlist.map((entry) => `- ${entry.name} [${entry.risk}] ${entry.method} ${entry.path}: ${entry.description} Input: ${entry.inputHint}`).join("\n") || "- No lexical match. Use tool discovery with English keywords."}`;
+    return `Domains: ${this.domainSummary()}\nFor the owner's own shop, pass input.workspace="seller" to run existing seller tools with verified seller-only authority. Omit workspace for platform-wide administration and admin_own_shop_create.\nLikely tools for the current request:\n${shortlist.map((entry) => `- ${entry.name} [${entry.risk}] ${entry.method} ${entry.path}: ${entry.description} Input: ${entry.inputHint}`).join("\n") || "- No lexical match. Use tool discovery with English keywords."}`;
   }
 
   has(name: string): boolean {
@@ -534,9 +543,10 @@ export class AdminToolCatalogService {
       method: definition.method,
       path: resolvedPath,
       query: input.query ?? {},
+      ...(input.workspace ? { workspace: input.workspace } : {}),
       ...(input.body !== undefined ? { body: input.body } : {}),
       risk: definition.risk,
-      description: definition.description,
+      description: input.workspace === "seller" ? `Own shop only: ${definition.description}` : definition.description,
       responseMode: definition.responseMode ?? "json",
       ...(definition.idempotent ? { idempotencyKey: randomUUID() } : {})
     };
@@ -566,7 +576,8 @@ export class AdminToolCatalogService {
   private normalizeInput(value: unknown): AdminToolInput {
     if (!value || typeof value !== "object" || Array.isArray(value)) throw new BadRequestException("Admin AI tool input must be an object");
     const raw = value as Record<string, unknown>;
-    if (Object.keys(raw).some((key) => !["path", "query", "body"].includes(key))) throw new BadRequestException("Admin AI tool input contains an unsupported field");
+    if (Object.keys(raw).some((key) => !["path", "query", "body", "workspace"].includes(key))) throw new BadRequestException("Admin AI tool input contains an unsupported field");
+    if (raw.workspace !== undefined && raw.workspace !== "seller") throw new BadRequestException("Admin AI workspace must be seller when provided");
     const path = this.record(raw.path, "path", 12);
     const normalizedPath = Object.fromEntries(Object.entries(path).map(([key, item]) => {
       if (FORBIDDEN_INPUT_KEYS.test(key)) throw new BadRequestException(`Admin AI tool path field '${key}' cannot contain credential material`);
@@ -582,7 +593,7 @@ export class AdminToolCatalogService {
     }));
     if (raw.body !== undefined && Buffer.byteLength(JSON.stringify(raw.body), "utf8") > MAX_TOOL_BODY_BYTES) throw new BadRequestException("Admin AI tool body is too large");
     this.assertJson(raw.body, 0);
-    return { ...(Object.keys(normalizedPath).length ? { path: normalizedPath } : {}), ...(Object.keys(normalizedQuery).length ? { query: normalizedQuery } : {}), ...(raw.body !== undefined ? { body: raw.body as AdminToolJson } : {}) };
+    return { ...(raw.workspace === "seller" ? { workspace: "seller" as const } : {}), ...(Object.keys(normalizedPath).length ? { path: normalizedPath } : {}), ...(Object.keys(normalizedQuery).length ? { query: normalizedQuery } : {}), ...(raw.body !== undefined ? { body: raw.body as AdminToolJson } : {}) };
   }
 
   private record(value: unknown, label: string, maxKeys: number): Record<string, unknown> {

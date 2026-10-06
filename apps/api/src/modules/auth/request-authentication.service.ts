@@ -8,9 +8,12 @@ export class RequestAuthenticationService {
   constructor(private readonly authService: AuthService) {}
 
   async authenticate(request: AuthenticatedRequest) {
-    const user = await this.authService.getUserFromToken(
+    const authenticated = await this.authService.getUserFromToken(
       readSessionToken(request.headers.cookie, request.headers.authorization)
     );
+    const user = request.headers["x-topgsm-workspace"] === "seller"
+      ? await this.authService.inSellerWorkspace(authenticated)
+      : authenticated;
     request.authenticatedUser = user;
     return user;
   }

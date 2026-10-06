@@ -19,14 +19,10 @@ export function DigitalProductHeading({ product, locale }: { product: PublicProd
     </div>
     <nav className={styles.sectionLinks} aria-label={c.label}>
       <a href="#download-description">{c.description}</a>
+      <a href="#purchase">{c.purchase}</a>
       <a href="#download-details-title">{c.details}</a>
     </nav>
   </header>;
-}
-
-export function DigitalDeliveryNote({ locale }: { locale: Locale }) {
-  const c = digitalProductCopy[locale];
-  return <div className={styles.delivery}><DesignIcon name="file" /><div><strong>{c.delivery}</strong><p>{c.deliveryBody}</p></div></div>;
 }
 
 export function DigitalProductDescription({ description, locale }: { description: string | null; locale: Locale }) {
@@ -35,25 +31,4 @@ export function DigitalProductDescription({ description, locale }: { description
     <h2 id="download-description-title">{c.description}</h2>
     <ProductDescription description={description} fallback={c.noDescription} />
   </article>;
-}
-
-export function DigitalDownloadGuide({ locale }: { locale: Locale }) {
-  const c = digitalProductCopy[locale];
-  return <section className={styles.guide} aria-labelledby="download-guide-title">
-    <header><h2 id="download-guide-title">{c.guide}</h2><p>{c.guideIntro}</p></header>
-    <ol>{c.steps.map((step, index) => <li key={step.title}>
-      <span className={styles.stepNumber} aria-hidden="true">{new Intl.NumberFormat(locale).format(index + 1)}</span>
-      <div><h3>{step.title}</h3><p>{step.body}</p></div>
-    </li>)}</ol>
-  </section>;
-}
-
-export function DigitalDownloadQuestions({ locale, free }: { locale: Locale; free: boolean }) {
-  const c = digitalProductCopy[locale];
-  return <section className={styles.questions} aria-labelledby="download-questions-title">
-    <h2 id="download-questions-title">{c.questions}</h2>
-    <div>{[[c.accessQuestion, c.accessAnswer], [c.limitQuestion, free ? c.freeLimitAnswer : c.limitAnswer], [c.compatibilityQuestion, c.compatibilityAnswer]].map(([question, answer]) => <details key={question}>
-      <summary>{question}<span aria-hidden="true">+</span></summary><p>{answer}</p>
-    </details>)}</div>
-  </section>;
 }

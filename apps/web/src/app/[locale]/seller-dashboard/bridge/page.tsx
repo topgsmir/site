@@ -10,6 +10,6 @@ export const dynamic = "force-dynamic";
 export default async function BridgePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  const user = await requireUser(locale, ["seller-admin", "seller-staff"]);
+  const user = await requireUser(locale, ["seller-admin", "seller-staff", "platform-admin"]);
   return <SellerDashboard locale={locale} user={user} initialSection="bridge" />;
 }

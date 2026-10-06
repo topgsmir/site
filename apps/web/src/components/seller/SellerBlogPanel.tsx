@@ -93,7 +93,7 @@ export function SellerBlogPanel({ locale, editBase = "seller-dashboard/blog", ca
     setCreating(true); setCreateError(false);
     try {
       const response = await api.post<ManagedBlogPost>("/blog/manage/posts", {});
-      router.push(`/${locale}/${editBase}/${response.data.id}` as Route);
+      router.push(`/${locale}/${editBase}/${response.data.id}?new=1` as Route);
     } catch { setCreateError(true); setCreating(false); }
   }
   const format = (value: string) => new Intl.DateTimeFormat(locale === "fa" ? "fa-IR" : locale, { dateStyle: "medium" }).format(new Date(value));

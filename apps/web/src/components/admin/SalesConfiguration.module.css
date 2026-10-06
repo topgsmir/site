@@ -1,0 +1,47 @@
+.configuration {
+  display: grid;
+  gap: 1rem;
+}
+
+.configuration header {
+  display: grid;
+  gap: .25rem;
+}
+
+.configuration h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.4;
+}
+
+.configuration p {
+  margin: 0;
+  color: var(--color-dashboard-ink-soft);
+}
+
+.links {
+  display: grid;
+  gap: .75rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+}
+
+.link {
+  display: grid;
+  gap: .25rem;
+  padding: .875rem 1rem;
+  border: 1px solid var(--color-dashboard-rule);
+  border-radius: var(--radius-dashboard-sm);
+  color: var(--color-dashboard-ink);
+  text-decoration: none;
+}
+
+.link span {
+  color: var(--color-dashboard-ink-soft);
+  font-size: .875rem;
+}
+
+.link:hover,
+.link:focus-visible {
+  border-color: var(--color-dashboard-accent);
+  outline-color: var(--color-dashboard-focus);
+}

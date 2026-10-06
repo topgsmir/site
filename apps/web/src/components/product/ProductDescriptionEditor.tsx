@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Locale } from "@/lib/i18n";
 import { BLOG_EDITOR_COPY } from "@/components/blog/BlogEditorCopy";
 import { RichTextVisualEditor, richTextExtensions } from "@/components/blog/RichTextVisualEditor";
+import { RICH_TEXT_EDITOR_COPY } from "@/components/blog/RichTextEditorCopy";
 import { PRODUCT_RICH_TEXT_PREFIX, productDescriptionDocument, productDescriptionFromText, productDescriptionText } from "@/lib/product-description";
 import { safeExternalHref } from "@/lib/safe-navigation";
 import styles from "./ProductDescriptionEditor.module.css";
@@ -42,8 +43,10 @@ export function ProductDescriptionEditor({ value, onChange, locale, language = l
   const [htmlSource, setHtmlSource] = useState("");
   const copy = BLOG_EDITOR_COPY[locale];
   const extra = EXTRA[locale];
+  const editorCopy = RICH_TEXT_EDITOR_COPY[locale];
   const editor = useEditor({
     immediatelyRender: false,
+    editable: !disabled,
     editorProps: { attributes: { role: "textbox", "aria-label": label, "aria-multiline": "true" } },
     extensions: richTextExtensions(label, false, true),
     content: productDescriptionDocument(value) ?? productDescriptionFromText(productDescriptionText(value)),
@@ -77,13 +80,13 @@ export function ProductDescriptionEditor({ value, onChange, locale, language = l
   }
   return <div aria-label={label}>
     <div className={styles.modes} role="group" aria-label={label}>
-      <button type="button" aria-pressed={mode === "preview"} onClick={() => setMode("preview")}>{extra.preview}</button>
-      <button type="button" aria-pressed={mode === "code"} onClick={() => { if (editor) setHtmlSource(editor.getHTML()); setMode("code"); }}>{extra.code}</button>
+      <button type="button" aria-pressed={mode === "preview"} onClick={() => setMode("preview")}>{editorCopy.edit}</button>
+      <button type="button" aria-pressed={mode === "code"} onClick={() => { if (editor) setHtmlSource(editor.getHTML()); setMode("code"); }}>{editorCopy.html}</button>
     </div>
-    {mode === "preview" ? <RichTextVisualEditor editor={editor} compact language={language} articleTools labels={{
+    {mode === "preview" ? <RichTextVisualEditor editor={editor} compact language={language} locale={locale} disabled={disabled} articleTools labels={{
       body: label, bold: copy.bold, italic: copy.italic, heading: copy.heading, list: copy.list,
       ...extra
-    }} onInvalidLink={() => setError(extra.invalidLink)} /> : <div className={styles.codeEditor}>
+    }} /> : <div className={styles.codeEditor}>
       <textarea dir="ltr" lang="en" spellCheck={false} aria-label={`${label} HTML`} value={htmlSource} disabled={disabled} onChange={(event) => updateCode(event.target.value)} />
       <p>{extra.codeHint}</p>
     </div>}

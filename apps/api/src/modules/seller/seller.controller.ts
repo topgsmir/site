@@ -13,6 +13,8 @@ import {
 import { SellerProfileGuard } from "./seller-profile.guard";
 import { SellerService } from "./seller.service";
 import { MediaService } from "../media/media.service";
+import { PlatformAdminGuard } from "../auth/platform-admin.guard";
+import { CreateOwnShopDto } from "./dto/own-shop.dto";
 
 @Controller("seller")
 export class SellerController {
@@ -21,6 +23,13 @@ export class SellerController {
     private readonly rateLimits: AuthRateLimitService,
     private readonly media: MediaService
   ) {}
+
+  @Post("own-shop")
+  @UseGuards(PlatformAdminGuard)
+  async createOwnShop(@Body() body: CreateOwnShopDto, @Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+    await this.rateLimits.consumeSellerOperation(request.authenticatedUser!.id, clientIp);
+    return this.sellerService.createOwnShop(request.authenticatedUser!.id, body);
+  }
 
   @Get("vendors")
   @RequirePlatformPermission("vendors_manage")

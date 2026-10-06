@@ -16,6 +16,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   Res,
@@ -52,6 +53,8 @@ import { ProductBulkService } from "./product-bulk.service";
 import { SellerProductsGuard } from "./seller-products.guard";
 import { MediaService } from "../media/media.service";
 import { AdminUploadsService } from "../media/admin-uploads.service";
+import { ProductDownloadLinksService } from "./product-download-links.service";
+import { DownloadLinkDto, ReplaceDownloadLinksDto, RequestDownloadLinkChangeDto, ReviewDownloadLinkChangeDto } from "./dto/download-link.dto";
 
 @Controller("products")
 export class ProductController {
@@ -62,8 +65,76 @@ export class ProductController {
     private readonly translations: ProductTranslationsService,
     private readonly media: MediaService,
     private readonly uploads: AdminUploadsService,
-    private readonly descriptionTemplates: ProductDescriptionTemplatesService
+    private readonly descriptionTemplates: ProductDescriptionTemplatesService,
+    private readonly downloadLinks: ProductDownloadLinksService
   ) {}
+
+  @Get("admin/download-link-requests")
+  @UseGuards(PlatformAdminGuard)
+  listDownloadLinkRequests() {
+    return this.downloadLinks.listPendingForAdmin();
+  }
+
+  @Patch("admin/download-link-requests/:requestId")
+  @BrowserSessionMutation()
+  @UseGuards(PlatformAdminGuard)
+  async reviewDownloadLinkRequest(
+    @Param("requestId", new ParseUUIDPipe({ version: "4" })) requestId: string,
+    @Body() body: ReviewDownloadLinkChangeDto,
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
+  ) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
+    return this.downloadLinks.review(requestId, request.authenticatedUser!.id, body);
+  }
+
+  @Put("admin/offers/:offerId/download-links")
+  @BrowserSessionMutation()
+  @UseGuards(PlatformAdminGuard)
+  async replaceDownloadLinks(
+    @Param("offerId", new ParseUUIDPipe({ version: "4" })) offerId: string,
+    @Body() body: ReplaceDownloadLinksDto,
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
+  ) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
+    return this.downloadLinks.replaceAsAdmin(offerId, request.authenticatedUser!.id, body);
+  }
+
+  @Post("offers/:offerId/download-links")
+  @BrowserSessionMutation()
+  @UseGuards(SellerProductsGuard)
+  async addDownloadLink(
+    @Param("offerId", new ParseUUIDPipe({ version: "4" })) offerId: string,
+    @Body() body: DownloadLinkDto,
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
+  ) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
+    return this.downloadLinks.addAsSeller(request.sellerContext!.sellerId, request.authenticatedUser!.id, offerId, body);
+  }
+
+  @Get("offers/:offerId/download-link-requests")
+  @UseGuards(SellerProductsGuard)
+  listOwnDownloadLinkRequests(
+    @Param("offerId", new ParseUUIDPipe({ version: "4" })) offerId: string,
+    @Req() request: AuthenticatedRequest
+  ) {
+    return this.downloadLinks.listForSeller(request.sellerContext!.sellerId, offerId);
+  }
+
+  @Post("offers/:offerId/download-link-requests")
+  @BrowserSessionMutation()
+  @UseGuards(SellerProductsGuard)
+  async requestDownloadLinkChange(
+    @Param("offerId", new ParseUUIDPipe({ version: "4" })) offerId: string,
+    @Body() body: RequestDownloadLinkChangeDto,
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
+  ) {
+    await this.rateLimits.consumeProductMutation(request.authenticatedUser!.id, clientIp);
+    return this.downloadLinks.requestChange(request.sellerContext!.sellerId, request.authenticatedUser!.id, offerId, body);
+  }
 
   @Post("admin/bulk-edit/preview")
   @BrowserSessionMutation()

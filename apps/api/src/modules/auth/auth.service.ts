@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException
 } from "@nestjs/common";
@@ -56,6 +57,24 @@ type StoredUser = {
 @Injectable()
 export class AuthService {
   constructor(private readonly prisma: PrismaService, private readonly loginSettings: AuthLoginSettingsService) {}
+
+  /** Narrow an owner's authority for one request; never change their stored role/session. */
+  async inSellerWorkspace(user: AppUser): Promise<AppUser> {
+    if (user.role !== "platform-admin") return user;
+    const membership = await this.prisma.seller_memberships.findFirst({
+      where: {
+        user_id: user.id, active: true, role: "admin",
+        seller: { user_id: user.id, invited: false, approved: true, suspended_at: null, merged_into_seller_id: null }
+      },
+      select: { seller_id: true, seller: { select: { permissions: { select: { permission: true } } } } }
+    });
+    if (!membership) throw new ForbiddenException("An active shop owned by this administrator is required");
+    return {
+      ...user, role: "seller-admin", sellerId: membership.seller_id,
+      permissions: membership.seller.permissions.map(({ permission }) => permission),
+      isPlatformOwner: false, platformPermissions: []
+    };
+  }
 
   async register(input: RegisterDto) {
     await this.loginSettings.assertEmailPasswordEnabled();

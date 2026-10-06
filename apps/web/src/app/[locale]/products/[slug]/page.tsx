@@ -9,7 +9,7 @@ import { getDictionary, isLocale, type Locale } from "@/lib/i18n";
 import { ProductPage } from "./ProductPage";
 import { getPublicProduct, type PublicProduct } from "./product.server";
 import { productPageCopy } from "./product-copy";
-import { schemaPrice } from "@/lib/product-seo";
+import { productSummary, schemaPrice } from "@/lib/product-seo";
 import { managedSeoMetadata } from "@/lib/seo-settings-server";
 import { productDescriptionText } from "@/lib/product-description";
 
@@ -35,9 +35,9 @@ function canonicalProductUrl(slug: string, locale: Locale = "fa") {
 
 function compactDescription(product: PublicProduct, locale: Locale) {
   const copy = getDictionary(locale).product;
-  const source = productDescriptionText(product.description).replace(/\s+/g, " ").trim();
+  const source = productSummary(productDescriptionText(product.description));
   if (source) {
-    return source.length > 158 ? `${source.slice(0, 155).trimEnd()}…` : source;
+    return source;
   }
   const type = product.type === "bridge" ? productPageCopy[locale].bridge : copy[product.type];
   return `${product.title} — ${type} ${product.category ? `· ${product.category}` : ""} | Top GSM`.replace(/\s+/g, " ");

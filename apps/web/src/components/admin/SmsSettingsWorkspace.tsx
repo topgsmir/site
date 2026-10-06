@@ -223,7 +223,7 @@ export function SmsSettingsWorkspace({ locale }: { locale: Locale }) {
     : null;
 
   return (
-    <section className={styles.workspace} aria-labelledby="sms-settings-title">
+    <section className={`${styles.workspace} ${styles.smsWorkspace}`} aria-labelledby="sms-settings-title">
       <header className={styles.header}>
         <span>{c.eyebrow}</span>
         <h1 id="sms-settings-title">{c.title}</h1>

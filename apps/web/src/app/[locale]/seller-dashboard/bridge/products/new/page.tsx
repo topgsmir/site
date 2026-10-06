@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function NewBridgeProductPage({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<{ grant?: string }> }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  await requireUser(locale, ["seller-admin", "seller-staff"]);
+  await requireUser(locale, ["seller-admin", "seller-staff", "platform-admin"]);
   const grant = (await searchParams).grant;
   redirect(`/${locale}/seller-dashboard/products/new${grant ? `?grant=${encodeURIComponent(grant)}` : ""}` as Route);
 }

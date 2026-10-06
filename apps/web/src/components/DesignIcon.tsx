@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 
-export type DesignIconName = "arrow" | "file" | "layers" | "headphones" | "check" | "spark" | "search" | "bag" | "globe" | "upload" | "gift" | "settings";
+export type DesignIconName = "arrow" | "file" | "layers" | "headphones" | "check" | "spark" | "search" | "bag" | "globe" | "upload" | "gift" | "settings" | "trash";
 const paths: Record<DesignIconName, string> = {
   arrow: "M5 12h14m-6-6 6 6-6 6",
   file: "M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Zm0 0v6h6M8 13h8M8 17h5",
@@ -13,7 +13,8 @@ const paths: Record<DesignIconName, string> = {
   globe: "M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0ZM2 12h20M12 2c3 2.7 4.5 6 4.5 10S15 19.3 12 22M12 2C9 4.7 7.5 8 7.5 12S9 19.3 12 22",
   upload: "M12 16V3m-5 5 5-5 5 5M4 16v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4",
   gift: "M4 10h16v11H4V10Zm-1-4h18v4H3V6Zm9 0v15m0-15c-1-3-2.7-4-4.4-4C6 2 5 3 5 4s1 2 2.6 2H12Zm0 0c1-3 2.7-4 4.4-4C18 2 19 3 19 4s-1 2-2.6 2H12Z",
-  settings: "M4 7h16M4 17h16M9 4v6M15 14v6"
+  settings: "M4 7h16M4 17h16M9 4v6M15 14v6",
+  trash: "M4 7h16m-10 4v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"
 };
 export function DesignIcon({ name, ...props }: SVGProps<SVGSVGElement> & { name: DesignIconName }) {
   return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path d={paths[name]} /></svg>;

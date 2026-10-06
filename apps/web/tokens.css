@@ -33,6 +33,17 @@
   --color-home-about-accent: color-mix(in srgb, var(--color-brand-blue) 65%, var(--color-brand-off-white));
   --color-home-positive-marker: color-mix(in srgb, var(--color-brand-teal) 12%, var(--color-home-about-paper));
   --color-neutral-white: #ffffff;
+  --color-panel-paper: #f3f6fb;
+  --color-panel-navigation: #062b55;
+  --color-panel-navigation-raised: #103960;
+  --color-panel-navigation-rule: #24476b;
+  --color-panel-navigation-rule-strong: #6584a3;
+  --color-panel-navigation-ink: #f6f9ff;
+  --color-panel-navigation-muted: #bed0e3;
+  --color-panel-navigation-accent: #45b9ff;
+  --color-panel-navigation-accent-soft: #123f69;
+  --color-panel-navigation-selected: #159ee9;
+  --color-panel-navigation-selected-ink: #062342;
   --color-status-amber: #f5a623;
 
   /* Semantic assignments: change a role once to update both themes. */
@@ -269,6 +280,7 @@
 }
 
 html[data-theme="dark"] {
+  --color-panel-paper: var(--color-brand-navy);
   --shadow-dashboard-card: 0 3px 16px color-mix(in srgb, var(--color-brand-navy) 10%, transparent);
   --shadow-dashboard-float: 0 16px 48px color-mix(in srgb, var(--color-brand-navy) 20%, transparent);
   --color-dashboard-paper: var(--color-brand-navy);

@@ -90,6 +90,21 @@ test("prepares only the declared route parameters and encodes path values", () =
   assert.throws(() => catalog.prepare("not_allowlisted", {}), BadRequestException);
 });
 
+test("own-shop tools retain owner approval and explicitly carry seller-only context", () => {
+  const catalog = new AdminToolCatalogService();
+  assert.equal(catalog.canAutoExecute("admin_own_shop_create"), false);
+  const setup = catalog.prepare("admin_own_shop_create", { body: { shopName: "My shop" } });
+  assert.equal(setup.path, "/seller/own-shop");
+  assert.equal(setup.workspace, undefined);
+  const sellerTool = ADMIN_TOOL_CATALOG.find((entry) => entry.path === "/products/mine" && entry.method === "GET")!;
+  const prepared = catalog.prepare(sellerTool.name, { workspace: "seller" });
+  assert.equal(prepared.workspace, "seller");
+  assert.match(prepared.description, /^Own shop only:/);
+  assert.equal(catalog.prepare(sellerTool.name, {}).workspace, undefined);
+  assert.throws(() => catalog.prepare(sellerTool.name, { workspace: "platform-admin" }), BadRequestException);
+  assert.throws(() => catalog.prepare(sellerTool.name, { workspace: { sellerId: "someone-else" } }), BadRequestException);
+});
+
 test("bounds tool input and rejects direct credential-shaped storage fields", () => {
   const catalog = new AdminToolCatalogService();
   assert.throws(() => catalog.prepare("admin_user_update", { path: { id: "user" }, body: { password_hash: "nope" } }), BadRequestException);

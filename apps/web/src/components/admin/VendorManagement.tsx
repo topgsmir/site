@@ -37,6 +37,7 @@ import { ProductDescriptionTemplatesWorkspace } from "@/components/admin/Product
 import { ProductBulkEdit } from "@/components/admin/ProductBulkEdit";
 import { AiWorkspace } from "@/components/admin/AiWorkspace";
 import { CouponWorkspace } from "@/components/admin/CouponWorkspace";
+import { SalesConfiguration } from "@/components/admin/SalesConfiguration";
 import { MarketingWorkspace } from "@/components/marketing/MarketingWorkspace";
 import { ClubWorkspace } from "@/components/admin/ClubWorkspace";
 import { SmsSettingsWorkspace } from "@/components/admin/SmsSettingsWorkspace";
@@ -55,6 +56,8 @@ import type { AdminSection } from "@/components/admin/AdminPanelRoute";
 import navigationStyles from "@/components/dashboard/DashboardNavigation.module.css";
 import { AnalyticsOverview } from "@/components/analytics/AnalyticsOverview";
 import { PanelOverview } from "@/components/dashboard/PanelOverview";
+import { PanelTopbar } from "@/components/dashboard/PanelTopbar";
+import panelStyles from "@/components/dashboard/PanelShell.module.css";
 import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
 import { JalaliDatePicker } from "@/components/dashboard/JalaliDatePicker";
 import { useNewOrderCount } from "@/components/dashboard/useNewOrderCount";
@@ -90,6 +93,8 @@ const copy = {
     overview: "Overview",
     notifications: "Notifications",
     statistics: "Statistics",
+    reports: "Reports",
+    salesConfiguration: "Configuration",
     users: "Users",
     sellerStatistics: "Seller statistics",
     vendors: "Vendors",
@@ -266,6 +271,8 @@ const copy = {
     overview: "نمای کلی",
     notifications: "اعلان‌ها",
     statistics: "آمار",
+    reports: "گزارشات",
+    salesConfiguration: "پیکربندی",
     users: "کاربران",
     sellerStatistics: "آمار فروشندگان",
     vendors: "فروشنده‌ها",
@@ -314,9 +321,9 @@ const copy = {
     productCategories: "دسته‌بندی‌ها",
     productTemplates: "قالب‌های آماده",
     productChanges: "تغییرات محصولات",
-    coupons: "کدهای تخفیف",
+    coupons: "کد تخفیف",
     marketing: "بازاریابی",
-    orders: "سفارش",
+    orders: "سفارش‌ها",
     newOrders: "سفارش جدید",
     permissions: "دسترسی‌ها",
     manage: "مدیریت فروشنده",
@@ -442,6 +449,8 @@ const copy = {
     overview: "نظرة عامة",
     notifications: "الإشعارات",
     statistics: "الإحصاءات",
+    reports: "التقارير",
+    salesConfiguration: "الإعدادات",
     users: "المستخدمون",
     sellerStatistics: "إحصاءات البائعين",
     vendors: "البائعون",
@@ -833,6 +842,8 @@ export function VendorManagement({
     section === "coupons" ||
     section === "marketing" ||
     section === "club" ||
+    section === "sales-configuration" ||
+    section === "settings-shipping" ||
     section === "orders" ||
     section === "order-detail";
   const salesServiceExpanded = isSalesServiceSection || salesServiceOpen;
@@ -860,7 +871,6 @@ export function VendorManagement({
   const isIntegrationsSection =
     section === "settings-sms" ||
     section === "settings-goghdi" ||
-    section === "settings-shipping" ||
     section === "bridge";
   const integrationsExpanded = isIntegrationsSection || integrationsOpen;
   const isSecuritySection =
@@ -873,7 +883,7 @@ export function VendorManagement({
     {
       overview: c.overview,
       notifications: c.notifications,
-      statistics: c.statistics,
+      statistics: c.reports,
       vendors: c.vendors,
       users: c.users,
       "seller-statistics": c.sellerStatistics,
@@ -883,6 +893,7 @@ export function VendorManagement({
       "product-changes": c.productChanges,
       coupons: c.coupons,
       marketing: c.marketing,
+      "sales-configuration": c.salesConfiguration,
       club:
         locale === "fa"
           ? "باشگاه مشتریان"
@@ -1262,7 +1273,7 @@ export function VendorManagement({
   }
 
   return (
-    <div className="admin-dashboard-shell">
+    <div className={`admin-dashboard-shell ${panelStyles.shell}`}>
       <a className="skip-link" href="#admin-content">
         {c.skip}
       </a>
@@ -1319,7 +1330,7 @@ export function VendorManagement({
         }
       >
         <aside
-          className="admin-rail"
+          className={`admin-rail ${panelStyles.rail}`}
           data-navigation-surface
           data-mobile-open={true}
         >
@@ -1515,13 +1526,22 @@ export function VendorManagement({
                   >
                     <Link
                       className={navigationStyles.item}
-                      href={`/${locale}/admin/statistics` as Route}
+                      href={`/${locale}/admin/orders` as Route}
                       aria-current={
-                        section === "statistics" ? "page" : undefined
+                        section === "orders" || section === "order-detail"
+                          ? "page"
+                          : undefined
                       }
                     >
-                      <StatisticsIcon />
-                      <span>{c.statistics}</span>
+                      <OrdersIcon />
+                      <span>{c.orders}</span>
+                      <strong
+                        className={navigationStyles.count}
+                        aria-label={`${newOrderCount.toLocaleString(locale)} ${c.newOrders}`}
+                        title={`${newOrderCount.toLocaleString(locale)} ${c.newOrders}`}
+                      >
+                        {newOrderCount.toLocaleString(locale)}
+                      </strong>
                     </Link>
                     <Link
                       className={navigationStyles.item}
@@ -1541,36 +1561,19 @@ export function VendorManagement({
                     </Link>
                     <Link
                       className={navigationStyles.item}
-                      href={`/${locale}/admin/club` as Route}
-                      aria-current={section === "club" ? "page" : undefined}
+                      href={`/${locale}/admin/statistics` as Route}
+                      aria-current={section === "statistics" ? "page" : undefined}
                     >
-                      <CouponIcon />
-                      <span>
-                        {locale === "fa"
-                          ? "باشگاه مشتریان"
-                          : locale === "ar"
-                            ? "نادي العملاء"
-                            : "Customer club"}
-                      </span>
+                      <StatisticsIcon />
+                      <span>{c.reports}</span>
                     </Link>
                     <Link
                       className={navigationStyles.item}
-                      href={`/${locale}/admin/orders` as Route}
-                      aria-current={
-                        section === "orders" || section === "order-detail"
-                          ? "page"
-                          : undefined
-                      }
+                      href={`/${locale}/admin/sales/configuration` as Route}
+                      aria-current={section === "sales-configuration" || section === "club" || section === "settings-shipping" ? "page" : undefined}
                     >
-                      <OrdersIcon />
-                      <span>{c.orders}</span>
-                      <strong
-                        className={navigationStyles.count}
-                        aria-label={`${newOrderCount.toLocaleString(locale)} ${c.newOrders}`}
-                        title={`${newOrderCount.toLocaleString(locale)} ${c.newOrders}`}
-                      >
-                        {newOrderCount.toLocaleString(locale)}
-                      </strong>
+                      <SalesServiceIcon />
+                      <span>{c.salesConfiguration}</span>
                     </Link>
                   </div>
                 </div>
@@ -1920,16 +1923,6 @@ export function VendorManagement({
                   >
                     <Link
                       className={navigationStyles.item}
-                      href={`/${locale}/admin/settings/shipping` as Route}
-                      aria-current={
-                        section === "settings-shipping" ? "page" : undefined
-                      }
-                    >
-                      <ShippingIcon />
-                      <span>{c.shipping}</span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
                       href={`/${locale}/admin/settings/sms` as Route}
                       aria-current={
                         section === "settings-sms" ? "page" : undefined
@@ -2050,7 +2043,8 @@ export function VendorManagement({
         </aside>
       </DashboardMobileNavigation>
 
-      <main className="admin-shell" id="admin-content" ref={root}>
+      <main className={`admin-shell ${panelStyles.main}`} id="admin-content" ref={root}>
+        <PanelTopbar locale={locale} name={adminName} audience="admin" canSwitchWorkspace={ownerNavigation} />
         {section === "overview" ? (
           <PanelOverview
             locale={locale}
@@ -2602,6 +2596,7 @@ export function VendorManagement({
         {section === "coupons" ? <CouponWorkspace locale={locale} /> : null}
         {section === "marketing" ? <MarketingWorkspace locale={locale} admin /> : null}
         {section === "club" ? <ClubWorkspace locale={locale} /> : null}
+        {section === "sales-configuration" ? <SalesConfiguration locale={locale} /> : null}
 
         {section === "orders" ? <AdminOrdersWorkspace locale={locale} /> : null}
         {section === "order-detail" && orderId ? (
@@ -3221,16 +3216,6 @@ function SmsIcon() {
     <NavIcon>
       <path d="M4 5.5h16v11H8l-4 3v-14Z" />
       <path d="M8 10h8M8 13h5" />
-    </NavIcon>
-  );
-}
-
-function ShippingIcon() {
-  return (
-    <NavIcon>
-      <path d="M3 6h11v10H3V6Zm11 4h4l3 3v3h-7v-6Z" />
-      <circle cx="7" cy="18" r="2" />
-      <circle cx="18" cy="18" r="2" />
     </NavIcon>
   );
 }

@@ -52,6 +52,11 @@
 .queue h2 { margin: 0 0 .5rem; font-size: 1rem; line-height: 1.5; }
 .rows { display: grid; }
 .row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: .5rem 1rem; padding: .625rem 0; border-block-start: 1px solid var(--color-dashboard-rule); }
+.downloadRow { grid-template-columns: minmax(0, 1fr) auto; }
+.downloadDetails { grid-column: 1 / -1; min-width: 0; display: grid; gap: .25rem; }
+.downloadDetails p { margin: 0; overflow-wrap: anywhere; unicode-bidi: plaintext; font-size: .8rem; }
+.downloadRow .actions { grid-column: 1 / -1; justify-content: flex-end; }
+.downloadRow .reason { grid-column: 1 / -1; }
 .row > div:first-child { display: grid; gap: .2rem; min-width: 0; }
 .row strong { font-size: .875rem; line-height: 1.5; overflow-wrap: anywhere; }
 .row small { color: var(--color-dashboard-muted); font-size: .75rem; line-height: 1.5; }

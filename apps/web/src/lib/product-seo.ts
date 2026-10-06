@@ -8,3 +8,10 @@ export function schemaPrice(price: string, currency: string) {
   const remainder = fraction.slice(1).replace(/0+$/, "");
   return { price: `${whole}${remainder ? `.${remainder}` : ""}`, priceCurrency: "IRR" };
 }
+
+/** The first paragraph is the product summary and its default search description. */
+export function productSummary(descriptionText: string): string {
+  const firstParagraph = descriptionText.split(/\n+/u).map((part) => part.replace(/\s+/gu, " ").trim()).find(Boolean) ?? "";
+  const characters = Array.from(firstParagraph);
+  return characters.length > 158 ? `${characters.slice(0, 157).join("").trimEnd()}…` : firstParagraph;
+}
