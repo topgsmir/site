@@ -1,8 +1,8 @@
 import { Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { spawn } from "node:child_process";
-import { mkdir, rename, rm, stat, writeFile } from "node:fs/promises";
-import { resolve, sep } from "node:path";
+import { lstat, mkdir, rename, rm, stat, writeFile } from "node:fs/promises";
+import { posix, resolve, sep } from "node:path";
 import { Client } from "pg";
 import type { BackupComponent } from "@topgsm/shared-types";
 import { BackupArchiveService, type BackupArchiveManifest } from "./backup-archive.service";
@@ -43,10 +43,14 @@ export class BackupCreatorService {
     await mkdir(work, { recursive: false });
     const databasePath = resolve(work, "database.dump");
     const client = new Client({ connectionString: this.databaseUrl, connectionTimeoutMillis: 10_000 });
+    let mediaLockHeld = false;
     try {
       await client.connect();
+      // Acquire before BEGIN: a lock-waiting SELECT inside REPEATABLE READ can
+      // otherwise establish a snapshot predating a writer that deletes a file.
+      await client.query("SELECT pg_advisory_lock($1)", [MEDIA_BACKUP_LOCK]);
+      mediaLockHeld = true;
       await client.query("BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY");
-      await client.query("SELECT pg_advisory_xact_lock($1)", [MEDIA_BACKUP_LOCK]);
       const snapshot = (await client.query<{ snapshot: string }>("SELECT pg_export_snapshot() AS snapshot")).rows[0]?.snapshot;
       if (!snapshot) throw new ServiceUnavailableException("PostgreSQL snapshot could not be exported");
       const version = Number((await client.query<{ version: string }>("SHOW server_version_num")).rows[0]?.version ?? 0);
@@ -61,7 +65,7 @@ export class BackupCreatorService {
       }
       const uploadEntries: BackupArchiveManifest["uploads"] = [];
       for (const relativePath of uploads) {
-        const source = this.safeMediaPath(relativePath);
+        const source = await this.safeMediaPath(relativePath);
         const metadata = await stat(source);
         if (!metadata.isFile()) throw new ServiceUnavailableException("A referenced upload is not a regular file");
         uploadEntries.push({ path: relativePath, bytes: metadata.size, sha256: await this.archive.sha256(source) });
@@ -84,6 +88,8 @@ export class BackupCreatorService {
       };
       await this.archive.packPlainArchive(plainPath, manifest, database ? databasePath : null, this.paths.mediaRoot, uploadEntries);
       await client.query("COMMIT");
+      await client.query("SELECT pg_advisory_unlock($1)", [MEDIA_BACKUP_LOCK]);
+      mediaLockHeld = false;
       const encrypted = await this.archive.encrypt(plainPath, encryptedPartial, archiveId);
       const timestamp = manifest.createdAt.replace(/[-:]/g, "").replace(/[.][0-9]{3}/, "");
       const archiveName = `topgsm-${timestamp}-${archiveId}.topgsm-backup`;
@@ -96,6 +102,8 @@ export class BackupCreatorService {
       this.logger.error(`Backup creation failed: ${this.errorCode(error)}`);
       throw error;
     } finally {
+      // Session locks also need releasing when BEGIN, pg_dump or packing fails.
+      if (mediaLockHeld) await client.query("SELECT pg_advisory_unlock($1)", [MEDIA_BACKUP_LOCK]).catch(() => undefined);
       await client.end().catch(() => undefined);
       await Promise.all([rm(work, { force: true, recursive: true }), rm(plainPath, { force: true }), rm(encryptedPartial, { force: true })]);
     }
@@ -124,15 +132,33 @@ export class BackupCreatorService {
       SELECT path FROM product_media_variants
       UNION
       SELECT path FROM seller_profile_media_assets
+      UNION
+      SELECT image_path AS path FROM homepage_stories
       ORDER BY path
     `);
-    return rows.rows.map(({ path }) => path.replaceAll("\\", "/"));
+    // Use the same client/transaction as pg_dump's exported snapshot. Homepage
+    // uploads are immutable files referenced by persisted content, not media rows.
+    const homepages = await client.query<{ content: unknown }>("SELECT content FROM homepage_content");
+    const paths = new Set(rows.rows.map(({ path }) => path.replaceAll("\\", "/")));
+    for (const { content } of homepages.rows) {
+      for (const path of homepageUploadPaths(content)) paths.add(path);
+    }
+    return [...paths].sort();
   }
 
-  private safeMediaPath(relative: string) {
+  private async safeMediaPath(relative: string) {
     const root = resolve(this.paths.mediaRoot);
     const path = resolve(root, relative);
-    if (path !== root && !path.startsWith(`${root}${sep}`)) throw new ServiceUnavailableException("A media path escapes MEDIA_ROOT");
+    if (!relative || posix.normalize(relative) !== relative || path === root || !path.startsWith(`${root}${sep}`)) {
+      throw new ServiceUnavailableException("A media path escapes MEDIA_ROOT");
+    }
+    // Inspect only referenced path components; never enumerate arbitrary files
+    // or follow a symlink/junction from the upload tree into another directory.
+    let current = root;
+    for (const component of relative.split("/")) {
+      current = resolve(current, component);
+      if ((await lstat(current)).isSymbolicLink()) throw new ServiceUnavailableException("A referenced upload is a symbolic link");
+    }
     return path;
   }
 
@@ -174,3 +200,16 @@ export class BackupCreatorService {
 }
 
 export { MEDIA_BACKUP_LOCK } from "../media/media-backup-lock";
+
+function homepageUploadPaths(content: unknown): string[] {
+  const object = (value: unknown): Record<string, unknown> => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  const document = object(content);
+  const cards = [document.shortcuts, object(document.collections).items, object(document.offers).items]
+    .flatMap((items) => Array.isArray(items) ? items : []);
+  return [object(document.hero).image, ...cards.map((card) => object(card).image)].flatMap((src) => {
+    if (typeof src !== "string" || !src.startsWith("/homepage-images/")) return [];
+    const match = /^\/homepage-images\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.webp)$/.exec(src);
+    if (!match) throw new ServiceUnavailableException("A persisted homepage upload URL is invalid");
+    return [`homepage/${match[1]}`];
+  });
+}

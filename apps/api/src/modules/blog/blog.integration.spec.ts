@@ -1,11 +1,13 @@
 import { strict as assert } from "node:assert";
 import { after, before, describe, it } from "node:test";
-import { NotFoundException } from "@nestjs/common";
+import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import type { BlogActor } from "./blog-manage.guard";
 import { BlogService } from "./blog.service";
 import { PrismaService } from "../../prisma/prisma.service";
+import { assertDedicatedTestDatabase } from "../../test/test-database";
 
+assertDedicatedTestDatabase();
 const prisma = new PrismaService();
 const blog = new BlogService(prisma);
 const suffix = randomUUID().slice(0, 8);
@@ -125,6 +127,64 @@ describe("immutable multilingual blog workflow", () => {
 
   it("prevents cross-seller management reads", async () => {
     await assert.rejects(() => blog.getManaged(otherSellerActor, postId), NotFoundException);
+  });
+
+  it("publishes both same-seller revisions when they reuse one image", async () => {
+    const sharedMedia = await prisma.blog_media_assets.create({ data: {
+      owner_user_id: sellerUserId, seller_id: sellerId, kind: "cover",
+      width: 1600, height: 900, byte_size: 1000, checksum: "c".repeat(64)
+    } });
+    const posts: string[] = [];
+    try {
+      for (const version of ["reuse-a", "reuse-b"]) {
+        const draft = await blog.create(sellerActor, {});
+        posts.push(draft.id);
+        await blog.update(sellerActor, draft.id, {
+          optimisticVersion: draft.optimisticVersion, translations: translations(version),
+          coverAssetId: sharedMedia.id, categoryId, tagIds: [], relatedProductIds: []
+        });
+      }
+      assert.equal((await prisma.blog_media_assets.findUniqueOrThrow({ where: { id: sharedMedia.id } })).post_id, posts[1]);
+      for (const currentPostId of posts) {
+        assert.equal((await blog.publish(adminActor, currentPostId)).state, "published");
+        assert.equal(await prisma.blog_revision_media.count({ where: { asset_id: sharedMedia.id, revision: { post_id: currentPostId } } }), 1);
+      }
+    } finally {
+      await prisma.blog_change_events.deleteMany({ where: { post_id: { in: posts } } });
+      await prisma.blog_posts.deleteMany({ where: { id: { in: posts } } });
+      await prisma.blog_media_assets.delete({ where: { id: sharedMedia.id } });
+    }
+  });
+
+  it("blocks a historical uploader from attaching or publishing the former seller's private media", async () => {
+    const movedActor: BlogActor = { type: "seller", sellerId: otherSellerId, reviewRequired: false, user: sellerActor.user };
+    const privateMedia = await prisma.blog_media_assets.create({ data: {
+      owner_user_id: sellerUserId, seller_id: sellerId, post_id: postId, kind: "cover",
+      width: 1600, height: 900, byte_size: 1000, checksum: "b".repeat(64)
+    } });
+    const draft = await blog.create(movedActor, {});
+    try {
+      const input = { optimisticVersion: draft.optimisticVersion, translations: translations("moved"),
+        categoryId, tagIds: [], relatedProductIds: [] };
+      await assert.rejects(blog.update(movedActor, draft.id, { ...input, coverAssetId: privateMedia.id }), ForbiddenException);
+      assert.equal((await prisma.blog_media_assets.findUniqueOrThrow({ where: { id: privateMedia.id } })).post_id, postId);
+
+      await blog.update(movedActor, draft.id, input);
+      const stored = await prisma.blog_posts.findUniqueOrThrow({ where: { id: draft.id } });
+      // Reproduce a persisted reference created before the attachment fix.
+      await prisma.blog_revisions.update({ where: { id: stored.working_revision_id! }, data: { cover_asset_id: privateMedia.id } });
+      await prisma.blog_media_assets.update({ where: { id: privateMedia.id }, data: { post_id: draft.id } });
+      for (const actor of [movedActor, adminActor]) {
+        await assert.rejects(blog.publish(actor, draft.id), ForbiddenException);
+        assert.equal((await prisma.blog_media_assets.findUniqueOrThrow({ where: { id: privateMedia.id } })).published_at, null);
+        assert.equal((await prisma.blog_posts.findUniqueOrThrow({ where: { id: draft.id } })).published_revision_id, null);
+        assert.equal(await prisma.blog_routes.count({ where: { post_id: draft.id } }), 0);
+      }
+    } finally {
+      await prisma.blog_change_events.deleteMany({ where: { post_id: draft.id } });
+      await prisma.blog_posts.delete({ where: { id: draft.id } });
+      await prisma.blog_media_assets.delete({ where: { id: privateMedia.id } });
+    }
   });
 
   it("allows configured direct publishing and preserves permanent slug redirects", async () => {

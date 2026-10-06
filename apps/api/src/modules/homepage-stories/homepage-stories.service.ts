@@ -4,7 +4,9 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { basename, isAbsolute, join, resolve, sep } from "node:path";
 import sharp from "sharp";
+import { Prisma } from "../../prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { MEDIA_BACKUP_LOCK } from "../media/media-backup-lock";
 import type { HomepageStoriesQueryDto, SaveHomepageStoryDto } from "./dto/homepage-story.dto";
 
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -65,38 +67,60 @@ export class HomepageStoriesService {
   }
 
   async update(id: string, actorUserId: string, input: SaveHomepageStoryDto, file: Express.Multer.File | undefined) {
-    const current = await this.prisma.homepage_stories.findUnique({ where: { id } });
-    if (!current) throw new NotFoundException("Homepage story was not found");
     const replacement = file ? await this.writeImage(id, file) : null;
+    let previousPath: string;
+    let updated: Parameters<HomepageStoriesService["toResponse"]>[0];
     try {
-      const row = await this.prisma.homepage_stories.update({
-        where: { id },
-        data: {
-          locale: input.locale,
-          title: normalizedTitle(input.title),
-          target_url: normalizeStoryTargetUrl(input.targetUrl),
-          position: input.position,
-          enabled: input.enabled,
-          ...(replacement?.data ?? {}),
-          updated_by_id: actorUserId
-        }
+      const result = await this.prisma.$transaction(async (tx) => {
+        await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock_shared(${MEDIA_BACKUP_LOCK})`);
+        await tx.$queryRaw(Prisma.sql`SELECT id FROM homepage_stories WHERE id = ${id}::uuid FOR UPDATE`);
+        const current = await tx.homepage_stories.findUnique({ where: { id } });
+        if (!current) throw new NotFoundException("Homepage story was not found");
+        const row = await tx.homepage_stories.update({
+          where: { id },
+          data: {
+            locale: input.locale,
+            title: normalizedTitle(input.title),
+            target_url: normalizeStoryTargetUrl(input.targetUrl),
+            position: input.position,
+            enabled: input.enabled,
+            ...(replacement?.data ?? {}),
+            updated_by_id: actorUserId
+          }
+        });
+        return { row, previousPath: current.image_path };
       });
-      if (replacement && replacement.data.image_path !== current.image_path) {
-        await rm(this.safePath(current.image_path), { force: true }).catch(() => undefined);
-      }
-      return this.toResponse(row);
+      previousPath = result.previousPath;
+      updated = result.row;
     } catch (error) {
       if (replacement) await rm(replacement.absolutePath, { force: true });
       throw error;
     }
+    // Delete only after commit, under a fresh shared lock. A failed transaction
+    // must leave the original image intact; a backup may start between locks.
+    if (replacement && replacement.data.image_path !== previousPath) await this.cleanupImage(previousPath);
+    return this.toResponse(updated);
   }
 
   async remove(id: string) {
-    const current = await this.prisma.homepage_stories.findUnique({ where: { id }, select: { image_path: true } });
-    if (!current) throw new NotFoundException("Homepage story was not found");
-    await this.prisma.homepage_stories.delete({ where: { id } });
-    await rm(this.safePath(current.image_path), { force: true }).catch(() => undefined);
+    const path = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock_shared(${MEDIA_BACKUP_LOCK})`);
+      await tx.$queryRaw(Prisma.sql`SELECT id FROM homepage_stories WHERE id = ${id}::uuid FOR UPDATE`);
+      const current = await tx.homepage_stories.findUnique({ where: { id }, select: { image_path: true } });
+      if (!current) throw new NotFoundException("Homepage story was not found");
+      await tx.homepage_stories.delete({ where: { id } });
+      return current.image_path;
+    });
+    await this.cleanupImage(path);
     return { deleted: true };
+  }
+
+  private async cleanupImage(path: string) {
+    // Cleanup failure leaves an unreferenced file, never a missing live image.
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock_shared(${MEDIA_BACKUP_LOCK})`);
+      await rm(this.safePath(path), { force: true });
+    }).catch(() => undefined);
   }
 
   private async writeImage(id: string, file: Express.Multer.File | undefined) {

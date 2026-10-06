@@ -24,20 +24,61 @@ export class ReportingQueryService implements OnModuleDestroy {
     if (normalized.length < 8 || normalized.length > 10_000 || /--|\/\*|\*\//.test(normalized) || normalized.includes(";")) throw new BadRequestException("Generated SQL contains unsupported syntax");
     let statements: ReturnType<typeof parse>;
     try { statements = parse(normalized); } catch { throw new BadRequestException("Generated SQL is not valid PostgreSQL"); }
-    if (statements.length !== 1 || (statements[0]?.type !== "select" && statements[0]?.type !== "with")) throw new BadRequestException("Only one SELECT statement is allowed");
+    if (statements.length !== 1 || !["select", "with", "union", "union all"].includes(statements[0]!.type)) throw new BadRequestException("Only one SELECT statement is allowed");
     if (/\b(insert|update|delete|merge|copy|alter|create|drop|truncate|grant|revoke|call|do|lock|for\s+(update|share)|into)\b/i.test(normalized)) throw new BadRequestException("Generated SQL is not read-only");
     if (/\b(current_user|session_user|current_role|current_schema|current_catalog)\b/i.test(normalized)) throw new BadRequestException("Generated SQL contains an unsafe session reference");
-    const ctes = new Set([...normalized.matchAll(/(?:\bwith|,)\s*"?([a-z_][a-z0-9_]*)"?\s+as\s*\(/gi)].map((match) => match[1]!.toLowerCase()));
-    const references = [...normalized.matchAll(/\b(?:from|join)\s+((?:"?[a-z_][a-z0-9_]*"?\.)?"?[a-z_][a-z0-9_]*"?)/gi)].map((match) => match[1]!.replaceAll('"', "").toLowerCase());
-    const reportingReferences = references.filter((ref) => ref.startsWith("ai_reporting.") && VIEWS.has(ref.split(".")[1]!));
-    if (!reportingReferences.length || references.some((ref) => !reportingReferences.includes(ref) && !ctes.has(ref))) throw new BadRequestException("Generated SQL may only query approved reporting views and local read-only CTEs");
+    let ctes = new Set<string>();
+    let reportingReferences = 0;
+    const relationError = () => new BadRequestException("Generated SQL may only query approved reporting views and local read-only CTEs");
     const visitor = astVisitor((v) => ({
+      statement: (node) => {
+        if (!["select", "with", "union", "union all", "values"].includes(node.type)) throw new BadRequestException("Generated SQL is not read-only");
+        v.super().statement(node);
+      },
+      with: (node) => {
+        const outer = ctes;
+        ctes = new Set(outer);
+        const declared = new Set<string>();
+        try {
+          for (const binding of node.bind) {
+            const name = binding.alias.name;
+            if (declared.has(name)) throw relationError();
+            // Non-recursive bindings see outer CTEs and earlier siblings, never
+            // themselves or later siblings. Nested bindings stay in this scope.
+            v.statement(binding.statement);
+            declared.add(name);
+            ctes.add(name);
+          }
+          v.statement(node.in);
+        } finally { ctes = outer; }
+      },
+      withRecursive: () => { throw new BadRequestException("Recursive reporting queries are not allowed"); },
+      tableRef: (node) => {
+        // The parser folds unquoted identifiers; preserve quoted identifier case.
+        // A schema-qualified reference can never resolve to a local CTE.
+        if (node.schema === "ai_reporting" && VIEWS.has(node.name)) reportingReferences++;
+        else if (node.schema || !ctes.has(node.name)) throw relationError();
+      },
+      fromCall: () => { throw relationError(); },
+      selection: (node) => {
+        if (node.for) throw new BadRequestException("Generated SQL is not read-only");
+        v.super().selection(node);
+        // DISTINCT ON expressions are also omitted by the default visitor.
+        if (Array.isArray(node.distinct)) node.distinct.forEach((expression) => v.expr(expression));
+      },
       ref: (node) => { if (node.name !== "*" && !COLUMNS.has(node.name.toLowerCase())) throw new BadRequestException(`SQL column '${node.name}' is not allowed`); v.super().ref(node); },
-      call: (node) => { if (node.function.schema || !FUNCTIONS.has(node.function.name.toLowerCase())) throw new BadRequestException(`SQL function '${node.function.name}' is not allowed`); v.super().call(node); },
+      call: (node) => {
+        if (node.function.schema || !FUNCTIONS.has(node.function.name.toLowerCase())) throw new BadRequestException(`SQL function '${node.function.name}' is not allowed`);
+        v.super().call(node);
+        // pgsql-ast-parser's default visitor does not walk OVER expressions.
+        node.over?.partitionBy?.forEach((expression) => v.expr(expression));
+        node.over?.orderBy?.forEach((order) => v.expr(order.by));
+      },
       binary: (node) => { if (node.opSchema || !OPERATORS.has(node.op)) throw new BadRequestException(`SQL operator '${node.op}' is not allowed`); v.super().binary(node); },
       member: () => { throw new BadRequestException("JSON and composite SQL operators are not allowed"); }
     }));
     visitor.statement(statements[0]);
+    if (!reportingReferences) throw relationError();
     return normalized;
   }
 

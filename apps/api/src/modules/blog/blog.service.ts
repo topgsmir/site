@@ -209,10 +209,9 @@ export class BlogService {
       ...(input.coverAssetId ? [input.coverAssetId] : []),
       ...inlineMediaIds
     ];
-    await this.requireOwnedMedia(actor, postId, allMediaIds, input.coverAssetId);
-
     await this.prisma.$transaction(async (tx) => {
       const post = await this.requirePost(actor, postId, tx);
+      const mediaWhere = await this.requireOwnedMedia(actor, postId, allMediaIds, input.coverAssetId, tx);
       const current = post.working_revision;
       if (!current) throw new ConflictException("Post has no working revision");
       if (current.optimistic_version !== input.optimisticVersion) {
@@ -272,10 +271,11 @@ export class BlogService {
         });
       }
       if (allMediaIds.length) {
-        await tx.blog_media_assets.updateMany({
-          where: { id: { in: allMediaIds } },
+        const attached = await tx.blog_media_assets.updateMany({
+          where: mediaWhere,
           data: { post_id: postId }
         });
+        if (attached.count !== new Set(allMediaIds).size) throw new ConflictException("The draft images changed; reload before saving");
       }
       const afterSnapshot: BlogSnapshot = {
         translations: translationData.map((translation) => ({
@@ -379,6 +379,8 @@ export class BlogService {
       if (revision.status !== "draft" && revision.status !== "pending_review") {
         throw new ConflictException("Only draft or pending revisions can be published");
       }
+      const mediaIds = this.revisionMediaIds(revision);
+      const mediaWhere = await this.requirePublicationMedia(tx, actor, post, mediaIds, revision.cover_asset_id!);
       const now = new Date();
       for (const translation of revision.translations) {
         const slug = this.slugify(translation.slug_proposal ?? "");
@@ -426,12 +428,12 @@ export class BlogService {
           status: "published"
         }
       });
-      const mediaIds = this.revisionMediaIds(revision);
       if (mediaIds.length) {
-        await tx.blog_media_assets.updateMany({
-          where: { id: { in: mediaIds } },
+        const published = await tx.blog_media_assets.updateMany({
+          where: mediaWhere,
           data: { published_at: now, post_id: post.id }
         });
+        if (published.count !== mediaIds.length) throw new ConflictException("The post images changed; reload before publishing");
       }
     });
     return this.getManaged(actor, postId);
@@ -1121,25 +1123,47 @@ export class BlogService {
     }
   }
 
-  private async requireOwnedMedia(actor: BlogActor, postId: string, mediaIds: string[], coverAssetId?: string) {
-    if (!mediaIds.length) return;
+  private async requireOwnedMedia(actor: BlogActor, postId: string, mediaIds: string[], coverAssetId?: string, db: Db = this.prisma) {
     const unique = [...new Set(mediaIds)];
-    const assets = await this.prisma.blog_media_assets.findMany({
-      where: {
-        id: { in: unique },
-        trashed_at: null,
-        ...(actor.type === "seller"
-          ? { owner_user_id: actor.user.id }
-          : { OR: [{ owner_user_id: actor.user.id }, { post_id: postId }] })
-      },
-      select: { id: true, kind: true }
-    });
+    const where: Prisma.blog_media_assetsWhereInput = {
+      id: { in: unique },
+      trashed_at: null,
+      ...(actor.type === "seller"
+        ? { owner_user_id: actor.user.id, seller_id: actor.sellerId }
+        : { OR: [{ owner_user_id: actor.user.id }, { post_id: postId }] })
+    };
+    if (!unique.length) return where;
+    const assets = await db.blog_media_assets.findMany({ where, select: { id: true, kind: true } });
     if (assets.length !== unique.length) {
       throw new ForbiddenException("Every draft image must be owned by the current author");
     }
     if (coverAssetId && assets.find((item) => item.id === coverAssetId)?.kind !== "cover") {
       throw new BadRequestException("The cover asset is not a cover image");
     }
+    return where;
+  }
+
+  private async requirePublicationMedia(db: Db, actor: BlogActor, post: ManagedRecord, mediaIds: string[], coverAssetId: string) {
+    // Older drafts and restored revisions can predate attachment checks. Moderators
+    // need no uploader ownership, but must preserve the post's seller boundary.
+    // Same-seller revisions can share media; post_id records its latest attachment.
+    // Sellers may retain platform images already published on this same post.
+    const where: Prisma.blog_media_assetsWhereInput = {
+      id: { in: mediaIds },
+      trashed_at: null,
+      OR: [
+        { seller_id: post.seller_id },
+        { seller_id: null, post_id: post.id, ...(actor.type === "seller" ? { published_at: { not: null } } : {}) }
+      ]
+    };
+    const assets = await db.blog_media_assets.findMany({ where, select: { id: true, kind: true } });
+    if (assets.length !== mediaIds.length) {
+      throw new ForbiddenException("One or more images are unavailable to this post");
+    }
+    if (assets.find((asset) => asset.id === coverAssetId)?.kind !== "cover") {
+      throw new BadRequestException("The cover asset is not a cover image");
+    }
+    return where;
   }
 
   private revisionMediaIds(revision: NonNullable<ManagedRecord["working_revision"]>) {
