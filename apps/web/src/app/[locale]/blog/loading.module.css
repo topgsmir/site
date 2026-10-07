@@ -12,3 +12,7 @@
 @media (max-width: 700px) { .columns { grid-template-columns: 1fr; } .sidebar { display: none; } }
 @media (max-width: 540px) { .main { width: calc(100% - 32px); padding-top: 14px; } .intro { padding: 14px 16px; } }
 @media (prefers-reduced-motion: reduce) { .title, .summary, .row, .sidebar { animation: none; } }
+.intro { background: var(--color-customer-navy); border-top: 4px solid var(--color-customer-blue); }
+.row { background: var(--color-customer-blue-soft); }
+.row:nth-child(2n) { background: var(--color-customer-teal-soft); }
+.sidebar { background: var(--color-customer-pink-soft); }

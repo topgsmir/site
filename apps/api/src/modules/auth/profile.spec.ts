@@ -13,15 +13,18 @@ import type { SecurityPolicyService } from "./security-policy.service";
 
 const actor: AppUser = { id: "account-id", fullName: "Old Name", email: "old@example.com", username: null, role: "buyer" };
 
-it("includes the support code in the authenticated account response", async () => {
+it("includes the support code and registration date in the authenticated account response", async () => {
   let selected: unknown;
+  const createdAt = new Date("2024-05-20T12:00:00.000Z");
   const prisma = { auth_sessions: { findFirst: async (input: { select: unknown }) => {
     selected = input.select;
-    return { user: { id: actor.id, support_code: "7K4P9", full_name: actor.fullName, username: null, email: actor.email, role: "buyer" } };
+    return { user: { id: actor.id, support_code: "01409", created_at: createdAt, full_name: actor.fullName, username: null, email: actor.email, role: "buyer" } };
   } } } as unknown as PrismaService;
   const result = await new AuthService(prisma, {} as AuthLoginSettingsService).getUserFromToken("a".repeat(43));
-  assert.equal(result.supportCode, "7K4P9");
-  assert.equal((selected as { user: { select: { support_code: boolean } } }).user.select.support_code, true);
+  assert.equal(result.supportCode, "01409");
+  assert.equal(result.createdAt, createdAt.toISOString());
+  assert.equal((selected as { user: { select: { support_code: boolean; created_at: boolean } } }).user.select.support_code, true);
+  assert.equal((selected as { user: { select: { support_code: boolean; created_at: boolean } } }).user.select.created_at, true);
 });
 
 it("updates only the authenticated account and returns safe profile fields", async () => {

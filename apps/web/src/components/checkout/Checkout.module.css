@@ -155,6 +155,14 @@
   .otpMeta button:hover { color: var(--signal); }
   .sectionHeading a:hover { color: var(--signal); }
 }
+
+/* Purchase flow · design-system: design.md */
+.hero { padding: 16px; gap: 16px; border: 1px solid var(--color-customer-blue-rule); border-radius: 16px; background: var(--color-customer-header-wash); }
+.summaryPurchase { border-top: 3px solid var(--color-customer-teal); background: linear-gradient(150deg, var(--color-customer-teal-soft), var(--paper-bright) 65%); }
+.summaryDetails { border-top: 3px solid var(--color-customer-pink); }
+.artwork { color: var(--color-customer-blue-ink); background: var(--color-customer-blue-soft); }
+.item { border-inline-start: 3px solid var(--color-customer-blue); }
+.empty { background: var(--color-customer-community-wash); border-color: var(--color-customer-pink-rule); }
 @media (max-width: 980px) {
   .hero { grid-template-columns: 1fr; gap: 16px; }
   .layout { grid-template-columns: 1fr; }

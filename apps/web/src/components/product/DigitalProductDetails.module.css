@@ -24,3 +24,7 @@
   .description p { font-size: var(--text-product-base); line-height: 2; }
 }
 @media (prefers-reduced-motion: reduce) { .sectionLinks a { transition: none; } }
+
+.heading { padding: var(--space-product-md); border: 1px solid var(--color-customer-blue-rule); border-radius: var(--radius-product-md); background: var(--color-customer-header-wash); }
+.eyebrow svg { box-sizing: content-box; padding: 8px; border-radius: 10px; color: var(--color-customer-tile-ink); background: var(--color-customer-blue); }
+.description { border: 1px solid var(--color-customer-teal-rule); border-block-start: 3px solid var(--color-customer-teal); }

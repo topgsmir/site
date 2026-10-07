@@ -17,10 +17,10 @@ it("resolves a support code before locking and updating a staff user", async () 
     }
   };
   const prisma = {
-    users: { findUnique: async (input: { where: unknown }) => { assert.deepEqual(input.where, { support_code: "7K4P9" }); return { id: userId }; } },
+    users: { findUnique: async (input: { where: unknown }) => { assert.deepEqual(input.where, { support_code: "01409" }); return { id: userId }; } },
     $transaction: async (callback: (tx: typeof transaction) => unknown) => callback(transaction)
   } as unknown as PrismaService;
-  await assert.rejects(new StaffService(prisma, {} as AuthService).update("7k4p9", {}, "owner-id"), NotFoundException);
+  await assert.rejects(new StaffService(prisma, {} as AuthService).update("01409", {}, "owner-id"), NotFoundException);
   assert.deepEqual(staffWhere, { id: userId, role: "platform_staff" });
 });
 
@@ -30,6 +30,6 @@ it("recognizes a staff support code on the invitation-or-user route without revo
     platform_staff_invitations: { updateMany: async () => { throw new Error("support code is not an invitation ID"); } },
     users: { findFirst: async (input: { where: unknown }) => { staffWhere = input.where; return { id: userId }; } }
   } as unknown as PrismaService;
-  await assert.rejects(new StaffService(prisma, {} as AuthService).revoke("7k4p9"), ConflictException);
-  assert.deepEqual(staffWhere, { support_code: "7K4P9", role: "platform_staff" });
+  await assert.rejects(new StaffService(prisma, {} as AuthService).revoke("01409"), ConflictException);
+  assert.deepEqual(staffWhere, { support_code: "01409", role: "platform_staff" });
 });

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
   HttpCode,
@@ -10,8 +11,11 @@ import {
   Post,
   Req,
   Res,
+  UploadedFile,
+  UseInterceptors,
   UseGuards
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { ConfigService } from "@nestjs/config";
 import { AuthService } from "./auth.service";
 import { LoginDto } from "./dto/login.dto";
@@ -25,6 +29,7 @@ import { readSessionToken, SESSION_COOKIE } from "./session-token";
 import { SecurityPolicyService } from "./security-policy.service";
 import { CaptchaService } from "../captcha/captcha.service";
 import { ForbiddenException } from "@nestjs/common";
+import { ProfilePictureService } from "./profile-picture.service";
 
 type HeaderResponse = {
   setHeader(name: string, value: string): void;
@@ -37,7 +42,8 @@ export class AuthController {
     private readonly rateLimits: AuthRateLimitService,
     private readonly config: ConfigService,
     private readonly policies: SecurityPolicyService,
-    private readonly captcha: CaptchaService
+    private readonly captcha: CaptchaService,
+    private readonly pictures: ProfilePictureService
   ) {}
 
   @Post("register")
@@ -89,6 +95,25 @@ export class AuthController {
   ) {
     await this.rateLimits.consumeProfileMutation(request.authenticatedUser!.id, clientIp);
     return this.authService.updateProfile(request.authenticatedUser!, body);
+  }
+
+  @UseGuards(AuthenticatedGuard)
+  @Post("me/picture")
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 8 * 1024 * 1024, files: 1, fields: 0, parts: 1 } }))
+  async uploadMyPicture(
+    @Req() request: AuthenticatedRequest,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Ip() clientIp: string
+  ) {
+    await this.rateLimits.consumeMediaUpload(request.authenticatedUser!.id, clientIp);
+    return this.pictures.upload(request.authenticatedUser!.id, file);
+  }
+
+  @UseGuards(AuthenticatedGuard)
+  @Delete("me/picture")
+  async removeMyPicture(@Req() request: AuthenticatedRequest, @Ip() clientIp: string) {
+    await this.rateLimits.consumeProfileMutation(request.authenticatedUser!.id, clientIp);
+    return this.pictures.remove(request.authenticatedUser!.id);
   }
 
   @Post("logout")

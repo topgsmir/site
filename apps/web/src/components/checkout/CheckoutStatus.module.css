@@ -102,3 +102,14 @@
 .walletContribution { display: grid; gap: 5px; margin: 8px 0; font-size: 13px; }
 .walletContribution input { min-height: 38px; width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font: inherit; }
 .walletContribution input:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+.hero { margin-top: 16px; padding: 20px; gap: 20px; border: 1px solid var(--color-customer-blue-rule); border-radius: 16px; background: var(--color-customer-header-wash); }
+.summary { border-top: 3px solid var(--color-customer-teal); background: var(--color-customer-teal-soft); box-shadow: var(--shadow-dashboard-card); }
+.orderTop { background: var(--color-customer-blue-soft); }
+.productIcon { color: var(--color-customer-tile-ink); background: var(--color-customer-blue); }
+.summary h2, .sectionHead h2 { font-size: 1.125rem; }
+.totalBlock > strong { font-size: 1.5rem; }
+.count { color: var(--color-customer-tile-ink); background: var(--color-customer-pink); }
+.hero h1 { font-size: clamp(1.5rem, 3vw, 2rem); }
+.topbar { min-height: 64px; }
+@media (max-width: 600px) { .hero { padding: 16px; grid-template-columns: minmax(0, 1fr); } }

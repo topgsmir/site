@@ -5,6 +5,8 @@ import { Prisma, type user_deletion_jobs } from "../../prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { emptyCount, phaseQuery, processed, TRANSFER_PHASES, type TransferPhase } from "./user-transfer.definition";
 import { commercialBlockers } from "./user-commercial-blockers";
+import { ProfilePictureService } from "../auth/profile-picture.service";
+import { MEDIA_BACKUP_LOCK } from "../media/media-backup-lock";
 
 const BATCH_SIZE = 200;
 @Injectable()
@@ -12,7 +14,7 @@ export class UserTransferWorker implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(UserTransferWorker.name);
   private timer?: NodeJS.Timeout;
   private running = false;
-  constructor(private readonly prisma: PrismaService, private readonly config: ConfigService) {}
+  constructor(private readonly prisma: PrismaService, private readonly config: ConfigService, private readonly pictures: ProfilePictureService) {}
   onModuleInit() {
     if (this.config.get<string>("DISABLE_BACKGROUND_WORKERS") === "true") return;
     this.timer = setInterval(() => {
@@ -25,8 +27,9 @@ export class UserTransferWorker implements OnModuleInit, OnModuleDestroy {
     if (this.running) return false;
     this.running = true;
     let claimed: { id: string; version: string } | undefined;
+    let completedPicture: { userId: string; key: string } | null = null;
     try {
-      return await this.prisma.$transaction(async tx => {
+      const result = await this.prisma.$transaction(async tx => {
         // Hold the claim through the batch commit; a crash rolls the entire
         // batch back and releases the row lock. No stale lease can double-run.
         const jobs = await tx.$queryRaw<(user_deletion_jobs & { claim_version: string })[]>`
@@ -37,7 +40,7 @@ export class UserTransferWorker implements OnModuleInit, OnModuleDestroy {
         await tx.$queryRaw`SELECT set_config('topgsm.lifecycle_job', ${job.id}, true)`;
         const phase = TRANSFER_PHASES[job.phase];
         if (!phase) throw new Error("INVALID_PHASE");
-        if (phase === "finalize") { await this.finalize(tx, job); return true; }
+        if (phase === "finalize") { completedPicture = await this.finalize(tx, job); return true; }
         const query = phaseQuery(phase, job);
         const key = Prisma.raw(query.key); const table = Prisma.raw(query.table);
         const after = job.cursor ? Prisma.sql`AND ${key} > ${job.cursor}${Prisma.raw(query.uuid ? "::uuid" : "::text")}` : Prisma.empty;
@@ -59,6 +62,9 @@ export class UserTransferWorker implements OnModuleInit, OnModuleDestroy {
         } });
         return true;
       }, { timeout: 30_000 });
+      const pictureToDelete = completedPicture as { userId: string; key: string } | null;
+      if (pictureToDelete) await this.pictures.purgeDeletedUserPicture(pictureToDelete.userId, pictureToDelete.key);
+      return result;
     } catch (error) {
       const code = error instanceof Error && ["COUNT_MISMATCH", "INVALID_PHASE", "REMAINING_OWNERSHIP", "REPLACEMENT_UNAVAILABLE", "UNFINISHED_OBLIGATIONS"].includes(error.message) ? error.message : "TRANSFER_BATCH_FAILED";
       this.logger.error(`User transfer batch failed: ${code}`);
@@ -173,12 +179,15 @@ export class UserTransferWorker implements OnModuleInit, OnModuleDestroy {
     await tx.platform_staff_permissions.deleteMany({ where: { user_id: job.user_id } });
     await tx.auth_sessions.deleteMany({ where: { user_id: job.user_id } });
     await tx.admin_user_notes.updateMany({ where: { user_id: job.user_id }, data: { body: "[redacted]" } });
+    await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock_shared(${MEDIA_BACKUP_LOCK})`);
+    const picture = await tx.users.findUnique({ where: { id: job.user_id }, select: { profile_picture_key: true } });
     await tx.users.update({ where: { id: job.user_id }, data: {
-      account_status: "deleted", deleted_at: new Date(), full_name: "Deleted user", username: null, email: null, phone_number: null, pending_phone_number: null, password_hash: null
+      account_status: "deleted", deleted_at: new Date(), full_name: "Deleted user", username: null, email: null, phone_number: null, pending_phone_number: null, password_hash: null, profile_picture_key: null
     } });
     await tx.user_account_events.create({ data: { user_id: job.user_id, actor_user_id: job.actor_user_id, action: "deleted", reason: job.reason,
       after_data: { jobId: job.id, replacementUserId: job.replacement_user_id, progress: job.progress } } });
     await tx.user_deletion_jobs.update({ where: { id: job.id }, data: { status: "completed", completed_at: new Date(), error_code: null, progress: progress as unknown as Prisma.InputJsonValue } });
     await tx.user_lifecycle_locks.deleteMany({ where: { job_id: job.id } });
+    return picture?.profile_picture_key ? { userId: job.user_id, key: picture.profile_picture_key } : null;
   }
 }

@@ -101,6 +101,15 @@
   .contents a:hover { color: var(--ink); }
   .tags a:hover { background: var(--color-dashboard-surface-raised); }
 }
+
+.header { padding: 16px; border: 1px solid var(--color-customer-blue-rule); border-radius: 16px; background: var(--color-customer-header-wash); margin-bottom: 20px; }
+.header h1 { margin-block: 12px; font-size: clamp(1.5rem, 2.8vw, 2.25rem); }
+.metadata { margin-top: 16px; padding-top: 12px; }
+.breadcrumbs { min-height: 56px; }
+.layout { padding-top: 20px; }
+.avatar { color: var(--color-customer-tile-ink); background: var(--color-customer-pink); border: 0; }
+.shopIntro { background: var(--color-customer-navy); }
+.body :global(.article-prose) blockquote { background: var(--color-customer-teal-soft); border-inline-start-color: var(--color-customer-teal); }
 @media (max-width: 1050px) {
   .main { width: calc(100% - 48px); }
   .layout { grid-template-columns: minmax(0, 1fr) 280px; gap: 32px; }

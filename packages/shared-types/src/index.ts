@@ -975,7 +975,9 @@ export type Role =
 
 export interface AppUser {
   id: string;
+  profilePictureUrl?: string | null;
   supportCode?: string;
+  createdAt?: string;
   sellerId?: string;
   fullName: string;
   username?: string | null;

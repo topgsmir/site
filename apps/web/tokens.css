@@ -46,6 +46,30 @@
   --color-panel-navigation-selected-ink: #062342;
   --color-status-amber: #f5a623;
 
+  /* Customer palette: the owner's colorful admin reference. Decorative accents
+   * stay separate from error/success tokens so status remains unambiguous. */
+  --color-customer-canvas: var(--color-panel-paper);
+  --color-customer-blue: var(--color-brand-blue);
+  --color-customer-teal: var(--color-brand-teal);
+  --color-customer-pink: var(--color-brand-pink);
+  --color-customer-tile-ink: var(--color-brand-navy);
+  --color-customer-blue-soft: color-mix(in srgb, var(--color-brand-blue) 13%, var(--color-dashboard-surface));
+  --color-customer-teal-soft: color-mix(in srgb, var(--color-brand-teal) 14%, var(--color-dashboard-surface));
+  --color-customer-pink-soft: color-mix(in srgb, var(--color-brand-pink) 9%, var(--color-dashboard-surface));
+  --color-customer-blue-rule: color-mix(in srgb, var(--color-brand-blue) 32%, var(--color-dashboard-surface));
+  --color-customer-teal-rule: color-mix(in srgb, var(--color-brand-teal) 35%, var(--color-dashboard-surface));
+  --color-customer-pink-rule: color-mix(in srgb, var(--color-brand-pink) 27%, var(--color-dashboard-surface));
+  --color-customer-blue-ink: var(--color-dashboard-accent);
+  --color-customer-teal-ink: var(--color-dashboard-success);
+  --color-customer-pink-ink: var(--color-dashboard-error);
+  --color-customer-navy: var(--color-panel-navigation);
+  --color-customer-navy-raised: var(--color-panel-navigation-raised);
+  --color-customer-on-navy: var(--color-panel-navigation-ink);
+  --color-customer-on-navy-muted: var(--color-panel-navigation-muted);
+  --color-customer-header-wash: linear-gradient(115deg, var(--color-customer-blue-soft), var(--color-dashboard-surface) 65%, var(--color-customer-teal-soft));
+  --color-customer-community-wash: linear-gradient(115deg, var(--color-customer-pink-soft), var(--color-dashboard-surface) 75%);
+  --shadow-customer-blue: 0 4px 12px color-mix(in srgb, var(--color-brand-blue) 20%, transparent);
+
   /* Semantic assignments: change a role once to update both themes. */
   --color-role-primary: var(--color-brand-blue);
   --color-role-error: var(--color-brand-pink);
@@ -280,6 +304,7 @@
 }
 
 html[data-theme="dark"] {
+  --color-customer-blue-ink: var(--color-dashboard-accent-strong);
   --color-panel-paper: var(--color-brand-navy);
   --shadow-dashboard-card: 0 3px 16px color-mix(in srgb, var(--color-brand-navy) 10%, transparent);
   --shadow-dashboard-float: 0 16px 48px color-mix(in srgb, var(--color-brand-navy) 20%, transparent);

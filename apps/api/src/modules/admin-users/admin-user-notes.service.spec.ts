@@ -10,12 +10,12 @@ describe("AdminUserNotesService", () => {
     let notesWhere: unknown;
     const prisma = {
       users: { findUnique: async (input: { where: unknown }) => {
-        if ("support_code" in (input.where as object)) { assert.deepEqual(input.where, { support_code: "7K4P9" }); return { id: userId }; }
+        if ("support_code" in (input.where as object)) { assert.deepEqual(input.where, { support_code: "01409" }); return { id: userId }; }
         return { id: userId };
       } },
       admin_user_notes: { findMany: async (input: { where: unknown }) => { notesWhere = input.where; return []; } }
     } as unknown as PrismaService;
-    await new AdminUserNotesService(prisma).list("7k4p9", { limit: 10 });
+    await new AdminUserNotesService(prisma).list("01409", { limit: 10 });
     assert.deepEqual(notesWhere, { user_id: userId });
   });
   it("locks and checks the account before saving a trimmed, attributed note", async () => {

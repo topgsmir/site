@@ -1,12 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import type { Route } from "next";
 import { useRef, useState } from "react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import type { AppUser } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
 import { dashboardFor } from "@/lib/auth/dashboard-destination";
@@ -18,11 +16,12 @@ import { AccountOrders } from "./AccountOrders";
 import { WalletPanel } from "./WalletPanel";
 import { ClubPanel } from "./ClubPanel";
 import { AccountIcon } from "./AccountIcon";
+import { UserAvatar } from "./UserAvatar";
 import { ACCOUNT_COPY } from "./AccountCopy";
 import { WORKSPACE_COPY } from "./AccountWorkspaceCopy";
 import styles from "./AccountPanel.module.css";
 
-gsap.registerPlugin(useGSAP, ScrollTrigger);
+gsap.registerPlugin(useGSAP);
 
 export function AccountPanel({
   locale,
@@ -38,12 +37,6 @@ export function AccountPanel({
   const [profile, setProfile] = useState(user);
   const shell = useRef<HTMLDivElement>(null);
   const path = view === "overview" ? "/account" : `/account/${view}`;
-  const initials = profile.fullName
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => Array.from(part)[0])
-    .join("");
 
   useGSAP(
     () => {
@@ -57,23 +50,6 @@ export function AccountPanel({
           ease: "power3.out",
           clearProps: "all",
         });
-        if (view === "overview") {
-          gsap.fromTo(
-            "[data-account-art]",
-            { scale: 1 },
-            {
-              scale: 1.07,
-              ease: "none",
-              scrollTrigger: {
-                trigger: "[data-account-welcome]",
-                start: "top top",
-                end: "bottom top",
-                scrub: 1,
-                scroller: locale === "en" ? window : document.body,
-              },
-            },
-          );
-        }
       });
       return () => media.revert();
     },
@@ -124,77 +100,106 @@ export function AccountPanel({
           </span>
         </div>
       </header>
-      <div className={styles.navbar}>
-        <nav className={styles.navigation} aria-label={c.account}>
-          {(["overview", "orders", "wallet", "club", "settings"] as const).map((item) => (
-            <Link
-              key={item}
-              href={
-                `/${locale}/account${item === "overview" ? "" : `/${item}`}` as Route
-              }
-              aria-current={view === item ? "page" : undefined}
-            >
-              <AccountIcon name={item === "settings" ? "account" : item === "club" ? "wallet" : item} />
-              <span>
-                {item === "overview"
-                  ? c.overview
-                  : item === "orders"
-                    ? c.orders
-                    : item === "wallet"
-                    ? (locale === "fa" ? "کیف پول" : locale === "ar" ? "المحفظة" : "Wallet")
-                    : item === "club"
-                      ? (locale === "fa" ? "باشگاه مشتریان" : locale === "ar" ? "نادي العملاء" : "Customer club")
-                      : w.settings}
-              </span>
-            </Link>
-          ))}
-        </nav>
-        <Link
-          href={`/${locale}/products` as Route}
-          className={styles.storeLink}
+      <aside className={styles.sidebar} aria-label={w.profile} data-account-enter>
+        <section
+          className={styles.profile}
+          aria-labelledby="profile-card-title"
         >
-          {c.shop}
-          <AccountIcon name="arrow" />
-        </Link>
-      </div>
+          <div className={styles.profileTop}>
+                  <UserAvatar className={styles.avatar} name={profile.fullName} url={profile.profilePictureUrl} />
+            <span>
+              <span className={styles.greeting}>{w.member}</span>
+              <h2 id="profile-card-title">
+                <bdi>{profile.fullName}</bdi>
+              </h2>
+            </span>
+          </div>
+          <dl>
+            {profile.supportCode ? (
+              <div>
+                <dt>
+                  {locale === "fa"
+                    ? "کد اشتراک"
+                    : locale === "ar"
+                      ? "معرّف الدعم"
+                      : "Support code"}
+                </dt>
+                <dd>
+                  <code dir="ltr" className={styles.supportCode}>
+                    {profile.supportCode}
+                  </code>
+                </dd>
+              </div>
+            ) : null}
+            {profile.createdAt ? (
+              <div>
+                <dt>{w.joinedAt}</dt>
+                <dd>
+                  <time dateTime={profile.createdAt}>
+                    {new Intl.DateTimeFormat(locale === "fa" ? "fa-IR-u-ca-persian" : locale, {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                      timeZone: "Asia/Tehran",
+                    }).format(new Date(profile.createdAt))}
+                  </time>
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+          <p>{w.profileHint}</p>
+          {view === "overview" ? (
+            <Link
+              className={styles.editLink}
+              href={`/${locale}/account/settings` as Route}
+            >
+              {w.edit}
+              <AccountIcon name="arrow" />
+            </Link>
+          ) : (
+            <span className={styles.profileNote}>
+              <AccountIcon name="account" />
+              {w.savedDetails}
+            </span>
+          )}
+        </section>
+        <div className={styles.navbar}>
+          <nav className={styles.navigation} aria-label={c.account}>
+            {(["overview", "orders", "wallet", "club", "settings"] as const).map((item) => (
+              <Link
+                key={item}
+                href={
+                  `/${locale}/account${item === "overview" ? "" : `/${item}`}` as Route
+                }
+                aria-current={view === item ? "page" : undefined}
+              >
+                <AccountIcon name={item === "settings" ? "account" : item === "club" ? "wallet" : item} />
+                <span>
+                  {item === "overview"
+                    ? c.overview
+                    : item === "orders"
+                      ? c.orders
+                      : item === "wallet"
+                      ? (locale === "fa" ? "کیف پول" : locale === "ar" ? "المحفظة" : "Wallet")
+                      : item === "club"
+                        ? (locale === "fa" ? "باشگاه مشتریان" : locale === "ar" ? "نادي العملاء" : "Customer club")
+                        : w.settings}
+                </span>
+              </Link>
+            ))}
+          </nav>
+          <Link
+            href={`/${locale}/products` as Route}
+            className={styles.storeLink}
+          >
+            {c.shop}
+            <AccountIcon name="arrow" />
+          </Link>
+        </div>
+      </aside>
       <main id="account-content" className={styles.main} tabIndex={-1}>
         {view === "overview" ? (
-          <section
-            className={styles.welcome}
-            data-account-enter
-            data-account-welcome
-          >
-            <div className={styles.welcomeCopy}>
-              <p className={styles.greeting}>
-                {c.greeting}
-                {locale === "en" ? ", " : "، "}
-                <bdi>{profile.fullName}</bdi>
-              </p>
-              <h1>{w.welcome}</h1>
-              <p>{w.intro}</p>
-              <Link
-                className={styles.primaryLink}
-                href={`/${locale}/products` as Route}
-              >
-                {w.browse}
-                <AccountIcon name="arrow" />
-              </Link>
-            </div>
-            <div className={styles.welcomeArt} aria-hidden="true">
-              <Image
-                data-account-art
-                src="/images/repair-studio.png"
-                alt=""
-                fill
-                sizes="(max-width: 700px) 100vw, 480px"
-                priority
-              />
-              <div className={styles.artCaption}>
-                <span className={styles.artDot} />
-                <span dir="ltr">TOPGSM / REPAIR WORKSPACE</span>
-              </div>
-            </div>
-          </section>
+          <h1 className="sr-only">{w.overview}</h1>
         ) : (
           <header className={styles.heading} data-account-enter>
             <p className={styles.greeting}>{c.account}</p>
@@ -203,7 +208,7 @@ export function AccountPanel({
           </header>
         )}
         <div
-          className={view === "orders" || view === "wallet" || view === "club" ? styles.fullContent : styles.content}
+          className={view === "overview" ? styles.content : styles.fullContent}
         >
           <div className={styles.primaryColumn} data-account-enter>
             {view === "wallet" ? <WalletPanel locale={locale} /> : view === "club" ? <ClubPanel locale={locale} /> : view === "settings" ? (
@@ -231,98 +236,21 @@ export function AccountPanel({
               </Link>
             ) : null}
           </div>
-          {view !== "orders" && view !== "wallet" && view !== "club" ? (
-            <aside
-              className={styles.secondaryColumn}
-              aria-label={w.profile}
-              data-account-enter
-            >
-              <section
-                className={styles.profile}
-                aria-labelledby="profile-card-title"
-              >
-                <div className={styles.profileTop}>
-                  <span className={styles.avatar} aria-hidden="true">
-                    {initials}
-                  </span>
-                  <span>
-                    <span className={styles.greeting}>{w.member}</span>
-                    <h2 id="profile-card-title">
-                      <bdi>{profile.fullName}</bdi>
-                    </h2>
-                  </span>
-                </div>
-                <dl>
-                  {profile.supportCode ? (
-                    <div>
-                      <dt>
-                        {locale === "fa"
-                          ? "کد اشتراک"
-                          : locale === "ar"
-                            ? "معرّف الدعم"
-                            : "Support code"}
-                      </dt>
-                      <dd>
-                        <code dir="ltr" className={styles.supportCode}>
-                          {profile.supportCode}
-                        </code>
-                      </dd>
-                    </div>
-                  ) : null}
-                  {profile.email ? (
-                    <div>
-                      <dt>{c.email}</dt>
-                      <dd>
-                        <bdi>{profile.email}</bdi>
-                      </dd>
-                    </div>
-                  ) : null}
-                  {profile.username ? (
-                    <div>
-                      <dt>
-                        {locale === "fa"
-                          ? "نام کاربری"
-                          : locale === "ar"
-                            ? "اسم المستخدم"
-                            : "Username"}
-                      </dt>
-                      <dd>
-                        <bdi>@{profile.username}</bdi>
-                      </dd>
-                    </div>
-                  ) : null}
-                </dl>
-                <p>{w.profileHint}</p>
-                {view === "overview" ? (
-                  <Link
-                    className={styles.editLink}
-                    href={`/${locale}/account/settings` as Route}
-                  >
-                    {w.edit}
-                    <AccountIcon name="arrow" />
-                  </Link>
-                ) : (
-                  <span className={styles.profileNote}>
-                    <AccountIcon name="account" />
-                    {w.savedDetails}
-                  </span>
-                )}
-              </section>
-              {view === "overview" ? (
-                <CustomerLeaderboard locale={locale} />
-              ) : null}
+          {view === "overview" ? (
+            <aside className={styles.secondaryColumn} aria-label={locale === "fa" ? "جدول برترین تعمیرکاران" : locale === "ar" ? "ترتيب الفنيين" : "Technician leaderboard"} data-account-enter>
+              <CustomerLeaderboard locale={locale} />
             </aside>
           ) : null}
         </div>
-        <footer className={styles.footer}>
-          <span dir="ltr">topgsm.</span>
-          <p>{w.footer}</p>
-          <Link href={`/${locale}/products` as Route}>
-            {c.shop}
-            <AccountIcon name="arrow" />
-          </Link>
-        </footer>
       </main>
+      <footer className={styles.footer}>
+        <span dir="ltr">topgsm.</span>
+        <p>{w.footer}</p>
+        <Link href={`/${locale}/products` as Route}>
+          {c.shop}
+          <AccountIcon name="arrow" />
+        </Link>
+      </footer>
     </div>
   );
 }

@@ -314,6 +314,7 @@
 }
 
 .downloadChoices a,
+.downloadChoices button,
 .downloadChoices > span:not(:first-child) {
   display: block;
   padding: var(--space-product-sm) var(--space-product-md);
@@ -321,7 +322,21 @@
   border-radius: var(--radius-product-sm);
 }
 
-.downloadChoices a:focus-visible {
+.downloadChoices button {
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.downloadChoices button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.downloadChoices a:focus-visible,
+.downloadChoices button:focus-visible {
   outline: calc(var(--rule-product-thin) * 2) solid var(--color-product-focus);
   outline-offset: var(--space-product-2xs);
 }
@@ -928,3 +943,14 @@
 @media (min-width: 64rem) {
   .page[data-product-type="digital"] .details { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Customer product family · design-system: design.md */
+.page { background-color: var(--color-customer-canvas); }
+.page:not([data-product-type="digital"]) .hero { padding: 16px; border: 1px solid var(--color-customer-blue-rule); border-radius: 16px; background: var(--color-customer-header-wash); }
+.page .purchasePanel { border-top: 3px solid var(--color-customer-teal); background: linear-gradient(145deg, var(--color-customer-teal-soft), var(--color-product-surface) 65%); }
+.page[data-product-type="digital"] .purchasePanel { border-top: 3px solid var(--color-customer-teal); }
+.page .support, .page:not([data-product-type="digital"]) .support, .page[data-product-type="digital"] .support { border: 1px solid var(--color-customer-pink-rule); background: var(--color-customer-pink-soft); }
+.requirements { background: var(--color-customer-blue-soft); border: 1px solid var(--color-customer-blue-rule); }
+.stepNumber { color: var(--color-customer-tile-ink); background: var(--color-customer-blue); border-color: var(--color-customer-blue); }
+.workflow li:nth-child(2) .stepNumber { background: var(--color-customer-teal); border-color: var(--color-customer-teal); }
+.workflow li:nth-child(3) .stepNumber { background: var(--color-customer-pink); border-color: var(--color-customer-pink); }

@@ -25,6 +25,7 @@ import { AuthLoginSettingsService } from "../auth/auth-login-settings.service";
 import { UserLifecycleService } from "./user-lifecycle.service";
 import { UserDeletionService } from "./user-deletion.service";
 import { UserTransferWorker } from "./user-transfer.worker";
+import { ProfilePictureService } from "../auth/profile-picture.service";
 import type { ManagedUserRole } from "@topgsm/shared-types";
 
 assertDedicatedTestDatabase();
@@ -33,6 +34,7 @@ const auth = new AuthService(prisma, new AuthLoginSettingsService(prisma));
 const lifecycle = new UserLifecycleService(prisma, auth);
 const deletions = new UserDeletionService(prisma, auth);
 const config = new ConfigService({ DISABLE_BACKGROUND_WORKERS: "true" });
+const pictures = new ProfilePictureService(config, prisma);
 let admin: string; let passwordHash: string;
 const password = "Lifecycle test password 42!";
 async function user(role: ManagedUserRole = "buyer") {
@@ -50,7 +52,7 @@ async function finish(jobId: string, max = 200) {
     const job = await prisma.user_deletion_jobs.findUniqueOrThrow({ where: { id: jobId } });
     if (job.status === "completed") return job;
     assert.notEqual(job.status, "failed", JSON.stringify(job));
-    assert.equal(await new UserTransferWorker(prisma, config).tick(error => { throw error; }), true, JSON.stringify(job));
+    assert.equal(await new UserTransferWorker(prisma, config, pictures).tick(error => { throw error; }), true, JSON.stringify(job));
   }
   throw new Error("Transfer did not finish in bounded batches");
 }
@@ -211,7 +213,7 @@ describe("Account lifecycle PostgreSQL invariants", () => {
     const a = await enqueue(first); const b = await enqueue(second);
     await prisma.$transaction(async tx => {
       await tx.$queryRaw`SELECT id FROM user_deletion_jobs WHERE id=${a.id}::uuid FOR UPDATE`;
-      assert.equal(await new UserTransferWorker(prisma, config).tick(error => { throw error; }), true);
+      assert.equal(await new UserTransferWorker(prisma, config, pictures).tick(error => { throw error; }), true);
       assert.equal((await tx.user_deletion_jobs.findUniqueOrThrow({ where: { id: a.id } })).phase, 0);
       assert.equal((await tx.user_deletion_jobs.findUniqueOrThrow({ where: { id: b.id } })).phase, 1);
     });
@@ -226,7 +228,7 @@ describe("Account lifecycle PostgreSQL invariants", () => {
     await prisma.$executeRawUnsafe("CREATE TRIGGER lifecycle_test_failure BEFORE UPDATE ON comments FOR EACH ROW EXECUTE FUNCTION lifecycle_test_failure()");
     try {
       for (let i = 0; i < 12; i++) {
-        await new UserTransferWorker(prisma, config).tick();
+        await new UserTransferWorker(prisma, config, pictures).tick();
         const current = await prisma.user_deletion_jobs.findUniqueOrThrow({ where: { id: job.id } });
         if (current.status === "failed") break;
         await prisma.user_deletion_jobs.update({ where: { id: job.id }, data: { next_attempt_at: new Date(0) } });
@@ -293,7 +295,7 @@ describe("Account lifecycle PostgreSQL invariants", () => {
     const job = await deletions.enqueue(source.owner.id, admin, input);
     await assert.rejects(prisma.products.create({ data: { title: "Race", description: "", slug: randomUUID(), type: "physical", created_by_seller_id: source.organization.id } }));
     await assert.rejects(prisma.orders.create({ data: { buyer_id: buyer.id, seller_id: destination.organization.id, currency: "TOMAN", total_amount: "1", commission_rate: "0", holdback_rate: "0", idempotency_key: randomUUID(), request_hash: "a".repeat(64) } }));
-    assert.equal(await new UserTransferWorker(prisma, config).tick(), true);
+    assert.equal(await new UserTransferWorker(prisma, config, pictures).tick(), true);
     assert.equal(await prisma.products.count({ where: { created_by_seller_id: destination.organization.id } }), 200);
     // Simulate a process loss after commit and require explicit failed-job retry.
     await prisma.user_deletion_jobs.update({ where: { id: job.id }, data: { status: "failed", error_code: "SIMULATED_CRASH" } });

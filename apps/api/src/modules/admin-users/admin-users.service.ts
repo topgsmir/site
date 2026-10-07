@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import type { AdminUserHistoryPage, AdminUsersPage } from "@topgsm/shared-types";
 import { Prisma } from "../../prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
-import { resolveUserId } from "../../common/user-reference";
+import { isUserSupportCode, resolveUserId } from "../../common/user-reference";
 import { AuthService } from "../auth/auth.service";
 import { normalizeIranianPhone } from "../sms/phone-number";
 import type { AdminUserHistoryQueryDto, CreateAdminUserDto, ListAdminUsersQueryDto, UpdateAdminUserDto } from "./dto/admin-users.dto";
@@ -35,9 +35,8 @@ export class AdminUsersService {
 
   async list(input: ListAdminUsersQueryDto): Promise<AdminUsersPage> {
     const search = input.search?.trim();
-    const supportCode = search?.toUpperCase();
-    const exactCodeUser = supportCode && /^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{5}$/.test(supportCode)
-      ? await this.prisma.users.findUnique({ where: { support_code: supportCode }, select: { id: true } })
+    const exactCodeUser = search && isUserSupportCode(search)
+      ? await this.prisma.users.findUnique({ where: { support_code: search }, select: { id: true } })
       : null;
     const from = input.joinedFrom ? new Date(`${input.joinedFrom}T00:00:00.000Z`) : undefined;
     const to = input.joinedTo ? new Date(`${input.joinedTo}T00:00:00.000Z`) : undefined;

@@ -188,3 +188,14 @@
 @media (pointer: coarse) { .primary, .secondary, .quiet, .shell .chatButton, .resultDetails summary, .refund summary { min-height: 44px; } }
 @media (prefers-reduced-motion: reduce) { .shell *, .dialog * { animation: none !important; transition: none !important; } }
 
+/* Scope the customer treatment to buyer routes; shared seller panels keep their own chrome. */
+.buyer .navigation { padding: 12px 16px; border-radius: 12px; background: var(--color-customer-navy); color: var(--color-customer-on-navy); }
+.buyer .navigation > a { color: var(--color-customer-on-navy-muted); }
+.buyer .brandAccent { color: var(--color-customer-blue); }
+.buyer .header { margin-block: 12px; padding: 16px; border: 1px solid var(--color-customer-blue-rule); border-radius: 14px; background: var(--color-customer-header-wash); }
+.buyer .progress { border-top: 3px solid var(--color-customer-blue); }
+.buyer .summary { border-top: 3px solid var(--color-customer-teal); background: var(--color-customer-teal-soft); }
+.buyer .item { border-inline-start: 3px solid var(--color-customer-pink); }
+.buyer .itemIcon { color: var(--color-customer-tile-ink); background: var(--color-customer-blue); border: 0; }
+.buyer .count { color: var(--color-customer-tile-ink); background: var(--color-customer-pink); }
+

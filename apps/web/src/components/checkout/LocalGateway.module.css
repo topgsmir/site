@@ -9,3 +9,7 @@
 .actions button:disabled { opacity: .55; cursor: wait; }
 .panel a { color: inherit; }
 .error { color: var(--color-dashboard-error); }
+
+.panel { padding: 24px; border-top: 4px solid var(--color-customer-blue); background: var(--color-customer-header-wash); box-shadow: var(--shadow-dashboard-card); }
+.actions button { min-height: 44px; }
+.actions button:focus-visible, .panel a:focus-visible { outline: 3px solid var(--color-dashboard-focus); outline-offset: 3px; }

@@ -442,6 +442,7 @@ model users {
   full_name                    String                         @map("full_name")
   username                     String?                        @unique @map("username")
   email                        String?                        @unique @map("email")
+  profile_picture_key          String?                        @db.Uuid
   password_hash                String?                        @map("password_hash")
   phone_number                 String?                        @unique @map("phone_number") @db.VarChar(16)
   pending_phone_number         String?                        @unique @map("pending_phone_number") @db.VarChar(16)

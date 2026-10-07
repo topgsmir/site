@@ -14,8 +14,15 @@
 .reward button:disabled { opacity: .5; cursor: not-allowed; }
 .history strong { margin-inline-start: auto; }
 .error, .notice { padding: 10px 12px; border-radius: 8px; }
-.error { color: var(--color-dashboard-danger, #a32929); background: #fff1f1; }
+.error { color: var(--color-dashboard-error); background: var(--color-dashboard-error-soft); }
 .notice { background: var(--color-dashboard-accent-soft); }
 .club :is(button, a):focus-visible { outline: 2px solid var(--color-dashboard-accent); outline-offset: 3px; }
 @media (max-width: 800px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 400px) { .stats { grid-template-columns: minmax(0, 1fr); } .reward { align-items: start; flex-direction: column; } .reward button { min-height: 44px; margin-inline-start: 0; } }
+
+.stats > div { border-top: 3px solid var(--color-customer-blue); background: var(--color-customer-blue-soft); }
+.stats > div:nth-child(2) { border-top-color: var(--color-customer-teal); background: var(--color-customer-teal-soft); }
+.stats > div:nth-child(3) { border-top-color: var(--color-customer-pink); background: var(--color-customer-pink-soft); }
+.club section { border-top: 3px solid var(--color-customer-teal); }
+.reward button, .more, .error button { background: var(--color-dashboard-surface); cursor: pointer; }
+.error { color: var(--color-dashboard-error); background: var(--color-dashboard-error-soft); }

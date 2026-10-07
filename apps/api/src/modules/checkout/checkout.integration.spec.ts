@@ -176,6 +176,10 @@ describe("marketplace checkout persistence", () => {
   });
 
   it("lets every role purchase, pay, download, and manage only its own purchase", async () => {
+    // The preceding snapshot test replaces the offer's files after checkout.
+    await prisma.seller_offer_digital.update({ where: { offer_id: digitalOfferId }, data: {
+      file_reference: "https://uploads.example/test.zip", file_references: ["https://uploads.example/test.zip", "https://uploads.example/second.zip"]
+    } });
     const seller = await prisma.seller_offers.findUniqueOrThrow({ where: { id: digitalOfferId }, select: { listing: { select: { seller: { select: { user_id: true } } } } } });
     const sellerOwner = await prisma.users.findUniqueOrThrow({ where: { id: seller.listing.seller.user_id } });
     const roles: Array<{ role: Role; databaseRole: "buyer" | "seller_staff" | "platform_admin" | "platform_staff" }> = [
@@ -209,6 +213,12 @@ describe("marketplace checkout persistence", () => {
       assert.equal((await orders.listPurchases(shopper, { limit: 20 })).items.some((item) => item.id === purchase.id), true);
       await assert.rejects(() => orders.getPurchase({ ...shopper, id: randomUUID() }, purchase.id), /not found/);
       const item = await prisma.order_items.findFirstOrThrow({ where: { order_id: purchase.id }, select: { id: true } });
+      const access = await orders.digitalAccess(shopper, digitalOfferId);
+      assert.equal(access.orderId, purchase.id);
+      assert.equal(access.itemId, item.id);
+      assert.equal(access.files.length, 2);
+      assert.equal((await orders.digitalAccess({ ...shopper, id: randomUUID() }, digitalOfferId)).orderId, null);
+      await assert.rejects(() => orders.claimDigitalDownload({ ...shopper, id: randomUUID() }, purchase.id, item.id, "127.0.0.1"), /not found/);
       assert.equal(new URL(await orders.claimDigitalDownload(shopper, purchase.id, item.id, "127.0.0.1")).hostname, "uploads.example");
       const delivered = await orders.transitionPurchase(shopper, purchase.id, { status: "delivered" }, randomUUID());
       assert.equal(delivered.status, "delivered");
@@ -217,6 +227,7 @@ describe("marketplace checkout persistence", () => {
     await prisma.users.update({ where: { id: promoted.id }, data: { role: "seller_staff" } });
     const promotedOrder = await prisma.orders.findFirstOrThrow({ where: { buyer_id: promoted.id }, select: { id: true } });
     assert.equal((await orders.getPurchase({ ...promoted, role: "seller-staff" }, promotedOrder.id)).id, promotedOrder.id);
+    assert.equal((await orders.digitalAccess({ ...promoted, role: "seller-staff" }, digitalOfferId)).orderId, promotedOrder.id);
     assert.equal((await orders.listPurchases({ ...promoted, role: "seller-staff" }, { limit: 20 })).items.some((item) => item.id === promotedOrder.id), true);
   });
 });

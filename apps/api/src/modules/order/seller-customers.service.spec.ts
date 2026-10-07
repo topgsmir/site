@@ -20,9 +20,9 @@ describe("SellerCustomersService tenant boundary", () => {
       }
     } as unknown as PrismaService;
     const service = new SellerCustomersService(prisma);
-    await service.search(actor, { search: "3UKM9", limit: 20 });
+    await service.search(actor, { search: "30109", limit: 20 });
     assert.deepEqual((queries[0]!.where as Record<string, unknown>).orders, { some: { seller_id: "seller-1" } });
-    assert.equal((queries[0]!.where as Record<string, unknown>).support_code, "3UKM9");
+    assert.equal((queries[0]!.where as Record<string, unknown>).support_code, "30109");
     const result = await service.search(actor, { search: "buyers", limit: 20 });
     assert.deepEqual((queries[2]!.where as Record<string, unknown>).orders, { some: { seller_id: "seller-1" } });
     assert.deepEqual((queries[2]!.select as { _count: { select: { orders: unknown } } })._count.select.orders, { where: { seller_id: "seller-1" } });

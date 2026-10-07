@@ -87,7 +87,7 @@ function OrderDetails({ locale, orderId }: { locale: Locale; orderId: string }) 
   const errorText = error === "unavailable" ? c.unavailable : error === "refresh" ? c.refreshError : c.error;
   const payment = order?.status === "pending" ? c.pending : order?.status === "cancelled" ? c.cancelledPayment : order?.status === "refunded" ? statusLabel(c, "refunded") : order && ["paid", "processing", "shipped", "awaiting_confirmation", "delivered"].includes(order.status) ? c.paid : c.unknown;
 
-  return <div className={s.shell} dir={locale === "en" ? "ltr" : "rtl"}>
+  return <div className={`${s.shell} ${s.buyer}`} dir={locale === "en" ? "ltr" : "rtl"}>
     <nav className={s.navigation} aria-label={c.back}><Link href={`/${locale}/account/orders` as Route}><AccountIcon name="arrow" width={18} height={18} />{c.back}</Link><span>TOP<span className={s.brandAccent}>GSM</span></span></nav>
     <header className={s.header}><div><p className={s.eyebrow}>{c.eyebrow}</p><h1>{order?.items[0]?.productTitle ?? c.order}{order && order.items.length > 1 ? <span className={s.extra}> +{(order.items.length - 1).toLocaleString(locale)}</span> : null}</h1>{order ? <div className={s.metadata}><span>{c.number}: <CopyValue value={order.id} label={c.number} c={c} /></span><span>{c.created}: <RelativeOrderTime value={order.createdAt} locale={locale} showExact /></span></div> : null}</div>{order ? <button type="button" className={s.secondary} disabled={refreshing} onClick={() => void load()}>{refreshing ? c.refreshing : c.refresh}</button> : null}</header>
     <main>

@@ -124,6 +124,31 @@
 @media (hover: hover) and (pointer: fine) {
   .aboutLink:hover { transform: translateY(-2px); }
 }
+
+/* Colorful customer discovery · design-system: design.md */
+.page { background: var(--color-customer-canvas); }
+.hero { padding: 20px; gap: 24px; border: 1px solid var(--color-customer-blue-rule); border-radius: 18px; background: var(--color-customer-header-wash); }
+.story:nth-child(3n + 2) .storyImage { border-color: var(--color-customer-teal); }
+.story:nth-child(3n) .storyImage { border-color: var(--color-customer-pink); }
+.shortcuts { gap: 12px; border: 0; padding-block: 14px; }
+.shortcut, .shortcut:first-child, .shortcut:last-child { padding: 12px; border: 1px solid var(--color-customer-blue-rule); border-radius: 14px; background: var(--color-customer-blue-soft); }
+.shortcutIcon { color: var(--color-customer-tile-ink); background: var(--color-customer-blue); box-shadow: var(--shadow-customer-blue); }
+.shortcut:nth-child(2) { border-color: var(--color-customer-teal-rule); background: var(--color-customer-teal-soft); }
+.shortcut:nth-child(2) .shortcutIcon { background: var(--color-customer-teal); }
+.shortcut:nth-child(3) { border-color: var(--color-customer-pink-rule); background: var(--color-customer-pink-soft); }
+.shortcut:nth-child(3) .shortcutIcon { background: var(--color-customer-pink); }
+.collection { padding: 8px; border: 1px solid var(--color-customer-blue-rule); border-radius: 16px; background: var(--color-customer-blue-soft); }
+.collection:nth-child(2) { background: var(--color-customer-teal-soft); border-color: var(--color-customer-teal-rule); }
+.collection:nth-child(3) { background: var(--color-customer-pink-soft); border-color: var(--color-customer-pink-rule); }
+.collectionBody { padding: 10px 6px 4px; }
+.offerSection { background: var(--color-customer-teal-soft); border-color: var(--color-customer-teal-rule); }
+.offerArtwork { color: var(--color-customer-tile-ink); background: var(--color-customer-blue); }
+.offerArtwork[data-variant="1"] { color: var(--color-customer-tile-ink); background: var(--color-customer-teal); }
+.offerArtwork[data-variant="2"] { color: var(--color-customer-tile-ink); background: var(--color-customer-pink); }
+.offerArtwork[data-variant="3"] { color: var(--color-customer-on-navy); background: var(--color-customer-navy); }
+.aboutIntro { background: var(--color-customer-navy); }
+.sectionLabel svg { box-sizing: content-box; padding: 6px; border-radius: 8px; color: var(--color-customer-tile-ink); background: var(--color-customer-blue); }
+@media (max-width: 600px) { .hero { padding: 16px; } .shortcuts { gap: 8px; } }
 .latestProducts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 40px; }
 .product { display: flex; align-items: center; min-width: 0; gap: 14px; padding-block: 12px; border-bottom: 1px solid var(--line); }
 .productImage { display: grid; place-items: center; width: 56px; height: 56px; flex-shrink: 0; border-radius: 10px; overflow: clip; background: var(--color-home-azure-surface); }

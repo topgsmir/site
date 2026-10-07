@@ -778,3 +778,16 @@ html[data-theme="dark"] .theme-icon-moon { opacity: 1; transform: rotate(0); }
   .vendor-workspace-intro > .admin-primary-button { grid-row: 2; }
   .vendor-workspace-intro .vendor-search { grid-row: 3; }
 }
+
+/* Customer sign-in · design-system: design.md. Keep validation's semantic tones. */
+.auth-shell { gap: 24px; padding-block: 24px; }
+.auth-panel { padding: 24px; border: 1px solid var(--color-customer-blue-rule); border-top: 4px solid var(--color-customer-blue); border-radius: 18px; background: var(--color-customer-header-wash); box-shadow: var(--shadow-dashboard-card); }
+.auth-brand { position: static; margin-bottom: 24px; }
+.auth-heading { margin-bottom: 20px; }
+.auth-heading h1 { font-size: 1.5rem; }
+.auth-form { gap: 16px; }
+.auth-submit { border-radius: 10px; box-shadow: var(--shadow-customer-blue); }
+.auth-art { border: 1px solid var(--color-customer-teal-rule); border-bottom: 5px solid var(--color-customer-teal); border-radius: 18px; }
+.auth-art > div { border-inline-start: 4px solid var(--color-customer-pink); background: var(--color-customer-navy); color: var(--color-customer-on-navy); }
+.auth-art small { color: var(--color-customer-teal); }
+@media (max-width: 800px) { .auth-panel { padding: 20px 16px; } }

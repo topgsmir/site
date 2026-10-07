@@ -55,6 +55,15 @@ test("catalog exposes a broad unique tool surface without recursive assistant ro
   assert.ok(ADMIN_TOOL_CATALOG.filter((entry) => entry.method !== "GET").every((entry) => entry.risk !== "read"));
 });
 
+test("digital download tools describe access for admins and sellers without bypassing ownership", () => {
+  const access = ADMIN_TOOL_CATALOG.find((entry) => entry.name === "buyer_digital_access")!;
+  const free = ADMIN_TOOL_CATALOG.find((entry) => entry.name === "buyer_free_download")!;
+  assert.match(access.description, /own latest settled/);
+  assert.match(access.description, /admins and sellers/);
+  assert.match(free.description, /admins and sellers/);
+  assert.match(free.description, /only when the active offer is free/);
+});
+
 test("catalog covers every ordinary controller route and documents security-flow exclusions", () => {
   const catalogRoutes = new Set(ADMIN_TOOL_CATALOG.map((entry) => `${entry.method} ${entry.path}`));
   const excluded = [
@@ -157,6 +166,14 @@ test("finds product title tools from Persian and Arabic requests with accurate i
   assert.match(translation?.inputHint ?? "", /Both title and description are required/);
   assert.doesNotMatch(translation?.inputHint ?? "", /SEO fields|slug/);
   assert.ok(catalog.search("سفارش ارسال نشده", "orders", 16).some((entry) => entry.name === "admin_order_shipping_update"));
+});
+
+test("describes numeric support codes and preserves leading zeros in user paths", () => {
+  const catalog = new AdminToolCatalogService();
+  const userTools = catalog.list().filter((entry) => entry.inputHint.includes("support code"));
+  assert.ok(userTools.length > 0);
+  for (const entry of userTools) assert.match(entry.inputHint, /5-digit numeric support code/);
+  assert.equal(catalog.prepare("admin_user_get", { path: { id: "01409" } }).path, "/admin/users/01409");
 });
 
 test("only read-only JSON GET tools can execute without a separate approval", () => {

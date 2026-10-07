@@ -26,3 +26,9 @@
 .skeleton span { width: 34px; height: 38px; border-radius: 8px; background: var(--color-dashboard-surface-raised); }
 .skeleton span:last-child { flex: 1; height: 14px; }
 @media (max-width: 600px) { .header { padding: 20px; } .row { padding-block: 16px; } }
+
+.header { padding: 16px; background: var(--color-customer-pink-soft); border-top: 3px solid var(--color-customer-pink); }
+.header > svg { box-sizing: content-box; padding: 8px; border-radius: 10px; color: var(--color-customer-tile-ink); background: var(--color-customer-pink); }
+.row { padding-block: 12px; }
+.row:first-child .avatar { color: var(--color-customer-tile-ink); background: var(--color-customer-teal); border: 0; }
+.yourRow { color: var(--color-customer-blue-ink); background: var(--color-customer-blue-soft); }

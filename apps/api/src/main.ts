@@ -41,7 +41,10 @@ async function bootstrap() {
     new RejectUnsafeInputCharactersPipe()
   );
   app.setGlobalPrefix("api", {
-    exclude: [{ path: "media/:assetId/:filename", method: RequestMethod.GET }]
+    exclude: [
+      { path: "media/:assetId/:filename", method: RequestMethod.GET },
+      { path: "user-pictures/:userId/picture.webp", method: RequestMethod.GET }
+    ]
   });
   await app.listen(port, host);
 }

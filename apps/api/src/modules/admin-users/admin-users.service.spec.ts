@@ -5,7 +5,7 @@ import type { AuthService } from "../auth/auth.service";
 import { AdminUsersService } from "./admin-users.service";
 
 const date = new Date("2026-09-13T08:00:00.000Z");
-const user = { id: "3dd30b78-d1dc-44e0-a420-798e474b7a0a", support_code: "7K4P9", full_name: "Customer One", username: "customer", email: "customer@example.com", phone_number: "+989121234567", pending_phone_number: null, role: "buyer", created_at: date, updated_at: date, _count: { orders: 3 }, wallet_account: { balance: { toString: () => "12345" } } };
+const user = { id: "3dd30b78-d1dc-44e0-a420-798e474b7a0a", support_code: "01409", full_name: "Customer One", username: "customer", email: "customer@example.com", phone_number: "+989121234567", pending_phone_number: null, role: "buyer", created_at: date, updated_at: date, _count: { orders: 3 }, wallet_account: { balance: { toString: () => "12345" } } };
 const auth = { createPasswordHash: async () => "scrypt$hash" } as unknown as AuthService;
 
 describe("AdminUsersService", () => {
@@ -64,7 +64,7 @@ describe("AdminUsersService", () => {
     assert.deepEqual(result, { items: [{ id: user.id, supportCode: user.support_code, fullName: user.full_name, username: user.username, email: user.email, phoneNumber: user.phone_number, pendingPhoneNumber: null, role: user.role, accountStatus: undefined, blockedAt: null, deletedAt: null, orderCount: 3, walletBalance: "12345", createdAt: date.toISOString(), updatedAt: date.toISOString() }], page: 2, pageSize: 1, total: 1 });
   });
 
-  it("finds a support code regardless of letter case", async () => {
+  it("finds an exact five-digit support code with a leading zero", async () => {
     let where: Record<string, unknown> | undefined;
     let codeLookup: Record<string, unknown> | undefined;
     const prisma = { users: {
@@ -72,10 +72,10 @@ describe("AdminUsersService", () => {
       findUnique: async (input: { where: Record<string, unknown> }) => { codeLookup = input.where; return { id: user.id }; },
       findMany: async () => [user]
     } } as unknown as PrismaService;
-    const result = await new AdminUsersService(prisma, auth).list({ page: 1, limit: 20, role: "all", sort: "newest", hasOrders: "all", hasPhone: "all", search: "7k4p9" });
-    assert.deepEqual(codeLookup, { support_code: "7K4P9" });
+    const result = await new AdminUsersService(prisma, auth).list({ page: 1, limit: 20, role: "all", sort: "newest", hasOrders: "all", hasPhone: "all", search: "01409" });
+    assert.deepEqual(codeLookup, { support_code: "01409" });
     assert.deepEqual(where, { id: user.id });
-    assert.equal(result.items[0]?.supportCode, "7K4P9");
+    assert.equal(result.items[0]?.supportCode, "01409");
   });
 
   it("shows zero when a user has no wallet account", async () => {
@@ -93,10 +93,10 @@ describe("AdminUsersService", () => {
       lookups.push(input.where);
       return lookups.length === 1 ? { id: user.id } : user;
     } } } as unknown as PrismaService;
-    const result = await new AdminUsersService(prisma, auth).detail("7k4p9");
-    assert.deepEqual(lookups, [{ support_code: "7K4P9" }, { id: user.id }]);
+    const result = await new AdminUsersService(prisma, auth).detail("01409");
+    assert.deepEqual(lookups, [{ support_code: "01409" }, { id: user.id }]);
     assert.equal(result.id, user.id);
-    assert.equal(result.supportCode, "7K4P9");
+    assert.equal(result.supportCode, "01409");
   });
 
   it("fetches only the requested order page even when a customer has 1000 orders", async () => {

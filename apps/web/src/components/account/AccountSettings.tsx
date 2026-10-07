@@ -1,11 +1,18 @@
 "use client";
 
 import axios from "axios";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import type { AppUser } from "@topgsm/shared-types";
 import { api } from "@/lib/api/client";
 import type { Locale } from "@/lib/i18n";
 import styles from "./AccountSettings.module.css";
+import { UserAvatar } from "./UserAvatar";
+
+const PICTURE_COPY = {
+  en: { title: "Profile picture", choose: "Choose picture", remove: "Remove picture", busy: "Updating…", hint: "JPEG, PNG, or WebP, up to 8 MB.", saved: "Profile picture updated.", removed: "Profile picture removed.", error: "Could not update the picture. Please try again.", invalid: "Choose a JPEG, PNG, or WebP image under 8 MB." },
+  fa: { title: "عکس پروفایل", choose: "انتخاب عکس", remove: "حذف عکس", busy: "در حال بروزرسانی…", hint: "فایل JPEG، PNG یا WebP تا ۸ مگابایت.", saved: "عکس پروفایل تغییر کرد.", removed: "عکس پروفایل حذف شد.", error: "تغییر عکس انجام نشد. دوباره تلاش کنید.", invalid: "عکس JPEG، PNG یا WebP با حجم کمتر از ۸ مگابایت انتخاب کنید." },
+  ar: { title: "الصورة الشخصية", choose: "اختيار صورة", remove: "حذف الصورة", busy: "جارٍ التحديث…", hint: "JPEG أو PNG أو WebP بحجم لا يتجاوز 8 ميغابايت.", saved: "تم تحديث الصورة الشخصية.", removed: "تم حذف الصورة الشخصية.", error: "تعذر تحديث الصورة. حاول مجددًا.", invalid: "اختر صورة JPEG أو PNG أو WebP بحجم أقل من 8 ميغابايت." }
+} as const;
 
 const COPY = {
   en: { title: "Personal details", name: "Full name", email: "Email", username: "Username", usernameHint: "3–32 lowercase letters, numbers, or underscores. You can leave it empty if you don't have one.", save: "Save changes", saving: "Saving…", saved: "Your account details were saved.", error: "Could not save your details. Please try again.", conflict: "That email or username is already in use.", invalidEmail: "Enter an email to replace the current one.", invalidUsername: "Your username cannot be empty. Use 3–32 lowercase letters, numbers, or underscores.", limited: "Too many changes. Please try again later." },
@@ -21,6 +28,11 @@ const PHONE_COPY = {
 
 export function AccountSettings({ locale, user, onUpdated }: { locale: Locale; user: AppUser; onUpdated: (user: AppUser) => void }) {
   const c = COPY[locale];
+  const pcPicture = PICTURE_COPY[locale];
+  const pictureInput = useRef<HTMLInputElement>(null);
+  const [pictureBusy, setPictureBusy] = useState(false);
+  const [pictureMessage, setPictureMessage] = useState("");
+  const [pictureError, setPictureError] = useState("");
   const [name, setName] = useState(user.fullName);
   const [email, setEmail] = useState(user.email ?? "");
   const [username, setUsername] = useState(user.username ?? "");
@@ -69,6 +81,45 @@ export function AccountSettings({ locale, user, onUpdated }: { locale: Locale; u
   }
   const dirty = name.trim() !== user.fullName || email.trim().toLowerCase() !== (user.email ?? "") || username.trim() !== (user.username ?? "");
 
+  async function changePicture(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setPictureMessage("");
+    setPictureError("");
+    if (!(["image/jpeg", "image/png", "image/webp"].includes(file.type)) || file.size > 8 * 1024 * 1024) {
+      setPictureError(pcPicture.invalid);
+      return;
+    }
+    setPictureBusy(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const { data } = await api.post<{ url: string }>("/auth/me/picture", body);
+      onUpdated({ ...user, profilePictureUrl: data.url });
+      setPictureMessage(pcPicture.saved);
+    } catch {
+      setPictureError(pcPicture.error);
+    } finally {
+      setPictureBusy(false);
+    }
+  }
+
+  async function removePicture() {
+    setPictureMessage("");
+    setPictureError("");
+    setPictureBusy(true);
+    try {
+      await api.delete("/auth/me/picture");
+      onUpdated({ ...user, profilePictureUrl: null });
+      setPictureMessage(pcPicture.removed);
+    } catch {
+      setPictureError(pcPicture.error);
+    } finally {
+      setPictureBusy(false);
+    }
+  }
+
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
@@ -100,7 +151,22 @@ export function AccountSettings({ locale, user, onUpdated }: { locale: Locale; u
     }
   }
 
-  return <><section className={styles.card} aria-labelledby="personal-details">
+  return <><section className={styles.card} aria-labelledby="profile-picture-title">
+    <h2 id="profile-picture-title">{pcPicture.title}</h2>
+    <div className={styles.pictureSettings}>
+      <UserAvatar className={styles.picturePreview} name={user.fullName} url={user.profilePictureUrl} size={64} />
+      <div className={styles.pictureControls}>
+        <input ref={pictureInput} className={styles.pictureInput} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => void changePicture(event)} tabIndex={-1} aria-hidden="true" />
+        <div className={styles.pictureButtons}>
+          <button type="button" disabled={pictureBusy || saving} onClick={() => pictureInput.current?.click()}>{pictureBusy ? pcPicture.busy : pcPicture.choose}</button>
+          {user.profilePictureUrl ? <button type="button" className={styles.removePicture} disabled={pictureBusy || saving} onClick={() => void removePicture()}>{pcPicture.remove}</button> : null}
+        </div>
+        <p className={styles.hint}>{pcPicture.hint}</p>
+        {pictureError ? <p className={styles.error} role="alert">{pictureError}</p> : null}
+        {pictureMessage ? <p className={styles.success} role="status">{pictureMessage}</p> : null}
+      </div>
+    </div>
+  </section><section className={styles.card} aria-labelledby="personal-details">
     <h2 id="personal-details">{c.title}</h2>
     <form onSubmit={(event) => void save(event)}>
       <div className={styles.field}><label htmlFor="profile-name">{c.name}</label>
@@ -112,7 +178,7 @@ export function AccountSettings({ locale, user, onUpdated }: { locale: Locale; u
       <p id="profile-username-hint" className={styles.hint}>{c.usernameHint}</p></div></div>
       {error ? <p className={styles.error} role="alert">{error}</p> : null}
       {message ? <p className={styles.success} role="status">{message}</p> : null}
-      <div className={styles.actions}><button type="submit" disabled={saving || !dirty}>{saving ? c.saving : c.save}</button></div>
+      <div className={styles.actions}><button type="submit" disabled={saving || pictureBusy || !dirty}>{saving ? c.saving : c.save}</button></div>
     </form>
   </section>
   {pendingPhone ? <section className={styles.card} aria-labelledby="pending-phone-title">

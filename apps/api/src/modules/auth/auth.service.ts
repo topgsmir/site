@@ -23,6 +23,7 @@ import type { LoginDto } from "./dto/login.dto";
 import type { RegisterDto } from "./dto/register.dto";
 import type { UpdateProfileDto } from "./dto/update-profile.dto";
 import { AuthLoginSettingsService } from "./auth-login-settings.service";
+import { profilePictureUrl } from "./profile-picture.service";
 
 const SCRYPT_COST = 16_384;
 const SCRYPT_BLOCK_SIZE = 8;
@@ -34,9 +35,11 @@ const DUMMY_HASH = `scrypt$${SCRYPT_COST}$${SCRYPT_BLOCK_SIZE}$${SCRYPT_PARALLEL
 type StoredUser = {
   id: string;
   support_code: string;
+  created_at?: Date;
   full_name: string;
   username?: string | null;
   email: string | null;
+  profile_picture_key?: string | null;
   role:
     | "platform_admin"
     | "platform_staff"
@@ -157,9 +160,11 @@ export class AuthService {
           select: {
             id: true,
             support_code: true,
+            created_at: true,
             full_name: true,
             username: true,
             email: true,
+            profile_picture_key: true,
             role: true,
             sellers: {
               select: { id: true, permissions: { select: { permission: true } } }
@@ -320,9 +325,11 @@ export class AuthService {
     const publicUser: AppUser = {
       id: user.id,
       supportCode: user.support_code,
+      ...(user.created_at ? { createdAt: user.created_at.toISOString() } : {}),
       fullName: user.full_name,
       username: user.username ?? null,
       email: user.email,
+      ...(user.profile_picture_key ? { profilePictureUrl: profilePictureUrl(user.id, user.profile_picture_key) } : {}),
       role: user.role.replaceAll("_", "-") as Role
     };
     const permissionRecords =

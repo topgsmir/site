@@ -41,3 +41,23 @@
 @media (max-width: 600px) { .cart > span { display: none; } }
 @media (max-width: 390px) { .symbol { display: none; } }
 @media (max-width: 440px) { .actions { width: 100%; margin-inline-start: 0; justify-content: space-between; } }
+
+/* Customer chrome · design-system: design.md · Hallmark P5 H5 E4 S5 R4 V4 */
+.header { width: min(1280px, calc(100% - 32px)); margin-block: 12px; padding: 8px 16px; gap: 14px; border: 1px solid var(--color-panel-navigation-rule); border-radius: 16px; color: var(--color-customer-on-navy); background: var(--color-customer-navy); box-shadow: var(--shadow-dashboard-card); }
+.brand small { color: var(--color-customer-on-navy-muted); }
+.brand strong span { color: var(--color-customer-blue); }
+.symbol { color: var(--color-customer-tile-ink); background: var(--color-customer-blue); }
+.navigation { gap: 4px; color: var(--color-customer-on-navy-muted); }
+.navigation a { padding-inline: 10px; border-radius: 9px; }
+.navigation a:hover { color: var(--color-customer-on-navy); background: var(--color-customer-navy-raised); }
+.navigation a[aria-current="page"] { color: var(--color-customer-tile-ink); background: var(--color-customer-blue); font-weight: 650; }
+.account { border-color: var(--color-customer-pink); border-radius: 10px; color: var(--color-customer-tile-ink); background: var(--color-customer-pink); font-weight: 650; }
+.cart { color: var(--color-customer-on-navy); }
+.cart > svg { color: var(--color-customer-teal); }
+.cart:hover, .cart[aria-expanded="true"] { color: var(--color-customer-on-navy); background: var(--color-customer-navy-raised); border-color: var(--color-panel-navigation-rule-strong); }
+.cart[aria-current="page"] { color: var(--color-customer-teal); }
+.cart strong { color: var(--color-customer-tile-ink); background: var(--color-customer-teal); }
+.header :is(a, button):focus-visible { outline-color: var(--color-customer-blue); }
+@media (min-width: 801px) and (max-width: 1200px) { .header { flex-wrap: wrap; } .navigation { order: 3; width: 100%; justify-content: center; } .actions { margin-inline-start: auto; } }
+@media (max-width: 800px) { .header { padding: 10px 12px; } .navigation { flex-wrap: wrap; justify-content: center; gap: 2px; } .navigation a { padding-inline: 8px; } }
+@media (max-width: 440px) { .header { gap: 8px; } .actions { gap: 6px; } .account { padding-inline: 10px; } }

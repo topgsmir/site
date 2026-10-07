@@ -13,6 +13,7 @@ import type { PublicProduct, PublicProductOffer, PublicProductVariant } from "./
 import styles from "./ProductPage.module.css";
 import { readCart, writeCart } from "@/lib/cart";
 import { api, API_BASE } from "@/lib/api/client";
+import { openDigitalDownload } from "@/lib/digital-download";
 import { marketingVisitFor, rememberMarketingVisit } from "@/lib/marketing-attribution";
 import { ProductComments } from "@/components/comments/ProductComments";
 import { OfferPicker } from "@/components/product/OfferPicker";
@@ -80,7 +81,7 @@ export function ProductPage({
   editHref,
   bridgeCheckout,
   accountHref,
-  signedInBuyer = false,
+  signedInUser = false,
   visitId
 }: {
   product: PublicProduct;
@@ -89,7 +90,7 @@ export function ProductPage({
   editHref?: Route;
   bridgeCheckout?: ReactNode;
   accountHref?: string | null;
-  signedInBuyer?: boolean;
+  signedInUser?: boolean;
   visitId?: string;
 }) {
   const c = productPageCopy[locale];
@@ -188,13 +189,8 @@ export function ProductPage({
   async function downloadDigital() {
     if (!selectedOffer || unavailable || buttonState === "loading") return;
     const returnPath = `/${locale}/products/${encodeURIComponent(product.slug)}`;
-    if (!signedInBuyer) {
-      if (accountHref) {
-        setCartError(d.buyerOnly);
-        setButtonState("error");
-      } else {
-        router.push(`/${locale}/login?next=${encodeURIComponent(returnPath)}`);
-      }
+    if (!signedInUser) {
+      router.push(`/${locale}/login?next=${encodeURIComponent(returnPath)}`);
       return;
     }
     setButtonState("loading");
@@ -231,11 +227,11 @@ export function ProductPage({
       }
       setAccessOrderId(data.orderId);
       const files = data.files.map((file) => ({
-        href: `${API_BASE}${file.downloadUrl}`,
+        href: file.downloadUrl,
         available: file.maxDownloads <= 0 || file.downloadCount < file.maxDownloads
       }));
       if (files.length === 1 && files[0]!.available) {
-        window.location.assign(files[0]!.href);
+        await openDigitalDownload(files[0]!.href);
       } else if (files.some((file) => file.available)) {
         setDownloadChoices(files);
       } else {
@@ -252,6 +248,19 @@ export function ProductPage({
         setCartError(d.accessFailed);
         setButtonState("error");
       }
+    }
+  }
+
+  async function downloadPaidFile(path: string) {
+    if (buttonState === "loading") return;
+    setButtonState("loading");
+    setCartError("");
+    try {
+      await openDigitalDownload(path);
+      setButtonState("idle");
+    } catch {
+      setCartError(d.accessFailed);
+      setButtonState("error");
     }
   }
 
@@ -296,7 +305,9 @@ export function ProductPage({
     {isDigital && downloadChoices.length > 1 ? <div id="download-choices" className={styles.downloadChoices} role="group" aria-label={d.chooseFile} tabIndex={-1}>
       <span>{d.chooseFile}</span>
       {downloadChoices.map((file, index) => file.available
-        ? <a key={file.href} href={file.href} target="_blank" rel="noopener noreferrer">{d.file} {new Intl.NumberFormat(locale).format(index + 1)}</a>
+        ? isFreeDigital
+          ? <a key={file.href} href={file.href} target="_blank" rel="noopener noreferrer">{d.file} {new Intl.NumberFormat(locale).format(index + 1)}</a>
+          : <button key={file.href} type="button" disabled={buttonState === "loading"} onClick={() => void downloadPaidFile(file.href)}>{d.file} {new Intl.NumberFormat(locale).format(index + 1)}</button>
         : <span key={file.href}>{d.file} {new Intl.NumberFormat(locale).format(index + 1)} · {d.limitReached}</span>)}
     </div> : null}
   </>;

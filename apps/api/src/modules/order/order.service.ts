@@ -885,7 +885,6 @@ export class OrderService {
   }
 
   async digitalAccess(actor: AppUser, offerId: string) {
-    if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can access purchases");
     const itemWhere = {
       offer_id: offerId,
       product_type: "digital" as const,
@@ -923,8 +922,7 @@ export class OrderService {
     } : { orderId: null, itemId: null, files: [] };
   }
 
-  async freeDigitalDownload(actor: AppUser, offerId: string, clientIp: string, fileIndex = 0) {
-    if (actor.role !== "buyer") throw new ForbiddenException("Only buyers can download files");
+  async freeDigitalDownload(_actor: AppUser, offerId: string, clientIp: string, fileIndex = 0) {
     const offer = await this.prisma.seller_offers.findFirst({
       where: {
         id: offerId,

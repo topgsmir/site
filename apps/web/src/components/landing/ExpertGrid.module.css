@@ -41,3 +41,10 @@
   .toolbar button { padding-inline: 10px; font-size: .7rem; }
 }
 @media (prefers-reduced-motion: reduce) { .expert, .portrait { transition: none; } .expert:hover .portrait, .expert:active .portrait { transform: none; } }
+
+.expert { border: 1px solid var(--color-customer-blue-rule); background: var(--color-customer-blue-soft); }
+.grid > li:nth-child(3n + 2) .expert { border-color: var(--color-customer-teal-rule); background: var(--color-customer-teal-soft); }
+.grid > li:nth-child(3n) .expert { border-color: var(--color-customer-pink-rule); background: var(--color-customer-pink-soft); }
+.portrait { border: 2px solid var(--color-customer-blue); }
+.grid > li:nth-child(3n + 2) .portrait { border-color: var(--color-customer-teal); }
+.grid > li:nth-child(3n) .portrait { border-color: var(--color-customer-pink); }

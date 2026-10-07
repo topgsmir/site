@@ -64,3 +64,17 @@
 @media (prefers-reduced-motion: reduce) { .primary { transition: none; } .primary:active, .primary:hover { transform: none; } }
 
 .directoryState { padding: 16px; border: 1px solid var(--line); border-radius: 20px; color: var(--muted); background: var(--paper-bright); font-size: .9rem; line-height: 1.9; }
+
+.hero { padding: 20px; gap: 20px; border: 1px solid var(--color-customer-blue-rule); border-radius: 16px; background: var(--color-customer-header-wash); }
+.hero h1 { font-size: clamp(1.5rem, 2.5vw, 2rem); }
+.guide { padding: 16px; border-color: var(--color-customer-teal-rule); background: var(--color-customer-teal-soft); border-radius: 14px; }
+.guide li { grid-template-columns: 30px minmax(0, 1fr); }
+.step { display: grid; place-items: center; align-self: start; height: 30px; padding: 0; border-radius: 8px; color: var(--color-customer-tile-ink); background: var(--color-customer-teal); }
+.expert { border-top: 3px solid var(--color-customer-blue); }
+.expert:nth-child(3n + 2) { border-top-color: var(--color-customer-teal); }
+.expert:nth-child(3n) { border-top-color: var(--color-customer-pink); }
+.avatar { color: var(--color-customer-tile-ink); background: var(--color-customer-blue); }
+.expert:nth-child(3n + 2) .avatar { background: var(--color-customer-teal); }
+.expert:nth-child(3n) .avatar { background: var(--color-customer-pink); }
+.contacts { padding: 20px; background: var(--color-customer-pink-soft); border: 1px solid var(--color-customer-pink-rule); border-radius: 16px; }
+@media (max-width: 767px) { .hero { padding: 16px; } }

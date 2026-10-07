@@ -86,3 +86,10 @@
 }
 @media (pointer: coarse) { .filters button, .chatButton, .orderLink, .orderDetails summary, .orderDetails > a { min-height: 44px; } .orderLink { min-width: 44px; } .search input { min-height: 42px; } }
 @media (prefers-reduced-motion: reduce) { .skeleton span { animation: none; } .orderDetails summary svg { transition: none; } }
+
+.sectionHeading { background: var(--color-customer-blue-soft); }
+.sectionIcon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: var(--color-customer-tile-ink); background: var(--color-customer-blue); }
+.controls { padding-top: 12px; }
+.tableHeading { background: var(--color-customer-teal-soft); }
+.productIcon { color: var(--color-customer-blue-ink); background: var(--color-customer-blue-soft); border-color: var(--color-customer-blue-rule); }
+.filters button[aria-pressed="true"] { color: var(--color-customer-tile-ink); background: var(--color-customer-blue); }

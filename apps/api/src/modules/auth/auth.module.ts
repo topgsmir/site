@@ -13,11 +13,14 @@ import { AdminAuthLoginSettingsController, AuthLoginMethodsController } from "./
 import { SecurityPolicyService } from "./security-policy.service";
 import { AdminSecurityPolicyController, PublicSecurityPolicyController } from "./security-policy.controller";
 import { CaptchaService } from "../captcha/captcha.service";
+import { ProfilePictureService } from "./profile-picture.service";
+import { UserPictureController } from "./user-picture.controller";
 
 @Module({
-  controllers: [AuthController, AuthLoginMethodsController, AdminAuthLoginSettingsController, AdminSecurityPolicyController, PublicSecurityPolicyController],
+  controllers: [AuthController, UserPictureController, AuthLoginMethodsController, AdminAuthLoginSettingsController, AdminSecurityPolicyController, PublicSecurityPolicyController],
   providers: [
     AuthService,
+    ProfilePictureService,
     AuthLoginSettingsService,
     AuthRateLimitService,
     SecurityPolicyService,
@@ -31,6 +34,7 @@ import { CaptchaService } from "../captcha/captcha.service";
   ],
   exports: [
     AuthService,
+    ProfilePictureService,
     AuthLoginSettingsService,
     AuthRateLimitService,
     SecurityPolicyService,

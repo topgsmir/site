@@ -15,20 +15,22 @@ it("accepts user UUIDs and support codes only at user-reference inputs", async (
     [new DeletionQueryDto(), "replacementUserId"], [new CreateDeletionDto(), "replacementUserId"],
     [new LifecycleCandidateSearchDto(), "cursor"], [new SellerCustomerSearchDto(), "cursor"]
   ] as const) {
-    Object.assign(dto, { [field]: "7k4p9" });
-    assert.ok(!(await validate(dto)).some((error) => error.property === field));
-    Object.assign(dto, { [field]: uuid });
-    assert.ok(!(await validate(dto)).some((error) => error.property === field));
-    Object.assign(dto, { [field]: "bad-reference" });
-    assert.ok((await validate(dto)).some((error) => error.property === field));
+    for (const reference of ["01409", "00000", "99999", uuid]) {
+      Object.assign(dto, { [field]: reference });
+      assert.ok(!(await validate(dto)).some((error) => error.property === field), reference);
+    }
+    for (const reference of ["bad-reference", "7K4P9", "1234", "123456", "12.34", " 12345", "۱۲۳۴۵"]) {
+      Object.assign(dto, { [field]: reference });
+      assert.ok((await validate(dto)).some((error) => error.property === field), reference);
+    }
   }
 });
 
 it("resolves a support code once and leaves UUIDs as canonical database IDs", async () => {
   let lookup: unknown;
   const prisma = { users: { findUnique: async (input: { where: unknown }) => { lookup = input.where; return { id: uuid }; } } } as unknown as PrismaService;
-  assert.equal(await resolveUserId(prisma, "7k4p9"), uuid);
-  assert.deepEqual(lookup, { support_code: "7K4P9" });
+  assert.equal(await resolveUserId(prisma, "01409"), uuid);
+  assert.deepEqual(lookup, { support_code: "01409" });
   assert.equal(await resolveUserId(prisma, uuid.toUpperCase()), uuid);
-  assert.deepEqual(userReferenceWhere("7k4p9"), { support_code: "7K4P9" });
+  assert.deepEqual(userReferenceWhere("01409"), { support_code: "01409" });
 });

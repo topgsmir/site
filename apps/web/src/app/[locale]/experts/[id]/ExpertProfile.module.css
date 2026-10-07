@@ -20,3 +20,13 @@
 .profile footer a svg { width: 15px; }
 .page[dir="rtl"] .profile footer a svg { transform: rotate(180deg); }
 @media (max-width: 520px) { .profile > header, .profile section { padding: 20px; } .profile footer { align-items: stretch; flex-direction: column; padding: 16px 20px; } .profile footer a { justify-content: center; } }
+
+.main { padding-block: 20px 40px; }
+.profile { border-radius: 16px; border-top: 4px solid var(--color-customer-teal); box-shadow: var(--shadow-dashboard-card); }
+.profile > header { padding: 20px; background: var(--color-customer-header-wash); }
+.profile > header > div { min-width: 0; overflow-wrap: anywhere; }
+.avatar { background: var(--color-customer-teal); color: var(--color-customer-tile-ink); }
+.profile h1 { font-size: 1.5rem; }
+.profile section { padding: 20px; }
+.profile footer { background: var(--color-customer-pink-soft); }
+.profile a:focus-visible, .back:focus-visible { outline: 3px solid var(--signal); outline-offset: 3px; }

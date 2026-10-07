@@ -19,3 +19,17 @@
 @media (max-width: 1050px) { .field { grid-template-columns: minmax(0, 1fr); gap: 8px; } .card label { padding: 0; } }
 @media (max-width: 600px) { .card h2 { padding: 20px; } .card form { gap: 22px; padding: 22px 20px; } .actions button { width: 100%; } }
 @media (prefers-reduced-motion: reduce) { .card input { transition: none; } }
+
+.card { border-top: 3px solid var(--color-customer-teal); }
+.card h2 { padding: 16px; background: var(--color-customer-teal-soft); }
+.card form { padding: 16px; gap: 16px; }
+.actions { padding-top: 16px; }
+.pictureSettings { display: flex; align-items: center; gap: 16px; padding: 16px; }
+.picturePreview { display: grid; flex: none; place-items: center; width: 64px; height: 64px; overflow: hidden; border-radius: 16px; color: var(--color-customer-tile-ink); background: var(--color-customer-pink); font-weight: 600; }
+.picturePreview img { width: 100%; height: 100%; object-fit: cover; }
+.pictureControls { display: grid; gap: 8px; min-width: 0; }
+.pictureInput { display: none; }
+.pictureButtons { display: flex; flex-wrap: wrap; gap: 8px; }
+.pictureButtons button { min-height: 40px; padding: 8px 14px; }
+.pictureButtons .removePicture { color: var(--color-dashboard-ink); background: transparent; border-color: var(--color-dashboard-rule); }
+.pictureButtons .removePicture:hover:not(:disabled) { background: var(--color-dashboard-paper); }

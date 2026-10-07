@@ -17,3 +17,10 @@
 .page a:focus-visible { outline: 3px solid var(--signal); outline-offset: 3px; }
 @media (hover: hover) { .primary:hover { background: var(--signal-dark); } .destinations a:hover { border-color: var(--signal); } }
 @media (max-width: 540px) { .header, .main { width: calc(100% - 32px); } .main { margin-block: 16px 40px; } .panel { padding: 24px 18px; } .destinations { grid-template-columns: 1fr; gap: 8px; } }
+
+.page { background: var(--color-customer-canvas); }
+.header { min-height: 64px; padding-inline: 16px; margin-block: 12px; border: 1px solid var(--color-panel-navigation-rule); border-radius: 14px; color: var(--color-customer-on-navy); background: var(--color-customer-navy); }
+.brand span { color: var(--color-customer-blue); }
+.panel { padding: 24px; border-top: 4px solid var(--color-customer-blue); background: var(--color-customer-header-wash); }
+.destinations a { background: var(--color-customer-teal-soft); border-color: var(--color-customer-teal-rule); }
+.destinations a:nth-child(even) { background: var(--color-customer-pink-soft); border-color: var(--color-customer-pink-rule); }

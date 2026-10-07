@@ -26,7 +26,7 @@ export class SellerCustomersService {
     const sellerOrders = { seller_id: sellerId };
     const baseWhere: Prisma.usersWhereInput = { account_status: { not: "deleted" }, orders: { some: sellerOrders } };
     const exactCustomer = isUserSupportCode(search)
-      ? await this.prisma.users.findFirst({ where: { ...baseWhere, support_code: search.toUpperCase() }, select: {
+      ? await this.prisma.users.findFirst({ where: { ...baseWhere, support_code: search }, select: {
         id: true, full_name: true, email: true, phone_number: true,
         _count: { select: { orders: { where: sellerOrders } } }
       } })
