@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import type { Route } from "next";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -33,7 +34,7 @@ export function SellerCommentsWorkspace({ locale, locked = false }: { locale: Lo
     } catch { setError(c.error); }
     finally { setLoading(false); }
   }, [c.error, locale]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => scheduleEffectTask(() => { void load(); }), [load]);
 
   async function act(id: string, action: "reply" | "flag") {
     setBusy(id); setError("");

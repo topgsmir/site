@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { AdminUserNote, AdminUserNotesPage } from "@topgsm/shared-types";
 import { api } from "@/lib/api/client";
@@ -31,7 +32,7 @@ export function AdminUserNotes({ userId, locale }: { userId: string; locale: Loc
     } catch { setError(c.loadError); }
     finally { setLoading(false); }
   }, [userId, c.loadError]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => scheduleEffectTask(() => { void load(); }), [load]);
 
   async function add(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

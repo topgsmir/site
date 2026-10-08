@@ -18,7 +18,7 @@ const copy = {
   ar: { open: "البحث عن المنتجات", title: "عمّ تبحث؟", placeholder: "المنتج أو الموديل أو الفئة", hint: "ابحث باسم المنتج أو موديل الجهاز.", short: "اكتب حرفين على الأقل.", loading: "جارٍ البحث…", results: "نتائج البحث", empty: "لم نجد منتجات. جرّب عبارة أخرى.", error: "البحث غير متاح.", retry: "حاول مجددًا", all: "عرض جميع النتائج", browse: "تصفح جميع المنتجات", close: "إغلاق البحث", from: "من" }
 } as const;
 
-export function HeaderSearch({ locale }: { locale: Locale }) {
+export function HeaderSearch({ locale, variant = "compact" }: { locale: Locale; variant?: "compact" | "wide" }) {
   const c = copy[locale];
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -86,7 +86,7 @@ export function HeaderSearch({ locale }: { locale: Locale }) {
   }
 
   return <>
-    <button type="button" className={styles.trigger} aria-label={c.open} aria-haspopup="dialog" aria-expanded={open} onClick={() => { if (!dialogRef.current?.open) dialogRef.current?.showModal(); setOpen(true); inputRef.current?.focus(); }}><DesignIcon name="search" /><span>{c.open}</span></button>
+    <button type="button" className={`${styles.trigger}${variant === "wide" ? ` ${styles.wideTrigger}` : ""}`} aria-label={c.open} aria-haspopup="dialog" aria-expanded={open} onClick={() => { if (!dialogRef.current?.open) dialogRef.current?.showModal(); setOpen(true); inputRef.current?.focus(); }}><DesignIcon name="search" /><span>{variant === "wide" ? c.placeholder : c.open}</span></button>
     <dialog ref={dialogRef} className={styles.dialog} aria-label={c.open} onClose={() => { setOpen(false); setQuery(""); setResults([]); setFailed(false); setLoading(false); }}>
       <div className={styles.header}><div><span className={styles.eyebrow}>{c.open}</span><h2>{c.title}</h2></div><button type="button" className={styles.close} aria-label={c.close} onClick={close}>×</button></div>
       <form className={styles.form} role="search" onSubmit={submit}>

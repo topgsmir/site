@@ -179,7 +179,6 @@ export default async function ProductRoute({ params, searchParams }: ProductRout
   if (!product) notFound();
 
   const user = await getCurrentUser();
-  const accountHref = user ? `/${localeParam}/account` : null;
   const sellerCanEdit = (user?.role === "seller-admin" || user?.role === "seller-staff") && user.permissions?.includes("products_manage")
     ? await canSellerEditProduct(product.id, product.slug)
     : false;
@@ -196,7 +195,7 @@ export default async function ProductRoute({ params, searchParams }: ProductRout
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
         />
-        <ProductPage key={product.id} product={product} locale={localeParam} copy={getDictionary(localeParam).product} editHref={editHref} accountHref={accountHref} signedInUser={Boolean(user)} visitId={query?.visit}
+        <ProductPage key={product.id} product={product} locale={localeParam} copy={getDictionary(localeParam).product} editHref={editHref} signedInUser={Boolean(user)} visitId={query?.visit}
           bridgeCheckout={<BridgeCheckout locale={localeParam} product={product} signedInUser={Boolean(user)} embedded />} />
       </>
     );
@@ -210,7 +209,7 @@ export default async function ProductRoute({ params, searchParams }: ProductRout
           __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c")
         }}
       />
-      <ProductPage key={product.id} product={product} locale={localeParam} copy={getDictionary(localeParam).product} editHref={editHref} accountHref={accountHref} signedInUser={Boolean(user)} visitId={query?.visit} />
+      <ProductPage key={product.id} product={product} locale={localeParam} copy={getDictionary(localeParam).product} editHref={editHref} signedInUser={Boolean(user)} visitId={query?.visit} />
     </>
   );
 }

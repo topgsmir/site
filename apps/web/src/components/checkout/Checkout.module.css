@@ -75,7 +75,7 @@
 .undoNotice button { min-width: 76px; min-height: 44px; padding-inline: 13px; border: 0; border-radius: 10px; color: var(--signal-dark); background: var(--signal-soft); font-weight: 600; cursor: pointer; }
 .undoNotice button:disabled, .otpMeta button:disabled { color: var(--muted); cursor: not-allowed; opacity: .55; }
 .summary { display: grid; min-width: 0; align-self: stretch; align-content: start; gap: 12px; }
-.summaryPurchase { position: sticky; z-index: 2; top: 12px; display: grid; gap: 12px; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper-bright); box-shadow: var(--shadow-dashboard-card); }
+.summaryPurchase { position: sticky; z-index: 2; top: calc(var(--site-header-height, 0px) + 12px); display: grid; gap: 12px; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper-bright); box-shadow: var(--shadow-dashboard-card); }
 .summaryDetails { display: grid; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper-bright); }
 .summaryTitle { display: grid; gap: 10px; }
 .summaryTitle > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }

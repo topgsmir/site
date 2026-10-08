@@ -1498,3 +1498,4 @@ export interface ContentAiResult {
   draft: ContentAiDraft;
 }
 export type { SeoLocale, SeoLocaleDefaults, SeoPageOverride, SeoRedirect, SeoConfiguration, AdminSeoSettings, SeoHistoryEntry } from "./seo";
+export { defaultTemplateConfiguration, templateIcons, type TemplateLocale, type TemplateIcon, type TemplateMenuItem, type TemplateConfiguration, type TemplateSettingsDocument } from "./template.ts";

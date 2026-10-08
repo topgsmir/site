@@ -8,6 +8,7 @@
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
+    "rewriteRelativeImportExtensions": true,
     "paths": {
       "@topgsm/shared-types": ["./packages/shared-types/src"],
       "@topgsm/shared-types/*": ["./packages/shared-types/src/*"],

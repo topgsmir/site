@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import type { AdminUploadSummary, SellerUploadListItem, SellerUploadPage } from "@topgsm/shared-types";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -53,7 +54,7 @@ export function SellerUploads({ locale }: { locale: Locale }) {
     finally { setLoading(false); }
   }, [source, state, linked, sort, search, from, to, c.error]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => scheduleEffectTask(() => { void load(); }), [load]);
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;

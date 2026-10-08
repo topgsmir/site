@@ -63,7 +63,7 @@
 .primaryButton:disabled, .secondaryButton:disabled, .dangerButton:disabled, .loadMore:disabled { opacity: .5; cursor: not-allowed; }
 
 .notice { margin: .6rem 0 0; padding: .45rem .65rem; background: var(--color-dashboard-info-soft); color: var(--color-dashboard-info); border-inline-start: 3px solid var(--color-dashboard-info); font-size: var(--text-dashboard-sm); }
-.selection { position: sticky; top: var(--space-dashboard-md); z-index: var(--z-dashboard-sticky); display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; align-items: center; margin-block: .6rem; padding: .45rem .65rem; background: var(--color-dashboard-ink); color: var(--color-dashboard-paper); border-radius: var(--radius-dashboard-control); box-shadow: var(--shadow-dashboard-float); font-size: var(--text-dashboard-sm); }
+.selection { position: sticky; top: calc(var(--site-header-height, 0px) + var(--space-dashboard-md)); z-index: var(--z-dashboard-sticky); display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; align-items: center; margin-block: .6rem; padding: .45rem .65rem; background: var(--color-dashboard-ink); color: var(--color-dashboard-paper); border-radius: var(--radius-dashboard-control); box-shadow: var(--shadow-dashboard-float); font-size: var(--text-dashboard-sm); }
 .selection > div { display: flex; gap: .4rem; }
 
 .inventory { display: grid; gap: 1px; margin-block-start: .65rem; background: var(--color-dashboard-rule); border: 1px solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-control); overflow: clip; }

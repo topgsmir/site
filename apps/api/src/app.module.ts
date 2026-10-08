@@ -1,3 +1,4 @@
+import { TemplateModule } from "./modules/template/template.module";
 import { SeoModule } from "./modules/seo/seo.module";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
@@ -70,6 +71,7 @@ import { MarketingModule } from "./modules/marketing/marketing.module";
     PlatformNoticeModule,
     HomepageStoriesModule,
     HomepageModule,
+    TemplateModule,
     BackupModule,
     PayoutModule,
     RealtimeModule,

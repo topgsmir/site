@@ -12,19 +12,23 @@ export function cursorFrom(query: SearchQuery): string | undefined {
 }
 
 export function catalogQuery(query: SearchQuery) {
+  const categoryId = query.categoryId;
+  if (categoryId !== undefined && (typeof categoryId !== "string" || !UUID_CURSOR.test(categoryId))) throw new Error("INVALID_CATEGORY");
   const searches = Array.isArray(query.search) ? query.search : [query.search];
   const search = searches.find((value) => typeof value === "string" && value.trim()) ?? "";
   return {
     search: search.replace(/\s+/g, " ").trim().slice(0, 100).trimEnd(),
     type: typeof query.type === "string" && PRODUCT_TYPES.includes(query.type as typeof PRODUCT_TYPES[number]) ? query.type : "all",
+    ...(typeof categoryId === "string" ? { categoryId: categoryId.toLowerCase() } : {}),
     cursor: cursorFrom(query)
   };
 }
 
-export function listingHref(path: string, input: { search?: string; type?: string; cursor?: string | null }) {
+export function listingHref(path: string, input: { search?: string; type?: string; cursor?: string | null; categoryId?: string }) {
   const query = new URLSearchParams();
   if (input.type && input.type !== "all") query.set("type", input.type);
   if (input.search?.trim()) query.set("search", input.search.replace(/\s+/g, " ").trim());
+  if (input.categoryId) query.set("categoryId", input.categoryId);
   if (input.cursor) query.set("cursor", input.cursor);
   return `${path}${query.size ? `?${query}` : ""}`;
 }

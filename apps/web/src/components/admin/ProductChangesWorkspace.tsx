@@ -1,4 +1,5 @@
 "use client";
+import { scheduleEffectTask } from "@/lib/effect-task";
 import { JalaliDatePicker } from "@/components/dashboard/JalaliDatePicker";
 
 import type {
@@ -87,7 +88,7 @@ export function ProductChangesWorkspace({
     }
   }, [c.error, compact, productId]);
 
-  useEffect(() => { void load(cursors[page] ?? null); }, [cursors, load, page]);
+  useEffect(() => scheduleEffectTask(() => { void load(cursors[page] ?? null); }), [cursors, load, page]);
   useEffect(() => {
     if (compact) return;
     void api.get<Vendor[]>("/seller/vendors")

@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import {
   useCallback,
   useEffect,
@@ -872,11 +873,11 @@ export function UserDetailWorkspace({
     },
     [user.id, section, page, pageSize],
   );
-  useEffect(() => {
+  useEffect(() => scheduleEffectTask(() => {
     const controller = new AbortController();
     void loadHistory(controller.signal);
     return () => controller.abort();
-  }, [loadHistory, revision]);
+  }), [loadHistory, revision]);
 
   function selectSection(next: Section) {
     setSection(next);

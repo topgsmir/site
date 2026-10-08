@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import axios from "axios";
 import Link from "next/link";
 import { SellerAvatar } from "@/components/seller/SellerAvatar";
@@ -49,7 +50,7 @@ export function SellerExpertProfileWorkspace({ locale }: { locale: Locale }) {
     }
   }, [c.loadError]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => scheduleEffectTask(() => { void load(); }), [load]);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

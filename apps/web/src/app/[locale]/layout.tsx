@@ -1,3 +1,7 @@
+import { SiteHeader } from "@/components/SiteHeader";
+import { getCurrentUser } from "@/lib/auth/server";
+import { TemplateSettingsProvider } from "@/components/TemplateSettingsProvider";
+import { getTemplateConfiguration } from "@/lib/template-settings-server";
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import Script from "next/script";
@@ -77,6 +81,8 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
     notFound();
   }
 
+  const [configuration, user] = await Promise.all([getTemplateConfiguration(locale), getCurrentUser()]);
+
   return (
     <html
       lang={locale}
@@ -91,7 +97,9 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
         <MaintenanceGate locale={locale} />
         <TrafficSourceCapture />
         <PlatformNotice />
-        {children}
+        <TemplateSettingsProvider locale={locale} configuration={configuration}>
+          <SiteHeader locale={locale} accountHref={user ? `/${locale}/account` : null}>{children}</SiteHeader>
+        </TemplateSettingsProvider>
         <GoghdiWidget />
         <ThemeToggle locale={locale} />
       </body>

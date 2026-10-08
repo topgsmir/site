@@ -108,11 +108,12 @@ function checkedBlogPage<T extends BlogPostsPage>(value: T, cursor?: string): T 
   return page;
 }
 
-export const getProductsPage = cache(async (locale: Locale, search = "", type = "all", cursor?: string) => {
+export const getProductsPage = cache(async (locale: Locale, search = "", type = "all", cursor?: string, categoryId?: string) => {
   const params = new URLSearchParams({ limit: "50", locale });
   if (search) params.set("search", search);
   if (type !== "all") params.set("type", type);
   if (cursor) params.set("cursor", cursor);
+  if (categoryId) params.set("categoryId", categoryId);
   const page = checkedPage(await pageRequest<PublicProductsPage>("/products/page?" + params), cursor);
   if (!page.items.every((product) => ["digital", "physical", "service", "bridge"].includes(product.type) && validMedia(product.image) && (product.category == null || typeof product.category === "string") && Array.isArray(product.startingPrices) &&
     product.startingPrices.every((price) => typeof price.price === "string" && typeof price.currency === "string"))) throw new Error("Invalid product listing payload");

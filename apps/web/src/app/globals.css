@@ -791,3 +791,9 @@ html[data-theme="dark"] .theme-icon-moon { opacity: 1; transform: rotate(0); }
 .auth-art > div { border-inline-start: 4px solid var(--color-customer-pink); background: var(--color-customer-navy); color: var(--color-customer-on-navy); }
 .auth-art small { color: var(--color-customer-teal); }
 @media (max-width: 800px) { .auth-panel { padding: 20px 16px; } }
+
+/* Shared site header offsets viewport-sticky workspace controls. */
+html { scroll-padding-block-start: calc(var(--site-header-height, 0px) + 16px); }
+.auth-shell, .admin-dashboard-shell { min-height: calc(100svh - var(--site-header-height, 0px)); }
+.admin-topbar { top: calc(var(--site-header-height, 0px) + 10px); }
+.vendor-panel-layer { z-index: var(--z-dashboard-modal); }

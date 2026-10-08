@@ -1,4 +1,5 @@
 "use client";
+import { scheduleEffectTask } from "@/lib/effect-task";
 import { JalaliDatePicker } from "@/components/dashboard/JalaliDatePicker";
 
 import type {
@@ -116,7 +117,7 @@ export function UploadsWorkspace({ locale }: { locale: Locale }) {
     finally { setLoading(false); setLoadingMore(false); }
   }, [c.loadError, filters]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => scheduleEffectTask(() => { void load(); }), [load]);
   useEffect(() => () => { if (undoTimer.current) window.clearTimeout(undoTimer.current); }, []);
   useEffect(() => {
     const dialog = trashDialog.current;
@@ -247,7 +248,15 @@ function Detail({ detail, locale, c, onRestore, onTrash, onMessage }: { detail: 
   </div>;
 }
 
-function Countdown({ date, locale, unit }: { date: string; locale: Locale; unit: string }) { const days = Math.max(0, Math.ceil((new Date(date).getTime() - Date.now()) / 86400_000)); return <b>{new Intl.NumberFormat(locale).format(days)} {unit}</b>; }
+function Countdown({ date, locale, unit }: { date: string; locale: Locale; unit: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const days = Math.max(0, Math.ceil((new Date(date).getTime() - now) / 86400_000));
+  return <b>{new Intl.NumberFormat(locale).format(days)} {unit}</b>;
+}
 function keyOf(item: Pick<AdminUploadListItem, "source" | "id">) { return `${item.source}:${item.id}`; }
 function formatBytes(value: number, locale: Locale) { const units = ["B", "KB", "MB", "GB"]; let size = value; let index = 0; while (size >= 1024 && index < units.length - 1) { size /= 1024; index++; } return `${new Intl.NumberFormat(locale, { maximumFractionDigits: index ? 1 : 0 }).format(size)} ${units[index]}`; }
 function formatNumber(value: number, locale: Locale) { return new Intl.NumberFormat(locale).format(value); }

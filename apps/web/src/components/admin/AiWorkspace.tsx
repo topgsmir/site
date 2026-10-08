@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import { isAxiosError } from "axios";
 import { AuthoringModelBindings } from "@/components/ai/AuthoringModelBindings";
 import {
@@ -10,6 +11,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -666,6 +668,10 @@ function AssistantIcon({ name }: { name: string }) {
   return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name] ?? paths.chat} /></svg>;
 }
 
+const subscribeHydration = () => () => {};
+const clientHydrated = () => true;
+const serverHydrated = () => false;
+
 export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
   const c = copy[locale];
   const ui = assistantCopy[locale];
@@ -697,7 +703,7 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
   const [fileValues, setFileValues] = useState<Record<string, File | null>>({});
   const [toolInventory, setToolInventory] = useState({ count: 0, domains: 0 });
   const [question, setQuestion] = useState("");
-  const [hydrated, setHydrated] = useState(false);
+  const hydrated = useSyncExternalStore(subscribeHydration, clientHydrated, serverHydrated);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [providerError, setProviderError] = useState<ProviderError | null>(
@@ -759,12 +765,9 @@ export function AiWorkspace({ locale, view }: { locale: Locale; view: View }) {
       setToolInventory({ count: toolResponse.data.length, domains: new Set(toolResponse.data.map((item) => item.domain)).size });
     }
   }, [view]);
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
-  useEffect(() => {
+  useEffect(() => scheduleEffectTask(() => {
     load().catch(() => setError(c.error));
-  }, [c.error, load]);
+  }), [c.error, load]);
   useEffect(() => {
     const messageList = messagesRef.current;
     if (messageList && followMessagesRef.current) messageList.scrollTop = messageList.scrollHeight;

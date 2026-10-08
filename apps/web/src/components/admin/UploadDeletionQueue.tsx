@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import type { AdminUploadDetail, UploadDeletionRequest, UploadDeletionRequestPage } from "@topgsm/shared-types";
 import type { Route } from "next";
 import Image from "next/image";
@@ -46,7 +47,7 @@ export function UploadDeletionQueue({ locale, onReviewed, refreshKey = 0 }: { lo
     finally { if (request === loadRequest.current) setLoading(false); }
   }, [c.error]);
 
-  useEffect(() => { void load(); }, [load, refreshKey]);
+  useEffect(() => scheduleEffectTask(() => { void load(); }), [load, refreshKey]);
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;

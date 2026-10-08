@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
@@ -90,7 +91,7 @@ export function SecuritySettingsWorkspace({ locale, view }: { locale: Locale; vi
     catch { setError(c.loadError); }
     finally { setLoading(false); }
   }, [c.loadError]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => scheduleEffectTask(() => { void load(); }), [load]);
 
   function change(action: string, key: keyof Policy, value: number | boolean) {
     setPolicies((current) => current?.map((policy) => policy.action === action ? { ...policy, [key]: value } : policy) ?? null);

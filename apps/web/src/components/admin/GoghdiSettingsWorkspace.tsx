@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import {
   useCallback,
   useEffect,
@@ -160,9 +161,9 @@ export function GoghdiSettingsWorkspace({ locale }: { locale: Locale }) {
       setLoading(false);
     }
   }, [c.loadError]);
-  useEffect(() => {
+  useEffect(() => scheduleEffectTask(() => {
     void load();
-  }, [load]);
+  }), [load]);
 
   const dirty = useMemo(() => {
     if (!saved || !form) return false;

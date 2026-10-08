@@ -1,4 +1,5 @@
 "use client";
+import { scheduleEffectTask } from "@/lib/effect-task";
 import { ProductAiPanel } from "@/components/ai/ProductAiPanel";
 import { ProductDescriptionEditor } from "@/components/product/ProductDescriptionEditor";
 import { ProductDescriptionTemplatePicker } from "@/components/product/ProductDescriptionTemplatePicker";
@@ -1445,12 +1446,12 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
   const [createdProductId, setCreatedProductId] = useState<string | null>(null);
   const nextVariantNumber = useRef(2);
 
-  useEffect(() => {
+  useEffect(() => scheduleEffectTask(() => {
     if (!imageFile) { setImagePreview(null); return; }
     const url = URL.createObjectURL(imageFile);
     setImagePreview(url);
     return () => URL.revokeObjectURL(url);
-  }, [imageFile]);
+  }), [imageFile]);
 
   function selectImage(file: File | undefined) {
     if (!file) return;

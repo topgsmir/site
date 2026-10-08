@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { AdminSellerShippingProfilesPage, AdminShippingPolicy, ShippingPolicyRule } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
@@ -40,7 +41,7 @@ export function ShippingPolicyWorkspace({ locale }: { locale: Locale }) {
     try { setPolicy((await api.get<AdminShippingPolicy>("/admin/settings/shipping/policy")).data); setError(""); }
     catch { setError(c.loadError); }
   }, [c.loadError]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => scheduleEffectTask(() => { void load(); }), [load]);
   useEffect(() => {
     if (!search.trim()) return;
     let current = true;

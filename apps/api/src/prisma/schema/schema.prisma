@@ -80,6 +80,17 @@ model upload_center_settings {
   updated_at  DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 }
 
+model template_settings {
+  locale        String   @id @db.Text
+  configuration Json
+  version       Int      @default(1)
+  updated_at    DateTime @default(now()) @updatedAt @db.Timestamptz()
+  updated_by_id String
+  updated_by    users    @relation("template_settings_editor", fields: [updated_by_id], references: [id], onDelete: Restrict)
+
+  @@index([updated_by_id])
+}
+
 model homepage_content {
   locale        String   @id @db.Text
   content       Json
@@ -524,6 +535,7 @@ model users {
   backup_restore_events        backup_restore_events[]       @relation("backup_restore_actor")
   backup_restore_jobs          backup_restore_jobs[]         @relation("backup_restore_job_actor")
   created_homepage_stories     homepage_stories[]            @relation("homepage_story_creator")
+  edited_template_settings     template_settings[] @relation("template_settings_editor")
   edited_homepage_content      homepage_content[]            @relation("homepage_content_editor")
   updated_homepage_stories     homepage_stories[]            @relation("homepage_story_updater")
   edited_blog_sidebars         blog_sidebar_settings[]        @relation("blog_sidebar_editor")

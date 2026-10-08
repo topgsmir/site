@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import type { HomepageContent, HomepageStory, PublicExpertSummary, PublicProductSummary } from "@topgsm/shared-types";
 import { DesignIcon, type DesignIconName } from "@/components/DesignIcon";
-import { PublicHeader } from "@/components/PublicHeader";
+import { PublicFooter } from "@/components/PublicFooter";
 import { getDirection, type Locale } from "@/lib/i18n";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import { defaultHomepage } from "./homepage-defaults";
@@ -18,7 +18,6 @@ export type LandingPageProps = {
   products: HomepageProduct[];
   experts: HomepageExpert[];
   stories: HomepageStory[];
-  accountHref: string | null;
   content?: HomepageContent;
   editable?: boolean;
   productsUnavailable?: boolean;
@@ -47,7 +46,7 @@ function productDate(value: string, locale: Locale) {
   return Number.isNaN(date.getTime()) ? "" : new Intl.DateTimeFormat(locale === "fa" ? "fa-IR" : locale, { month: "short", day: "numeric" }).format(date);
 }
 
-export function LandingPage({ locale, products, experts, stories, accountHref, content, editable = false, productsUnavailable = false, expertsUnavailable = false }: LandingPageProps) {
+export function LandingPage({ locale, products, experts, stories, content, editable = false, productsUnavailable = false, expertsUnavailable = false }: LandingPageProps) {
   const c = copy[locale];
   const home = content ?? defaultHomepage(locale);
   const shop = `/${locale}/products`;
@@ -55,7 +54,7 @@ export function LandingPage({ locale, products, experts, stories, accountHref, c
   return (
     <div className={styles.page} dir={getDirection(locale)}>
       <a className="skip-link" href="#main-content">{c.skip}</a>
-      <PublicHeader locale={locale} accountHref={accountHref} />
+      
       <main id="main-content">
         {stories.length > 0 && <nav className={styles.storyShelf} aria-label={c.stories}>
           {stories.map((story) => <a className={styles.story} href={story.targetUrl} key={story.id}>
@@ -155,7 +154,7 @@ export function LandingPage({ locale, products, experts, stories, accountHref, c
         </section>}
       </main>
 
-      <footer className={styles.footer}><div className={styles.footerMain}><div className={styles.footerIdentity}><Link href={`/${locale}` as Route} className={styles.footerBrand} translate="no">topgsm<span>.</span></Link><p>{home.footer.description}</p></div><nav aria-label={c.links}>{home.footer.links.map((link, index) => <a key={index} href={link.href}>{link.label}</a>)}</nav></div><div className={styles.footerBottom}><span>© {new Date().getFullYear()} Top GSM</span><span>{c.since}</span>{editable && <Link href={`/${locale}/admin/settings/homepage` as Route}>{c.edit}<DesignIcon name="arrow" /></Link>}</div></footer>
+      <PublicFooter locale={locale} content={home.footer} editable={editable} />
     </div>
   );
 }

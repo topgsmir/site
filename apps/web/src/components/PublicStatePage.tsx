@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { Route } from "next";
 import type { ReactNode } from "react";
 import type { Locale } from "@/lib/i18n";
-import { PublicHeader } from "./PublicHeader";
 import styles from "./PublicStatePage.module.css";
 
 const copy = {
@@ -27,7 +26,7 @@ export function PublicStatePage({ locale, kind, action }: { locale: Locale; kind
   const c = copy[locale];
   return <div className={styles.page}>
     <a className="skip-link" href="#state-content">{c.skip}</a>
-    <PublicHeader locale={locale} />
+    
     <main id="state-content" className={styles.main}>
       <section className={styles.panel} aria-labelledby="state-title">
         <p className={styles.label}>{kind === "not-found" ? c.notFoundLabel : c.errorLabel}</p>

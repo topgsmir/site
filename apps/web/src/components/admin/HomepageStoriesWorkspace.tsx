@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import axios from "axios";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
@@ -49,14 +50,14 @@ export function HomepageStoriesWorkspace({ locale }: { locale: Locale }) {
     }
   }, [c.loadError, contentLocale]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => scheduleEffectTask(() => { void load(); }), [load]);
 
-  useEffect(() => {
+  useEffect(() => scheduleEffectTask(() => {
     if (!draft.file) { setLocalPreviewUrl(null); return; }
     const objectUrl = URL.createObjectURL(draft.file);
     setLocalPreviewUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
-  }, [draft.file]);
+  }), [draft.file]);
 
   function resetForm() {
     setDraft(emptyDraft());

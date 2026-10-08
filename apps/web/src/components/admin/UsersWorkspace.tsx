@@ -1,4 +1,5 @@
 "use client";
+import { scheduleEffectTask } from "@/lib/effect-task";
 import { JalaliDatePicker } from "@/components/dashboard/JalaliDatePicker";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
@@ -211,7 +212,7 @@ export function UsersWorkspace({
     return () => controller.abort();
   }, [initialUserId]);
 
-  useEffect(() => {
+  useEffect(() => scheduleEffectTask(() => {
     if (initialUserId) return;
     const controller = new AbortController();
     setLoading(true);
@@ -237,7 +238,7 @@ export function UsersWorkspace({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [filters, page, revision, initialUserId]);
+  }), [filters, page, revision, initialUserId]);
 
   function apply(event: FormEvent) {
     event.preventDefault();

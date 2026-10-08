@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 
@@ -25,9 +26,9 @@ export function CaptchaWidget({
   const [attempt, setAttempt] = useState(0);
   const [status, setStatus] = useState<"working" | "ready" | "error">("working");
   const onTokenChangeRef = useRef(onTokenChange);
-  onTokenChangeRef.current = onTokenChange;
+  useEffect(() => { onTokenChangeRef.current = onTokenChange; }, [onTokenChange]);
 
-  useEffect(() => {
+  useEffect(() => scheduleEffectTask(() => {
     let active = true;
     let expiryTimer: ReturnType<typeof setTimeout> | undefined;
     const abort = new AbortController();
@@ -71,7 +72,7 @@ export function CaptchaWidget({
       if (expiryTimer) clearTimeout(expiryTimer);
       onTokenChangeRef.current(null);
     };
-  }, [action, resetSignal, attempt]);
+  }), [action, resetSignal, attempt]);
 
   return (
     <div aria-live="polite">

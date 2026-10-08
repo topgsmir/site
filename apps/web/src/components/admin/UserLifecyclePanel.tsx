@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { AdminUserSummary, DeletionImpact, LifecycleCandidate, ManagedUserRole, UserAccessDetails, UserDeletionJob } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
@@ -18,7 +19,7 @@ function SearchChoice({ path, locale, label, value, onChange, initial }: { path:
   const [busy, setBusy] = useState(false); const [error, setError] = useState(false);
   const [revision, setRevision] = useState(0);
   const generation = useRef(0);
-  useEffect(() => {
+  useEffect(() => scheduleEffectTask(() => {
     generation.current++;
     const controller = new AbortController();
     setBusy(true); setError(false);
@@ -28,7 +29,7 @@ function SearchChoice({ path, locale, label, value, onChange, initial }: { path:
       }).catch(() => { if (!controller.signal.aborted) setError(true); }).finally(() => { if (!controller.signal.aborted) setBusy(false); });
     }, 300);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [path, search, revision]);
+  }), [path, search, revision]);
   async function more() {
     const current = generation.current;
     setBusy(true); setError(false);
@@ -59,12 +60,12 @@ export function UserLifecyclePanel({ userId, locale, onSaved }: { userId: string
   const [error, setError] = useState(false); const [saved, setSaved] = useState(false); const [revision, setRevision] = useState(0);
   const deletionKey = useRef<string | null>(null);
   const [events, setEvents] = useState<{ id: string; action: string; reason: string; created_at: string }[]>([]);
-  useEffect(() => {
+  useEffect(() => scheduleEffectTask(() => {
     const controller = new AbortController(); setError(false);
     void api.get<UserAccessDetails>(`${base}/access`, { signal: controller.signal }).then(r => setAccess(r.data)).catch(() => { if (!controller.signal.aborted) setError(true); });
     void api.get<typeof events>(`${base}/account-events`, { signal: controller.signal }).then(r => setEvents(r.data)).catch(() => {});
     return () => controller.abort();
-  }, [base, revision]);
+  }), [base, revision]);
   const job = access?.job;
   const jobId = job?.id; const jobStatus = job?.status;
   useEffect(() => {
@@ -80,12 +81,12 @@ export function UserLifecyclePanel({ userId, locale, onSaved }: { userId: string
     }, 2000);
     return () => { clearInterval(timer); controller.abort(); };
   }, [base, jobId, jobStatus, onSaved]);
-  useEffect(() => {
+  useEffect(() => scheduleEffectTask(() => {
     if (mode !== "delete") return;
     const controller = new AbortController(); setImpact(null); setImpactBusy(true); setReviewed(false); setError(false);
     void api.get<DeletionImpact>(`${base}/deletion-impact`, { params: { replacementUserId: replacement || undefined }, signal: controller.signal }).then(r => { if (!controller.signal.aborted) setImpact(r.data); }).catch(() => { if (!controller.signal.aborted) setError(true); }).finally(() => { if (!controller.signal.aborted) setImpactBusy(false); });
     return () => controller.abort();
-  }, [base, mode, replacement, revision]);
+  }), [base, mode, replacement, revision]);
   function open(next: typeof mode) {
     setMode(next); setError(false); setSaved(false); setReason(""); setPassword(""); setConfirmation(""); setReviewed(false);
     setRole(access?.role ?? "buyer"); setSellerId(access?.ownedSellerId ?? access?.memberships[0]?.sellerId ?? ""); setPermissions(access?.platformPermissions ?? []);

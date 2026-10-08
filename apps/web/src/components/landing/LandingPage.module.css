@@ -1,5 +1,5 @@
 /* Hallmark · macrostructure: Ecosystem Index · genre: modern-minimal · theme: TopGSM brand
- * nav: N1b existing public header · footer: Ft1 Mast-headed
+ * nav: N1b existing public header · footer: shared public introduction
  * audience: mobile repair professionals · use: discovery and purchase · tone: precise, welcoming
  * enrichment: editorial repair photography · motion: purposeful hover only
  * density: compact discovery · primary accent: shared TopGSM blue
@@ -13,7 +13,7 @@
 .page :is(h1, h2, h3) { min-width: 0; overflow-wrap: anywhere; font-style: normal; }
 .page :is(main, section, nav) { scroll-margin-top: 24px; }
 .page :is(button, a) { -webkit-tap-highlight-color: transparent; }
-.hero, .storyShelf, .discovery, .shortcuts, .section, .offerSection, .about, .footer { width: min(var(--home-width), calc(100% - 48px)); margin-inline: auto; }
+.hero, .storyShelf, .discovery, .shortcuts, .section, .offerSection, .about { width: min(var(--home-width), calc(100% - 48px)); margin-inline: auto; }
 .storyShelf { display: flex; gap: 16px; padding: 10px 4px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: thin; }
 .story { flex: 0 0 86px; display: grid; justify-items: center; gap: 8px; font-size: .7rem; color: var(--ink-soft); text-align: center; scroll-snap-align: start; }
 .storyImage { padding: 4px; border: 1.5px solid var(--color-home-accent); border-radius: 50%; }
@@ -164,22 +164,11 @@
 .empty > p { color: var(--muted); font-size: .85rem; line-height: 1.9; }
 .empty a { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; margin-inline-start: auto; color: var(--ink-soft); font-size: .78rem; white-space: nowrap; }
 .empty a svg { width: 16px; }
-.footer { border-top: 1px solid var(--line); padding-block: 24px 16px; }
-.footerMain { display: flex; align-items: center; justify-content: space-between; gap: 48px; }
-.footerIdentity { max-width: 26rem; }
-.footerBrand { display: block; width: fit-content; direction: ltr; font: 600 2.25rem/1 var(--font-outfit), sans-serif; letter-spacing: -.08em; }
-.footerBrand span { color: var(--color-home-accent); }
-.footerIdentity > p { margin-top: 10px; font-size: .8rem; color: var(--muted); line-height: 1.85; }
-.footer nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px 30px; max-width: 36rem; }
-.footer nav a { display: flex; align-items: center; min-height: 44px; font-size: .82rem; white-space: nowrap; color: var(--ink-soft); }
-.footerBottom { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: .67rem; }
-.footerBottom a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--color-home-accent); }
-.footerBottom svg { width: 16px; height: 16px; }
-.page[dir="rtl"] :is(.primary, .textLink, .cardLink, .aboutLink, .shortcut, .product, .searchForm button, .empty a, .footerBottom a) > svg:last-child { rotate: 180deg; }
+.page[dir="rtl"] :is(.primary, .textLink, .cardLink, .aboutLink, .shortcut, .product, .searchForm button, .empty a) > svg:last-child { rotate: 180deg; }
 @media (hover: hover) and (pointer: fine) {
   .primary:hover { transform: translateY(-2px); }
   .collection:hover .collectionImage > img { transform: scale(1.035); }
-  .page :is(.textLink, .secondary, .shortcut, .product, .footer nav a, .searchSuggestions a):hover { color: var(--color-home-accent); }
+  .page :is(.textLink, .secondary, .shortcut, .product, .searchSuggestions a):hover { color: var(--color-home-accent); }
   .offer:hover .cardLink, .collection:hover .cardLink { color: var(--color-home-accent); }
   .searchSuggestions a:hover { background: var(--color-home-accent-soft); }
 }
@@ -197,7 +186,7 @@
   .aboutPoints { padding-inline: 28px; }
 }
 @media (max-width: 760px) {
-  .hero, .storyShelf, .discovery, .shortcuts, .section, .offerSection, .about, .footer { width: calc(100% - 32px); }
+  .hero, .storyShelf, .discovery, .shortcuts, .section, .offerSection, .about { width: calc(100% - 32px); }
   .hero { grid-template-columns: minmax(0, 1fr); gap: 14px; padding-block: 10px 16px; }
   .heroCopy { padding-block: 4px 0; }
   .hero h1 { font-size: clamp(1.85rem, 5vw, 2.3rem); }
@@ -245,9 +234,6 @@
   .empty { flex-wrap: wrap; padding: 22px; gap: 12px; }
   .empty > p { flex-basis: calc(100% - 44px); }
   .empty a { margin-inline-start: 40px; }
-  .footerMain { align-items: start; flex-direction: column; gap: 14px; }
-  .footer nav { justify-content: flex-start; gap: 4px 22px; }
-  .footerBottom { margin-top: 12px; }
 }
 @media (max-width: 540px) {
   .sectionHeading { flex-direction: column; }

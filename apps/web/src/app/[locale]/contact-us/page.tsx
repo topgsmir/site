@@ -4,9 +4,8 @@ import type { PublicExpertSummary } from "@topgsm/shared-types";
 import Link from "next/link";
 import { SellerAvatar } from "@/components/seller/SellerAvatar";
 import { notFound } from "next/navigation";
-import { PublicHeader } from "@/components/PublicHeader";
+import { PublicFooter } from "@/components/PublicFooter";
 import { getDirection, isLocale } from "@/lib/i18n";
-import { getCurrentUser } from "@/lib/auth/server";
 import { SERVER_API_BASE } from "@/lib/api/server";
 import { ContactChat } from "./ContactChat";
 import { contactCopy, contactEmail, telephoneHref } from "./contact-copy";
@@ -54,10 +53,10 @@ export default async function ContactPage({ params }: Props) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const c = contactCopy[locale];
-  const [user, experts] = await Promise.all([getCurrentUser(), fetchExperts()]);
+  const experts = await fetchExperts();
   return <div className={styles.page} dir={getDirection(locale)}>
     <a className="skip-link" href="#contact-main">{c.skip}</a>
-    <PublicHeader locale={locale} accountHref={user ? `/${locale}/account` : null} current="contact" />
+    
     <main id="contact-main" className={styles.main}>
       <nav className={styles.breadcrumb} aria-label={c.title}><Link href={`/${locale}` as Route}>{c.home}</Link><span aria-hidden="true">/</span><span aria-current="page">{c.title}</span></nav>
       <section className={styles.hero} aria-labelledby="contact-title">
@@ -95,6 +94,6 @@ export default async function ContactPage({ params }: Props) {
       </section>
       <blockquote className={styles.quote}><p lang="ar" dir="rtl">{c.quote}</p>{c.quoteMeaning && <p>{c.quoteMeaning}</p>}</blockquote>
     </main>
-    <footer className={styles.footer}><Link href={`/${locale}` as Route} className={styles.wordmark} translate="no">topgsm<span>.</span></Link><nav aria-label={c.title}><Link href={`/${locale}/products` as Route}>{c.shop}</Link><Link href={`/${locale}/blog` as Route}>{c.journal}</Link></nav><span dir="ltr">© {new Date().getFullYear()} Top GSM</span></footer>
+    <PublicFooter locale={locale} />
   </div>;
 }

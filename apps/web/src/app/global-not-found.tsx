@@ -1,3 +1,6 @@
+import { GlobalSiteHeader } from "@/components/SiteHeader";
+import { getTemplateConfiguration } from "@/lib/template-settings-server";
+import { getCurrentUser } from "@/lib/auth/server";
 import "@fontsource-variable/outfit";
 import "@fontsource-variable/vazirmatn";
 import Link from "next/link";
@@ -24,7 +27,8 @@ const localeScript = `(() => {
   } catch {}
 })();`;
 
-export default function GlobalNotFound() {
+export default async function GlobalNotFound() {
+  const [fa, en, ar, user] = await Promise.all([getTemplateConfiguration("fa"), getTemplateConfiguration("en"), getTemplateConfiguration("ar"), getCurrentUser()]);
   return <html lang="fa" dir="rtl" data-not-found-locale="fa" suppressHydrationWarning>
     <head>
       <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -32,27 +36,28 @@ export default function GlobalNotFound() {
       <script dangerouslySetInnerHTML={{ __html: localeScript }} />
     </head>
     <body>
-      <GlobalNotFoundTitle />
-      <div className={styles.page}>
-        <header className={styles.header}><Link href="/fa" className={styles.brand} aria-label="Top GSM" translate="no">topgsm<span>.</span></Link></header>
-        <main className={styles.main}>
-          {(["fa", "en", "ar"] as const).map((locale) => {
-            const c = copy[locale];
-            return <section key={locale} data-locale={locale} className={styles.content} lang={locale} dir={locale === "en" ? "ltr" : "rtl"} aria-labelledby={`title-${locale}`}>
-              <div className={styles.panel}>
-                <p className={styles.label}>{c.label}</p>
-                <h1 id={`title-${locale}`}>{c.title}</h1>
-                <p className={styles.description}>{c.description}</p>
-                <Link className={styles.primary} href={`/${locale}` as Route}>{c.home}<span aria-hidden="true">{locale === "en" ? "→" : "←"}</span></Link>
-              </div>
-              <nav className={styles.destinations} aria-label={c.navigation}>
-                <Link href={`/${locale}/blog` as Route}>{c.journal}<span aria-hidden="true">{locale === "en" ? "↗" : "↖"}</span></Link>
-                <Link href={`/${locale}/products` as Route}>{c.shop}<span aria-hidden="true">{locale === "en" ? "↗" : "↖"}</span></Link>
-              </nav>
-            </section>;
-          })}
-        </main>
-      </div>
+      <GlobalSiteHeader configurations={{ fa, en, ar }} signedIn={Boolean(user)}>
+        <GlobalNotFoundTitle />
+        <div className={styles.page}>
+          <main className={styles.main}>
+            {(["fa", "en", "ar"] as const).map((locale) => {
+              const c = copy[locale];
+              return <section key={locale} data-locale={locale} className={styles.content} lang={locale} dir={locale === "en" ? "ltr" : "rtl"} aria-labelledby={`title-${locale}`}>
+                <div className={styles.panel}>
+                  <p className={styles.label}>{c.label}</p>
+                  <h1 id={`title-${locale}`}>{c.title}</h1>
+                  <p className={styles.description}>{c.description}</p>
+                  <Link className={styles.primary} href={`/${locale}` as Route}>{c.home}<span aria-hidden="true">{locale === "en" ? "→" : "←"}</span></Link>
+                </div>
+                <nav className={styles.destinations} aria-label={c.navigation}>
+                  <Link href={`/${locale}/blog` as Route}>{c.journal}<span aria-hidden="true">{locale === "en" ? "↗" : "↖"}</span></Link>
+                  <Link href={`/${locale}/products` as Route}>{c.shop}<span aria-hidden="true">{locale === "en" ? "↗" : "↖"}</span></Link>
+                </nav>
+              </section>;
+            })}
+          </main>
+        </div>
+      </GlobalSiteHeader>
     </body>
   </html>;
 }

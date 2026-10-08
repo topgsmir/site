@@ -67,3 +67,6 @@
 .artwork[data-type="physical"] { color: var(--color-customer-teal-ink); background: var(--color-customer-teal-soft); }
 .empty { border: 1px solid var(--color-customer-teal-rule); background: var(--color-customer-teal-soft); }
 @media (max-width: 600px) { .intro { padding: 14px; } .intro h1 { font-size: 1.35rem; } }
+
+.activeCategory { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin-block: 12px; font-size: .875rem; color: var(--ink-soft); }
+.activeCategory a { display: inline-flex; min-height: 36px; align-items: center; color: var(--signal-dark); text-decoration: underline; }

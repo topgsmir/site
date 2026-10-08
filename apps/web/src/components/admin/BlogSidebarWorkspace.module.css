@@ -50,7 +50,7 @@
 .selected button { min-height: 38px; padding: 6px 9px; border: 1px solid var(--color-dashboard-rule); border-radius: 7px; color: var(--color-dashboard-ink-soft); background: var(--color-dashboard-surface); font-size: .66rem; cursor: pointer; }
 .selected button:last-child { color: var(--color-dashboard-error); }
 .empty { padding: 18px; border-radius: 10px; background: var(--color-dashboard-surface-raised); text-align: center; }
-.preview { position: sticky; top: 24px; overflow: clip; border: 1px solid var(--color-dashboard-rule); border-radius: 16px; background: var(--color-dashboard-surface); }
+.preview { position: sticky; top: calc(var(--site-header-height, 0px) + 24px); overflow: clip; border: 1px solid var(--color-dashboard-rule); border-radius: 16px; background: var(--color-dashboard-surface); }
 .preview[data-disabled="true"] { opacity: .5; }
 .preview > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--color-dashboard-rule); color: var(--color-dashboard-muted); font-size: .68rem; }
 .promo { padding: 24px; color: var(--color-navigation-ink); background: var(--color-navigation-paper); }

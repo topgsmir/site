@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import type { AdminUsdRateSettings, UsdRateProviderId } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
@@ -170,11 +171,11 @@ export function UsdSettingsWorkspace({ locale }: { locale: Locale }) {
     }
   }, [c.loadError]);
 
-  useEffect(() => {
+  useEffect(() => scheduleEffectTask(() => {
     void load();
     const timer = window.setInterval(() => void load(true), 30_000);
     return () => window.clearInterval(timer);
-  }, [load]);
+  }), [load]);
 
   const rateChanged = saved !== null && rateToman !== (saved.currentRateToman ?? "");
   const automationChanged = saved !== null && automationEnabled !== saved.automationEnabled;

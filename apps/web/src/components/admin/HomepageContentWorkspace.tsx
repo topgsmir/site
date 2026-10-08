@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import axios from "axios";
 import Image from "next/image";
 import Link from "next/link";
@@ -49,7 +50,7 @@ export function HomepageContentWorkspace({ locale }: { locale: Locale }) {
     } catch { if (id === requestId.current) { setDoc(null); setError(c.loadError); } }
     finally { if (id === requestId.current) setLoading(false); }
   }, [contentLocale, c.loadError]);
-  useEffect(() => { void load(); return invalidateRequests; }, [load, invalidateRequests]);
+  useEffect(() => scheduleEffectTask(() => { void load(); return invalidateRequests; }), [load, invalidateRequests]);
   useEffect(() => {
     if (!dirty) return;
     let leaving = false;

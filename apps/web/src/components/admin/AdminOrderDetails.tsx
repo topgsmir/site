@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import type { Route } from "next";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -73,7 +74,7 @@ export function AdminOrderDetails({ locale, orderId }: { locale: Locale; orderId
     catch { setError(true); }
     finally { setLoading(false); }
   }, [orderId]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => scheduleEffectTask(() => { void load(); }), [load]);
 
   const items = Array.isArray(details?.items) ? details.items : [];
   const units = items.reduce((sum, item) => sum + (isRecord(item) && typeof item.quantity === "number" ? item.quantity : 0), 0);

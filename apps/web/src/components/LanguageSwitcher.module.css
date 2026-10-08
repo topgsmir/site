@@ -22,3 +22,8 @@ a.option:hover, a.option:focus-visible { color: var(--color-dashboard-ink); back
   :global([dir="rtl"]) .panel { transform: translateX(-44px); }
 }
 @media (prefers-reduced-motion: reduce) { .chevron { transition: none; } }
+
+.root[data-variant="icon"] summary { display: flex; width: 44px; height: 44px; padding: 0; border-color: transparent; border-radius: 8px; background: transparent; }
+.root[data-variant="icon"] :is(.name, .code, .chevron) { display: none; }
+.root[data-variant="icon"] summary > svg { width: 21px; height: 21px; color: var(--color-dashboard-ink-soft); }
+.root[data-variant="icon"] .panel { position: fixed; inset-inline: auto; left: var(--language-menu-left, 16px); top: var(--language-menu-top, 64px); width: min(216px, calc(100vw - 32px)); max-height: calc(100dvh - var(--language-menu-top, 64px) - 16px); overflow-y: auto; transform: none; }

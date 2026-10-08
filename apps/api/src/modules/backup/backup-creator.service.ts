@@ -139,10 +139,12 @@ export class BackupCreatorService {
     // Use the same client/transaction as pg_dump's exported snapshot. Homepage
     // uploads are immutable files referenced by persisted content, not media rows.
     const homepages = await client.query<{ content: unknown }>("SELECT content FROM homepage_content");
+    const templates = await client.query<{ configuration: unknown }>("SELECT configuration FROM template_settings");
     const paths = new Set(rows.rows.map(({ path }) => path.replaceAll("\\", "/")));
     for (const { content } of homepages.rows) {
       for (const path of homepageUploadPaths(content)) paths.add(path);
     }
+    for (const { configuration } of templates.rows) for (const path of homepageUploadPaths({ hero: (configuration as { banner?: unknown } | null)?.banner })) paths.add(path);
     return [...paths].sort();
   }
 

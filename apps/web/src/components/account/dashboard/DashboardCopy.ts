@@ -1,0 +1,29 @@
+export const DASHBOARD_COPY = {
+  fa: {
+    notice: "راهنمای دریافت فایل‌ها", noticeBody: "ارسال هر گونه دستگاه تلفن همراه، مودم، و غیره برای کارشناسان سایت جهت تعمیر ممنوع میباشد. و پرداخت وجه مالی(کارت مورد تایید سایت به نام محمدرضاکارگری میباشد) به حساب کارشناسان سایت جهت امور خدماتی و یا آموزشی ممنوع بوده و پیامدهای احتمالی موارد ذکر شده به عهده کاربر متخلف است.این مسئله را نادیده نگیرید! تاکنون مشکلات زیادی در اثر بی توجهی کاربران به این امر ایجاد شده است . درنهایت هرگونه فعالیت بین کاربر و کارشناسان سایت خارج از بستر سایت فاقد مسولیت سایت میباشد.",
+    spendPoints: "خرج کردن",
+    services: "خدمات ما", allServices: "مشاهده همه خدمات", online: "سرویس آنلاین", onlineHint: "خدمات تخصصی و تعمیر", learning: "فایل و آموزش", learningHint: "محتوای دیجیتال", tools: "فروشگاه ابزار", toolsHint: "ابزار و تجهیزات",
+    wallet: "کیف پول و اعتبار", balance: "موجودی کیف شما", unit: "تومان", addFunds: "افزایش اعتبار", downloads: "دانلودهای من", downloadHint: "فایل‌های خریداری‌شده", orders: "سفارش‌های من", orderHint: "پیگیری و جزئیات خرید",
+    board: "برترین‌های کشور", topTen: "۱۰ نفر برتر کشور", boardHint: "رتبه‌بندی بر اساس امتیاز خریدهای موفق شماست.", countryRank: "رتبه", totalScore: "امتیاز کل", member: "عضو تاپ جی‌اس‌ام", name: "تعمیرکار", share: "سهم از امتیاز برترین‌ها", yourRank: "جایگاه شما", unranked: "بدون رتبه", empty: "با اولین خرید موفق، وارد جدول رتبه‌بندی شوید.",
+    promoKicker: "آموزش و ابزار تخصصی تعمیرات موبایل", promoTitle: "از آموزش تا", promoAccent: "تعمیر حرفه‌ای", benefits: ["فایل‌های آموزشی تخصصی", "شماتیک و سرویس منوال", "ابزار و تجهیزات تعمیر", "خدمات آنلاین مورد نیاز شما"], promoAction: "مشاهده فایل‌ها و آموزش‌ها",
+    points: "امتیازها و فعالیت من", purchases: "خریدهای موفق", items: "اقلام خریداری‌شده", purchasePoints: "امتیاز خرید", availablePoints: "امتیاز قابل استفاده", expiring: "انقضا تا ۳۰ روز", clubDisabled: "باشگاه غیرفعال", clubDetails: "جزئیات باشگاه", loading: "در حال دریافت اطلاعات…", error: "دریافت اطلاعات ممکن نشد.", retry: "تلاش دوباره",
+  },
+  en: {
+    notice: "Important account notice", noticeBody: "Sending mobile phones, modems or other devices to site experts for repair is prohibited. Paying experts directly for services or training is also prohibited; the site's approved payment card is in the name of Mohammadreza Kargari. Users who violate these rules are responsible for any consequences. Do not ignore this warning: many problems have resulted from disregarding it. The site accepts no responsibility for activities between users and experts outside the platform.",
+    spendPoints: "Spend points",
+    services: "Our services", allServices: "View all services", online: "Online services", onlineHint: "Specialist repair services", learning: "Files and training", learningHint: "Digital resources", tools: "Tools store", toolsHint: "Tools and equipment",
+    wallet: "Wallet and credit", balance: "Your wallet balance", unit: "Toman", addFunds: "Add funds", downloads: "My downloads", downloadHint: "Purchased files", orders: "My orders", orderHint: "Purchase details and tracking",
+    board: "Country leaderboard", topTen: "Top 10 members", boardHint: "Rankings are based on points from successful purchases.", countryRank: "Rank", totalScore: "Total points", member: "TopGSM member", name: "Repairer", share: "Share of leaders’ points", yourRank: "Your rank", unranked: "Not ranked", empty: "Make your first successful purchase to join the leaderboard.",
+    promoKicker: "Specialist mobile repair resources", promoTitle: "From learning to", promoAccent: "expert repairs", benefits: ["Specialist training files", "Schematics and service manuals", "Repair tools and equipment", "Online services for your workbench"], promoAction: "Explore files and training",
+    points: "My points and activity", purchases: "Successful orders", items: "Purchased items", purchasePoints: "Purchase points", availablePoints: "Available points", expiring: "Expiring in 30 days", clubDisabled: "Club unavailable", clubDetails: "Club details", loading: "Loading details…", error: "Could not load details.", retry: "Try again",
+  },
+  ar: {
+    notice: "تنبيه مهم للحساب", noticeBody: "يُمنع إرسال الهواتف المحمولة أو أجهزة المودم أو غيرها إلى خبراء الموقع للإصلاح. ويُمنع دفع الأموال مباشرة إلى حسابات الخبراء مقابل الخدمات أو التدريب؛ بطاقة الدفع المعتمدة للموقع باسم محمدرضا كارغري. يتحمل المستخدم المخالف مسؤولية العواقب المحتملة. لا تتجاهل هذا التحذير، فقد تسبب تجاهله في مشكلات كثيرة. لا يتحمل الموقع مسؤولية أي نشاط بين المستخدم والخبراء خارج المنصة.",
+    spendPoints: "استخدام النقاط",
+    services: "خدماتنا", allServices: "عرض كل الخدمات", online: "خدمات عبر الإنترنت", onlineHint: "خدمات إصلاح متخصصة", learning: "ملفات وتدريب", learningHint: "محتوى رقمي", tools: "متجر الأدوات", toolsHint: "أدوات ومعدات",
+    wallet: "المحفظة والرصيد", balance: "رصيد محفظتك", unit: "تومان", addFunds: "إضافة رصيد", downloads: "تنزيلاتي", downloadHint: "الملفات المشتراة", orders: "طلباتي", orderHint: "تفاصيل المشتريات ومتابعتها",
+    board: "أفضل الفنيين في البلاد", topTen: "أفضل عشرة فنيين", boardHint: "يعتمد الترتيب على نقاط المشتريات الناجحة.", countryRank: "الترتيب", totalScore: "إجمالي النقاط", member: "عضو TopGSM", name: "الفني", share: "حصة نقاط المتصدرين", yourRank: "ترتيبك", unranked: "بلا ترتيب", empty: "ابدأ بأول شراء ناجح للانضمام إلى القائمة.",
+    promoKicker: "موارد متخصصة لإصلاح الهواتف", promoTitle: "من التدريب إلى", promoAccent: "الإصلاح الاحترافي", benefits: ["ملفات تدريب متخصصة", "مخططات وأدلة الصيانة", "أدوات ومعدات الإصلاح", "خدمات عبر الإنترنت لعملك"], promoAction: "استكشف الملفات والتدريب",
+    points: "نقاطي ونشاطي", purchases: "الطلبات الناجحة", items: "العناصر المشتراة", purchasePoints: "نقاط الشراء", availablePoints: "النقاط المتاحة", expiring: "تنتهي خلال ٣٠ يومًا", clubDisabled: "النادي غير متاح", clubDetails: "تفاصيل النادي", loading: "جارٍ تحميل البيانات…", error: "تعذر تحميل البيانات.", retry: "حاول مجددًا",
+  },
+} as const;

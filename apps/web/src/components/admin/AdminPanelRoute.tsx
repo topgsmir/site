@@ -38,6 +38,7 @@ export type AdminSection =
   | "settings-stories"
   | "settings-blog-sidebar"
   | "settings-homepage"
+  | "settings-template"
   | "settings-seo"
   | "settings-backup"
   | "settings-upload-centers"

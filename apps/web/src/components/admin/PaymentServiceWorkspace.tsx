@@ -1,4 +1,5 @@
 "use client";
+import { scheduleEffectTask } from "@/lib/effect-task";
 import { JalaliDatePicker } from "@/components/dashboard/JalaliDatePicker";
 
 import { useCallback, useEffect, useState } from "react";
@@ -420,9 +421,9 @@ export function PaymentServiceWorkspace({
     }
   }, [c.loadError]);
 
-  useEffect(() => {
+  useEffect(() => scheduleEffectTask(() => {
     if (view === "methods") void loadMethodData();
-  }, [loadMethodData, view]);
+  }), [loadMethodData, view]);
 
   useEffect(() => {
     if (view !== "transactions") return;
@@ -473,9 +474,9 @@ export function PaymentServiceWorkspace({
     }
   }, [c.loadError]);
 
-  useEffect(() => {
+  useEffect(() => scheduleEffectTask(() => {
     if (view === "transactions") void loadTransactions(appliedFilters);
-  }, [appliedFilters, loadTransactions, view]);
+  }), [appliedFilters, loadTransactions, view]);
 
   useEffect(() => {
     const query = activeSellerSearch?.query.trim();

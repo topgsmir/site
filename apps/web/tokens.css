@@ -172,6 +172,7 @@
   --color-dashboard-accent-strong: color-mix(in srgb, var(--color-role-primary) 58%, var(--color-brand-navy));
   --z-dashboard-base: 1;
   --z-dashboard-sticky: 200;
+  --z-site-header: 250;
   --z-dashboard-modal: 400;
 
   --font-product-display: var(--font-outfit), var(--font-vazirmatn), sans-serif;

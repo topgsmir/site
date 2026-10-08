@@ -1,0 +1,22 @@
+.footer { margin-block-start: 24px; color: var(--ink-soft); background: var(--paper-bright); }
+.inner { width: min(1440px, calc(100% - 32px)); margin-inline: auto; border-block-start: 1px solid var(--line); }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 24px 40px; min-height: 178px; padding-block: 26px 48px; }
+.introduction { min-width: 0; padding-block-start: 4px; }
+.introduction h2 { margin: 0 0 6px; font-size: 16px; font-weight: 650; line-height: 1.8; }
+.introduction p { margin: 0; color: var(--muted); font-size: 13px; line-height: 2; overflow-wrap: anywhere; }
+.licenses { display: grid; grid-template-columns: repeat(4, 86px); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.license { display: flex; align-items: center; justify-content: center; width: 86px; height: 86px; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--color-neutral-white); }
+.licenseImage { display: block; width: 64px; height: 64px; object-fit: contain; }
+.bottom { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 24px; padding-block: 24px; border-block-start: 1px solid var(--line); text-align: center; }
+.bottom p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.9; }
+.edit { display: inline-flex; align-items: center; min-height: 44px; font-size: 12px; color: var(--signal-dark); }
+.edit:focus-visible { outline: 2px solid var(--signal-dark); outline-offset: 4px; }
+@media (hover: hover) { .edit:hover { text-decoration: underline; text-underline-offset: 4px; } }
+@media (max-width: 760px) { .main { grid-template-columns: minmax(0, 1fr); gap: 20px; min-height: 0; padding-block: 24px; } .licenses { justify-self: start; } }
+@media (max-width: 420px) {
+  .licenses { width: 100%; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .license { width: 100%; height: auto; aspect-ratio: 1; padding: 8px; }
+  .licenseImage { width: 100%; height: auto; aspect-ratio: 1; }
+  .main { padding-block: 20px; }
+  .bottom { padding-block: 18px 80px; }
+}

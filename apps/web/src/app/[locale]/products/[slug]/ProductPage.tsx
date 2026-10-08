@@ -18,7 +18,8 @@ import { marketingVisitFor, rememberMarketingVisit } from "@/lib/marketing-attri
 import { ProductComments } from "@/components/comments/ProductComments";
 import { OfferPicker } from "@/components/product/OfferPicker";
 import { DigitalOfferTable } from "@/components/product/DigitalOfferTable";
-import { PublicHeader } from "@/components/PublicHeader";
+import { HeaderLanguageLinks } from "@/components/SiteHeader";
+import { PublicFooter } from "@/components/PublicFooter";
 import { productPageCopy } from "./product-copy";
 import { DigitalProductHeading, DigitalProductDescription } from "@/components/product/DigitalProductDetails";
 import { digitalProductCopy, downloadAllowance } from "@/components/product/digital-product-copy";
@@ -80,7 +81,6 @@ export function ProductPage({
   copy,
   editHref,
   bridgeCheckout,
-  accountHref,
   signedInUser = false,
   visitId
 }: {
@@ -89,7 +89,6 @@ export function ProductPage({
   copy: ProductCopy;
   editHref?: Route;
   bridgeCheckout?: ReactNode;
-  accountHref?: string | null;
   signedInUser?: boolean;
   visitId?: string;
 }) {
@@ -316,16 +315,11 @@ export function ProductPage({
     <div className={styles.page} data-product-type={product.type} dir={locale === "en" ? "ltr" : "rtl"}>
       <a className={styles.skipLink} href="#product-main">{copy.skipToContent}</a>
 
-      <PublicHeader
-        locale={locale}
-        accountHref={accountHref}
-        current="shop"
-        languageHrefs={{
-          fa: `/fa/products/${encodeURIComponent(product.slug)}`,
-          en: `/en/products/${encodeURIComponent(product.slug)}`,
-          ar: `/ar/products/${encodeURIComponent(product.slug)}`
-        }}
-      />
+      <HeaderLanguageLinks hrefs={{
+        fa: `/fa/products/${encodeURIComponent(product.slug)}`,
+        en: `/en/products/${encodeURIComponent(product.slug)}`,
+        ar: `/ar/products/${encodeURIComponent(product.slug)}`
+      }} />
 
       <main id="product-main" className={styles.main}>
         <nav className={styles.breadcrumb} aria-label="Breadcrumb">
@@ -456,18 +450,7 @@ export function ProductPage({
         </section>
       </main>
 
-      <footer className={styles.footer}>
-        <div>
-          <strong dir="ltr" translate="no">topgsm.</strong>
-          <p>{copy.footerDescription}</p>
-        </div>
-        <nav aria-label={copy.backHome}>
-          <Link href={`/${locale}` as Route}>{copy.home}</Link>
-          <Link href={`/${locale}/login` as Route}>{copy.signIn}</Link>
-          <a href="tel:09925739312">{copy.contactSupport}</a>
-        </nav>
-        <small>© {new Date().getFullYear()} Top GSM</small>
-      </footer>
+      <PublicFooter locale={locale} />
 
       {!isDigital ? <aside className={styles.mobileCart} aria-label={isService ? c.orderService : copy.addToCart}>
         {isBridge ? <><span>{c.bridge}</span><a href="#purchase">{c.configure}</a></> : <>

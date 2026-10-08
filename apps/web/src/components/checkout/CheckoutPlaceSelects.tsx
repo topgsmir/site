@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ShippingPlaceOption } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
@@ -50,10 +51,10 @@ export function CheckoutPlaceSelects({ locale, offerIds }: { locale: Locale; off
     }
   }, [c.error, offerKey, request]);
 
-  useEffect(() => {
+  useEffect(() => scheduleEffectTask(() => {
     void loadProvinces();
     return () => { requestId.current += 1; };
-  }, [loadProvinces]);
+  }), [loadProvinces]);
 
   async function changeProvince(title: string) {
     setProvince(title);

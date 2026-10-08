@@ -7,10 +7,7 @@ import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import type { AppUser } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
-import { dashboardFor } from "@/lib/auth/dashboard-destination";
 import { LogoutButton } from "@/components/auth/LogoutButton";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { CustomerLeaderboard } from "./CustomerLeaderboard";
 import { AccountSettings } from "./AccountSettings";
 import { AccountOrders } from "./AccountOrders";
 import { WalletPanel } from "./WalletPanel";
@@ -19,6 +16,7 @@ import { AccountIcon } from "./AccountIcon";
 import { UserAvatar } from "./UserAvatar";
 import { ACCOUNT_COPY } from "./AccountCopy";
 import { WORKSPACE_COPY } from "./AccountWorkspaceCopy";
+import { AccountDashboard } from "./dashboard/AccountDashboard";
 import styles from "./AccountPanel.module.css";
 
 gsap.registerPlugin(useGSAP);
@@ -36,7 +34,6 @@ export function AccountPanel({
   const w = WORKSPACE_COPY[locale];
   const [profile, setProfile] = useState(user);
   const shell = useRef<HTMLDivElement>(null);
-  const path = view === "overview" ? "/account" : `/account/${view}`;
 
   useGSAP(
     () => {
@@ -61,45 +58,6 @@ export function AccountPanel({
       <a className="skip-link" href="#account-content">
         {w.overview}
       </a>
-      <header className={styles.topbar}>
-        <Link
-          className={styles.brand}
-          href={`/${locale}` as Route}
-          aria-label="TopGSM"
-        >
-          <span className={styles.brandMark} aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </span>
-          <span dir="ltr">
-            topgsm<span>.</span>
-          </span>
-        </Link>
-        <span className={styles.topbarLabel}>{w.workspace}</span>
-        <div className={styles.toplinks}>
-          <LanguageSwitcher
-            locale={locale}
-            hrefs={{ fa: `/fa${path}`, en: `/en${path}`, ar: `/ar${path}` }}
-          />
-          <Link
-            className={styles.cartLink}
-            href={`/${locale}/cart` as Route}
-            aria-label={c.cart}
-          >
-            <AccountIcon name="cart" />
-            <span>{c.cart}</span>
-          </Link>
-          {user.role !== "buyer" ? (
-            <Link className={styles.managementLink} href={dashboardFor(user, locale) as Route}>
-              {locale === "fa" ? "داشبورد مدیریت" : locale === "ar" ? "لوحة الإدارة" : "Management dashboard"}
-            </Link>
-          ) : null}
-          <span className={styles.logout}>
-            <LogoutButton locale={locale} />
-          </span>
-        </div>
-      </header>
       <aside className={styles.sidebar} aria-label={w.profile} data-account-enter>
         <section
           className={styles.profile}
@@ -126,7 +84,7 @@ export function AccountPanel({
                 </dt>
                 <dd>
                   <code dir="ltr" className={styles.supportCode}>
-                    {profile.supportCode}
+                    {locale === "fa" ? profile.supportCode.replace(/[0-9]/g, digit => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]) : profile.supportCode}
                   </code>
                 </dd>
               </div>
@@ -185,16 +143,17 @@ export function AccountPanel({
                         ? (locale === "fa" ? "باشگاه مشتریان" : locale === "ar" ? "نادي العملاء" : "Customer club")
                         : w.settings}
                 </span>
+                <AccountIcon className={styles.navChevron} name="chevron" />
               </Link>
             ))}
           </nav>
-          <Link
-            href={`/${locale}/products` as Route}
-            className={styles.storeLink}
-          >
-            {c.shop}
-            <AccountIcon name="arrow" />
-          </Link>
+          <div className={styles.sidebarActions}>
+            <Link href={("/" + locale) as Route} className={styles.homeLink}>
+              <AccountIcon name="overview" />
+              {locale === "fa" ? "صفحه اصلی" : locale === "ar" ? "الرئيسية" : "Home"}
+            </Link>
+            <span className={styles.sidebarLogout}><LogoutButton locale={locale} /></span>
+          </div>
         </div>
       </aside>
       <main id="account-content" className={styles.main} tabIndex={-1}>
@@ -207,41 +166,17 @@ export function AccountPanel({
             <p>{view === "orders" ? w.ordersIntro : view === "wallet" ? (locale === "fa" ? "موجودی و تراکنش‌های خود را مدیریت کنید." : locale === "ar" ? "أدر رصيدك ومعاملاتك." : "Manage your balance and transactions.") : view === "club" ? (locale === "fa" ? "امتیازها، سطح و جوایز خود را ببینید." : locale === "ar" ? "راجع نقاطك ومستواك ومكافآتك." : "Review your points, tier and rewards.") : w.settingsIntro}</p>
           </header>
         )}
-        <div
-          className={view === "overview" ? styles.content : styles.fullContent}
-        >
-          <div className={styles.primaryColumn} data-account-enter>
+        {view === "overview" ? (
+          <AccountDashboard locale={locale} />
+        ) : (
+          <div className={styles.fullContent}>
             {view === "wallet" ? <WalletPanel locale={locale} /> : view === "club" ? <ClubPanel locale={locale} /> : view === "settings" ? (
-              <AccountSettings
-                locale={locale}
-                user={profile}
-                onUpdated={setProfile}
-              />
+              <AccountSettings locale={locale} user={profile} onUpdated={setProfile} />
             ) : (
-              <AccountOrders locale={locale} view={view} />
+              <AccountOrders locale={locale} view="orders" />
             )}
-            {view === "overview" ? (
-              <Link
-                className={styles.discover}
-                href={`/${locale}/products` as Route}
-              >
-                <span className={styles.discoverIcon}>
-                  <AccountIcon name="file" />
-                </span>
-                <span>
-                  <strong>{w.discover}</strong>
-                  <span>{w.discoverHint}</span>
-                </span>
-                <AccountIcon name="arrow" />
-              </Link>
-            ) : null}
           </div>
-          {view === "overview" ? (
-            <aside className={styles.secondaryColumn} aria-label={locale === "fa" ? "جدول برترین تعمیرکاران" : locale === "ar" ? "ترتيب الفنيين" : "Technician leaderboard"} data-account-enter>
-              <CustomerLeaderboard locale={locale} />
-            </aside>
-          ) : null}
-        </div>
+        )}
       </main>
       <footer className={styles.footer}>
         <span dir="ltr">topgsm.</span>

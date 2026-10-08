@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { SellerShippingProfile } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
@@ -31,7 +32,7 @@ export function SellerShippingProfileWorkspace({ locale }: { locale: Locale }) {
     catch { setError(c.loadError); }
     finally { setLoading(false); }
   }, [c.loadError]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => scheduleEffectTask(() => { void load(); }), [load]);
 
   const change = <K extends keyof Draft>(key: K, value: Draft[K]) => { setDraft((current) => ({ ...current, [key]: value })); setMessage(""); setError(""); };
   async function submit(event: FormEvent<HTMLFormElement>) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import type { AdminProductsPage, ManagedBlogPost } from "@topgsm/shared-types";
 import type { Route } from "next";
 import Link from "next/link";
@@ -55,7 +56,7 @@ export function AdminNotificationsWorkspace({ locale, onCountsChange }: { locale
   const [activeQueue, setActiveQueue] = useState<QueueKey>("comments");
   const [visitedQueues, setVisitedQueues] = useState<QueueKey[]>(["comments"]);
   const [refreshKey, setRefreshKey] = useState(0);
-  const lastFocusRefresh = useRef(Date.now());
+  const lastFocusRefresh = useRef(0);
   const [counts, setCounts] = useState<AdminNotificationCounts | null>(null);
   const [countsLoading, setCountsLoading] = useState(true);
   const [countsError, setCountsError] = useState(false);
@@ -182,16 +183,17 @@ export function AdminNotificationsWorkspace({ locale, onCountsChange }: { locale
     } catch { setDownloadError(downloadCopy[locale].error); }
   }, [locale]);
 
-  useEffect(() => {
+  useEffect(() => scheduleEffectTask(() => {
     if (activeQueue === "products") void loadProducts();
     if (activeQueue === "articles") void loadArticles();
     if (activeQueue === "refunds") void loadRefunds();
     if (activeQueue === "payouts") void loadPayouts();
     if (activeQueue === "downloadLinks") void loadDownloadChanges();
-  }, [activeQueue, refreshKey, loadArticles, loadProducts, loadRefunds, loadPayouts, loadDownloadChanges]);
+  }), [activeQueue, refreshKey, loadArticles, loadProducts, loadRefunds, loadPayouts, loadDownloadChanges]);
 
-  useEffect(() => {
+  useEffect(() => scheduleEffectTask(() => {
     const controller = new AbortController();
+    lastFocusRefresh.current = Date.now();
     void loadCounts(controller.signal);
     const onFocus = () => {
       void loadCounts();
@@ -201,7 +203,7 @@ export function AdminNotificationsWorkspace({ locale, onCountsChange }: { locale
     };
     window.addEventListener("focus", onFocus);
     return () => { controller.abort(); window.removeEventListener("focus", onFocus); };
-  }, [loadCounts]);
+  }), [loadCounts]);
 
   useEffect(() => {
     function syncHash() {

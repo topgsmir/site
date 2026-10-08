@@ -880,7 +880,7 @@
 }
 @media (min-width: 56rem) {
   .page:not([data-product-type="digital"]) .hero { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 28px; }
-  .page:not([data-product-type="digital"]) .purchasePanel { position: sticky; top: 24px; }
+  .page:not([data-product-type="digital"]) .purchasePanel { position: sticky; top: calc(var(--site-header-height, 0px) + 24px); }
   .requirements { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 24px; }
   .questions { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 24px; }
 }

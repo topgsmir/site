@@ -35,3 +35,8 @@
 @media (max-width: 1120px) { .trigger span { display: none; } .trigger { justify-content: center; width: 44px; padding: 0; } }
 @media (max-width: 600px) { .dialog { margin-top: 16px; max-height: calc(100dvh - 32px); border-radius: 20px; } .header { padding: 20px 18px 15px; } .form { margin-inline: 18px; } .content { padding-inline: 18px; } .footer { padding-inline: 18px; } }
 @media (prefers-reduced-motion: reduce) { .dialog::backdrop { backdrop-filter: none; } }
+.wideTrigger { justify-content: flex-start; width: 100%; min-height: 38px; padding-inline: 16px; border-color: transparent; border-radius: 999px; color: var(--muted); background: var(--paper); font-size: .82rem; text-align: start; white-space: normal; }
+.wideTrigger svg { flex: none; width: 20px; height: 20px; color: var(--muted); }
+.wideTrigger span { display: inline; }
+
+@media (max-width: 800px), (pointer: coarse) { .wideTrigger { min-height: 44px; } }

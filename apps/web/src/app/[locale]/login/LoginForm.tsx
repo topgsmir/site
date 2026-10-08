@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardEvent, FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
+import { ClipboardEvent, FormEvent, KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
 import type { Route } from "next";
 import Link from "next/link";
 import Image from "next/image";
@@ -101,7 +101,7 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
   const [challengeId, setChallengeId] = useState("");
   const [requestedPhone, setRequestedPhone] = useState("");
   const [codeExpiresAt, setCodeExpiresAt] = useState(0);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   const [needsName, setNeedsName] = useState(false);
   const [fullName, setFullName] = useState("");
   const [otpDigits, setOtpDigits] = useState<string[]>(emptyOtp);
@@ -140,7 +140,23 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
     return () => { active = false; };
   }, [copy.methodsError]);
 
-  async function requestCode(phoneNumber: string) {
+  const trimmedIdentifier = identifier.trim();
+  const normalizedPhone = normalizePhoneInput(trimmedIdentifier);
+  const phoneCandidate = /^[+\d]+$/.test(normalizedPhone) && /\d/.test(normalizedPhone);
+  const phoneValid = /^(?:\+98|0098|98|0)?9\d{9}$/.test(normalizedPhone);
+  const phoneMode = phoneCandidate;
+  const codeSecondsLeft = Math.max(0, Math.ceil((codeExpiresAt - now) / 1000));
+  const otpComplete = otpDigits.every(Boolean);
+  const codeTime = `${Math.floor(codeSecondsLeft / 60)}:${String(codeSecondsLeft % 60).padStart(2, "0")}`;
+  const methodUnavailable = methods !== null && trimmedIdentifier.length > 0 && (
+    phoneMode ? !methods.phoneOtpEnabled : !methods.emailPasswordEnabled
+  );
+  const captchaAction = needsName ? "register" : "login";
+  const captchaRequired = !phoneMode && captchaPolicies?.[captchaAction] === true;
+  const phoneStepReady = !challengeId || codeSecondsLeft === 0 || (needsName ? fullName.trim().length >= 2 : otpComplete);
+  const canSubmit = methods !== null && (phoneMode || captchaPolicies !== null) && !methodUnavailable && trimmedIdentifier.length > 0 && (!phoneMode || (phoneValid && phoneStepReady)) && (!captchaRequired || captchaToken !== null);
+
+  const requestCode = useCallback(async (phoneNumber: string) => {
     const otpCaptchaToken = await captchaTokenFor("otp");
     const response = await fetch(`${API_BASE}/auth/otp/request`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phoneNumber, ...(otpCaptchaToken ? { captchaToken: otpCaptchaToken } : {}) }) });
     const data = await response.json().catch(() => null) as { challengeId?: string; expiresAt?: string; message?: string } | null;
@@ -151,7 +167,7 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
     setNow(Date.now());
     setNeedsName(false);
     setOtpDigits(emptyOtp());
-  }
+  }, [copy.genericError]);
 
   function updateOtp(index: number, rawValue: string) {
     const digits = normalizeDigits(rawValue).replace(/\D/g, "");
@@ -197,7 +213,7 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
     finally { setIsSubmitting(false); }
   }
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  const submit = useCallback(async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
     setError("");
@@ -274,23 +290,9 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
       setCaptchaToken(null);
       setCaptchaReset((value) => value + 1);
     }
-  }
+  }, [captchaPolicies, captchaToken, challengeId, codeExpiresAt, copy.genericError, copy.invalidCredentials, fullName, locale, needsName, nextPath, normalizedPhone, otpDigits, phoneMode, requestCode, requestedPhone, router, trimmedIdentifier]);
 
-  const trimmedIdentifier = identifier.trim();
-  const normalizedPhone = normalizePhoneInput(trimmedIdentifier);
-  const phoneCandidate = /^[+\d]+$/.test(normalizedPhone) && /\d/.test(normalizedPhone);
-  const phoneValid = /^(?:\+98|0098|98|0)?9\d{9}$/.test(normalizedPhone);
-  const phoneMode = phoneCandidate;
-  const codeSecondsLeft = Math.max(0, Math.ceil((codeExpiresAt - now) / 1000));
-  const otpComplete = otpDigits.every(Boolean);
-  const codeTime = `${Math.floor(codeSecondsLeft / 60)}:${String(codeSecondsLeft % 60).padStart(2, "0")}`;
-  const methodUnavailable = methods !== null && trimmedIdentifier.length > 0 && (
-    phoneMode ? !methods.phoneOtpEnabled : !methods.emailPasswordEnabled
-  );
-  const captchaAction = needsName ? "register" : "login";
-  const captchaRequired = !phoneMode && captchaPolicies?.[captchaAction] === true;
-  const phoneStepReady = !challengeId || codeSecondsLeft === 0 || (needsName ? fullName.trim().length >= 2 : otpComplete);
-  const canSubmit = methods !== null && (phoneMode || captchaPolicies !== null) && !methodUnavailable && trimmedIdentifier.length > 0 && (!phoneMode || (phoneValid && phoneStepReady)) && (!captchaRequired || captchaToken !== null);
+
 
   return (
     <main className="auth-shell">

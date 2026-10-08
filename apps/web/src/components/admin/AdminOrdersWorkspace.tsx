@@ -1,4 +1,5 @@
 "use client";
+import { scheduleEffectTask } from "@/lib/effect-task";
 import { JalaliDatePicker } from "@/components/dashboard/JalaliDatePicker";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -110,7 +111,7 @@ export function AdminOrdersWorkspace({ locale }: { locale: Locale }) {
     }, 300);
     return () => clearTimeout(timer);
   }, [search, productType, dateFrom, dateTo, sort]);
-  useEffect(() => { void load(cursors[page] ?? null, filters); }, [cursors, filters, load, page]);
+  useEffect(() => scheduleEffectTask(() => { void load(cursors[page] ?? null, filters); }), [cursors, filters, load, page]);
 
   function setFilter<K extends keyof Filters>(key: K, value: Filters[K]) { setDraft((current) => ({ ...current, [key]: value })); setSelectedIds([]); }
   function selectStatusGroup(statusGroup: StatusGroup) {

@@ -16,7 +16,7 @@
 .reading { white-space: nowrap; }
 .header h1 { margin-block: 24px 16px; min-width: 0; font-size: clamp(2rem, 3.5vw, 3.1rem); line-height: 1.55; font-weight: 700; letter-spacing: -.035em; overflow-wrap: anywhere; text-wrap: balance; }
 .deck { color: var(--muted); font-size: 1.05rem; line-height: 1.9; overflow-wrap: anywhere; }
-.metadata { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--line); }
+.metadata { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-top: 28px; padding-top: calc(var(--site-header-height, 0px) + 24px); border-top: 1px solid var(--line); }
 .articleActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
 .editAction { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 14px; border-radius: 8px; color: var(--color-brand-navy); background: var(--color-brand-blue); font-size: .7rem; font-weight: 700; white-space: nowrap; transition: opacity 160ms ease, transform 160ms ease; }
 .editAction:active { transform: translateY(1px); }
@@ -38,7 +38,7 @@
 .body :global(.article-prose) > :first-child { margin-top: 0; }
 .body :global(.article-prose) > p:empty { display: none; }
 .body :global(.article-prose) hr { border: 0; border-top: 1px solid var(--line); margin-block: 32px; }
-.body :global(.article-prose) hr + h2 { border-top: 0; padding-top: 0; margin-top: 24px; }
+.body :global(.article-prose) hr + h2 { border-top: 0; padding-top: 0; margin-top: calc(var(--site-header-height, 0px) + 24px); }
 .body :global(.article-prose) > p:first-child { color: var(--ink); font-size: 1.12rem; line-height: 2.05; }
 .body :global(.article-prose) h2 { padding-top: 28px; margin-top: 40px; border-top: 1px solid var(--line); color: var(--ink); font-size: clamp(1.35rem, 2vw, 1.65rem); font-weight: 650; line-height: 1.75; scroll-margin-top: 32px; }
 .body :global(.article-prose) h3 { color: var(--ink); font-size: 1.2rem; font-weight: 600; line-height: 1.8; margin-top: 30px; scroll-margin-top: 32px; }
@@ -48,7 +48,7 @@
 .body :global(.article-prose) blockquote { background: var(--color-dashboard-surface-raised); color: var(--ink); border-radius: 8px; font-size: 1.05em; }
 .body :global(.article-prose) pre { direction: ltr; text-align: left; overflow-wrap: normal; max-width: 100%; font-size: .86em; }
 .body :global(.article-prose) img { border-radius: 12px; }
-.sidebar { position: sticky; top: 24px; min-width: 0; }
+.sidebar { position: sticky; top: calc(var(--site-header-height, 0px) + 24px); min-width: 0; }
 .mobileShopLink { display: none; }
 .shop { min-width: 0; border: 1px solid var(--line); border-radius: 16px; overflow: clip; background: var(--paper-bright); }
 .shopIntro { padding: 24px; color: var(--color-navigation-ink); background: var(--color-navigation-paper); }
@@ -56,7 +56,7 @@
 .shopLabel svg { width: 21px; height: 21px; }
 .shopIntro h2 { margin-block: 20px 10px; font-size: 1.5rem; line-height: 1.65; font-weight: 550; text-wrap: balance; overflow-wrap: anywhere; }
 .shopIntro p { color: var(--color-navigation-muted); font-size: .77rem; line-height: 1.9; }
-.shopCta { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 0 14px; margin-top: 24px; color: var(--color-brand-navy); background: var(--color-brand-blue); border-radius: 8px; font-size: .76rem; font-weight: 650; white-space: nowrap; transition: opacity 160ms ease; }
+.shopCta { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 0 14px; margin-top: calc(var(--site-header-height, 0px) + 24px); color: var(--color-brand-navy); background: var(--color-brand-blue); border-radius: 8px; font-size: .76rem; font-weight: 650; white-space: nowrap; transition: opacity 160ms ease; }
 .shopCta svg { width: 18px; height: 18px; }
 .products { padding-inline: 16px; }
 .product { display: flex; align-items: center; gap: 12px; padding-block: 18px; min-width: 0; }

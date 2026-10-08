@@ -49,6 +49,7 @@ import { UsdSettingsWorkspace } from "@/components/admin/UsdSettingsWorkspace";
 import { NoticeSettingsWorkspace } from "@/components/admin/NoticeSettingsWorkspace";
 import { SeoSettingsWorkspace } from "@/components/admin/SeoSettingsWorkspace";
 import { HomepageStoriesWorkspace } from "@/components/admin/HomepageStoriesWorkspace";
+import { TemplateSettingsWorkspace } from "@/components/admin/TemplateSettingsWorkspace";
 import { HomepageContentWorkspace } from "@/components/admin/HomepageContentWorkspace";
 import { BlogSidebarWorkspace } from "@/components/admin/BlogSidebarWorkspace";
 import { AdminCommentsWorkspace } from "@/components/comments/AdminCommentsWorkspace";
@@ -857,6 +858,7 @@ export function VendorManagement({
   const isWebsiteSection =
     section === "settings-seo" ||
     section === "settings-homepage" ||
+    section === "settings-template" ||
     section === "settings-notice" ||
     section === "settings-stories" ||
     section === "settings-blog-sidebar";
@@ -928,6 +930,7 @@ export function VendorManagement({
           : locale === "ar"
             ? "إعلان جانب المقال"
             : "Article sidebar",
+      "settings-template": locale === "fa" ? "تنظیمات قالب" : locale === "ar" ? "إعدادات القالب" : "Template settings",
       "settings-homepage":
         locale === "fa"
           ? "صفحه اصلی"
@@ -1814,6 +1817,9 @@ export function VendorManagement({
                     className={navigationStyles.subNavigation}
                     id="admin-website-navigation"
                   >
+                    <Link className={navigationStyles.item} href={`/${locale}/admin/settings/template` as Route} aria-current={section === "settings-template" ? "page" : undefined}>
+                      <EditorialIcon /><span>{locale === "fa" ? "تنظیمات قالب" : locale === "ar" ? "إعدادات القالب" : "Template settings"}</span>
+                    </Link>
                     <Link
                       className={navigationStyles.item}
                       href={`/${locale}/admin/settings/seo` as Route}
@@ -2672,6 +2678,7 @@ export function VendorManagement({
         {section === "settings-blog-sidebar" ? (
           <BlogSidebarWorkspace locale={locale} />
         ) : null}
+        {section === "settings-template" ? <TemplateSettingsWorkspace locale={locale} /> : null}
         {section === "settings-homepage" ? (
           <HomepageContentWorkspace locale={locale} />
         ) : null}

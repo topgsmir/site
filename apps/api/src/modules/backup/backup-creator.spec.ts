@@ -11,7 +11,7 @@ import { BackupArchiveService } from "./backup-archive.service";
 import { BackupCreatorService } from "./backup-creator.service";
 import { BackupPathsService } from "./backup-paths.service";
 
-async function fixture(t: TestContext, uploads: string[], homepages: unknown[], failAt?: string) {
+async function fixture(t: TestContext, uploads: string[], homepages: unknown[], failAt?: string, templates: unknown[] = []) {
   const root = await mkdtemp(join(tmpdir(), "topgsm-backup-inventory-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const config = new ConfigService({
@@ -36,6 +36,7 @@ async function fixture(t: TestContext, uploads: string[], homepages: unknown[], 
       return { rows: uploads.map((path) => ({ path })) };
     }
     if (sql === "SELECT content FROM homepage_content") return { rows: homepages.map((content) => ({ content })) };
+    if (sql === "SELECT configuration FROM template_settings") return { rows: templates.map((configuration) => ({ configuration })) };
     return { rows: [] };
   }) as Client["query"]);
   return { root, paths, archive, calls, creator: new BackupCreatorService(config, paths, archive) };
@@ -43,7 +44,7 @@ async function fixture(t: TestContext, uploads: string[], homepages: unknown[], 
 
 describe("backup upload inventory", () => {
   it("round-trips persisted homepage images, all stories and existing media without copying unrelated files", async (t) => {
-    const [hero, shortcut, collection, offer] = Array.from({ length: 4 }, () => `${randomUUID()}.webp`);
+    const [hero, shortcut, collection, offer, banner] = Array.from({ length: 5 }, () => `${randomUUID()}.webp`);
     const url = (name: string) => `/homepage-images/${name}`;
     const legacy = ["blog/asset.webp", "products/asset.webp", "profiles/asset.webp", "stories/disabled/asset.webp"];
     const homepages = [
@@ -51,8 +52,8 @@ describe("backup upload inventory", () => {
       { hero: { image: url(hero) }, shortcuts: [{ image: "/images/bundled.png" }] },
       null
     ];
-    const { root, paths, archive, calls, creator } = await fixture(t, legacy, homepages);
-    const expected = [...legacy, ...[hero, shortcut, collection, offer].map((name) => `homepage/${name}`)].sort();
+    const { root, paths, archive, calls, creator } = await fixture(t, legacy, homepages, undefined, [{ banner: { image: url(banner) } }]);
+    const expected = [...legacy, ...[hero, shortcut, collection, offer, banner].map((name) => `homepage/${name}`)].sort();
     for (const path of [...expected, "homepage/unreferenced.webp", "unrelated.txt"]) {
       await mkdir(dirname(join(paths.mediaRoot, path)), { recursive: true });
       await writeFile(join(paths.mediaRoot, path), `bytes:${path}`);
@@ -64,7 +65,7 @@ describe("backup upload inventory", () => {
     await archive.decrypt(backup.archivePath, decrypted);
     assert.deepEqual(await archive.extractPlainArchive(decrypted, restored), backup.manifest);
     for (const path of expected) assert.equal(await readFile(join(restored, "uploads", path), "utf8"), `bytes:${path}`);
-    assert.deepEqual((await readdir(join(restored, "uploads", "homepage"))).sort(), [hero, shortcut, collection, offer].sort());
+    assert.deepEqual((await readdir(join(restored, "uploads", "homepage"))).sort(), [hero, shortcut, collection, offer, banner].sort());
     const lock = calls.findIndex((sql) => sql === "SELECT pg_advisory_lock($1)");
     const begin = calls.findIndex((sql) => sql.startsWith("BEGIN"));
     const snapshot = calls.findIndex((sql) => sql.includes("pg_export_snapshot"));

@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import { useCallback, useEffect, useId, useState, type FormEvent } from "react";
 import { isAxiosError } from "axios";
 import Image from "next/image";
@@ -40,7 +41,7 @@ export function SeoSettingsWorkspace({ locale }: { locale: Locale }) {
     } catch { setError(c.loadError); }
     finally { setLoading(false); }
   }, [c.loadError]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => scheduleEffectTask(() => { void load(); }), [load]);
   useEffect(() => {
     if (!dirty) return;
     const beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); };

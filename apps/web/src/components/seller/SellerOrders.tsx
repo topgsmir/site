@@ -1,4 +1,5 @@
 "use client";
+import { scheduleEffectTask } from "@/lib/effect-task";
 import type { Route } from "next";
 import Link from "next/link";
 import { JalaliDatePicker } from "@/components/dashboard/JalaliDatePicker";
@@ -100,7 +101,7 @@ export function SellerOrders({ locale, onOrderUpdated }: { locale: Locale; onOrd
     }, 300);
     return () => clearTimeout(timer);
   }, [draft]);
-  useEffect(() => { void load(cursors[page] ?? null, filters); }, [cursors, filters, load, page]);
+  useEffect(() => scheduleEffectTask(() => { void load(cursors[page] ?? null, filters); }), [cursors, filters, load, page]);
 
   function setFilter<K extends keyof Filters>(key: K, value: Filters[K]) { setDraft((current) => ({ ...current, [key]: value })); }
   function goNext() { if (!nextCursor) return; setCursors((current) => [...current.slice(0, page + 1), nextCursor]); setPage((current) => current + 1); }

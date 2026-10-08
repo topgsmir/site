@@ -24,7 +24,7 @@
 .term span { color: var(--color-dashboard-muted); font-size: .76rem; }
 .workspace :is(a, button, input):focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
 @media (hover: hover) and (pointer: fine) { .kindTabs button:hover, .taxonomy button:hover { background: var(--color-dashboard-surface); transform: translateY(-1px); } .kindTabs button[aria-pressed="true"]:hover { background: var(--color-dashboard-accent-strong); } }
-@media (min-width: 70rem) { .content { grid-template-columns: minmax(0, 1fr) 360px; align-items: start; } .taxonomy { position: sticky; top: 20px; } .form fieldset { grid-template-columns: 1fr; } }
+@media (min-width: 70rem) { .content { grid-template-columns: minmax(0, 1fr) 360px; align-items: start; } .taxonomy { position: sticky; top: calc(var(--site-header-height, 0px) + 20px); } .form fieldset { grid-template-columns: 1fr; } }
 @media (max-width: 39.999rem) { .workspace { padding-block-start: var(--space-dashboard-lg); } .taxonomy { padding: var(--space-dashboard-md); } .kindTabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (prefers-reduced-motion: reduce) { .kindTabs button, .taxonomy button { transition-duration: var(--dur-dashboard-reduced); transform: none !important; } }
 .createTerm { border-block: 1px solid var(--color-dashboard-rule); padding-block: var(--space-dashboard-2xs); }

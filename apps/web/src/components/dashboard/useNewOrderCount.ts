@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 
@@ -29,12 +30,12 @@ export function useNewOrderCount(enabled = true) {
     }
   }, [enabled]);
 
-  useEffect(() => {
+  useEffect(() => scheduleEffectTask(() => {
     if (!enabled) return;
     void refresh();
     const timer = window.setInterval(() => void refresh(), 60_000);
     return () => window.clearInterval(timer);
-  }, [enabled, refresh]);
+  }), [enabled, refresh]);
 
   return { count, refresh, markSeen };
 }

@@ -47,6 +47,15 @@ describe("crawlable catalog URLs", () => {
   });
 });
 
+describe("category catalog links", () => {
+  it("preserves the selected category with filters and pagination", () => {
+    const categoryId = "22f9f25d-328e-4486-a132-70ce2a6fe498";
+    const cursor = "651f7d3b-7ccb-4a98-adad-2317c8127e09";
+    const query = catalogQuery({ categoryId: categoryId.toUpperCase(), type: "digital", search: " phone ", cursor });
+    assert.equal(listingHref("/fa/products", query), `/fa/products?type=digital&search=phone&categoryId=${categoryId}&cursor=${cursor}`);
+    for (const invalid of ["", "bad", [categoryId, categoryId]]) assert.throws(() => catalogQuery({ categoryId: invalid }), /INVALID_CATEGORY/);
+  });
+});
 describe("sitemap partitions", () => {
   const feed = { kind: "products", locale: "fa", count: 46000 };
   const read = async (_feed, cursor) => {

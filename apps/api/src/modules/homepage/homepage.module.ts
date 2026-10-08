@@ -4,5 +4,5 @@ import { AdminHomepageController, PublicHomepageController } from "./homepage.co
 import { HomepageService } from "./homepage.service";
 import { HomepageImagesService } from "./homepage-images.service";
 
-@Module({ imports: [AuthModule], controllers: [PublicHomepageController, AdminHomepageController], providers: [HomepageService, HomepageImagesService] })
+@Module({ imports: [AuthModule], controllers: [PublicHomepageController, AdminHomepageController], providers: [HomepageService, HomepageImagesService], exports: [HomepageImagesService] })
 export class HomepageModule {}

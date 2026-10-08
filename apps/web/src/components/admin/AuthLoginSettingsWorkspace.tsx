@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import type { AdminAuthLoginSettings } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
@@ -31,7 +32,7 @@ export function AuthLoginSettingsWorkspace({ locale }: { locale: Locale }) {
     finally { setLoading(false); }
   }, [c.loadError]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => scheduleEffectTask(() => { void load(); }), [load]);
   const dirty = saved !== null && (saved.emailPasswordEnabled !== emailEnabled || saved.phoneOtpEnabled !== phoneEnabled);
 
   async function submit(event: FormEvent<HTMLFormElement>) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import type {
   AdminBackupDestination,
   AdminBackupOverview,
@@ -190,7 +191,7 @@ export function BackupRestoreWorkspace({ locale }: { locale: Locale }) {
     } catch (requestError) { setError(errorMessage(requestError, c.loadError)); }
   }, [c.loadError]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => scheduleEffectTask(() => { void load(); }), [load]);
   useEffect(() => {
     if (!overview?.activeRunId) return;
     const timer = window.setInterval(() => void load(), 6_000);

@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import type { BackupRestoreProgress, PublicSystemStatus } from "@topgsm/shared-types";
 import { useCallback, useEffect, useState } from "react";
 import type { Locale } from "@/lib/i18n";
@@ -63,11 +64,11 @@ export function MaintenanceGate({ locale }: { locale: Locale }) {
     }
   }, []);
 
-  useEffect(() => {
+  useEffect(() => scheduleEffectTask(() => {
     void poll();
     const timer = window.setInterval(() => void poll(), 3_000);
     return () => window.clearInterval(timer);
-  }, [poll]);
+  }), [poll]);
 
   const visible = Boolean(status?.maintenance || (monitor && progress && !["success", "failed"].includes(progress.status)) || progress?.status === "success" || progress?.status === "failed" || progress?.status === "recovery_required");
   if (!visible) return null;

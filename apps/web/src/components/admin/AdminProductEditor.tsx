@@ -1,4 +1,5 @@
 "use client";
+import { scheduleEffectTask } from "@/lib/effect-task";
 import { ProductAiPanel } from "@/components/ai/ProductAiPanel";
 import { splitDownloadUrls, validDownloadUrls } from "../../lib/download-urls";
 import { DownloadLinkManager } from "@/components/product/DownloadLinkManager";
@@ -165,13 +166,13 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
     return () => { clearTimeout(timer); controller.abort(); };
   }, [categorySearch, categoryRefresh]);
 
-  useEffect(() => {
+  useEffect(() => scheduleEffectTask(() => {
     const controller = new AbortController();
     setComments(null); setCommentError(false);
     void api.get<CommentPage<ProductComment>>(`/comments/products/${productId}`, { params: { limit: 3 }, signal: controller.signal })
       .then(({ data }) => setComments(data.items)).catch(() => { if (!controller.signal.aborted) setCommentError(true); });
     return () => controller.abort();
-  }, [productId, commentRefresh]);
+  }), [productId, commentRefresh]);
 
   const load = useCallback(async (cursor?: string) => {
     setLoading(true); setError("");
@@ -187,7 +188,7 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
     } finally { setLoading(false); }
   }, [c.loadError, productId]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => scheduleEffectTask(() => { void load(); }), [load]);
 
   async function saveCore(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

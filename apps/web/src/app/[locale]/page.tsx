@@ -139,9 +139,7 @@ export default async function HomePage({ params }: HomePageProps) {
         productsUnavailable={products.unavailable}
         experts={experts.items}
         expertsUnavailable={experts.unavailable}
-        stories={stories.items}
-        accountHref={user ? `/${locale}/account` : null}
-        content={homepage?.content ?? undefined}
+        stories={stories.items}        content={homepage?.content ?? undefined}
         editable={user?.role === "platform-admin"}
       />
     </>

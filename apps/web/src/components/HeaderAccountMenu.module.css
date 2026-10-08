@@ -1,0 +1,16 @@
+.root { flex: none; color: var(--ink-soft); }
+.root > summary { display: flex; align-items: center; justify-content: center; gap: 4px; width: 44px; height: 44px; border-radius: 8px; list-style: none; cursor: pointer; }
+.root > summary::-webkit-details-marker { display: none; }
+.root > summary > svg { flex: none; width: 20px; height: 20px; }
+.root > summary > .chevron { width: 12px; height: 12px; }
+.root[open] > summary { color: var(--signal-dark); background: var(--signal-soft); }
+.root[open] .chevron { transform: rotate(180deg); }
+.panel { position: fixed; z-index: 60; left: var(--account-menu-left, 16px); top: var(--account-menu-top, 64px); display: grid; width: min(224px, calc(100vw - 32px)); max-height: var(--account-menu-height, calc(100dvh - var(--account-menu-top, 64px) - 16px)); padding: 8px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; color: var(--ink); background: var(--paper-bright); box-shadow: var(--shadow-dashboard-float); }
+.panel a, .panel :global(.logout-button) { display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%; min-height: 44px; padding: 8px 10px; border: 0; border-radius: 6px; color: var(--ink-soft); background: transparent; font-size: .82rem; font-weight: 500; }
+.panel a + a, .panel :global(.logout-control) { border-top: 1px solid var(--line); }
+.panel a > svg { flex: none; width: 19px; height: 19px; }
+.panel :global(.logout-control) { display: grid; width: 100%; }
+.panel :global(.logout-button) span { display: inline; }
+.panel :global(.logout-error) { position: static; width: 100%; max-width: 100%; padding: 8px 10px; white-space: normal; box-shadow: none; font-size: .75rem; }
+.panel :is(a, button):focus-visible { outline: 2px solid var(--signal); outline-offset: -2px; }
+@media (hover: hover) { .root > summary:hover, .panel a:hover, .panel :global(.logout-button):hover { color: var(--ink); background: var(--paper); } }

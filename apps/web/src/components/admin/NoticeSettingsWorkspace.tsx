@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
@@ -26,7 +27,7 @@ export function NoticeSettingsWorkspace({ locale }: { locale: Locale }) {
     catch { setError(c.loadError); }
     finally { setLoading(false); }
   }, [c.loadError]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => scheduleEffectTask(() => { void load(); }), [load]);
   const dirty = saved !== null && (draft.message !== saved.message || draft.enabled !== saved.enabled);
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!dirty) return;

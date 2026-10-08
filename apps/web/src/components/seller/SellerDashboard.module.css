@@ -1,6 +1,6 @@
 /* Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4 · genre: modern-minimal · macrostructure: Workbench · design-system: TopGSM dashboard */
 .shell {
-  min-height: 100svh;
+  min-height: calc(100svh - var(--site-header-height, 0px));
   color: var(--color-dashboard-ink);
   background: var(--color-dashboard-paper);
   font-family: var(--font-dashboard-body);
@@ -474,14 +474,14 @@
   .rail {
     position: sticky;
     z-index: var(--z-dashboard-sticky);
-    inset-block-start: 0;
+    inset-block-start: var(--site-header-height, 0px);
     gap: var(--space-dashboard-sm);
     padding: var(--space-dashboard-sm) var(--space-dashboard-md);
     box-shadow: var(--shadow-dashboard-card);
   }
 
   .rail[data-mobile-open="true"] {
-    max-height: 100dvh;
+    max-height: calc(100dvh - var(--site-header-height, 0px));
     overflow-y: auto;
     overscroll-behavior: contain;
   }
@@ -719,7 +719,7 @@
 
 .editorLayer {
   position: fixed;
-  z-index: 80;
+  z-index: var(--z-dashboard-modal);
   inset: 0;
   display: grid;
   justify-items: end;
@@ -887,7 +887,7 @@
 }
 
 .creationShell {
-  min-height: 100svh;
+  min-height: calc(100svh - var(--site-header-height, 0px));
   color: var(--color-dashboard-ink);
   background: var(--color-dashboard-paper);
   font-family: var(--font-dashboard-body);
@@ -896,7 +896,7 @@
 .creationTopbar {
   position: sticky;
   z-index: var(--z-dashboard-sticky);
-  inset-block-start: 0;
+  inset-block-start: var(--site-header-height, 0px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1283,9 +1283,9 @@
   .rail {
     position: sticky;
     z-index: var(--z-dashboard-sticky);
-    inset-block-start: var(--space-dashboard-md);
-    min-height: calc(100svh - 2rem);
-    max-height: calc(100svh - 2rem);
+    inset-block-start: calc(var(--site-header-height, 0px) + var(--space-dashboard-md));
+    min-height: calc(100svh - var(--site-header-height, 0px) - 2rem);
+    max-height: calc(100svh - var(--site-header-height, 0px) - 2rem);
     margin: var(--space-dashboard-sm);
     margin-inline-end: 0;
     border-radius: var(--radius-dashboard-md);

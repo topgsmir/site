@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleEffectTask } from "@/lib/effect-task";
 import axios from "axios";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BlogSidebarContent, BlogSidebarDocument, RelatedProductSummary } from "@topgsm/shared-types";
@@ -54,7 +55,7 @@ export function BlogSidebarWorkspace({ locale }: { locale: Locale }) {
     finally { if (id === requestId.current) setLoading(false); }
   }, [contentLocale, c.loadError]);
 
-  useEffect(() => { void load(); return () => { requestId.current += 1; }; }, [load]);
+  useEffect(() => scheduleEffectTask(() => { void load(); return () => { requestId.current += 1; }; }), [load]);
   useEffect(() => {
     if (!dirty) return;
     let leaving = false;
@@ -72,7 +73,7 @@ export function BlogSidebarWorkspace({ locale }: { locale: Locale }) {
     document.addEventListener("click", navigate, true);
     return () => { window.removeEventListener("beforeunload", warn); document.removeEventListener("click", navigate, true); };
   }, [dirty, c.discard]);
-  useEffect(() => {
+  useEffect(() => scheduleEffectTask(() => {
     const search = query.normalize("NFKC").trim();
     if (!search) { setOptions([]); setSearching(false); return; }
     let current = true;
@@ -85,7 +86,7 @@ export function BlogSidebarWorkspace({ locale }: { locale: Locale }) {
       finally { if (current) setSearching(false); }
     }, 300);
     return () => { current = false; window.clearTimeout(timer); };
-  }, [query, c.productsError]);
+  }), [query, c.productsError]);
 
   const update = <K extends keyof BlogSidebarContent>(key: K, value: BlogSidebarContent[K]) => {
     setDraft((current) => ({ ...current, [key]: value })); setMessage("");
