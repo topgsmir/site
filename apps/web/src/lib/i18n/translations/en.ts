@@ -23,7 +23,7 @@ export const en = {
     orderNotifications: "Order notifications"
   },
   auth: {
-    title: "Sign in to your account",
+    title: "Sign in or register",
     description: "Enter your email, username, or mobile number to continue.",
     fullName: "Name",
     identifier: "Email, username, or mobile number",

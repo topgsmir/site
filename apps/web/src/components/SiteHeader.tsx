@@ -37,17 +37,20 @@ export function SiteHeader({ locale, accountHref, children }: { locale: Locale; 
   const languageHrefs = routeLinks?.pathname === pathname ? routeLinks.hrefs : { fa: "/fa" + path, en: "/en" + path, ar: "/ar" + path };
   useLayoutEffect(() => {
     const surface = header.current?.querySelector<HTMLElement>("[data-site-header-main]");
-    if (!surface) return;
+    if (path === "/login" || !surface) {
+      document.documentElement.style.removeProperty("--site-header-height");
+      return;
+    }
     const update = () => document.documentElement.style.setProperty("--site-header-height", surface.offsetHeight + "px");
     update();
     const observer = new ResizeObserver(update);
     observer.observe(surface);
     return () => { observer.disconnect(); document.documentElement.style.removeProperty("--site-header-height"); };
-  }, []);
+  }, [path]);
   const skip = locale === "fa" ? "رفتن به محتوای صفحه" : locale === "ar" ? "انتقل إلى محتوى الصفحة" : "Skip to page content";
   return <HeaderLinksContext.Provider value={register}>
     <a className="skip-link" href="#site-content">{skip}</a>
-    <div ref={header} className={styles.header} data-site-header><PublicHeader locale={locale} accountHref={accountHref} current={current} languageHrefs={languageHrefs} /></div>
+    {path !== "/login" && <div ref={header} className={styles.header} data-site-header><PublicHeader locale={locale} accountHref={accountHref} current={current} languageHrefs={languageHrefs} /></div>}
     <div id="site-content" tabIndex={-1}>{children}</div>
   </HeaderLinksContext.Provider>;
 }

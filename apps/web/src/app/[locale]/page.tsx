@@ -106,7 +106,7 @@ export default async function HomePage({ params }: HomePageProps) {
         "@id": `${siteUrl}/#organization`,
         name: seo.organizationName,
         url: siteUrl,
-        logo: seo.organizationLogo || `${siteUrl}/brand/topgsm-logo.jpg`,
+        logo: seo.organizationLogo || `${siteUrl}/brand/topgsm-mark.webp`,
         sameAs: seo.sameAs
       },
       {

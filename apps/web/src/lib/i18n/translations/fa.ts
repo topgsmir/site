@@ -23,7 +23,7 @@ export const fa = {
     orderNotifications: "اعلان‌های سفارش"
   },
   auth: {
-    title: "ورود به حساب کاربری",
+    title: "ورود و یا ثبت نام",
     description: "برای ادامه، ایمیل، نام کاربری یا شماره موبایل خود را وارد کنید.",
     fullName: "نام",
     identifier: "ایمیل، نام کاربری یا شماره موبایل",

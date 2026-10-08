@@ -1,10 +1,10 @@
 "use client";
 
 import type { Route } from "next";
+import { BrandLogo } from "@/components/BrandLogo";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { DesignIcon } from "@/components/DesignIcon";
 import Link from "next/link";
 import type {
   AdminProductSummary,
@@ -1342,12 +1342,7 @@ export function VendorManagement({
             href={`/${locale}`}
             aria-label="Top GSM"
           >
-            <span className="admin-brand-symbol">
-              <DesignIcon name="layers" />
-            </span>
-            <span dir="ltr" translate="no">
-              topgsm.
-            </span>
+            <BrandLogo tone="inverse" />
           </Link>
           <nav
             id="admin-panel-navigation"

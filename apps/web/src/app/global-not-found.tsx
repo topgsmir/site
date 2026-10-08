@@ -32,6 +32,8 @@ export default async function GlobalNotFound() {
   return <html lang="fa" dir="rtl" data-not-found-locale="fa" suppressHydrationWarning>
     <head>
       <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <link rel="icon" href="/brand/favicon.ico" />
+      <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
       <title>صفحه پیدا نشد | Top GSM</title>
       <script dangerouslySetInnerHTML={{ __html: localeScript }} />
     </head>

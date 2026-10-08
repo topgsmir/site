@@ -3,7 +3,9 @@
 import { ClipboardEvent, FormEvent, KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
 import type { Route } from "next";
 import Link from "next/link";
-import Image from "next/image";
+import { BrandLogo } from "@/components/BrandLogo";
+import { DesignIcon } from "@/components/DesignIcon";
+import styles from "./LoginForm.module.css";
 import { useRouter } from "next/navigation";
 import { safeInternalPath } from "@/lib/safe-navigation";
 import type { Locale } from "@/lib/i18n";
@@ -96,6 +98,7 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [methods, setMethods] = useState<AuthLoginMethods | null>(null);
   const [identifier, setIdentifier] = useState("");
   const [challengeId, setChallengeId] = useState("");
@@ -129,7 +132,7 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
       })
       .catch(() => { if (active) setError(copy.methodsError); });
     return () => { active = false; };
-  }, [copy.methodsError]);
+  }, [copy.methodsError, loadAttempt]);
 
   useEffect(() => {
     let active = true;
@@ -138,7 +141,7 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
       .then((rows) => { if (active) setCaptchaPolicies({ login: rows.find((row) => row.action === "login")?.captchaEnabled ?? false, register: rows.find((row) => row.action === "register")?.captchaEnabled ?? false }); })
       .catch(() => { if (active) setError(copy.methodsError); });
     return () => { active = false; };
-  }, [copy.methodsError]);
+  }, [copy.methodsError, loadAttempt]);
 
   const trimmedIdentifier = identifier.trim();
   const normalizedPhone = normalizePhoneInput(trimmedIdentifier);
@@ -215,6 +218,7 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
 
   const submit = useCallback(async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isSubmitting || !canSubmit) return;
     setIsSubmitting(true);
     setError("");
 
@@ -290,30 +294,34 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
       setCaptchaToken(null);
       setCaptchaReset((value) => value + 1);
     }
-  }, [captchaPolicies, captchaToken, challengeId, codeExpiresAt, copy.genericError, copy.invalidCredentials, fullName, locale, needsName, nextPath, normalizedPhone, otpDigits, phoneMode, requestCode, requestedPhone, router, trimmedIdentifier]);
+  }, [canSubmit, isSubmitting, captchaPolicies, captchaToken, challengeId, codeExpiresAt, copy.genericError, copy.invalidCredentials, fullName, locale, needsName, nextPath, normalizedPhone, otpDigits, phoneMode, requestCode, requestedPhone, router, trimmedIdentifier]);
 
 
 
   return (
-    <main className="auth-shell">
-      <section className="auth-panel" aria-labelledby="auth-title">
-        <Link className="auth-brand" href={`/${locale}`} aria-label="Top GSM home">
-          <span dir="ltr" translate="no">topgsm.</span>
-        </Link>
-        <div className="auth-heading">
-          <p className="eyebrow">Top GSM account</p>
+    <main className={styles.shell} dir={locale === "en" ? "ltr" : "rtl"}>
+      <section className={styles.panel} aria-labelledby="auth-title">
+        <div className={styles.topbar}>
+          <Link className={styles.back} href={`/${locale}`} aria-label={copy.backHome} title={copy.backHome}><DesignIcon name="arrow" /></Link>
+          <Link className={styles.brand} href={`/${locale}`} aria-label="Top GSM"><BrandLogo layout="stacked" eager /></Link>
+        </div>
+        <div className={styles.heading}>
           <h1 id="auth-title">{copy.title}</h1>
           <p>{copy.description}</p>
         </div>
 
-        <form className="auth-form" onSubmit={submit}>
-          <label>
-            <span>{copy.identifier}</span>
+        <form className={styles.form} onSubmit={submit} aria-busy={isSubmitting}>
+          <label className={styles.identifierField}>
+            <span className={styles.identifierLabel}>{copy.identifier}</span>
             <input
               name="identifier"
               value={identifier}
               type="text"
-              inputMode="text"
+              inputMode={phoneMode ? "tel" : "text"}
+              className={styles.identifier}
+              readOnly={isSubmitting || Boolean(challengeId)}
+              aria-invalid={methodUnavailable || (phoneMode && !phoneValid)}
+              aria-describedby={error ? "auth-error" : undefined}
               autoComplete="username"
               maxLength={254}
               dir="ltr"
@@ -332,23 +340,23 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
             />
           </label>
           {phoneMode ? challengeId ? <>
-            <div className="auth-code-meta">
+            <div className={styles.codeMeta}>
               <p>{copy.codeSentTo} <b dir="ltr">{requestedPhone}</b></p>
               <button type="button" onClick={() => { setChallengeId(""); setRequestedPhone(""); setCodeExpiresAt(0); setNeedsName(false); setFullName(""); setOtpDigits(emptyOtp()); setError(""); }}>{copy.changePhone}</button>
             </div>
             {needsName ? <>
-              <p className="auth-flow-hint">{copy.firstPhoneHint}</p>
+              <p className={styles.flowHint}>{copy.firstPhoneHint}</p>
               <label>
                 <span>{copy.fullName}</span>
                 <input name="fullName" type="text" autoComplete="name" minLength={2} maxLength={120} value={fullName} onChange={(event) => setFullName(event.target.value)} autoFocus required />
               </label>
-            </> : <label className="auth-code-label">
+            </> : <div className={styles.codeLabel}>
               <span id="otp-label">{copy.code}</span>
-              <div className="auth-code-inputs" role="group" aria-labelledby="otp-label" onPaste={handleOtpPaste} dir="ltr">
+              <div className={styles.codeInputs} role="group" aria-labelledby="otp-label" onPaste={handleOtpPaste} dir="ltr">
                 {otpDigits.map((digit, index) => <input
                   key={index}
                   ref={(element) => { otpInputRefs.current[index] = element; }}
-                  className="auth-code-input"
+                  className={styles.codeInput}
                   type="text"
                   inputMode="numeric"
                   autoComplete={index === 0 ? "one-time-code" : "off"}
@@ -358,45 +366,47 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
                   aria-label={`${copy.codeDigit} ${index + 1}`}
                   aria-invalid={Boolean(error)}
                   aria-describedby={error ? "auth-error" : undefined}
-                  onChange={(event) => updateOtp(index, event.target.value)}
+                  disabled={isSubmitting}
+                  onChange={(event) => { setError(""); updateOtp(index, event.target.value); }}
                   onKeyDown={(event) => handleOtpKeyDown(index, event)}
                   onFocus={(event) => event.currentTarget.select()}
                   autoFocus={index === 0}
                   required={codeSecondsLeft > 0}
                 />)}
               </div>
-            </label>}
-            <p className="auth-code-timer" role="status">{codeSecondsLeft ? `${copy.codeExpiresIn} ${codeTime}` : copy.codeExpired}</p>
-            <button className="auth-resend" type="button" disabled={isSubmitting} onClick={() => void resendCode()}>{copy.resendCode}</button>
+            </div>}
+            <p className={styles.codeTimer} role="status">{codeSecondsLeft ? `${copy.codeExpiresIn} ${codeTime}` : copy.codeExpired}</p>
+            <button className={styles.resend} type="button" disabled={isSubmitting} onClick={() => void resendCode()}>{copy.resendCode}</button>
           </> : null : trimmedIdentifier ? <>
           <label>
             <span>{copy.password}</span>
             <input
               name="password"
               type="password"
+              readOnly={isSubmitting}
               autoComplete="current-password"
               minLength={1}
               maxLength={128}
               required
             />
           </label>
-          {needsName && trimmedIdentifier.includes("@") ? <><p className="auth-flow-hint">{copy.firstEmailHint}</p><label><span>{copy.fullName}</span><input name="fullName" type="text" autoComplete="given-name" minLength={2} maxLength={100} /></label></> : null}</> : null}
+          {needsName && trimmedIdentifier.includes("@") ? <><p className={styles.flowHint}>{copy.firstEmailHint}</p><label><span>{copy.fullName}</span><input name="fullName" type="text" autoComplete="name" minLength={2} maxLength={100} required /></label></> : null}</> : null}
 
-          {phoneMode && !phoneValid ? <p className="auth-flow-hint" role="status">{copy.phoneInvalid}</p> : null}
-          {methodUnavailable ? <p className="auth-error" role="status">{copy.methodUnavailable}</p> : null}
+          {phoneMode && !phoneValid ? <p className={styles.flowHint} role="status">{copy.phoneInvalid}</p> : null}
+          {methodUnavailable ? <p className={styles.error} role="status">{copy.methodUnavailable}</p> : null}
           {captchaRequired ? <CaptchaWidget action={captchaAction} onTokenChange={setCaptchaToken} resetSignal={captchaReset} /> : null}
-          {error ? <p className="auth-error" id="auth-error" role="alert">{error}</p> : null}
+          {error ? <p className={styles.error} id="auth-error" role="alert">{error}</p> : null}
+          {!error && (methods === null || captchaPolicies === null) ? <p className={styles.loading} role="status">{locale === "fa" ? "در حال آماده‌سازی ورود…" : locale === "ar" ? "جارٍ تجهيز تسجيل الدخول…" : "Preparing sign in…"}</p> : null}
+          {error && (methods === null || captchaPolicies === null) ? <button className={styles.retry} type="button" onClick={() => { setError(""); setLoadAttempt((value) => value + 1); }}>{locale === "fa" ? "تلاش دوباره" : locale === "ar" ? "حاول مرة أخرى" : "Try again"}</button> : null}
 
-          <button className="auth-submit" type="submit" disabled={isSubmitting || !canSubmit} aria-busy={isSubmitting} data-loading={isSubmitting || undefined}>
+          <button className={styles.submit} type="submit" disabled={isSubmitting || !canSubmit} aria-busy={isSubmitting} data-loading={isSubmitting || undefined}>
             {isSubmitting ? copy.submitting : phoneMode ? challengeId && codeSecondsLeft ? needsName ? copy.loginAction : copy.verifyCode : copy.sendCode : copy.loginAction}
           </button>
         </form>
-        <Link className="auth-back" href={`/${locale}`}>{copy.backHome}</Link>
+        <footer className={styles.footer}>
+          <p>{locale === "fa" ? <>ورود شما به معنی پذیرش <Link href={`/${locale}/rules` as Route}>قوانین</Link> تاپ جی اس ام میباشد.</> : locale === "ar" ? <>تسجيل دخولك يعني قبول <Link href={`/${locale}/rules` as Route}>قواعد</Link> Top GSM.</> : <>By signing in, you accept the Top GSM <Link href={`/${locale}/rules` as Route}>rules</Link>.</>}</p>
+        </footer>
       </section>
-      <aside className="auth-art" aria-hidden="true">
-        <Image src="/images/repair-studio.png" alt="" fill sizes="50vw" priority />
-<div><small>TOP GSM</small><strong>{locale === "fa" ? "همراه شما، در هر قدم تعمیر." : locale === "ar" ? "معك في كل خطوة من الصيانة." : "A little support. A better repair."}</strong></div>
-      </aside>
     </main>
   );
 }
