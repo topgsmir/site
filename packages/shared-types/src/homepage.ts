@@ -14,6 +14,8 @@ export interface HomepageSection {
   description: string;
 }
 export interface HomepageContent {
+  /** Three independently linked campaigns in the homepage showcase. Older documents omit this field. */
+  heroAds?: HomepageCard[];
   hero: {
     eyebrow: string;
     title: string;

@@ -2,7 +2,7 @@
   "name": "topgsm-api",
   "private": true,
   "scripts": {
-    "dev": "pnpm run prisma:migrate && pnpm run prisma:seed:dev && nest start --watch",
+    "dev": "pnpm run prisma:generate && pnpm run prisma:migrate && pnpm run prisma:seed:dev && nest start --watch",
     "build": "nest build",
     "start:prod": "node scripts/start-production.mjs",
     "start": "nest start",

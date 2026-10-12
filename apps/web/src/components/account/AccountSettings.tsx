@@ -151,46 +151,71 @@ export function AccountSettings({ locale, user, onUpdated }: { locale: Locale; u
     }
   }
 
-  return <><section className={styles.card} aria-labelledby="profile-picture-title">
-    <h2 id="profile-picture-title">{pcPicture.title}</h2>
-    <div className={styles.pictureSettings}>
-      <UserAvatar className={styles.picturePreview} name={user.fullName} url={user.profilePictureUrl} size={64} />
-      <div className={styles.pictureControls}>
-        <input ref={pictureInput} className={styles.pictureInput} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => void changePicture(event)} tabIndex={-1} aria-hidden="true" />
-        <div className={styles.pictureButtons}>
-          <button type="button" disabled={pictureBusy || saving} onClick={() => pictureInput.current?.click()}>{pictureBusy ? pcPicture.busy : pcPicture.choose}</button>
-          {user.profilePictureUrl ? <button type="button" className={styles.removePicture} disabled={pictureBusy || saving} onClick={() => void removePicture()}>{pcPicture.remove}</button> : null}
+  return (
+    <div className={styles.settingsLayout}>
+      <section className={`${styles.card} ${styles.detailsCard}`} aria-labelledby="personal-details">
+        <h2 id="personal-details">{c.title}</h2>
+        <form onSubmit={(event) => void save(event)}>
+          <div className={styles.fields}>
+            <div className={styles.field}>
+              <label htmlFor="profile-name">{c.name}</label>
+              <input id="profile-name" name="fullName" value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" minLength={2} maxLength={100} required disabled={saving} />
+            </div>
+            <div className={styles.field}>
+              <label htmlFor="profile-email">{c.email}</label>
+              <input id="profile-email" name="email" type="email" dir="ltr" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" maxLength={254} disabled={saving} />
+            </div>
+            <div className={styles.field}>
+              <label htmlFor="profile-username">{c.username}</label>
+              <input id="profile-username" name="username" dir="ltr" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" pattern="[a-z0-9_]{3,32}" aria-describedby="profile-username-hint" disabled={saving} />
+              <p id="profile-username-hint" className={styles.hint}>{c.usernameHint}</p>
+            </div>
+            <div className={styles.actions}><button type="submit" disabled={saving || pictureBusy || !dirty}>{saving ? c.saving : c.save}</button></div>
+          </div>
+          {error ? <p className={styles.error} role="alert">{error}</p> : null}
+          {message ? <p className={styles.success} role="status">{message}</p> : null}
+        </form>
+      </section>
+      <section className={`${styles.card} ${styles.pictureCard}`} aria-labelledby="profile-picture-title">
+        <h2 id="profile-picture-title">{pcPicture.title}</h2>
+        <div className={styles.pictureSettings}>
+          <div className={styles.pictureIdentity}>
+            <UserAvatar className={styles.picturePreview} name={user.fullName} url={user.profilePictureUrl} size={80} />
+            <strong><bdi>{user.fullName}</bdi></strong>
+          </div>
+          <div className={styles.pictureControls}>
+            <input ref={pictureInput} className={styles.pictureInput} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => void changePicture(event)} tabIndex={-1} aria-hidden="true" />
+            <div className={styles.pictureButtons}>
+              <button type="button" disabled={pictureBusy || saving} onClick={() => pictureInput.current?.click()}>{pictureBusy ? pcPicture.busy : pcPicture.choose}</button>
+              {user.profilePictureUrl ? <button type="button" className={styles.removePicture} disabled={pictureBusy || saving} onClick={() => void removePicture()}>{pcPicture.remove}</button> : null}
+            </div>
+            <p className={styles.hint}>{pcPicture.hint}</p>
+            {pictureError ? <p className={styles.error} role="alert">{pictureError}</p> : null}
+            {pictureMessage ? <p className={styles.success} role="status">{pictureMessage}</p> : null}
+          </div>
         </div>
-        <p className={styles.hint}>{pcPicture.hint}</p>
-        {pictureError ? <p className={styles.error} role="alert">{pictureError}</p> : null}
-        {pictureMessage ? <p className={styles.success} role="status">{pictureMessage}</p> : null}
-      </div>
+      </section>
+      {pendingPhone ? (
+        <section className={`${styles.card} ${styles.phoneCard}`} aria-labelledby="pending-phone-title">
+          <h2 id="pending-phone-title">{pc.title}</h2>
+          <div className={styles.phoneContent}>
+            <p>{pc.pending}</p>
+            <p dir="ltr">{pendingPhone}</p>
+            {!challengeId ? (
+              <div className={styles.actions}><button type="button" disabled={phoneBusy} onClick={() => void requestPhoneCode()}>{phoneBusy ? pc.busy : pc.send}</button></div>
+            ) : (
+              <form onSubmit={(event) => void confirmPhone(event)}>
+                <div className={styles.field}>
+                  <label htmlFor="pending-phone-code">{pc.code}</label>
+                  <input id="pending-phone-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} minLength={6} required autoComplete="one-time-code" dir="ltr" value={phoneCode} onChange={(event) => setPhoneCode(event.target.value.replace(/\D/g, "").slice(0, 6))} disabled={phoneBusy} />
+                </div>
+                <div className={styles.actions}><button type="submit" disabled={phoneBusy || phoneCode.length !== 6}>{phoneBusy ? pc.busy : pc.confirm}</button></div>
+              </form>
+            )}
+            {phoneStatus ? <p role="status">{phoneStatus}</p> : null}
+          </div>
+        </section>
+      ) : phoneStatus ? <p className={styles.success} role="status">{phoneStatus}</p> : null}
     </div>
-  </section><section className={styles.card} aria-labelledby="personal-details">
-    <h2 id="personal-details">{c.title}</h2>
-    <form onSubmit={(event) => void save(event)}>
-      <div className={styles.field}><label htmlFor="profile-name">{c.name}</label>
-      <input id="profile-name" name="fullName" value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" minLength={2} maxLength={100} required disabled={saving} /></div>
-      <div className={styles.field}><label htmlFor="profile-email">{c.email}</label>
-      <input id="profile-email" name="email" type="email" dir="ltr" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" maxLength={254} disabled={saving} /></div>
-      <div className={styles.field}><label htmlFor="profile-username">{c.username}</label>
-      <div><input id="profile-username" name="username" dir="ltr" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" pattern="[a-z0-9_]{3,32}" aria-describedby="profile-username-hint" disabled={saving} />
-      <p id="profile-username-hint" className={styles.hint}>{c.usernameHint}</p></div></div>
-      {error ? <p className={styles.error} role="alert">{error}</p> : null}
-      {message ? <p className={styles.success} role="status">{message}</p> : null}
-      <div className={styles.actions}><button type="submit" disabled={saving || pictureBusy || !dirty}>{saving ? c.saving : c.save}</button></div>
-    </form>
-  </section>
-  {pendingPhone ? <section className={styles.card} aria-labelledby="pending-phone-title">
-    <h2 id="pending-phone-title">{pc.title}</h2>
-    <p>{pc.pending}</p>
-    <p dir="ltr">{pendingPhone}</p>
-    {!challengeId ? <div className={styles.actions}><button type="button" disabled={phoneBusy} onClick={() => void requestPhoneCode()}>{phoneBusy ? pc.busy : pc.send}</button></div> :
-      <form onSubmit={(event) => void confirmPhone(event)}>
-        <div className={styles.field}><label htmlFor="pending-phone-code">{pc.code}</label>
-          <input id="pending-phone-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} minLength={6} required autoComplete="one-time-code" dir="ltr" value={phoneCode} onChange={(event) => setPhoneCode(event.target.value.replace(/\D/g, "").slice(0, 6))} disabled={phoneBusy} /></div>
-        <div className={styles.actions}><button type="submit" disabled={phoneBusy || phoneCode.length !== 6}>{phoneBusy ? pc.busy : pc.confirm}</button></div>
-      </form>}
-    {phoneStatus ? <p role="status">{phoneStatus}</p> : null}
-  </section> : phoneStatus ? <p role="status">{phoneStatus}</p> : null}</>;
+  );
 }

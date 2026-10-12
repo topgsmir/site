@@ -54,7 +54,7 @@ export function AccountPanel({
   );
 
   return (
-    <div className={styles.shell} ref={shell}>
+    <div className={`${styles.shell} ${view === "wallet" || view === "settings" ? styles.compactView : ""}`} data-account-page ref={shell}>
       <a className="skip-link" href="#account-content">
         {w.overview}
       </a>

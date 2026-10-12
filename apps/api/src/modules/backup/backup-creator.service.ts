@@ -206,7 +206,7 @@ export { MEDIA_BACKUP_LOCK } from "../media/media-backup-lock";
 function homepageUploadPaths(content: unknown): string[] {
   const object = (value: unknown): Record<string, unknown> => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
   const document = object(content);
-  const cards = [document.shortcuts, object(document.collections).items, object(document.offers).items]
+  const cards = [document.heroAds, document.shortcuts, object(document.collections).items, object(document.offers).items]
     .flatMap((items) => Array.isArray(items) ? items : []);
   return [object(document.hero).image, ...cards.map((card) => object(card).image)].flatMap((src) => {
     if (typeof src !== "string" || !src.startsWith("/homepage-images/")) return [];

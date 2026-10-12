@@ -1,35 +1,201 @@
-.card { overflow: hidden; border: 1px solid var(--color-dashboard-rule); border-radius: 14px; background: var(--color-dashboard-surface); }
-.card h2 { margin: 0; padding: 25px 28px; border-bottom: 1px solid var(--color-dashboard-rule); font-size: 1.05rem; font-weight: 600; }
-.card form { display: grid; gap: 28px; padding: 28px; }
-.field { display: grid; grid-template-columns: 155px minmax(0, 1fr); align-items: start; gap: 24px; }
-.field > div { display: grid; gap: 10px; }
-.card label { padding-block: 13px; font-size: .82rem; font-weight: 550; }
-.card input { width: 100%; min-height: 48px; padding: 11px 14px; border: 1px solid var(--color-dashboard-rule); border-radius: 8px; color: var(--color-dashboard-ink); background: var(--color-dashboard-paper); font: inherit; font-size: .88rem; transition: border-color 180ms ease, background-color 180ms ease; }
+.settingsLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 272px;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-dashboard-rule);
+  border-radius: var(--radius-dashboard-panel);
+  background: var(--color-dashboard-surface);
+  box-shadow: var(--shadow-dashboard-card);
+}
+
+.card h2 {
+  margin: 0;
+  padding: 16px 20px 13px;
+  border-bottom: 1px solid var(--color-dashboard-rule);
+  font-size: 1rem;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.detailsCard { grid-column: 1; }
+.pictureCard {
+  grid-column: 2;
+  color: var(--color-customer-on-navy);
+  border-color: var(--color-customer-navy);
+  background:
+    radial-gradient(circle at 0 0, color-mix(in srgb, var(--color-brand-blue) 24%, transparent), transparent 58%),
+    var(--color-customer-navy);
+}
+.pictureCard h2 { border-bottom-color: color-mix(in srgb, var(--color-customer-on-navy) 16%, transparent); }
+.phoneCard { grid-column: 1 / -1; }
+
+.detailsCard form {
+  display: grid;
+  gap: 12px;
+  padding: 17px 20px 20px;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+  align-items: start;
+}
+
+.field {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.field label {
+  color: var(--color-dashboard-ink-soft);
+  font-size: .8rem;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.card input:not([type="file"]) {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid var(--color-dashboard-rule-strong);
+  border-radius: var(--radius-dashboard-control);
+  color: var(--color-dashboard-ink);
+  background: var(--color-dashboard-paper);
+  font: inherit;
+  font-size: .875rem;
+  transition: border-color var(--dur-dashboard-short) var(--ease-dashboard-out), background-color var(--dur-dashboard-short) var(--ease-dashboard-out);
+}
+
 .card input:hover { border-color: var(--color-dashboard-muted); }
-.card input:focus { background: var(--color-dashboard-surface); border-color: var(--color-dashboard-accent); }
+.card input:focus { border-color: var(--color-dashboard-accent); background: var(--color-dashboard-surface); }
 .card input[dir="ltr"] { text-align: left; }
-.hint { margin: 0; max-width: 52ch; color: var(--color-dashboard-muted); font-size: .73rem; line-height: 1.85; }
-.error, .success { margin: 0; padding: 14px 16px; border-radius: 8px; font-size: .82rem; line-height: 1.7; }
+.card :is(input, button):focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
+
+.hint {
+  margin: 0;
+  color: var(--color-dashboard-muted);
+  font-size: .73rem;
+  line-height: 1.55;
+}
+
+.error, .success {
+  margin: 0;
+  padding: 9px 11px;
+  border-radius: var(--radius-dashboard-control);
+  font-size: .8rem;
+  line-height: 1.55;
+}
+
 .error { color: var(--color-dashboard-error); background: var(--color-dashboard-error-soft); }
 .success { color: var(--color-dashboard-success); background: var(--color-dashboard-success-soft); }
-.actions { display: flex; justify-content: flex-end; padding-top: 24px; border-top: 1px solid var(--color-dashboard-rule); }
-.card button { min-height: 46px; padding: 10px 23px; border: 1px solid transparent; border-radius: 8px; color: var(--color-dashboard-accent-ink); background: var(--color-dashboard-accent); font: inherit; font-size: .82rem; font-weight: 600; cursor: pointer; }
-.card button:hover:not(:disabled) { background: var(--color-dashboard-focus); }
-.card button:disabled { opacity: .5; cursor: not-allowed; }
-@media (max-width: 1050px) { .field { grid-template-columns: minmax(0, 1fr); gap: 8px; } .card label { padding: 0; } }
-@media (max-width: 600px) { .card h2 { padding: 20px; } .card form { gap: 22px; padding: 22px 20px; } .actions button { width: 100%; } }
-@media (prefers-reduced-motion: reduce) { .card input { transition: none; } }
 
-.card { border-top: 3px solid var(--color-customer-teal); }
-.card h2 { padding: 16px; background: var(--color-customer-teal-soft); }
-.card form { padding: 16px; gap: 16px; }
-.actions { padding-top: 16px; }
-.pictureSettings { display: flex; align-items: center; gap: 16px; padding: 16px; }
-.picturePreview { display: grid; flex: none; place-items: center; width: 64px; height: 64px; overflow: hidden; border-radius: 16px; color: var(--color-customer-tile-ink); background: var(--color-customer-pink); font-weight: 600; }
+.actions {
+  display: flex;
+  align-self: end;
+  justify-content: flex-end;
+}
+
+.card button {
+  min-height: 42px;
+  min-width: 132px;
+  padding: 9px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-dashboard-control);
+  color: var(--color-dashboard-accent-ink);
+  background: var(--color-dashboard-accent);
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform var(--dur-dashboard-short) var(--ease-dashboard-out), background-color var(--dur-dashboard-short) var(--ease-dashboard-out);
+}
+
+.card button:hover:not(:disabled) { background: var(--color-dashboard-accent-strong); transform: translateY(-1px); }
+.card button:active:not(:disabled) { transform: translateY(0); }
+.card button:disabled { opacity: .5; cursor: not-allowed; }
+
+.pictureSettings {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  height: calc(100% - 54px);
+  padding: 18px 20px 20px;
+}
+
+.pictureIdentity { display: flex; flex-direction: column; align-items: start; gap: 9px; min-width: 0; }
+.pictureIdentity strong { font-size: .9rem; font-weight: 650; overflow-wrap: anywhere; }
+
+.picturePreview {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 80px;
+  height: 80px;
+  overflow: hidden;
+  border: 4px solid color-mix(in srgb, var(--color-customer-on-navy) 20%, transparent);
+  border-radius: 50%;
+  color: var(--color-customer-navy);
+  background: var(--color-customer-blue-soft);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-customer-on-navy) 16%, transparent);
+  font-size: 1.25rem;
+  font-weight: 750;
+}
+
 .picturePreview img { width: 100%; height: 100%; object-fit: cover; }
 .pictureControls { display: grid; gap: 8px; min-width: 0; }
 .pictureInput { display: none; }
 .pictureButtons { display: flex; flex-wrap: wrap; gap: 8px; }
-.pictureButtons button { min-height: 40px; padding: 8px 14px; }
-.pictureButtons .removePicture { color: var(--color-dashboard-ink); background: transparent; border-color: var(--color-dashboard-rule); }
-.pictureButtons .removePicture:hover:not(:disabled) { background: var(--color-dashboard-paper); }
+.pictureButtons button { min-width: 0; min-height: 38px; padding: 7px 13px; color: var(--color-customer-navy); background: var(--color-dashboard-surface); }
+.pictureButtons button:hover:not(:disabled) { background: var(--color-brand-off-white); }
+.pictureButtons .removePicture { color: var(--color-customer-on-navy); background: transparent; border-color: color-mix(in srgb, var(--color-customer-on-navy) 45%, transparent); }
+.pictureButtons .removePicture:hover:not(:disabled) { background: color-mix(in srgb, var(--color-customer-on-navy) 12%, transparent); }
+.pictureCard .hint { color: var(--color-customer-on-navy-muted); }
+.pictureCard .error { color: var(--color-brand-off-white); background: var(--color-dashboard-error); }
+.pictureCard .success { color: var(--color-brand-off-white); background: var(--color-dashboard-success); }
+.pictureCard :is(input, button):focus-visible { outline-color: var(--color-customer-on-navy); }
+
+.phoneContent {
+  display: grid;
+  gap: 10px;
+  padding: 14px 20px 18px;
+  font-size: .85rem;
+}
+
+.phoneContent > p { margin: 0; }
+.phoneContent form { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
+.phoneContent form .field { width: min(240px, 100%); }
+
+@media (max-width: 1050px) {
+  .settingsLayout { grid-template-columns: 1fr; }
+  .detailsCard, .pictureCard, .phoneCard { grid-column: 1; }
+  .pictureSettings { flex-direction: row; align-items: center; height: auto; }
+  .pictureIdentity { flex-direction: row; align-items: center; gap: 12px; }
+  .picturePreview { width: 60px; height: 60px; }
+}
+
+@media (max-width: 600px) {
+  .settingsLayout { gap: 12px; }
+  .fields { grid-template-columns: 1fr; gap: 12px; }
+  .detailsCard form { padding: 14px; }
+  .card h2 { padding: 12px 14px; }
+  .actions button { width: 100%; }
+  .pictureSettings { align-items: start; gap: 12px; padding: 14px; }
+  .pictureIdentity { flex: 0 0 auto; }
+  .pictureIdentity strong { display: none; }
+  .pictureControls { flex: 1; }
+  .picturePreview { width: 54px; height: 54px; font-size: 1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card :is(input, button) { transition: none; }
+}

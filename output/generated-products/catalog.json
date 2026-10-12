@@ -1,0 +1,82 @@
+[
+  {
+    "slug": "usbc-wall-charger",
+    "title": "شارژر دیواری USB-C",
+    "description": "شارژر دیواری USB-C با بدنه سفید و طراحی جمع‌وجور.",
+    "priceToman": "350000",
+    "image": "usbc-wall-charger.webp",
+    "generatedSource": "exec-fb8d2227-7e03-489c-987d-dd20dd662603.png"
+  },
+  {
+    "slug": "braided-usbc-cable",
+    "title": "کابل USB-C به USB-C با روکش بافته",
+    "description": "کابل USB-C به USB-C با روکش بافته و رنگ خاکستری.",
+    "priceToman": "180000",
+    "image": "braided-usbc-cable.webp",
+    "generatedSource": "exec-0c700211-df48-4cf9-9815-f3b84c05412a.png"
+  },
+  {
+    "slug": "magnetic-power-bank",
+    "title": "پاوربانک مغناطیسی بی‌سیم",
+    "description": "پاوربانک مغناطیسی بی‌سیم با بدنه مشکی و طراحی کم‌حجم.",
+    "priceToman": "950000",
+    "image": "magnetic-power-bank.webp",
+    "generatedSource": "exec-d04b508b-0c30-4ba5-8c8b-134ed1c9cc9d.png"
+  },
+  {
+    "slug": "wireless-earbuds",
+    "title": "هدفون بی‌سیم داخل گوش",
+    "description": "هدفون بی‌سیم داخل گوش با کیس شارژ و رنگ سفید.",
+    "priceToman": "1250000",
+    "image": "wireless-earbuds.webp",
+    "generatedSource": "exec-a70decb9-a7fb-4870-868c-172888d36cb5.png"
+  },
+  {
+    "slug": "portable-bluetooth-speaker",
+    "title": "اسپیکر بلوتوثی قابل حمل",
+    "description": "اسپیکر بلوتوثی قابل حمل با روکش پارچه‌ای سرمه‌ای.",
+    "priceToman": "1400000",
+    "image": "portable-bluetooth-speaker.webp",
+    "generatedSource": "exec-ad4ec128-6a23-4368-84ac-b7bba39338a7.png"
+  },
+  {
+    "slug": "aluminum-phone-stand",
+    "title": "پایه رومیزی آلومینیومی موبایل",
+    "description": "پایه رومیزی آلومینیومی موبایل با زاویه قابل تنظیم.",
+    "priceToman": "420000",
+    "image": "aluminum-phone-stand.webp",
+    "generatedSource": "exec-af98ee6e-752d-4637-89d9-d8f79f9c1229.png"
+  },
+  {
+    "slug": "clear-protective-case",
+    "title": "قاب محافظ شفاف موبایل",
+    "description": "قاب محافظ شفاف با گوشه‌های تقویت‌شده. سازگاری با مدل گوشی باید پیش از خرید بررسی شود.",
+    "priceToman": "220000",
+    "image": "clear-protective-case.webp",
+    "generatedSource": "exec-149d2b47-beec-432b-a9d6-dfcd23fca9fb.png"
+  },
+  {
+    "slug": "tempered-glass-protector",
+    "title": "محافظ صفحه شیشه‌ای موبایل",
+    "description": "محافظ صفحه شیشه‌ای شفاف. سازگاری با مدل گوشی باید پیش از خرید بررسی شود.",
+    "priceToman": "160000",
+    "image": "tempered-glass-protector.webp",
+    "generatedSource": "exec-8cfc3d81-550b-4878-a776-8858301fe736.png"
+  },
+  {
+    "slug": "car-phone-mount",
+    "title": "پایه مغناطیسی موبایل خودرو",
+    "description": "پایه مغناطیسی موبایل خودرو با بازوی قابل تنظیم و پایه داشبورد.",
+    "priceToman": "390000",
+    "image": "car-phone-mount.webp",
+    "generatedSource": "exec-3da3f39b-f106-4794-b5a4-2851746f47ab.png"
+  },
+  {
+    "slug": "wireless-charging-pad",
+    "title": "پد شارژ بی‌سیم",
+    "description": "پد شارژ بی‌سیم دایره‌ای با کابل USB-C.",
+    "priceToman": "650000",
+    "image": "wireless-charging-pad.webp",
+    "generatedSource": "exec-e6458bc3-f239-4e19-8108-d21d1decdd7c.png"
+  }
+]

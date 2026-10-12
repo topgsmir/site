@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Top GSM — corporate section art directions</title>
+  <style>
+    @font-face { font-family: Vazirmatn; src: url("./vazirmatn.woff2") format("woff2"); font-style: normal; font-weight: 100 900; }
+    @font-face { font-family: Outfit; src: url("./outfit.woff2") format("woff2"); font-style: normal; font-weight: 100 900; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body { padding: 30px; background: #f3f6fb; color: #082b52; font-family: Vazirmatn, Tahoma, sans-serif; }
+    .board { display: grid; gap: 38px; width: 1400px; margin-inline: auto; }
+    .study { width: 1400px; }
+    .study-label { display: flex; align-items: center; justify-content: space-between; height: 32px; padding-inline: 5px; color: #536b80; font: 600 14px Outfit, sans-serif; letter-spacing: .07em; direction: ltr; }
+    .study-label strong { color: #143d63; font-weight: 700; }
+    .panel {
+      --surface: #062b55; --ink: #f6f9ff; --muted: #bed0e3; --accent: #8bd5fb;
+      --rule: #8bd5fb66; --button: #8bd5fb; --button-ink: #062b55;
+      direction: ltr; display: grid; grid-template-columns: 620px 780px;
+      width: 1400px; height: 390px; overflow: hidden; border-radius: 16px;
+      background: var(--surface); box-shadow: 0 2px 10px #092d4e0d;
+    }
+    .art { position: relative; min-width: 0; overflow: hidden; background-image: url("./styles-contact-sheet.png"); background-repeat: no-repeat; background-size: 3250px 1300px; background-position: var(--art-x) var(--art-y); filter: var(--art-filter, none); }
+    .art::after { position: absolute; inset: 0; background: linear-gradient(90deg, transparent 64%, var(--surface) 100%); content: ""; }
+    .copy { direction: rtl; position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; min-width: 0; padding: 34px 54px 32px 52px; color: var(--ink); }
+    .eyebrow { display: flex; align-items: center; gap: 12px; margin: 0; color: var(--accent); font-size: 14px; font-weight: 650; }
+    .eyebrow bdi { padding-inline-start: 12px; border-inline-start: 1px solid var(--rule); font: 700 13px Outfit, sans-serif; letter-spacing: .08em; }
+    h2 { max-width: 25ch; margin: 17px 0 0; font-size: 31px; line-height: 1.55; font-weight: 750; letter-spacing: -.02em; }
+    .description { max-width: 55ch; margin: 11px 0 0; color: var(--muted); font-size: 16px; line-height: 1.95; }
+    .services { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 17px 0 0; padding: 0; list-style: none; color: var(--ink); font-size: 13px; font-weight: 600; }
+    .services li:not(:first-child)::before { padding-inline-end: 16px; color: var(--accent); content: "•"; }
+    .cta { display: inline-flex; align-items: center; gap: 10px; min-height: 39px; margin-top: 22px; padding: 7px 13px; border-radius: 6px; color: var(--button-ink); background: var(--button); font-size: 14px; font-weight: 750; text-decoration: none; }
+    .cta span { font-size: 20px; line-height: 1; }
+    .panel[data-style="02"] { --art-x: -665px; --art-y: -130px; --art-filter: saturate(.9) contrast(1.08); }
+    .panel[data-style="03"] { --surface: #f0ebdf; --ink: #092e55; --muted: #3c5870; --accent: #0c5e9a; --rule: #54779577; --button: #082b52; --button-ink: #fff; --art-x: -1315px; --art-y: -130px; --art-filter: saturate(.88) contrast(1.07); }
+    .panel[data-style="05"] { --surface: #eee8da; --ink: #233e54; --muted: #536878; --accent: #175c8e; --rule: #5c798977; --button: #123d64; --button-ink: #fff; --art-x: -2615px; --art-y: -130px; --art-filter: saturate(.72) contrast(1.08); }
+    .panel[data-style="06"] { --surface: #ebe6d8; --ink: #072e56; --muted: #465f70; --accent: #0e6395; --rule: #54779577; --button: #082b52; --button-ink: #fff; --art-x: -15px; --art-y: -780px; --art-filter: saturate(.9) contrast(1.02); }
+    .panel[data-style="08"] { --surface: #103959; --ink: #f6f9ff; --muted: #c6d6e2; --accent: #8bd5fb; --rule: #a5d9f177; --button: #8bd5fb; --button-ink: #062b55; --art-x: -1315px; --art-y: -780px; --art-filter: saturate(.9) contrast(1.13); }
+    .panel[data-style="09"] { --surface: #f4f1e9; --ink: #082b52; --muted: #4b6374; --accent: #0e6395; --rule: #54779577; --button: #082b52; --button-ink: #fff; --art-x: -1965px; --art-y: -780px; --art-filter: saturate(.82) contrast(1.04); }
+    body.grid { padding: 24px; }
+    body.grid .board { grid-template-columns: repeat(2, 1400px); gap: 28px; width: 2828px; }
+  </style>
+</head>
+<body>
+  <main class="board" id="board"></main>
+  <script>
+    const styles = [
+      ["02", "TECHNICAL BLUEPRINT"],
+      ["03", "TWO-INK RISOGRAPH"],
+      ["05", "SCIENTIFIC ENGRAVING"],
+      ["06", "WOODBLOCK PRINT"],
+      ["08", "NEWSPAPER HALFTONE"],
+      ["09", "CONTINUOUS LINE"]
+    ];
+    const params = new URLSearchParams(location.search);
+    const selected = params.get("style");
+    if (params.has("grid")) document.body.classList.add("grid");
+    document.getElementById("board").innerHTML = styles.filter(([id]) => !selected || id === selected).map(([id, label]) => `
+      <section class="study" aria-label="Concept ${id}">
+        <header class="study-label"><strong>${id}</strong><span>${label}</span></header>
+        <div class="panel" data-style="${id}">
+          <div class="art" aria-hidden="true"></div>
+          <div class="copy">
+            <p class="eyebrow"><bdi dir="ltr">TOP GSM</bdi><span>همکاری با کسب‌وکارها</span></p>
+            <h2>همکاری فنی برای مجموعه شما</h2>
+            <p class="description">نیاز تیم شما را بررسی می‌کنیم و برای دسترسی به فایل، آموزش و خدمات تخصصی، مسیر همکاری روشنی پیشنهاد می‌دهیم.</p>
+            <ul class="services"><li>فایل و منابع فنی</li><li>آموزش کاربردی</li><li>ارتباط با کارشناس</li></ul>
+            <a class="cta" href="#" tabindex="-1">درخواست همکاری <span aria-hidden="true">←</span></a>
+          </div>
+        </div>
+      </section>
+    `).join("");
+  </script>
+</body>
+</html>

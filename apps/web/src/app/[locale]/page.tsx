@@ -3,6 +3,7 @@ import type { HomepageDocument, HomepageStory } from "@topgsm/shared-types";
 import { notFound } from "next/navigation";
 import {
   LandingPage,
+  HOMEPAGE_LATEST_PRODUCT_LIMIT,
   type HomepageExpert,
   type HomepageProduct
 } from "@/components/landing/LandingPage";
@@ -120,7 +121,7 @@ export default async function HomePage({ params }: HomePageProps) {
       {
         "@type": "ItemList",
         name: metadataByLocale[locale].title,
-        itemListElement: products.items.slice(0, 8).map((product, index) => ({
+        itemListElement: products.items.slice(0, HOMEPAGE_LATEST_PRODUCT_LIMIT).map((product, index) => ({
           "@type": "ListItem",
           position: index + 1,
           url: `${siteUrl}/${locale}/products/${product.slug ?? product.id}`,

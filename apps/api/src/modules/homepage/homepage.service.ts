@@ -13,7 +13,7 @@ function hasUnsafeUrlCharacters(value: string) {
 
 /** No HTML, arbitrary CSS, remote image fetching, or executable URL schemes. */
 export function validateHomepageLinks(content: HomepageContent) {
-  const cards = [...content.shortcuts, ...content.collections.items, ...content.offers.items];
+  const cards = [...(content.heroAds ?? []), ...content.shortcuts, ...content.collections.items, ...content.offers.items];
   const links = [...cards, content.hero.primary, content.hero.secondary, content.about.link, ...content.footer.links];
   for (const { href } of links) {
     if (hasUnsafeUrlCharacters(href) || /%0[ad]|%5c/i.test(href)) throw new BadRequestException("Invalid destination URL");

@@ -5,6 +5,7 @@ import { api } from "@/lib/api/client";
 import { formatCurrencyAmount } from "@/lib/currency";
 import { safePaymentHref } from "@/lib/safe-navigation";
 import type { Locale } from "@/lib/i18n";
+import { AccountIcon } from "./AccountIcon";
 import styles from "./WalletPanel.module.css";
 
 type Balance = { balance: string; currency: "TOMAN"; withdrawalsEnabled: boolean };
@@ -76,19 +77,64 @@ export function WalletPanel({ locale }: { locale: Locale }) {
     } catch { setError(c.error); setBusy(false); }
   }
 
-  return <div className={styles.wallet} aria-busy={loading || busy}>
-    {error ? <div className={styles.error} role="alert">{error} <button type="button" onClick={() => void load()}>{c.retry}</button></div> : null}
-    <section className={styles.summary} aria-label={c.balance}>
-      <div><span>{c.balance}</span><strong>{balance ? formatCurrencyAmount(balance.balance, "TOMAN", locale) : loading ? c.loading : "—"} <small>{c.unit}</small></strong></div>
-      <p>{c.withdrawal}</p>
-    </section>
-    <section className={styles.section} aria-labelledby="wallet-topup-title"><h2 id="wallet-topup-title">{c.topup}</h2>
-      {methods.length ? <form className={styles.form} onSubmit={(event) => void topup(event)}><label>{c.amount}<input type="text" inputMode="numeric" value={amount} onChange={(event) => setAmount(event.target.value)} pattern="[1-9][0-9]{3,8}" required /></label><label>{c.provider}<select value={provider} onChange={(event) => setProvider(event.target.value)}>{methods.map((method) => <option key={method.code} value={method.code}>{method.name}</option>)}</select></label><button type="submit" disabled={busy}>{c.pay}</button></form> : !loading ? <p>{c.noMethod}</p> : null}
-    </section>
-    <section className={styles.section} aria-labelledby="wallet-transactions-title"><h2 id="wallet-transactions-title">{c.transactions}</h2>
-      <div className={styles.list}>{page.items.map((entry) => <div className={styles.row} key={entry.id}><div><strong>{entry.reason}</strong><small>{new Date(entry.createdAt).toLocaleString(locale)} · {entry.referenceType} <bdi>{entry.referenceId}</bdi></small></div><div className={entry.amount.startsWith("-") ? styles.debit : styles.credit}><strong><bdi>{entry.amount.startsWith("-") ? "" : "+"}{formatCurrencyAmount(entry.amount, "TOMAN", locale)}</bdi> {c.unit}</strong><small>{formatCurrencyAmount(entry.balanceAfter, "TOMAN", locale)} {c.unit}</small></div></div>)}</div>
-      {!loading && !page.items.length ? <p className={styles.empty}>{c.empty}</p> : null}
-      {page.nextCursor ? <button className={styles.more} type="button" disabled={busy} onClick={() => void loadMore()}>{c.more}</button> : null}
-    </section>
-  </div>;
+  return (
+    <div className={styles.wallet} aria-busy={loading || busy}>
+      {error ? (
+        <div className={styles.error} role="alert">
+          {error} <button type="button" onClick={() => void load()}>{c.retry}</button>
+        </div>
+      ) : null}
+      <section className={styles.summary} aria-label={c.balance}>
+        <div>
+          <span className={styles.summaryLabel}><AccountIcon name="wallet" />{c.balance}</span>
+          <strong className={styles.balance} aria-live="polite">
+            <bdi>{balance ? formatCurrencyAmount(balance.balance, "TOMAN", locale) : loading ? c.loading : "—"}</bdi>
+            {balance ? <small>{c.unit}</small> : null}
+          </strong>
+        </div>
+        {balance && !balance.withdrawalsEnabled ? <p className={styles.withdrawal}>{c.withdrawal}</p> : null}
+      </section>
+      <section className={styles.section} aria-labelledby="wallet-topup-title">
+        <div className={styles.sectionHeading}>
+          <h2 id="wallet-topup-title">{c.topup}</h2>
+          <AccountIcon name="wallet" />
+        </div>
+        {methods.length ? (
+          <form className={styles.form} onSubmit={(event) => void topup(event)}>
+            <label>{c.amount}
+              <input type="text" inputMode="numeric" value={amount} onChange={(event) => setAmount(event.target.value)} pattern="(?:[1-9][0-9]{3,7}|100000000)" maxLength={9} required />
+            </label>
+            <label>{c.provider}
+              <select value={provider} onChange={(event) => setProvider(event.target.value)}>
+                {methods.map((method) => <option key={method.code} value={method.code}>{method.name}</option>)}
+              </select>
+            </label>
+            <button type="submit" disabled={busy}>{c.pay}<AccountIcon name="arrow" /></button>
+          </form>
+        ) : !loading ? <p className={styles.unavailable}>{c.noMethod}</p> : null}
+      </section>
+      <section className={`${styles.section} ${styles.transactions}`} aria-labelledby="wallet-transactions-title">
+        <div className={styles.sectionHeading}>
+          <h2 id="wallet-transactions-title">{c.transactions}</h2>
+          <AccountIcon name="orders" />
+        </div>
+        <div className={styles.list}>
+          {page.items.map((entry) => (
+            <div className={styles.row} key={entry.id}>
+              <div>
+                <strong>{entry.reason}</strong>
+                <small>{new Date(entry.createdAt).toLocaleString(locale)} · {entry.referenceType} <bdi>{entry.referenceId}</bdi></small>
+              </div>
+              <div className={entry.amount.startsWith("-") ? styles.debit : styles.credit}>
+                <strong><bdi>{entry.amount.startsWith("-") ? "" : "+"}{formatCurrencyAmount(entry.amount, "TOMAN", locale)}</bdi> {c.unit}</strong>
+                <small>{formatCurrencyAmount(entry.balanceAfter, "TOMAN", locale)} {c.unit}</small>
+              </div>
+            </div>
+          ))}
+        </div>
+        {!loading && !page.items.length ? <p className={styles.empty}><AccountIcon name="orders" />{c.empty}</p> : null}
+        {page.nextCursor ? <button className={styles.more} type="button" disabled={busy} onClick={() => void loadMore()}>{c.more}</button> : null}
+      </section>
+    </div>
+  );
 }

@@ -19,7 +19,7 @@ export function ExpertGridPreview({ count = 20, locale = "fa" }: { count?: numbe
   return <div className={styles.page} dir={locale === "en" ? "ltr" : "rtl"}>
     <section className={`${styles.section} ${styles.expertsSection}`} id="agents" aria-labelledby="experts-title">
       <div className={styles.expertsHeading}>
-        <h2 id="experts-title">ستاره‌های ایران</h2>
+        <h2 id="experts-title">متخصصین مجموعه</h2>
         <div className={styles.expertsIntro}>
           <p>تخصص‌های متفاوت، یک هدف مشترک: حل مشکل شما.</p>
           <a className={styles.expertsSupport} href="#support">ارتباط با پشتیبانی<DesignIcon name="arrow" /></a>

@@ -44,16 +44,16 @@ async function fixture(t: TestContext, uploads: string[], homepages: unknown[], 
 
 describe("backup upload inventory", () => {
   it("round-trips persisted homepage images, all stories and existing media without copying unrelated files", async (t) => {
-    const [hero, shortcut, collection, offer, banner] = Array.from({ length: 5 }, () => `${randomUUID()}.webp`);
+    const [hero, heroAd, shortcut, collection, offer, banner] = Array.from({ length: 6 }, () => `${randomUUID()}.webp`);
     const url = (name: string) => `/homepage-images/${name}`;
     const legacy = ["blog/asset.webp", "products/asset.webp", "profiles/asset.webp", "stories/disabled/asset.webp"];
     const homepages = [
-      { hero: { image: url(hero) }, shortcuts: [{ image: url(shortcut) }], collections: { items: [{ image: url(collection) }] }, offers: { items: [{ image: url(offer) }] } },
+      { hero: { image: url(hero) }, heroAds: [{ image: url(heroAd) }], shortcuts: [{ image: url(shortcut) }], collections: { items: [{ image: url(collection) }] }, offers: { items: [{ image: url(offer) }] } },
       { hero: { image: url(hero) }, shortcuts: [{ image: "/images/bundled.png" }] },
       null
     ];
     const { root, paths, archive, calls, creator } = await fixture(t, legacy, homepages, undefined, [{ banner: { image: url(banner) } }]);
-    const expected = [...legacy, ...[hero, shortcut, collection, offer, banner].map((name) => `homepage/${name}`)].sort();
+    const expected = [...legacy, ...[hero, heroAd, shortcut, collection, offer, banner].map((name) => `homepage/${name}`)].sort();
     for (const path of [...expected, "homepage/unreferenced.webp", "unrelated.txt"]) {
       await mkdir(dirname(join(paths.mediaRoot, path)), { recursive: true });
       await writeFile(join(paths.mediaRoot, path), `bytes:${path}`);
@@ -65,7 +65,7 @@ describe("backup upload inventory", () => {
     await archive.decrypt(backup.archivePath, decrypted);
     assert.deepEqual(await archive.extractPlainArchive(decrypted, restored), backup.manifest);
     for (const path of expected) assert.equal(await readFile(join(restored, "uploads", path), "utf8"), `bytes:${path}`);
-    assert.deepEqual((await readdir(join(restored, "uploads", "homepage"))).sort(), [hero, shortcut, collection, offer, banner].sort());
+    assert.deepEqual((await readdir(join(restored, "uploads", "homepage"))).sort(), [hero, heroAd, shortcut, collection, offer, banner].sort());
     const lock = calls.findIndex((sql) => sql === "SELECT pg_advisory_lock($1)");
     const begin = calls.findIndex((sql) => sql.startsWith("BEGIN"));
     const snapshot = calls.findIndex((sql) => sql.includes("pg_export_snapshot"));

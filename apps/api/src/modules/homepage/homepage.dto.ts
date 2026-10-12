@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsObject, IsString, Matches, Max, MaxLength, Min, ValidateNested } from "class-validator";
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, Matches, Max, MaxLength, Min, ValidateNested } from "class-validator";
 
 export class HomepageLocaleDto {
   @IsIn(["fa", "en", "ar"])
@@ -57,6 +57,8 @@ export class HomepageFooterDto {
   links!: HomepageLinkDto[];
 }
 export class HomepageContentDto {
+  @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(3) @ValidateNested({ each: true }) @Type(() => HomepageCardDto)
+  heroAds?: HomepageCardDto[];
   @IsObject() @ValidateNested() @Type(() => HomepageHeroDto) hero!: HomepageHeroDto;
   @IsArray() @ArrayMaxSize(6) @ValidateNested({ each: true }) @Type(() => HomepageCardDto) shortcuts!: HomepageCardDto[];
   @IsObject() @ValidateNested() @Type(() => HomepageCardsSectionDto) collections!: HomepageCardsSectionDto;

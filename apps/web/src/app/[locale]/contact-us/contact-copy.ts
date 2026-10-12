@@ -3,7 +3,7 @@ import type { Locale } from "@/lib/i18n";
 export const contactCopy = {
   fa: {
     title: "تماس با ما", home: "صفحه اصلی", label: "پشتیبانی و ارتباط", heading: "ارتباط با", brand: "تاپ جی‌اس‌ام",
-    description: "برای راهنمایی خرید، پشتیبانی فنی و پیگیری سفارش، با تیم تاپ جی‌اس‌ام در ارتباط باشید.",
+    description: "برای راهنمایی خرید، پشتیبانی فنی، پیگیری سفارش یا گفت‌وگو درباره همکاری با مجموعه‌تان، با تیم تاپ جی‌اس‌ام در ارتباط باشید.",
     chat: "شروع گفت‌وگو", opening: "در حال اتصال…", unavailable: "گفت‌وگوی آنلاین در دسترس نیست. از ایمیل یا شماره‌های پایین صفحه استفاده کنید.",
     emailAction: "ارسال ایمیل", guide: "قبل از تماس", steps: [
       ["از گفت‌وگوی آنلاین شروع کنید", "برای پشتیبانی، از گفت‌وگوی آنلاین در گوشه صفحه استفاده کنید. مدل دستگاه و شرح مشکل را بنویسید."],
@@ -20,7 +20,7 @@ export const contactCopy = {
   },
   en: {
     title: "Contact us", home: "Home", label: "Support & contact", heading: "Get in touch with", brand: "Top GSM",
-    description: "Talk to the Top GSM team for buying advice, technical support, and help with your order.",
+    description: "Talk to the Top GSM team for buying advice, technical support, order help, or a potential business collaboration.",
     chat: "Start a conversation", opening: "Connecting…", unavailable: "Online chat is unavailable. Please use email or the phone numbers below.",
     emailAction: "Send an email", guide: "Before you get in touch", steps: [
       ["Start with online chat", "Use the chat in the corner of the page for support. Include your device model and a description of the issue."],
@@ -37,7 +37,7 @@ export const contactCopy = {
   },
   ar: {
     title: "اتصل بنا", home: "الرئيسية", label: "الدعم والتواصل", heading: "تواصل مع", brand: "تاپ جي إس إم",
-    description: "تواصل مع فريقنا للاستفسار عن المنتجات، والحصول على الدعم الفني، ومتابعة طلبك.",
+    description: "تواصل مع فريقنا للاستفسار عن المنتجات، والحصول على الدعم الفني، ومتابعة طلبك، أو مناقشة التعاون مع مؤسستك.",
     chat: "بدء المحادثة", opening: "جارٍ الاتصال…", unavailable: "المحادثة غير متاحة. يرجى استخدام البريد الإلكتروني أو أرقام الهاتف أدناه.",
     emailAction: "إرسال بريد إلكتروني", guide: "قبل التواصل", steps: [
       ["ابدأ بالمحادثة المباشرة", "استخدم المحادثة في زاوية الصفحة للحصول على الدعم. اذكر طراز الجهاز ووصف المشكلة."],

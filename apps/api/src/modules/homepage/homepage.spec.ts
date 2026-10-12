@@ -22,7 +22,7 @@ import { AdminHomepageController } from "./homepage.controller";
 export function homepageFixture(): HomepageContent {
   const link = { label: "Browse", href: "/en/products" };
   const section = { enabled: true, title: "Section", description: "Description" };
-  return { hero: { eyebrow: "Repair", title: "Repair", accent: "Together", description: "Description", image: "/images/repair-studio.png", imageAlt: "Phone", primary: { ...link }, secondary: { label: "Experts", href: "#agents" } }, shortcuts: [], collections: { ...section, items: [] }, offers: { ...section, items: [] }, experts: { ...section }, latest: { ...section }, about: { ...section, points: ["Expert help"], link: { ...link } }, footer: { description: "Repair", links: [{ ...link }] } };
+  return { heroAds: [{ title: "Modem unlock", description: "Find the service", label: "Featured", href: "/en/products?search=modem", image: "/images/home/ad-modem-unlock.webp" }], hero: { eyebrow: "Repair", title: "Repair", accent: "Together", description: "Description", image: "/images/repair-studio.png", imageAlt: "Phone", primary: { ...link }, secondary: { label: "Experts", href: "#agents" } }, shortcuts: [], collections: { ...section, items: [] }, offers: { ...section, items: [] }, experts: { ...section }, latest: { ...section }, footer: { description: "Repair", links: [{ ...link }] }, about: { ...section, points: ["Expert help"], link: { ...link } } };
 }
 
 describe("homepage content security and persistence", () => {
@@ -36,6 +36,7 @@ describe("homepage content security and persistence", () => {
       (v: HomepageContent) => { v.hero.title = "x".repeat(101); },
       (v: HomepageContent) => { (v.experts as unknown as { enabled: string }).enabled = "false"; },
       (v: HomepageContent) => { v.about.points = new Array(9).fill("Reason"); },
+      (v: HomepageContent) => { v.heroAds = new Array(4).fill(v.heroAds![0]); },
       (v: HomepageContent) => { (v.hero as unknown as Record<string, unknown>).html = "<script>"; }
     ]) { const content = homepageFixture(); edit(content); await assert.rejects(validate({ version: 0, content }), BadRequestException); }
     await assert.rejects(validate({ version: -1, content: homepageFixture() }), BadRequestException);
@@ -47,10 +48,14 @@ describe("homepage content security and persistence", () => {
     for (const href of ["javascript:alert(1)", "data:text/html,x", "//evil.test", "/\\evil.test", "https://user:pass@example.com", "http://example.com", "/%0a/evil", " /en"]) {
       const content = homepageFixture(); content.hero.primary.href = href;
       assert.throws(() => validateHomepageLinks(content), BadRequestException, href);
+      content.hero.primary.href = "/en/products"; content.heroAds![0].href = href;
+      assert.throws(() => validateHomepageLinks(content), BadRequestException, `hero ad: ${href}`);
     }
     for (const image of ["https://example.com/a.png", "/api/auth/me", "/images/../secret.png", "data:image/svg+xml,x", "/images/test.svg"]) {
       const content = homepageFixture(); content.hero.image = image;
       assert.throws(() => validateHomepageLinks(content), BadRequestException, image);
+      content.hero.image = "/images/repair-studio.png"; content.heroAds![0].image = image;
+      assert.throws(() => validateHomepageLinks(content), BadRequestException, `hero ad: ${image}`);
     }
     const content = homepageFixture(); content.hero.primary.href = "https://example.com/product?q=phone";
     assert.doesNotThrow(() => validateHomepageLinks(content));

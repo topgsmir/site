@@ -7,8 +7,14 @@ import styles from "./PublicFooter.module.css";
 
 const copy = {
   fa: {
-    title: "تاپ جی‌اس‌ام؛ مرجع تخصصی تعمیرات موبایل",
+    brand: "تاپ جی‌اس‌ام",
+    title: "مرجع تخصصی تعمیرات موبایل",
     description: "فایل، آموزش، ابزار و خدمات تخصصی تعمیرات موبایل را در تاپ جی‌اس‌ام پیدا کنید و برای انتخاب محصول و پیگیری سفارش، مستقیم با کارشناسان در ارتباط باشید.",
+    explore: "دسترسی سریع",
+    products: "محصولات",
+    services: "خدمات آنلاین",
+    blog: "مجله تعمیرات",
+    contact: "ارتباط با ما",
     licenses: "نمادها و مجوزها",
     enamad: "نماد اعتماد الکترونیکی",
     ecunion: "اتحادیه کشوری کسب‌وکارهای مجازی",
@@ -18,8 +24,14 @@ const copy = {
     edit: "ویرایش صفحه اصلی"
   },
   en: {
-    title: "Top GSM, specialist mobile repair resources",
+    brand: "Top GSM",
+    title: "Specialist mobile repair resources",
     description: "Find mobile repair files, training, tools, and specialist services at Top GSM. Connect directly with experts to choose a product and follow your order.",
+    explore: "Explore",
+    products: "Products",
+    services: "Online services",
+    blog: "Repair journal",
+    contact: "Contact us",
     licenses: "Trust marks and licenses",
     enamad: "Electronic Trust Symbol (eNAMAD)",
     ecunion: "National Union of Virtual Businesses",
@@ -29,8 +41,14 @@ const copy = {
     edit: "Edit homepage"
   },
   ar: {
-    title: "Top GSM، مرجع متخصص لصيانة الجوال",
+    brand: "Top GSM",
+    title: "مرجع متخصص لصيانة الجوال",
     description: "اعثر على ملفات وتدريب وأدوات وخدمات صيانة الجوال في Top GSM، وتواصل مباشرة مع الخبراء لاختيار المنتج ومتابعة طلبك.",
+    explore: "روابط سريعة",
+    products: "المنتجات",
+    services: "الخدمات عن بُعد",
+    blog: "مجلة الصيانة",
+    contact: "تواصل معنا",
     licenses: "شعارات الثقة والتراخيص",
     enamad: "رمز الثقة الإلكترونية (eNAMAD)",
     ecunion: "الاتحاد الوطني للأعمال الافتراضية",
@@ -56,20 +74,40 @@ export function PublicFooter({ locale, content, editable = false }: PublicFooter
     { src: "/images/licenses/samandehi.png", alt: c.samandehi },
     { src: "/images/licenses/eanjoman.png", alt: c.eanjoman }
   ];
+  const links = [
+    { href: `/${locale}/products`, label: c.products },
+    { href: `/${locale}/products?type=service`, label: c.services },
+    { href: `/${locale}/blog`, label: c.blog },
+    { href: `/${locale}/contact-us`, label: c.contact }
+  ];
 
   return (
     <footer className={styles.footer} dir={getDirection(locale)}>
       <div className={styles.inner}>
         <div className={styles.main}>
           <div className={styles.introduction}>
-            <h2>{c.title}</h2>
+            <Link className={styles.brand} href={`/${locale}` as Route} aria-label={c.brand}>
+              <Image className={styles.brandMark} src="/brand/topgsm-mark.webp" alt="" width={48} height={48} unoptimized />
+              <span className={styles.brandText}>
+                <span className={styles.brandName}>{c.brand}</span>
+                <span className={styles.brandTagline}>{c.title}</span>
+              </span>
+            </Link>
             <p>{content?.description.trim() || c.description}</p>
+            <nav className={styles.navigation} aria-label={c.explore}>
+              <ul>{links.map((link) => <li key={link.href}>
+                <Link href={link.href as Route}>{link.label}</Link>
+              </li>)}</ul>
+            </nav>
           </div>
-          <ul className={styles.licenses} aria-label={c.licenses} dir="ltr">
-            {licenses.map((license) => <li className={styles.license} key={license.src}>
-              <Image className={styles.licenseImage} src={license.src} alt={license.alt} width={64} height={64} unoptimized />
-            </li>)}
-          </ul>
+          <section className={styles.trust} aria-labelledby={`footer-licenses-${locale}`}>
+            <h2 id={`footer-licenses-${locale}`}>{c.licenses}</h2>
+            <ul className={styles.licenses} dir="ltr">
+              {licenses.map((license) => <li className={styles.license} key={license.src}>
+                <Image className={styles.licenseImage} src={license.src} alt={license.alt} width={64} height={64} unoptimized />
+              </li>)}
+            </ul>
+          </section>
         </div>
         <div className={styles.bottom}>
           <p>{c.legal}</p>
