@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BrandLogo } from "@/components/BrandLogo";
 import type { Route } from "next";
 import type { AppUser } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
@@ -15,8 +16,7 @@ import styles from "./AccountHeader.module.css";
 export function AccountHeader({ locale, user, path }: { locale: Locale; user: AppUser; path: string }) {
   return <header className={styles.header}>
     <Link className={styles.brand} href={`/${locale}` as Route} aria-label="TopGSM">
-      <span className={styles.mark} aria-hidden="true"><span /><span /><span /></span>
-      <span dir="ltr">topgsm<span>.</span></span>
+      <BrandLogo tone="inverse" />
     </Link>
     <span className={styles.label}>{WORKSPACE_COPY[locale].workspace}</span>
     <div className={styles.actions}>

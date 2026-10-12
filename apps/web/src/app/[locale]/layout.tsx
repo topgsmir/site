@@ -40,6 +40,7 @@ export async function generateMetadata({ params }: LocaleLayoutProps): Promise<M
     template: defaults.titleTemplate
   },
   applicationName: "Top GSM",
+  icons: { icon: [{ url: "/brand/favicon.ico", sizes: "any" }, { url: "/brand/topgsm-mark.webp", type: "image/webp" }], apple: "/brand/apple-touch-icon.png" },
   description: defaults.description || undefined,
   verification: { google: settings.googleVerification || undefined, other: settings.bingVerification ? { "msvalidate.01": settings.bingVerification } : undefined },
   formatDetection: {
@@ -52,7 +53,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: "#f6f7f8",
-  colorScheme: "light dark"
+  colorScheme: "light dark",
+  viewportFit: "cover"
 };
 
 const themeScript = `

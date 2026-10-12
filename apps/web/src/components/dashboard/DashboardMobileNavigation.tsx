@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { BrandLogo } from "@/components/BrandLogo";
 import Link from "next/link";
 import type { Route } from "next";
 import type { Locale } from "@/lib/i18n";
@@ -57,7 +58,7 @@ export function DashboardMobileNavigation({ locale, title, currentLabel, shortcu
   return <>
     <header className={styles.header} data-navigation-surface>
       <div><span>{title}</span><strong>{currentLabel}</strong></div>
-      <Link href={`/${locale}`} aria-label={c.store} className={styles.brand} dir="ltr" translate="no">topgsm.</Link>
+      <Link href={`/${locale}`} aria-label={c.store} className={styles.brand} ><BrandLogo variant="mark" /></Link>
     </header>
     {!mobile ? <div className={styles.desktop}>{children}</div> : null}
     <nav className={styles.dock} data-navigation-surface aria-label={title}>

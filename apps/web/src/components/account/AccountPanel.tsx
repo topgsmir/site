@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BrandLogo } from "@/components/BrandLogo";
 import type { Route } from "next";
 import { useRef, useState } from "react";
 import { gsap } from "gsap";
@@ -179,7 +180,7 @@ export function AccountPanel({
         )}
       </main>
       <footer className={styles.footer}>
-        <span dir="ltr">topgsm.</span>
+        <BrandLogo variant="wordmark" />
         <p>{w.footer}</p>
         <Link href={`/${locale}/products` as Route}>
           {c.shop}

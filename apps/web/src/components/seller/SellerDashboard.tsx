@@ -1,5 +1,6 @@
 "use client";
 import { scheduleEffectTask } from "@/lib/effect-task";
+import { BrandLogo } from "@/components/BrandLogo";
 import { ProductAiPanel } from "@/components/ai/ProductAiPanel";
 import { ProductDescriptionEditor } from "@/components/product/ProductDescriptionEditor";
 import { ProductDescriptionTemplatePicker } from "@/components/product/ProductDescriptionTemplatePicker";
@@ -1134,7 +1135,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
       <aside className={`${styles.rail} ${panelStyles.rail}`} data-navigation-surface data-mobile-open={true}>
         <div className={styles.brandBlock}>
           <span className={styles.brandIdentity}>
-            <strong dir="ltr" translate="no">topgsm.</strong>
+            <BrandLogo variant="wordmark" tone="inverse" />
             <span>{copy.workspace}</span>
           </span>
         </div>
@@ -1617,7 +1618,7 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
     <div className={creation.shell} dir={locale === "en" ? "ltr" : "rtl"}>
       <header className={creation.topbar}>
         <Link className={creation.backLink} href={`/${locale}/seller-dashboard?section=products`}><DesignIcon name="arrow" />{copy.products}</Link>
-        <Link className={creation.brand} href={`/${locale}/seller-dashboard`}><DesignIcon name="layers" /><strong dir="ltr" translate="no">topgsm.</strong></Link>
+        <Link className={creation.brand} href={`/${locale}/seller-dashboard`}><BrandLogo /></Link>
         <span className={creation.account}>{user.fullName}</span>
       </header>
       <main className={creation.main}>

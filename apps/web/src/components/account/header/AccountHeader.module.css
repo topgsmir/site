@@ -1,10 +1,5 @@
 .header { grid-column: 1 / -1; display: flex; align-items: center; gap: 20px; min-height: 54px; padding: 0 24px; color: #fff; background: #062b60; }
 .brand { display: inline-flex; align-items: center; gap: 9px; font-family: var(--font-outfit), sans-serif; font-size: 1.65rem; font-weight: 650; letter-spacing: -.075em; }
-.brand > span > span { color: #50b8ff; }
-.mark { display: flex; align-items: center; gap: 3px; width: 26px; height: 30px; transform: skewY(-15deg); }
-.mark span { width: 6px; height: 20px; background: #50b8ff; border-radius: 2px; }
-.mark span:nth-child(2) { height: 28px; }
-.mark span:nth-child(3) { height: 16px; }
 .label { padding-inline-start: 20px; border-inline-start: 1px solid #ffffff30; color: #d1e5fa; font-size: .78rem; }
 .actions { display: flex; align-items: center; gap: 16px; margin-inline-start: auto; }
 .cart, .management { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: .8rem; color: #e4f0ff; }
@@ -13,4 +8,4 @@
 .header :focus-visible { outline: 2px solid #8ed3ff; outline-offset: 3px; }
 @media (max-width: 800px) { .label { display: none; } .logout { display: inline-flex; } .logout :global(.logout-button) { background: transparent; border: 0; color: white; } }
 @media (max-width: 600px) { .header { padding-inline: 16px; gap: 8px; } .actions { gap: 6px; } .brand { font-size: 1.4rem; } .cart > span { display: none; } .management { max-width: 95px; font-size: .7rem; text-align: center; } .logout :global(.logout-button) { width: 40px; padding-inline: 8px; } .logout :global(.logout-button) span { display: none; } }
-@media (max-width: 360px) { .brand > span:last-child { display: none; } .header { padding-inline: 12px; } }
+@media (max-width: 360px) { .brand { --brand-wordmark-width: 4rem; --brand-mark-size: 1.5rem; } .header { padding-inline: 12px; } }

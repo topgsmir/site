@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import { BrandLogo } from "@/components/BrandLogo";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import type { TemplateConfiguration } from "@topgsm/shared-types";
 import { useTemplateConfiguration } from "./TemplateSettingsProvider";
@@ -52,8 +53,7 @@ export function PublicHeader({ locale, accountHref, current, languageHrefs, conf
       <div className={styles.mainSurface} data-site-header-main ref={main}>
         <div className={styles.mainRow}>
           <Link className={styles.brand} href={`/${locale}` as Route} aria-label="Top GSM">
-            <span className={styles.symbol}><DesignIcon name="layers" /></span>
-            <span><strong translate="no">topgsm<span>.</span></strong></span>
+            <BrandLogo eager />
           </Link>
           <div className={styles.search}><HeaderSearch locale={locale} variant="wide" /></div>
           <div className={styles.actions}>

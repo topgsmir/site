@@ -1,0 +1,6 @@
+.logo { display: inline-flex; align-items: center; gap: .625rem; flex: none; max-width: 100%; vertical-align: middle; }
+.logo[data-layout="stacked"] { flex-direction: column; gap: .5rem; text-align: center; }
+.mark { width: var(--brand-mark-size, 2.25rem); height: auto; flex: none; }
+.logo .wordmark { width: var(--brand-wordmark-width, 7rem); max-width: 100%; height: auto; }
+.logo[data-tone="inverse"] :is(img, .wordmark) { filter: brightness(0) invert(1); }
+:global(html[data-theme="dark"]) .logo[data-tone="default"] :is(img, .wordmark) { filter: brightness(0) invert(1); }

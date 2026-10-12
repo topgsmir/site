@@ -1,0 +1,10 @@
+.page { width: min(100% - 2rem, 42rem); margin: 1.5rem auto; }
+.panel { padding: 1.5rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--paper-bright); }
+.panel h1 { font-size: 1.375rem; font-weight: 650; line-height: 1.8; }
+.panel p { margin-top: .75rem; color: var(--muted); font-size: .9375rem; line-height: 2; }
+.actions { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem 1rem; margin-top: 1rem; }
+.actions a { display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem; padding: .5rem .75rem; color: var(--signal-dark); border-radius: .5rem; font-size: .875rem; line-height: 1.8; }
+.actions .primary { color: var(--color-neutral-white); background: var(--color-brand-logo); }
+.actions a:focus-visible { outline: 2px solid var(--signal-dark); outline-offset: 3px; }
+@media (hover: hover) { .actions a:hover { text-decoration: underline; } }
+@media (max-width: 35rem) { .page { margin-block: 1rem; } .panel { padding: 1rem; } }
