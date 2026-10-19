@@ -420,7 +420,7 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
           </button>
         </form>
         <footer className={styles.footer}>
-          <p>{locale === "fa" ? <>ورود شما به معنی پذیرش <Link href={`/${locale}/rules` as Route}>قوانین</Link> تاپ جی اس ام میباشد.</> : locale === "ar" ? <>تسجيل دخولك يعني قبول <Link href={`/${locale}/rules` as Route}>قواعد</Link> Top GSM.</> : <>By signing in, you accept the Top GSM <Link href={`/${locale}/rules` as Route}>rules</Link>.</>}</p>
+          <p>{locale === "fa" ? <>ورود شما به معنی پذیرش <Link href={`/${locale}/rules` as Route}>قوانین و مقررات</Link> تاپ جی اس ام می‌باشد.</> : locale === "ar" ? <>تسجيل دخولك يعني قبول <Link href={`/${locale}/rules` as Route}>القواعد والأحكام</Link> الخاصة بـ Top GSM.</> : <>By signing in, you accept the Top GSM <Link href={`/${locale}/rules` as Route}>rules and regulations</Link>.</>}</p>
           <p className={styles.help}>{copy.needHelp} <Link href={`/${locale}/contact-us` as Route}>{copy.contactSupport}</Link></p>
         </footer>
       </section>

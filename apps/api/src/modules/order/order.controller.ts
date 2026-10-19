@@ -23,6 +23,7 @@ import type { AuthenticatedRequest } from "../auth/platform-admin.guard";
 import {
   CreateOrderDto,
   ExportOrdersDto,
+  ListDownloadsQueryDto,
   ListOrdersQueryDto,
   SetOrderTrashDto,
   UpdateOrderShippingDto,
@@ -91,6 +92,12 @@ export class OrderController {
   @Header("Cache-Control", "private, no-store")
   listPurchases(@Req() request: AuthenticatedRequest, @Query() query: ListOrdersQueryDto) {
     return this.orders.listPurchases(request.authenticatedUser!, query);
+  }
+
+  @Get("downloads")
+  @Header("Cache-Control", "private, no-store")
+  listDownloads(@Req() request: AuthenticatedRequest, @Query() query: ListDownloadsQueryDto) {
+    return this.orders.listDownloads(request.authenticatedUser!, query);
   }
 
   @Get("purchases/:id")

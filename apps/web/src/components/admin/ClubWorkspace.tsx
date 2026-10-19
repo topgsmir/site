@@ -6,7 +6,9 @@ import { formatCurrencyAmount } from "@/lib/currency";
 import type { Locale } from "@/lib/i18n";
 import styles from "./ClubWorkspace.module.css";
 
-type Settings = { enabled: boolean; points_per_1000_toman: number | null; toman_per_point: number | null; signup_points: number; first_purchase_points: number; min_redeem_points: number | null; max_redeem_points: number | null; expiry_days: number };
+type Settings = { enabled: boolean; points_per_1000_toman: number | string | null; toman_per_point: number | string | null; signup_points: number; first_purchase_points: number; min_redeem_points: number | null; max_redeem_points: number | null; expiry_days: number };
+type RateField = "points_per_1000_toman" | "toman_per_point";
+const rateFields = new Set<RateField>(["points_per_1000_toman", "toman_per_point"]);
 type Tier = { id: string; name_fa: string; name_en: string; name_ar: string; threshold_toman: string; sort_order: number; active: boolean };
 type Reward = { id: string; name_fa: string; name_en: string; name_ar: string; kind: string; points_cost: number; value: string; max_discount: string | null; min_order: string | null; active: boolean };
 type Campaign = { id: string; name_fa: string; name_en: string; name_ar: string; kind: string; value: string; starts_at: string; ends_at: string; min_tier_id: string | null; active: boolean };
@@ -17,9 +19,57 @@ type Reports = { members: number; pointsIssued: number; pointsRedeemed: number; 
 type Tab = "overview" | "members" | "tiers" | "rewards" | "campaigns";
 
 const copy = {
-  fa: { title: "باشگاه مشتریان", overview: "تنظیمات و گزارش", members: "اعضا", tiers: "سطوح", rewards: "جوایز", campaigns: "کمپین‌ها", save: "ذخیره", add: "ایجاد", edit: "ویرایش", active: "فعال", inactive: "غیرفعال", loading: "در حال دریافت باشگاه…", error: "دریافت یا ذخیره اطلاعات باشگاه انجام نشد.", retry: "تلاش دوباره", points: "امتیاز", reason: "دلیل", adjust: "ثبت تغییر امتیاز", until: "تا تاریخ", override: "اعطای سطح موقت", empty: "موردی ثبت نشده است.", more: "نمایش بیشتر", confirm: "تنظیمات باشگاه را ذخیره کنید؟", status: "وضعیت", names: "نام‌ها (فارسی، انگلیسی، عربی)", spend: "آستانه خرید (تومان)", cost: "هزینه امتیاز", value: "مقدار", start: "شروع", end: "پایان", expired: "امتیاز منقضی", rate: "امتیاز / هزار تومان", conversion: "تومان / امتیاز", signup: "امتیاز ثبت‌نام", first: "امتیاز خرید اول", min: "حداقل مصرف", max: "حداکثر مصرف", expiry: "روزهای اعتبار (۳۶۵ = ۱۲ ماه)", type: "نوع", fixed: "تخفیف ثابت", percent: "تخفیف درصدی", wallet: "اعتبار کیف پول", maxDiscount: "سقف تخفیف", minOrder: "حداقل سفارش", bonus: "امتیاز اضافه", multiplier: "ضریب امتیاز", allTiers: "همه سطوح", order: "ترتیب" },
-  en: { title: "Customer club", overview: "Setup and reports", members: "Members", tiers: "Tiers", rewards: "Rewards", campaigns: "Campaigns", save: "Save", add: "Create", edit: "Edit", active: "Active", inactive: "Inactive", loading: "Loading club…", error: "Could not load or save club data.", retry: "Try again", points: "Points", reason: "Reason", adjust: "Record point adjustment", until: "Until", override: "Grant temporary tier", empty: "Nothing has been created yet.", more: "Show more", confirm: "Save club settings?", status: "Status", names: "Names (Persian, English, Arabic)", spend: "Spend threshold (Toman)", cost: "Point cost", value: "Value", start: "Start", end: "End", expired: "Expired points", rate: "Points / 1,000 Toman", conversion: "Toman / point", signup: "OTP signup points", first: "First purchase points", min: "Minimum redemption", max: "Maximum redemption", expiry: "Validity days (365 = 12 months)", type: "Type", fixed: "Fixed discount", percent: "Percentage discount", wallet: "Wallet credit", maxDiscount: "Maximum discount", minOrder: "Minimum order", bonus: "Bonus points", multiplier: "Multiplier", allTiers: "All tiers", order: "Order" },
-  ar: { title: "نادي العملاء", overview: "الإعداد والتقارير", members: "الأعضاء", tiers: "المستويات", rewards: "المكافآت", campaigns: "الحملات", save: "حفظ", add: "إنشاء", edit: "تعديل", active: "نشط", inactive: "غير نشط", loading: "جارٍ تحميل النادي…", error: "تعذر تحميل أو حفظ بيانات النادي.", retry: "حاول مجددًا", points: "النقاط", reason: "السبب", adjust: "تسجيل تعديل النقاط", until: "حتى", override: "منح مستوى مؤقت", empty: "لا توجد عناصر بعد.", more: "عرض المزيد", confirm: "حفظ إعدادات النادي؟", status: "الحالة", names: "الأسماء (الفارسية، الإنجليزية، العربية)", spend: "حد الإنفاق (تومان)", cost: "تكلفة النقاط", value: "القيمة", start: "البداية", end: "النهاية", expired: "نقاط منتهية", rate: "نقاط / ألف تومان", conversion: "تومان / نقطة", signup: "نقاط التسجيل", first: "نقاط الشراء الأول", min: "الحد الأدنى للاستبدال", max: "الحد الأعلى للاستبدال", expiry: "أيام الصلاحية (٣٦٥ = ١٢ شهرًا)", type: "النوع", fixed: "خصم ثابت", percent: "خصم نسبي", wallet: "رصيد المحفظة", maxDiscount: "سقف الخصم", minOrder: "الحد الأدنى للطلب", bonus: "نقاط إضافية", multiplier: "مضاعف", allTiers: "كل المستويات", order: "الترتيب" }
+  fa: {
+    title: "باشگاه مشتریان", overview: "تنظیمات و گزارش", members: "اعضا", tiers: "سطوح", rewards: "جوایز", campaigns: "کمپین‌ها",
+    overviewHint: "نرخ کسب و مصرف را بگذارید؛ فعال‌سازی فقط با سطح پایه و حداقل یک جایزه ممکن است.",
+    membersHint: "عضو را انتخاب کنید تا امتیاز کم یا زیاد شود، یا سطح موقت بدهید.",
+    tiersHint: "حداقل یک سطح فعال با آستانهٔ صفر لازم است — همان سطح پایه.",
+    rewardsHint: "قبل از روشن کردن باشگاه، حداقل یک جایزهٔ فعال بسازید.",
+    campaignsHint: "اختیاری؛ در بازهٔ زمانی امتیاز اضافه یا ضریب می‌دهد.",
+    enabledHint: "بدون سطح پایه و جایزهٔ فعال روشن نمی‌شود.",
+    rateHint: "مثلاً ۱۰۰ یعنی از هر هزار تومان خرید، ۱۰۰ امتیاز.",
+    conversionHint: "ارزش هر امتیاز هنگام مصرف در پرداخت.",
+    signupHint: "بعد از ثبت‌نام با کد؛ صفر یعنی بدون جایزه.",
+    firstHint: "فقط برای اولین خرید موفق.",
+    minHint: "کمتر از این مقدار در سبد قبول نمی‌شود.",
+    maxHint: "سقف امتیاز قابل مصرف در یک سفارش.",
+    expiryHint: "از تاریخ کسب؛ بعدش می‌سوزد.",
+    save: "ذخیره", add: "ایجاد", edit: "ویرایش", active: "فعال", inactive: "غیرفعال", loading: "در حال دریافت باشگاه…", error: "دریافت یا ذخیره اطلاعات باشگاه انجام نشد.", retry: "تلاش دوباره", points: "امتیاز", reason: "دلیل", adjust: "ثبت تغییر امتیاز", until: "تا تاریخ", override: "اعطای سطح موقت", empty: "موردی ثبت نشده است.", more: "نمایش بیشتر", confirm: "تنظیمات باشگاه را ذخیره کنید؟", status: "وضعیت", names: "نام‌ها (فارسی، انگلیسی، عربی)", spend: "آستانه خرید (تومان)", cost: "هزینه امتیاز", value: "مقدار", start: "شروع", end: "پایان", expired: "امتیاز منقضی", rate: "امتیاز / هزار تومان", conversion: "تومان / امتیاز", signup: "امتیاز ثبت‌نام", first: "امتیاز خرید اول", min: "حداقل مصرف", max: "حداکثر مصرف", expiry: "روزهای اعتبار (۳۶۵ = ۱۲ ماه)", type: "نوع", fixed: "تخفیف ثابت", percent: "تخفیف درصدی", wallet: "اعتبار کیف پول", maxDiscount: "سقف تخفیف", minOrder: "حداقل سفارش", bonus: "امتیاز اضافه", multiplier: "ضریب امتیاز", allTiers: "همه سطوح", order: "ترتیب"
+  },
+  en: {
+    title: "Customer club", overview: "Setup and reports", members: "Members", tiers: "Tiers", rewards: "Rewards", campaigns: "Campaigns",
+    overviewHint: "Set earning and redemption rates; activation needs a base tier and at least one reward.",
+    membersHint: "Select a member to adjust points or grant a temporary tier.",
+    tiersHint: "Keep at least one active tier with a zero spend threshold — the base tier.",
+    rewardsHint: "Create at least one active reward before turning the club on.",
+    campaignsHint: "Optional; adds bonus points or a multiplier for a date range.",
+    enabledHint: "Needs a base tier and an active reward before it can turn on.",
+    rateHint: "Example: 100 means 100 points for every 1,000 Toman spent.",
+    conversionHint: "How much one point is worth when spent at checkout.",
+    signupHint: "After OTP signup; 0 means no bonus.",
+    firstHint: "Only for the first successful purchase.",
+    minHint: "Checkout rejects redemptions below this amount.",
+    maxHint: "Cap on points redeemable in one order.",
+    expiryHint: "Counted from the earn date; then they expire.",
+    save: "Save", add: "Create", edit: "Edit", active: "Active", inactive: "Inactive", loading: "Loading club…", error: "Could not load or save club data.", retry: "Try again", points: "Points", reason: "Reason", adjust: "Record point adjustment", until: "Until", override: "Grant temporary tier", empty: "Nothing has been created yet.", more: "Show more", confirm: "Save club settings?", status: "Status", names: "Names (Persian, English, Arabic)", spend: "Spend threshold (Toman)", cost: "Point cost", value: "Value", start: "Start", end: "End", expired: "Expired points", rate: "Points / 1,000 Toman", conversion: "Toman / point", signup: "OTP signup points", first: "First purchase points", min: "Minimum redemption", max: "Maximum redemption", expiry: "Validity days (365 = 12 months)", type: "Type", fixed: "Fixed discount", percent: "Percentage discount", wallet: "Wallet credit", maxDiscount: "Maximum discount", minOrder: "Minimum order", bonus: "Bonus points", multiplier: "Multiplier", allTiers: "All tiers", order: "Order"
+  },
+  ar: {
+    title: "نادي العملاء", overview: "الإعداد والتقارير", members: "الأعضاء", tiers: "المستويات", rewards: "المكافآت", campaigns: "الحملات",
+    overviewHint: "اضبط معدلات الكسب والاستبدال؛ التفعيل يحتاج مستوى أساسيًا ومكافأة واحدة على الأقل.",
+    membersHint: "اختر عضوًا لتعديل النقاط أو منح مستوى مؤقت.",
+    tiersHint: "يلزم مستوى نشط واحد على الأقل بحد إنفاق صفر — المستوى الأساسي.",
+    rewardsHint: "أنشئ مكافأة نشطة واحدة على الأقل قبل تفعيل النادي.",
+    campaignsHint: "اختياري؛ يضيف نقاطًا أو مضاعفًا خلال فترة زمنية.",
+    enabledHint: "لا يعمل بدون مستوى أساسي ومكافأة نشطة.",
+    rateHint: "مثال: ١٠٠ تعني ١٠٠ نقطة لكل ألف تومان شراء.",
+    conversionHint: "قيمة النقطة عند الاستبدال في الدفع.",
+    signupHint: "بعد التسجيل بالرمز؛ ٠ يعني بلا مكافأة.",
+    firstHint: "لأول شراء ناجح فقط.",
+    minHint: "أقل من هذا المبلغ يُرفض في السلة.",
+    maxHint: "سقف النقاط القابلة للاستبدال في طلب واحد.",
+    expiryHint: "من تاريخ الكسب؛ بعدها تنتهي.",
+    save: "حفظ", add: "إنشاء", edit: "تعديل", active: "نشط", inactive: "غير نشط", loading: "جارٍ تحميل النادي…", error: "تعذر تحميل أو حفظ بيانات النادي.", retry: "حاول مجددًا", points: "النقاط", reason: "السبب", adjust: "تسجيل تعديل النقاط", until: "حتى", override: "منح مستوى مؤقت", empty: "لا توجد عناصر بعد.", more: "عرض المزيد", confirm: "حفظ إعدادات النادي؟", status: "الحالة", names: "الأسماء (الفارسية، الإنجليزية، العربية)", spend: "حد الإنفاق (تومان)", cost: "تكلفة النقاط", value: "القيمة", start: "البداية", end: "النهاية", expired: "نقاط منتهية", rate: "نقاط / ألف تومان", conversion: "تومان / نقطة", signup: "نقاط التسجيل", first: "نقاط الشراء الأول", min: "الحد الأدنى للاستبدال", max: "الحد الأعلى للاستبدال", expiry: "أيام الصلاحية (٣٦٥ = ١٢ شهرًا)", type: "النوع", fixed: "خصم ثابت", percent: "خصم نسبي", wallet: "رصيد المحفظة", maxDiscount: "سقف الخصم", minOrder: "الحد الأدنى للطلب", bonus: "نقاط إضافية", multiplier: "مضاعف", allTiers: "كل المستويات", order: "الترتيب"
+  }
 } as const;
 
 const reportCopy = {
@@ -124,6 +174,7 @@ export function ClubWorkspace({ locale }: { locale: Locale }) {
   return <div className={styles.club} aria-busy={busy || loading}>
     <header><h1>{c.title}</h1><span>{settings.enabled ? c.active : c.inactive}</span></header>
     <nav aria-label={c.title}>{(["overview", "members", "tiers", "rewards", "campaigns"] as const).map((item) => <button key={item} type="button" aria-current={tab === item ? "page" : undefined} onClick={() => setTab(item)}>{c[item]}</button>)}</nav>
+    <p className={styles.hint}>{c[`${tab}Hint`]}</p>
     {error ? <p className={styles.error} role="alert">{error} <button type="button" onClick={() => void load()}>{c.retry}</button></p> : null}
     {loading && !reports ? <p>{c.loading}</p> : null}
     {tab === "overview" ? <><div className={styles.stats}>{reports && ([
@@ -134,9 +185,22 @@ export function ClubWorkspace({ locale }: { locale: Locale }) {
         {([[rc.liability, reports.walletCreditLiabilityToman], [rc.subsidy, reports.platformSubsidyToman], [rc.sales, reports.eligibleSalesToman]] as Array<[string, string]>).map(([label, value]) => <p key={label}><span>{label}</span><strong>{formatCurrencyAmount(value, "TOMAN", locale)}</strong></p>)}
         {reports.campaignPerformance.map((item) => <p key={item.campaignId}><span>{rc.campaign}: {name(campaigns.find((campaign) => campaign.id === item.campaignId) ?? { name_fa: item.campaignId, name_en: item.campaignId, name_ar: item.campaignId }, locale)}</span><strong>{new Intl.NumberFormat(locale).format(item.orders)} {rc.orders} · {new Intl.NumberFormat(locale).format(item.bonusPoints)} {rc.bonus}</strong></p>)}
       </div></details> : null}
-      <form className={styles.form} onSubmit={(event) => void saveSettings(event)}><label className={styles.checkbox}><input type="checkbox" checked={settings.enabled} onChange={(event) => setSettings({ ...settings, enabled: event.target.checked })} />{c.active}</label>
-        {([ ["points_per_1000_toman", c.rate], ["toman_per_point", c.conversion], ["signup_points", c.signup], ["first_purchase_points", c.first], ["min_redeem_points", c.min], ["max_redeem_points", c.max], ["expiry_days", c.expiry] ] as const).map(([field, label]) => <label key={field}>{label}<input type="number" min={field === "signup_points" || field === "first_purchase_points" ? 0 : 1} required value={settings[field] ?? ""} onChange={(event) => setSettings({ ...settings, [field]: event.target.value === "" ? null : Number(event.target.value) })} /></label>)}
-        <button type="submit" disabled={busy}>{c.save}</button></form></> : null}
+      <form className={styles.form} onSubmit={(event) => void saveSettings(event)}>
+        <label className={styles.checkbox}><span><input type="checkbox" checked={settings.enabled} onChange={(event) => setSettings({ ...settings, enabled: event.target.checked })} />{c.active}</span><small>{c.enabledHint}</small></label>
+        {([
+          ["points_per_1000_toman", c.rate, c.rateHint],
+          ["toman_per_point", c.conversion, c.conversionHint],
+          ["signup_points", c.signup, c.signupHint],
+          ["first_purchase_points", c.first, c.firstHint],
+          ["min_redeem_points", c.min, c.minHint],
+          ["max_redeem_points", c.max, c.maxHint],
+          ["expiry_days", c.expiry, c.expiryHint]
+        ] as const).map(([field, label, hint]) => {
+          const rate = rateFields.has(field as RateField);
+          return <label key={field}>{label}<input type="number" min={field === "signup_points" || field === "first_purchase_points" ? 0 : rate ? 0.0001 : 1} step={rate ? "any" : 1} inputMode={rate ? "decimal" : "numeric"} required value={settings[field] ?? ""} onChange={(event) => setSettings({ ...settings, [field]: event.target.value === "" ? null : Number(event.target.value) })} /><small>{hint}</small></label>;
+        })}
+        <button type="submit" disabled={busy}>{c.save}</button>
+      </form></> : null}
     {tab === "members" ? <><div className={styles.list}>{members.length ? members.map((member) => <button className={styles.row} key={member.id} type="button" aria-current={selectedMember === member.id ? "true" : undefined} onClick={() => setSelectedMember(member.id)}><span>{member.full_name}</span><strong>{new Intl.NumberFormat(locale).format(member.club_member?.balance ?? 0)} {c.points}</strong></button>) : <p>{c.empty}</p>}{nextCursor ? <button type="button" onClick={() => void more()}>{c.more}</button> : null}</div>{selectedMember ? <div className={styles.memberActions}><form className={styles.form} onSubmit={(event) => void adjust(event)}><h2>{c.adjust}</h2><label>{c.points}<input type="number" required min={-1000000} max={1000000} value={adjustment} onChange={(event) => setAdjustment(event.target.value)} /></label><label>{c.reason}<input required minLength={3} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} /></label><button disabled={busy}>{c.save}</button></form><form className={styles.form} onSubmit={(event) => void override(event)}><h2>{c.override}</h2><label>{c.tiers}<select required value={overrideTier} onChange={(event) => setOverrideTier(event.target.value)}><option value="">—</option>{tiers.filter((tier) => tier.active).map((tier) => <option key={tier.id} value={tier.id}>{name(tier, locale)}</option>)}</select></label><label>{c.until}<input required type="datetime-local" value={overrideUntil} onChange={(event) => setOverrideUntil(event.target.value)} /></label><label>{c.reason}<input required minLength={3} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} /></label><button disabled={busy}>{c.save}</button></form></div> : null}</> : null}
     {tab === "tiers" ? <><div className={styles.list}>{tiers.map((tier) => <button className={styles.row} key={tier.id} type="button" onClick={() => setTierForm(tier)}><span>{name(tier, locale)} · {tier.active ? c.active : c.inactive}</span><strong>{formatCurrencyAmount(tier.threshold_toman, "TOMAN", locale)}</strong></button>)}</div><form className={styles.form} onSubmit={(event) => void saveTier(event)}><h2>{tierForm.id ? c.edit : c.add}</h2>{names(tierForm, (key, value) => setTierForm({ ...tierForm, [key]: value }))}<label>{c.spend}<input required inputMode="numeric" pattern="[0-9]+" value={tierForm.threshold_toman} onChange={(event) => setTierForm({ ...tierForm, threshold_toman: event.target.value })} /></label><label>{c.order}<input required type="number" min="0" value={tierForm.sort_order} onChange={(event) => setTierForm({ ...tierForm, sort_order: Number(event.target.value) })} /></label><label className={styles.checkbox}><input type="checkbox" checked={tierForm.active} onChange={(event) => setTierForm({ ...tierForm, active: event.target.checked })} />{c.active}</label><button disabled={busy}>{c.save}</button></form></> : null}
     {tab === "rewards" ? <><div className={styles.list}>{rewards.map((reward) => <button className={styles.row} key={reward.id} type="button" onClick={() => setRewardForm(reward)}><span>{name(reward, locale)} · {reward.active ? c.active : c.inactive}</span><strong>{reward.points_cost} {c.points}</strong></button>)}</div><form className={styles.form} onSubmit={(event) => void saveReward(event)}><h2>{rewardForm.id ? c.edit : c.add}</h2>{names(rewardForm, (key, value) => setRewardForm({ ...rewardForm, [key]: value }))}<label>{c.type}<select value={rewardForm.kind} onChange={(event) => setRewardForm({ ...rewardForm, kind: event.target.value })}><option value="wallet">{c.wallet}</option><option value="fixed_discount">{c.fixed}</option><option value="percentage_discount">{c.percent}</option></select></label><label>{c.cost}<input required type="number" min="1" value={rewardForm.points_cost} onChange={(event) => setRewardForm({ ...rewardForm, points_cost: Number(event.target.value) })} /></label><label>{c.value}<input required inputMode="numeric" pattern="[0-9]+" value={rewardForm.value} onChange={(event) => setRewardForm({ ...rewardForm, value: event.target.value })} /></label><label>{c.maxDiscount}<input inputMode="numeric" value={rewardForm.max_discount ?? ""} onChange={(event) => setRewardForm({ ...rewardForm, max_discount: event.target.value || null })} /></label><label>{c.minOrder}<input inputMode="numeric" value={rewardForm.min_order ?? ""} onChange={(event) => setRewardForm({ ...rewardForm, min_order: event.target.value || null })} /></label><label className={styles.checkbox}><input type="checkbox" checked={rewardForm.active} onChange={(event) => setRewardForm({ ...rewardForm, active: event.target.checked })} />{c.active}</label><button disabled={busy}>{c.save}</button></form></> : null}

@@ -57,6 +57,22 @@ export class ListOrdersQueryDto {
   @IsOptional() @IsIn(["active", "trashed"]) trash?: "active" | "trashed";
 }
 
+export class ListDownloadsQueryDto {
+  @IsOptional()
+  @IsUUID("4")
+  cursor?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  limit = 20;
+
+  @IsOptional() @IsString() @MinLength(3) @MaxLength(100) search?: string;
+  @IsOptional() @IsIn(["newest", "oldest"]) sort?: "newest" | "oldest";
+}
+
 export class ExportOrdersDto {
   @IsIn(["fa", "en", "ar"]) locale!: "fa" | "en" | "ar";
   @IsOptional() @IsIn(["active", "trashed"]) trash?: "active" | "trashed";

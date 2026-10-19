@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from "class-validator";
+import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from "class-validator";
 
 export class ClubHistoryQueryDto {
   @IsOptional() @IsUUID("4") cursor?: string;
@@ -10,8 +10,8 @@ export class ClubWalletRedeemDto { @IsUUID("4") rewardId!: string; }
 
 export class ClubSettingsDto {
   @IsOptional() @IsBoolean() enabled?: boolean;
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100000) pointsPer1000Toman?: number;
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100000) tomanPerPoint?: number;
+  @IsOptional() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 4 }) @Min(0.0001) @Max(100000) pointsPer1000Toman?: number;
+  @IsOptional() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 4 }) @Min(0.0001) @Max(100000) tomanPerPoint?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(100000) signupPoints?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(100000) firstPurchasePoints?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100000) minRedeemPoints?: number;

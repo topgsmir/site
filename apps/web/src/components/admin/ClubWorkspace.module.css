@@ -5,6 +5,7 @@
 .club nav { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--color-dashboard-rule); }
 .club nav button { min-height: 40px; padding: 8px 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; }
 .club nav button[aria-current="page"] { color: var(--color-dashboard-accent); border-bottom-color: currentColor; }
+.hint { margin: 0; color: var(--color-dashboard-muted); font-size: .84rem; line-height: 1.45; }
 .stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .stats > div { display: grid; gap: 5px; padding: 12px; border: 1px solid var(--color-dashboard-rule); border-radius: 8px; background: var(--color-dashboard-surface); }
 .stats span { color: var(--color-dashboard-muted); font-size: .76rem; }
@@ -17,9 +18,11 @@
 .form h2, .names { grid-column: 1 / -1; }
 .form h2 { font-size: 1rem; }
 .form label, .names label { display: grid; gap: 5px; font-size: .8rem; }
+.form label small { color: var(--color-dashboard-muted); font-size: .74rem; line-height: 1.35; }
 .names { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .form input:not([type="checkbox"]), .form select { width: 100%; min-height: 38px; padding: 7px 9px; border: 1px solid var(--color-dashboard-rule); border-radius: 6px; background: var(--color-dashboard-surface); color: inherit; }
-.form .checkbox { display: flex; align-items: center; gap: 8px; min-height: 38px; }
+.form .checkbox { display: grid; gap: 5px; align-content: center; min-height: 38px; }
+.form .checkbox > span { display: flex; align-items: center; gap: 8px; }
 .form button { min-height: 38px; padding: 7px 14px; border-radius: 6px; background: var(--color-dashboard-accent); color: var(--color-dashboard-accent-ink); }
 .form button:disabled { opacity: .5; }
 .list { border: 1px solid var(--color-dashboard-rule); border-radius: 9px; background: var(--color-dashboard-surface); }

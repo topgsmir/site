@@ -21,7 +21,7 @@ export const SECURITY_DEFAULTS = {
   payout: policy(60, 20), media: policy(90, 30), media_admin: policy(30, 10), payment: policy(40, 10),
   payment_callback: policy(60, 10), payment_refund: policy(30, 10), payment_configuration: policy(30, 10),
   sms_configuration: policy(30, 10), goghdi_configuration: policy(30, 10), auth_configuration: policy(30, 10),
-  notice_configuration: policy(30, 10), usd_configuration: policy(30, 10), staff_admin: policy(30, 10), staff_setup: policy(30, 10, 3600),
+  notice_configuration: policy(30, 10), complaints_configuration: policy(30, 10), usd_configuration: policy(30, 10), staff_admin: policy(30, 10), staff_setup: policy(30, 10, 3600),
   seller: policy(60, 20),
   bridge: policy(60, 20), signed_ticket: policy(90, 30), ai_profile: policy(30, 10),
   ai_profile_test: policy(90, 30), ai_run: policy(60, 20), product_bulk_undo: policy(15, 5),

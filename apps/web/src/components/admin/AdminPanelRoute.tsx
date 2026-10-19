@@ -35,6 +35,7 @@ export type AdminSection =
   | "settings-usd"
   | "settings-comments"
   | "settings-notice"
+  | "settings-complaints"
   | "settings-stories"
   | "settings-blog-sidebar"
   | "settings-homepage"

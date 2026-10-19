@@ -84,7 +84,7 @@ describe("customer club ledger", () => {
     await club.processPaid(current.id, paidAt);
     const earning = await prisma.club_order_earnings.findUniqueOrThrow({ where: { order_id: current.id } });
     const rule = await prisma.club_rule_versions.findFirstOrThrow({ where: { effective_at: { lte: paidAt } }, orderBy: [{ effective_at: "desc" }, { id: "desc" }] });
-    assert.equal(earning.points, 10 * rule.points_per_1000_toman! + earning.campaign_points);
+    assert.equal(earning.points, 10 * Number(rule.points_per_1000_toman) + earning.campaign_points);
     assert.equal(await prisma.club_order_earnings.count({ where: { order_id: historical.id } }), 0);
     assert.equal((await club.summary(user.id)).rollingSpend, "10000");
   });

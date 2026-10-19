@@ -27,6 +27,7 @@ import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { CommentsModule } from "./modules/comments/comments.module";
 import { CaptchaModule } from "./modules/captcha/captcha.module";
 import { PlatformNoticeModule } from "./modules/platform-notice/platform-notice.module";
+import { ComplaintsModule } from "./modules/complaints/complaints.module";
 import { BackupModule } from "./modules/backup/backup.module";
 import { HomepageStoriesModule } from "./modules/homepage-stories/homepage-stories.module";
 import { HomepageModule } from "./modules/homepage/homepage.module";
@@ -69,6 +70,7 @@ import { MarketingModule } from "./modules/marketing/marketing.module";
     CommentsModule,
     CaptchaModule,
     PlatformNoticeModule,
+    ComplaintsModule,
     HomepageStoriesModule,
     HomepageModule,
     TemplateModule,

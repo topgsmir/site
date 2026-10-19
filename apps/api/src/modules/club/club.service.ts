@@ -100,7 +100,7 @@ export class ClubService {
     const expiring = await this.prisma.club_point_lots.aggregate({ where: { user_id: userId, remaining: { gt: 0 }, expires_at: { gt: new Date(), lte: new Date(Date.now() + 30 * DAY) } }, _sum: { remaining: true } });
     return { enabled: settings.enabled, balance: member?.balance ?? 0, pointDebt: member?.point_debt ?? 0,
       redemption: settings.enabled && settings.min_redeem_points && settings.max_redeem_points && settings.toman_per_point
-        ? { minPoints: settings.min_redeem_points, maxPoints: settings.max_redeem_points, tomanPerPoint: settings.toman_per_point } : null,
+        ? { minPoints: settings.min_redeem_points, maxPoints: settings.max_redeem_points, tomanPerPoint: settings.toman_per_point.toNumber() } : null,
       tier: tier && { id: tier.id, nameFa: tier.name_fa, nameEn: tier.name_en, nameAr: tier.name_ar },
       rollingSpend: rolling.toString(), nextTier: tiers.find((item) => item.threshold_toman.gt(rolling)) ?? null,
       expiringPoints: expiring._sum.remaining ?? 0 };

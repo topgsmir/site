@@ -11,6 +11,7 @@ import type { Locale } from "@/lib/i18n";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { AccountSettings } from "./AccountSettings";
 import { AccountOrders } from "./AccountOrders";
+import { AccountDownloads } from "./AccountDownloads";
 import { WalletPanel } from "./WalletPanel";
 import { ClubPanel } from "./ClubPanel";
 import { AccountIcon } from "./AccountIcon";
@@ -29,7 +30,7 @@ export function AccountPanel({
 }: {
   locale: Locale;
   user: AppUser;
-  view: "overview" | "orders" | "settings" | "wallet" | "club";
+  view: "overview" | "orders" | "downloads" | "settings" | "wallet" | "club";
 }) {
   const c = ACCOUNT_COPY[locale];
   const w = WORKSPACE_COPY[locale];
@@ -55,7 +56,7 @@ export function AccountPanel({
   );
 
   return (
-    <div className={`${styles.shell} ${view === "wallet" || view === "settings" ? styles.compactView : ""}`} data-account-page ref={shell}>
+    <div className={`${styles.shell} ${view === "wallet" || view === "settings" || view === "downloads" ? styles.compactView : ""}`} data-account-page ref={shell}>
       <a className="skip-link" href="#account-content">
         {w.overview}
       </a>
@@ -124,7 +125,7 @@ export function AccountPanel({
         </section>
         <div className={styles.navbar}>
           <nav className={styles.navigation} aria-label={c.account}>
-            {(["overview", "orders", "wallet", "club", "settings"] as const).map((item) => (
+            {(["overview", "orders", "downloads", "wallet", "club", "settings"] as const).map((item) => (
               <Link
                 key={item}
                 href={
@@ -138,6 +139,8 @@ export function AccountPanel({
                     ? c.overview
                     : item === "orders"
                       ? c.orders
+                      : item === "downloads"
+                        ? c.downloads
                       : item === "wallet"
                       ? (locale === "fa" ? "کیف پول" : locale === "ar" ? "المحفظة" : "Wallet")
                       : item === "club"
@@ -163,8 +166,8 @@ export function AccountPanel({
         ) : (
           <header className={styles.heading} data-account-enter>
             <p className={styles.greeting}>{c.account}</p>
-            <h1>{view === "orders" ? c.history : view === "wallet" ? (locale === "fa" ? "کیف پول" : locale === "ar" ? "المحفظة" : "Wallet") : view === "club" ? (locale === "fa" ? "باشگاه مشتریان" : locale === "ar" ? "نادي العملاء" : "Customer club") : w.settings}</h1>
-            <p>{view === "orders" ? w.ordersIntro : view === "wallet" ? (locale === "fa" ? "موجودی و تراکنش‌های خود را مدیریت کنید." : locale === "ar" ? "أدر رصيدك ومعاملاتك." : "Manage your balance and transactions.") : view === "club" ? (locale === "fa" ? "امتیازها، سطح و جوایز خود را ببینید." : locale === "ar" ? "راجع نقاطك ومستواك ومكافآتك." : "Review your points, tier and rewards.") : w.settingsIntro}</p>
+            <h1>{view === "orders" ? c.history : view === "downloads" ? c.downloadsTitle : view === "wallet" ? (locale === "fa" ? "کیف پول" : locale === "ar" ? "المحفظة" : "Wallet") : view === "club" ? (locale === "fa" ? "باشگاه مشتریان" : locale === "ar" ? "نادي العملاء" : "Customer club") : w.settings}</h1>
+            <p>{view === "orders" ? w.ordersIntro : view === "downloads" ? c.downloadsIntro : view === "wallet" ? (locale === "fa" ? "موجودی و تراکنش‌های خود را مدیریت کنید." : locale === "ar" ? "أدر رصيدك ومعاملاتك." : "Manage your balance and transactions.") : view === "club" ? (locale === "fa" ? "امتیازها، سطح و جوایز خود را ببینید." : locale === "ar" ? "راجع نقاطك ومستواك ومكافآتك." : "Review your points, tier and rewards.") : w.settingsIntro}</p>
           </header>
         )}
         {view === "overview" ? (
@@ -173,6 +176,8 @@ export function AccountPanel({
           <div className={styles.fullContent}>
             {view === "wallet" ? <WalletPanel locale={locale} /> : view === "club" ? <ClubPanel locale={locale} /> : view === "settings" ? (
               <AccountSettings locale={locale} user={profile} onUpdated={setProfile} />
+            ) : view === "downloads" ? (
+              <AccountDownloads locale={locale} />
             ) : (
               <AccountOrders locale={locale} view="orders" />
             )}

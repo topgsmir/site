@@ -14,12 +14,17 @@ import { CartLink } from "./CartLink";
 import { HeaderSearch } from "./HeaderSearch";
 import { HeaderCategories } from "./HeaderCategories";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { ContactNavMenu } from "./ContactNavMenu";
 
 const copy = {
   fa: { tagline: "همراه متخصصان موبایل", announcement: "فایل، آموزش و ابزار تخصصی تعمیرات موبایل", contact: "تماس با ما", services: "خدمات", shop: "فروشگاه", specialists: "کارشناسان", journal: "مجله", login: "ورود به حساب", account: "حساب من", nav: "ناوبری اصلی" },
   en: { tagline: "For the craft of repair", announcement: "Specialist files, training and mobile repair tools", contact: "Contact", services: "Services", shop: "Shop", specialists: "Experts", journal: "Journal", login: "Sign in", account: "My account", nav: "Main navigation" },
   ar: { tagline: "رفيق متخصصي الصيانة", announcement: "ملفات وتدريب وأدوات متخصصة لصيانة الجوال", contact: "اتصل بنا", services: "الخدمات", shop: "المتجر", specialists: "الخبراء", journal: "المجلة", login: "تسجيل الدخول", account: "حسابي", nav: "التنقل الرئيسي" }
 };
+
+function isContactNavHref(href: string, locale: Locale) {
+  return href === `/${locale}/contact-us` || href.endsWith("/contact-us");
+}
 
 function subscribeToHeaderScroll(update: () => void) {
   let frame = 0;
@@ -30,7 +35,7 @@ function subscribeToHeaderScroll(update: () => void) {
 const headerMenuHidden = () => Math.max(window.scrollY, document.body.scrollTop, document.documentElement.scrollTop) > 24;
 const headerMenuHiddenOnServer = () => false;
 
-export function PublicHeader({ locale, accountHref, current, languageHrefs, configuration }: { configuration?: TemplateConfiguration; locale: Locale; accountHref?: string | null; current?: "shop" | "journal" | "cart" | "contact"; languageHrefs?: Record<Locale, string> }) {
+export function PublicHeader({ locale, accountHref, current, languageHrefs, configuration }: { configuration?: TemplateConfiguration; locale: Locale; accountHref?: string | null; current?: "shop" | "journal" | "cart" | "contact" | "complaints"; languageHrefs?: Record<Locale, string> }) {
   const c = copy[locale];
   const menuHidden = useSyncExternalStore(subscribeToHeaderScroll, headerMenuHidden, headerMenuHiddenOnServer);
   const menu = useRef<HTMLDivElement>(null);
@@ -43,7 +48,7 @@ export function PublicHeader({ locale, accountHref, current, languageHrefs, conf
   }, [menuHidden]);
   const storedConfiguration = useTemplateConfiguration(locale);
   const settings = configuration ?? storedConfiguration;
-  const currentPath = current === "shop" ? "/products" : current === "journal" ? "/blog" : current === "cart" ? "/cart" : current === "contact" ? "/contact-us" : "";
+  const currentPath = current === "shop" ? "/products" : current === "journal" ? "/blog" : current === "cart" ? "/cart" : current === "contact" ? "/contact-us" : current === "complaints" ? "/complaints" : "";
 
   return (
     <header className={styles.header} dir={getDirection(locale)}>
@@ -69,7 +74,11 @@ export function PublicHeader({ locale, accountHref, current, languageHrefs, conf
         <div className={styles.secondaryRow}>
           <HeaderCategories locale={locale} configuration={settings.categories} />
           <nav className={styles.navigation} aria-label={c.nav}>
-            {settings.navigation.filter((item) => item.enabled).map((item, index) => <Link key={index} href={item.href as Route} aria-current={currentPath && item.href === `/${locale}${currentPath}` ? "page" : undefined}><DesignIcon name={item.icon} />{item.label}</Link>)}
+            {settings.navigation.filter((item) => item.enabled).map((item, index) =>
+              isContactNavHref(item.href, locale)
+                ? <ContactNavMenu key={index} locale={locale} label={item.label} icon={item.icon} current={current} />
+                : <Link key={index} href={item.href as Route} aria-current={currentPath && item.href === `/${locale}${currentPath}` ? "page" : undefined}><DesignIcon name={item.icon} />{item.label}</Link>
+            )}
           </nav>
         </div>
       </div>

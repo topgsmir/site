@@ -87,7 +87,7 @@ export const ADMIN_TOOL_CATALOG: readonly AdminToolDefinition[] = [
   tool("club_rewards", "club", "GET", "/club/rewards", "read", "List currently active club rewards."),
   tool("club_wallet_redeem", "club", "POST", "/club/me/wallet-redemptions", "critical", "Convert points to expiring promotional wallet credit.", "body: rewardId UUID; Idempotency-Key UUID.", true),
   tool("admin_club_settings", "club", "GET", "/admin/club/settings", "read", "Read club activation and earning rules."),
-  tool("admin_club_settings_update", "club", "PATCH", "/admin/club/settings", "critical", "Update club activation and earning rules.", "body: enabled, earning and redemption rates, bonuses, limits and expiry days."),
+  tool("admin_club_settings_update", "club", "PATCH", "/admin/club/settings", "critical", "Update club activation and earning rules.", "body: enabled, decimal earning/redemption rates (up to 4 places), integer bonuses/limits, expiry days."),
   tool("admin_club_tiers", "club", "GET", "/admin/club/tiers", "read", "List club tiers."),
   tool("admin_club_tier_create", "club", "POST", "/admin/club/tiers", "write", "Create a club tier.", "body: localized names, thresholdToman, sortOrder, active."),
   tool("admin_club_tier_update", "club", "PUT", "/admin/club/tiers/:id", "write", "Update a club tier.", "path: tier UUID; body: complete tier definition."),
@@ -117,6 +117,7 @@ export const ADMIN_TOOL_CATALOG: readonly AdminToolDefinition[] = [
   tool("seo_history_get", "seo", "GET", "/admin/seo/history", "read", "Read the latest 20 SEO configuration revisions and actor IDs."),
   tool("seo_settings_update", "seo", "PATCH", "/admin/seo", "critical", "Replace SEO configuration after owner approval. Controls indexing, metadata, organization, verification and redirects; can affect search visibility. Restore history by saving its configuration with the current version.", "body: version (current integer), configuration: indexingEnabled boolean; locales (exactly fa/en/ar, each with siteName<=80, titleTemplate<=120 containing one %s, description<=320, socialImage HTTPS URL or empty); googleVerification and bingVerification (tokens<=200); organizationName<=120, organizationLogo HTTPS URL or empty, sameAs<=10 HTTPS URLs; pages<=100 {path, title<=120, description<=320, socialImage, noIndex, excludeFromSitemap}; redirects<=100 {source, destination, status:301|302, enabled}. Paths<=500, localized public paths only, no queries, duplicates, chains or loops."),
   tool("site_notice_get", "site", "GET", "/notice", "read", "Read the public platform notice."),
+  tool("site_complaints_get", "site", "GET", "/complaints", "read", "Read the public complaints phone number and Telegram ID."),
   tool("site_upload_centers_get", "site", "GET", "/upload-centers", "read", "Read the two configured upload center destinations."),
   tool("site_system_status", "site", "GET", "/system/status", "read", "Read public maintenance and restore status."),
   tool("site_login_methods", "security", "GET", "/auth/login-methods", "read", "Read the currently enabled login methods."),
@@ -247,6 +248,7 @@ export const ADMIN_TOOL_CATALOG: readonly AdminToolDefinition[] = [
 
   tool("admin_orders_list", "orders", "GET", "/orders", "read", "Search and paginate orders visible to the authenticated admin; seller order items include their product ID, and directory responses include counts for each order status group.", "query: view=directory for platform order counts, trash active|trashed, status or statusGroup (pending, processing, completed, cancelled, returned, other), productType, search, dateFrom, dateTo, sort, cursor, limit."),
   tool("purchase_orders_list", "orders", "GET", "/orders/purchases", "read", "List only the current actor's personal purchases with buyer-safe fields.", "query: cursor UUID, limit 1..50, optional status, productType, search, dateFrom, dateTo, sort; management filters are rejected."),
+  tool("purchase_downloads_list", "orders", "GET", "/orders/downloads", "read", "List the current actor's settled digital file entitlements with download limits and claim paths.", "query: cursor UUID, limit 1..50, optional search (3..100 chars), sort newest|oldest."),
   tool("purchase_order_get", "orders", "GET", "/orders/purchases/:id", "read", "Read a buyer-safe personal order belonging to the current actor.", "path: id=order UUID."),
   tool("purchase_order_status", "orders", "PATCH", "/orders/purchases/:id/status", "critical", "Cancel or confirm delivery of the current actor's own purchase using buyer transition rules.", "path: id=order UUID; body: status=cancelled|delivered; Idempotency-Key UUID.", true),
   tool("admin_orders_export", "orders", "POST", "/orders/export", "write", "Download a UTF-8 CSV of up to 5000 platform orders matching directory filters, optionally restricted to selected order IDs.", "body: locale=fa|en|ar; columns=1..13 allowlisted column names; optional selectedIds=1..100 UUIDs, trash=active|trashed, search=3..100 chars, statusGroup, productType, dateFrom/dateTo=YYYY-MM-DD, sort=newest|oldest.", false, "download"),
@@ -378,6 +380,8 @@ export const ADMIN_TOOL_CATALOG: readonly AdminToolDefinition[] = [
   tool("seller_upload_deletion_request", "uploads", "POST", "/seller/uploads/:source/:id/deletion-request", "write", "Request administrative approval to delete an owned upload.", "path: source and asset UUID; body: reason (3-500 characters)."),
 
   tool("admin_notice_get", "settings", "GET", "/admin/settings/notice", "read", "Read the platform notice settings."),
+  tool("admin_complaints_get", "settings", "GET", "/admin/settings/complaints", "read", "Read the complaints contact phone number and Telegram ID."),
+  tool("admin_complaints_update", "settings", "PATCH", "/admin/settings/complaints", "write", "Set the complaints contact phone number and Telegram ID shown on the public complaints page.", "body: phoneNumber<=40 digits/spaces/+/()- or empty; telegramId<=64 as @handle, handle, or t.me URL, or empty."),
   tool("admin_upload_centers_get", "settings", "GET", "/admin/settings/upload-centers", "read", "Read the free and regular product upload center URLs."),
   tool("admin_upload_centers_update", "settings", "PATCH", "/admin/settings/upload-centers", "write", "Set the free and regular product upload center URLs.", "body: freeUrl and regularUrl, each empty or an HTTPS URL up to 2048 characters without credentials."),
   tool("admin_notice_update", "settings", "PATCH", "/admin/settings/notice", "write", "Update or clear the platform notice.", "body: localized message and enabled state."),

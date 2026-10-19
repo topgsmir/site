@@ -43,7 +43,7 @@ export function AccountDashboard({ locale }: { locale: Locale }) {
     </section>
     <div className={styles.topRow}>
       <nav className={styles.shortcuts} aria-label={copy.orders}>
-        <Link href={href("/account/orders")}><div><strong>{copy.downloads}</strong><span>{copy.downloadHint}</span></div><span className={styles.shortcutIcon}><DashboardIcon name="download" /></span></Link>
+        <Link href={href("/account/downloads")}><div><strong>{copy.downloads}</strong><span>{copy.downloadHint}</span></div><span className={styles.shortcutIcon}><DashboardIcon name="download" /></span></Link>
         <Link href={href("/account/orders")}><div><strong>{copy.orders}</strong><span>{board.data && !board.error ? `${copy.purchases}: ${number(board.data.you.orderCount)}` : copy.orderHint}</span></div><span className={styles.shortcutIcon}><AccountIcon name="orders" /></span></Link>
       </nav>
       <section className={styles.services} aria-labelledby="dashboard-services">

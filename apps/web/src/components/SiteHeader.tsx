@@ -33,7 +33,7 @@ export function SiteHeader({ locale, accountHref, children }: { locale: Locale; 
     return () => setRouteLinks((current) => current === links ? null : current);
   }, []);
   const path = pathname.replace(/^\/(fa|en|ar)(?=\/|$)/, "");
-  const current = path === "/cart" ? "cart" : path.startsWith("/products") ? "shop" : path.startsWith("/blog") ? "journal" : path === "/contact-us" ? "contact" : undefined;
+  const current = path === "/cart" ? "cart" : path.startsWith("/products") ? "shop" : path.startsWith("/blog") ? "journal" : path === "/contact-us" ? "contact" : path === "/complaints" ? "complaints" : undefined;
   const languageHrefs = routeLinks?.pathname === pathname ? routeLinks.hrefs : { fa: "/fa" + path, en: "/en" + path, ar: "/ar" + path };
   useLayoutEffect(() => {
     const surface = header.current?.querySelector<HTMLElement>("[data-site-header-main]");

@@ -10,9 +10,9 @@ import { LogoutButton } from "./auth/LogoutButton";
 import styles from "./HeaderAccountMenu.module.css";
 
 const copy = {
-  fa: { account: "حساب من", login: "ورود به حساب", orders: "سفارش‌ها", wallet: "کیف پول", settings: "تنظیمات حساب" },
-  en: { account: "My account", login: "Sign in", orders: "Orders", wallet: "Wallet", settings: "Account settings" },
-  ar: { account: "حسابي", login: "تسجيل الدخول", orders: "الطلبات", wallet: "المحفظة", settings: "إعدادات الحساب" }
+  fa: { account: "حساب من", login: "ورود به حساب", orders: "سفارش‌ها", downloads: "دانلودها", wallet: "کیف پول", settings: "تنظیمات حساب" },
+  en: { account: "My account", login: "Sign in", orders: "Orders", downloads: "Downloads", wallet: "Wallet", settings: "Account settings" },
+  ar: { account: "حسابي", login: "تسجيل الدخول", orders: "الطلبات", downloads: "التنزيلات", wallet: "المحفظة", settings: "إعدادات الحساب" }
 };
 
 export function HeaderAccountMenu({ locale, accountHref }: { locale: Locale; accountHref?: string | null }) {
@@ -52,6 +52,7 @@ export function HeaderAccountMenu({ locale, accountHref }: { locale: Locale; acc
       <Link href={(accountHref ?? `/${locale}/login`) as Route} onClick={close}><AccountIcon name="account" /><span>{label}</span></Link>
       {accountHref && <>
         <Link href={`/${locale}/account/orders` as Route} onClick={close}><AccountIcon name="orders" /><span>{c.orders}</span></Link>
+        <Link href={`/${locale}/account/downloads` as Route} onClick={close}><AccountIcon name="download" /><span>{c.downloads}</span></Link>
         <Link href={`/${locale}/account/wallet` as Route} onClick={close}><AccountIcon name="wallet" /><span>{c.wallet}</span></Link>
         <Link href={`/${locale}/account/settings` as Route} onClick={close}><DesignIcon name="settings" /><span>{c.settings}</span></Link>
         <LogoutButton locale={locale} />

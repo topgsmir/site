@@ -15,6 +15,7 @@ const copy = {
     services: "خدمات آنلاین",
     blog: "مجله تعمیرات",
     contact: "ارتباط با ما",
+    rules: "قوانین و مقررات",
     licenses: "نمادها و مجوزها",
     enamad: "نماد اعتماد الکترونیکی",
     ecunion: "اتحادیه کشوری کسب‌وکارهای مجازی",
@@ -32,6 +33,7 @@ const copy = {
     services: "Online services",
     blog: "Repair journal",
     contact: "Contact us",
+    rules: "Rules and regulations",
     licenses: "Trust marks and licenses",
     enamad: "Electronic Trust Symbol (eNAMAD)",
     ecunion: "National Union of Virtual Businesses",
@@ -49,6 +51,7 @@ const copy = {
     services: "الخدمات عن بُعد",
     blog: "مجلة الصيانة",
     contact: "تواصل معنا",
+    rules: "القواعد والأحكام",
     licenses: "شعارات الثقة والتراخيص",
     enamad: "رمز الثقة الإلكترونية (eNAMAD)",
     ecunion: "الاتحاد الوطني للأعمال الافتراضية",
@@ -78,7 +81,8 @@ export function PublicFooter({ locale, content, editable = false }: PublicFooter
     { href: `/${locale}/products`, label: c.products },
     { href: `/${locale}/products?type=service`, label: c.services },
     { href: `/${locale}/blog`, label: c.blog },
-    { href: `/${locale}/contact-us`, label: c.contact }
+    { href: `/${locale}/contact-us`, label: c.contact },
+    { href: `/${locale}/rules`, label: c.rules }
   ];
 
   return (

@@ -47,6 +47,7 @@ import { SecuritySettingsWorkspace } from "@/components/admin/SecuritySettingsWo
 import { ShippingSettingsWorkspace } from "@/components/admin/ShippingSettingsWorkspace";
 import { UsdSettingsWorkspace } from "@/components/admin/UsdSettingsWorkspace";
 import { NoticeSettingsWorkspace } from "@/components/admin/NoticeSettingsWorkspace";
+import { ComplaintsSettingsWorkspace } from "@/components/admin/ComplaintsSettingsWorkspace";
 import { SeoSettingsWorkspace } from "@/components/admin/SeoSettingsWorkspace";
 import { HomepageStoriesWorkspace } from "@/components/admin/HomepageStoriesWorkspace";
 import { TemplateSettingsWorkspace } from "@/components/admin/TemplateSettingsWorkspace";
@@ -860,6 +861,7 @@ export function VendorManagement({
     section === "settings-homepage" ||
     section === "settings-template" ||
     section === "settings-notice" ||
+    section === "settings-complaints" ||
     section === "settings-stories" ||
     section === "settings-blog-sidebar";
   const websiteExpanded = isWebsiteSection || websiteOpen;
@@ -920,6 +922,8 @@ export function VendorManagement({
       "settings-comments": c.comments,
       "settings-notice":
         locale === "fa" ? "اطلاعیه" : locale === "ar" ? "الإشعار" : "Notice",
+      "settings-complaints":
+        locale === "fa" ? "ثبت شکایات" : locale === "ar" ? "الشكاوى" : "Complaints",
       "settings-upload-centers":
         locale === "fa" ? "مراکز آپلود" : locale === "ar" ? "مراكز الرفع" : "Upload centers",
       "settings-stories":
@@ -1865,6 +1869,22 @@ export function VendorManagement({
                     </Link>
                     <Link
                       className={navigationStyles.item}
+                      href={`/${locale}/admin/settings/complaints` as Route}
+                      aria-current={
+                        section === "settings-complaints" ? "page" : undefined
+                      }
+                    >
+                      <EditorialIcon />
+                      <span>
+                        {locale === "fa"
+                          ? "ثبت شکایات"
+                          : locale === "ar"
+                            ? "الشكاوى"
+                            : "Complaints"}
+                      </span>
+                    </Link>
+                    <Link
+                      className={navigationStyles.item}
                       href={`/${locale}/admin/settings/stories` as Route}
                       aria-current={
                         section === "settings-stories" ? "page" : undefined
@@ -2663,6 +2683,9 @@ export function VendorManagement({
         ) : null}
         {section === "settings-notice" ? (
           <NoticeSettingsWorkspace locale={locale} />
+        ) : null}
+        {section === "settings-complaints" ? (
+          <ComplaintsSettingsWorkspace locale={locale} />
         ) : null}
         {section === "settings-upload-centers" ? (
           <UploadCenterSettingsWorkspace locale={locale} />

@@ -18,6 +18,7 @@ import { CredentialCryptoService } from "../bridge/credential-crypto.service";
 import type {
   CreateOrderDto,
   ExportOrdersDto,
+  ListDownloadsQueryDto,
   ListOrdersQueryDto,
   UpdatePurchaseStatusDto,
   UpdateOrderShippingDto,
@@ -284,6 +285,80 @@ export class OrderService {
       if (!cursor) throw new NotFoundException("Order page cursor was not found");
     }
     return this.purchasePage(where, input, direction);
+  }
+
+  async listDownloads(actor: AppUser, input: ListDownloadsQueryDto) {
+    const term = input.search?.trim();
+    if (term && term.length < 3) throw new BadRequestException("Download search needs at least 3 characters");
+    const settled = ["paid", "processing", "awaiting_confirmation", "delivered"] as const;
+    const where: Prisma.digital_entitlementsWhereInput = {
+      buyer_id: actor.id,
+      order_item: {
+        product_type: "digital",
+        order: { buyer_id: actor.id, status: { in: [...settled] } },
+        ...(term ? {
+          OR: [
+            { product_title: { contains: term, mode: "insensitive" } },
+            { order: { id: { contains: term, mode: "insensitive" } } },
+            { order: { seller: { shop_name: { contains: term, mode: "insensitive" } } } }
+          ]
+        } : {})
+      }
+    };
+    const direction = input.sort === "oldest" ? "asc" : "desc";
+    if (input.cursor) {
+      const cursor = await this.prisma.digital_entitlements.findFirst({ where: { ...where, id: input.cursor }, select: { id: true } });
+      if (!cursor) throw new NotFoundException("Download page cursor was not found");
+    }
+    const rows = await this.prisma.digital_entitlements.findMany({
+      where,
+      ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+      take: input.limit + 1,
+      orderBy: [{ created_at: direction }, { id: direction }],
+      select: {
+        id: true,
+        file_index: true,
+        delivery_url: true,
+        max_downloads: true,
+        download_count: true,
+        last_accessed_at: true,
+        created_at: true,
+        order_item: {
+          select: {
+            id: true,
+            product_title: true,
+            digital_delivery_titles: true,
+            offer: { select: { listing: { select: { product_id: true } } } },
+            order: { select: { id: true, status: true, seller: { select: { shop_name: true } } } }
+          }
+        }
+      }
+    });
+    const hasMore = rows.length > input.limit;
+    const page = hasMore ? rows.slice(0, input.limit) : rows;
+    return {
+      items: page.map((row) => {
+        const delivery = mapDigitalDeliveries(row.order_item.order.id, row.order_item.id, [{
+          file_index: row.file_index,
+          delivery_url: row.delivery_url,
+          max_downloads: row.max_downloads,
+          download_count: row.download_count
+        }], row.order_item.digital_delivery_titles)[0]!;
+        return {
+          id: row.id,
+          orderId: row.order_item.order.id,
+          orderItemId: row.order_item.id,
+          orderStatus: row.order_item.order.status,
+          productId: row.order_item.offer.listing.product_id,
+          productTitle: row.order_item.product_title,
+          shopName: row.order_item.order.seller.shop_name,
+          createdAt: row.created_at.toISOString(),
+          lastAccessedAt: row.last_accessed_at?.toISOString() ?? null,
+          file: delivery
+        };
+      }),
+      nextCursor: hasMore ? page.at(-1)?.id ?? null : null
+    };
   }
 
   private async purchasePage(where: Prisma.ordersWhereInput, input: ListOrdersQueryDto, direction: "asc" | "desc"): Promise<{ items: PurchaseOrderSummary[]; nextCursor: string | null; statusCounts?: never }> {
