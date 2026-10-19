@@ -55,6 +55,21 @@ type AuthCopy = {
   submitting: string;
   genericError: string;
   backHome: string;
+  accountLabel: string;
+  accountTitle: string;
+  accountDescription: string;
+  ordersTitle: string;
+  ordersDescription: string;
+  walletTitle: string;
+  walletDescription: string;
+  supportTitle: string;
+  supportDescription: string;
+  browseProducts: string;
+  signInHelp: string;
+  phoneHint: string;
+  passwordHint: string;
+  needHelp: string;
+  contactSupport: string;
 };
 
 type AuthUser = {
@@ -300,10 +315,10 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
 
   return (
     <main className={styles.shell} dir={locale === "en" ? "ltr" : "rtl"}>
+      <div className={styles.layout}>
       <section className={styles.panel} aria-labelledby="auth-title">
         <div className={styles.topbar}>
           <Link className={styles.back} href={`/${locale}`} aria-label={copy.backHome} title={copy.backHome}><DesignIcon name="arrow" /></Link>
-          <Link className={styles.brand} href={`/${locale}`} aria-label="Top GSM"><BrandLogo layout="stacked" eager /></Link>
         </div>
         <div className={styles.heading}>
           <h1 id="auth-title">{copy.title}</h1>
@@ -321,7 +336,7 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
               className={styles.identifier}
               readOnly={isSubmitting || Boolean(challengeId)}
               aria-invalid={methodUnavailable || (phoneMode && !phoneValid)}
-              aria-describedby={error ? "auth-error" : undefined}
+              aria-describedby={error ? "auth-error auth-method-hint" : "auth-method-hint"}
               autoComplete="username"
               maxLength={254}
               dir="ltr"
@@ -339,6 +354,7 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
               required
             />
           </label>
+          <p className={styles.methodHint} id="auth-method-hint">{trimmedIdentifier ? phoneMode ? copy.phoneHint : copy.passwordHint : copy.signInHelp}</p>
           {phoneMode ? challengeId ? <>
             <div className={styles.codeMeta}>
               <p>{copy.codeSentTo} <b dir="ltr">{requestedPhone}</b></p>
@@ -405,8 +421,23 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
         </form>
         <footer className={styles.footer}>
           <p>{locale === "fa" ? <>ورود شما به معنی پذیرش <Link href={`/${locale}/rules` as Route}>قوانین</Link> تاپ جی اس ام میباشد.</> : locale === "ar" ? <>تسجيل دخولك يعني قبول <Link href={`/${locale}/rules` as Route}>قواعد</Link> Top GSM.</> : <>By signing in, you accept the Top GSM <Link href={`/${locale}/rules` as Route}>rules</Link>.</>}</p>
+          <p className={styles.help}>{copy.needHelp} <Link href={`/${locale}/contact-us` as Route}>{copy.contactSupport}</Link></p>
         </footer>
       </section>
+      <aside className={styles.overview} aria-labelledby="account-title">
+        <Link className={`${styles.brand} ${styles.desktopBrand}`} href={`/${locale}`} aria-label="Top GSM"><BrandLogo eager /></Link>
+        <div className={styles.overviewHeading}>
+          <h2 id="account-title">{copy.accountTitle}</h2>
+          <p>{copy.accountDescription}</p>
+        </div>
+        <ul className={styles.benefits}>
+          <li><span className={styles.benefitIcon}><DesignIcon name="bag" /></span><div><h3>{copy.ordersTitle}</h3><p>{copy.ordersDescription}</p></div></li>
+          <li><span className={styles.benefitIcon}><DesignIcon name="layers" /></span><div><h3>{copy.walletTitle}</h3><p>{copy.walletDescription}</p></div></li>
+          <li><span className={styles.benefitIcon}><DesignIcon name="headphones" /></span><div><h3>{copy.supportTitle}</h3><p>{copy.supportDescription}</p></div></li>
+        </ul>
+        <Link className={styles.browse} href={`/${locale}/products`}><span>{copy.browseProducts}</span><DesignIcon name="arrow" /></Link>
+      </aside>
+      </div>
     </main>
   );
 }

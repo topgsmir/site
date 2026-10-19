@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" fill="none">
+  <g stroke="#4c64dc" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity=".48">
+    <!-- Exploded phone chassis, kept at the edge of the sign-in surface. -->
+    <g transform="translate(66 145) rotate(-12 95 195)">
+      <rect width="190" height="390" rx="24"/>
+      <rect x="7" y="7" width="176" height="376" rx="19"/>
+      <path d="M58 18h74M79 27h32M17 59h156v277H17zM63 354h64"/>
+      <circle cx="141" cy="24" r="3"/>
+      <rect x="24" y="70" width="63" height="87" rx="7"/>
+      <circle cx="42" cy="88" r="10"/><circle cx="69" cy="88" r="10"/>
+      <circle cx="42" cy="117" r="10"/><circle cx="69" cy="117" r="5"/>
+      <path d="M99 70h62v48h-62zM104 77h23v31h-23zM134 77h20v31h-20zM99 127h62v22H99zM28 174h133v141H28zM38 184h113v120H38zM84 157v17M100 149v25M151 149v25M17 324h156M17 46h156M-4 89v35M-4 137v53M194 107v54"/>
+      <path d="M28 165H9v51h19M161 164h20v70h-20M56 336v10h-32v17M143 336v24h20"/>
+      <circle cx="24" cy="368" r="3"/><circle cx="163" cy="366" r="3"/>
+      <path d="M48 -17h97M48 -13v-8M145 -13v-8M212 58v278M208 58h8M208 336h8" opacity=".6"/>
+    </g>
+    <!-- SIM contacts and a small processor. -->
+    <g transform="translate(1434 104) rotate(17 48 62)">
+      <path d="M8 0h62l26 27v89a8 8 0 0 1-8 8H8a8 8 0 0 1-8-8V8a8 8 0 0 1 8-8Z"/>
+      <rect x="19" y="35" width="58" height="62" rx="7"/>
+      <path d="M38 35v62M58 35v62M19 55h19M58 55h19M19 77h19M58 77h19M38 66h20"/>
+    </g>
+    <g transform="translate(1417 710) rotate(12 45 45)">
+      <rect width="90" height="90" rx="5"/><rect x="9" y="9" width="72" height="72" rx="2"/>
+      <path d="M16 0v-12M28 0v-12M40 0v-12M52 0v-12M64 0v-12M76 0v-12M16 90v12M28 90v12M40 90v12M52 90v12M64 90v12M76 90v12M0 16h-12M0 28h-12M0 40h-12M0 52h-12M0 64h-12M0 76h-12M90 16h12M90 28h12M90 40h12M90 52h12M90 64h12M90 76h12"/>
+      <path d="M30 34h30v22H30zM37 41h16v8H37z" opacity=".65"/>
+    </g>
+    <!-- Routed traces and contact points. -->
+    <path d="M0 780h114l63-63h92M0 801h124l63-63h71M0 822h134l63-63h80M78 1000V905l50-50h132l52 52h193l54-54h84M99 1000v-86l40-40h111l52 52h212l54-54h55M120 1000v-77l29-29h92l52 52h230l56-56h92"/>
+    <circle cx="274" cy="717" r="5"/><circle cx="263" cy="738" r="5"/><circle cx="282" cy="759" r="5"/>
+    <circle cx="648" cy="853" r="5"/><circle cx="628" cy="872" r="5"/><circle cx="676" cy="890" r="5"/>
+    <path d="M1600 380h-118l-51 51h-103M1600 402h-108l-51 51h-132M1600 424h-98l-51 51h-80M1600 890h-195l-65-65h-107M1600 912h-204l-65-65h-151M1600 934h-215l-65-65h-87M1110 0v79l-46 46h-134M1132 0v88l-59 59h-109M1154 0v97l-72 72h-85"/>
+    <circle cx="1323" cy="431" r="5"/><circle cx="1304" cy="453" r="5"/><circle cx="1366" cy="475" r="5"/>
+    <circle cx="1228" cy="825" r="5"/><circle cx="1175" cy="847" r="5"/><circle cx="1228" cy="869" r="5"/>
+    <circle cx="925" cy="125" r="5"/><circle cx="959" cy="147" r="5"/><circle cx="992" cy="169" r="5"/>
+    <circle cx="1403" cy="583" r="24"/><circle cx="1403" cy="583" r="17"/><circle cx="1403" cy="583" r="10"/>
+    <path d="M329 93h10M334 88v10M1325 301h10M1330 296v10M319 622h10M324 617v10M1036 927h10M1041 922v10" opacity=".7"/>
+  </g>
+</svg>
