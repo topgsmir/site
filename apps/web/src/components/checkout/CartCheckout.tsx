@@ -192,9 +192,10 @@ export function CartCheckout({ locale, signedInUser }: { locale: Locale; signedI
   const offerGroups = useMemo(() => new Map(quote?.groups.flatMap((group) => group.items.map((item) => [item.offerId, group])) ?? []), [quote]);
   const physicalOfferIds = useMemo(() => quote?.groups.filter((group) => group.productType === "physical").flatMap((group) => group.items.map((item) => item.offerId)) ?? [], [quote]);
   const itemCount = useMemo(() => items.reduce((total, item) => total + item.quantity, 0), [items]);
+  const hasDigital = quote?.groups.some((group) => group.productType === "digital") ?? false;
   const otpRemaining = challenge ? Math.max(0, Math.ceil((challenge.expiresAt - clock) / 1000)) : 0;
   const resendRemaining = challenge ? Math.max(0, Math.ceil((challenge.resendAt - clock) / 1000)) : 0;
-  const activeStep = !quote ? 1 : busy && authenticated ? 3 : 2;
+  const activeStep = busy && authenticated ? 3 : authenticated || challenge ? 2 : 1;
 
   function persist(next: CartItem[], mode: "immediate" | "debounced" = "immediate") {
     try {
@@ -392,68 +393,317 @@ export function CartCheckout({ locale, signedInUser }: { locale: Locale; signedI
   const actionDisabled = busy || quoteUpdating || Boolean(quoteIssue) || !quote;
   const actionLabel = busy ? c.busy : !authenticated && (!challenge || otpRemaining === 0) ? (challenge ? c.newCode : c.sendCode) : !authenticated ? c.verify : c.pay;
 
-  if (!hydrated) return <main className={styles.page} id="cart-content"><div className={styles.loading} role="status"><span /><p>{c.loading}</p></div></main>;
+  if (!hydrated) return <main className={styles.page} id="cart-content"><div className={styles.loading} role="status"><p>{c.loading}</p><div className={styles.skeleton} aria-hidden="true"><div className={styles.skeletonList}><span /><span /><span /></div><div className={styles.skeletonRail}><span /><span /><span /></div></div></div></main>;
 
   return <main className={styles.page} id="cart-content">
-    <header className={styles.hero}>
-      <div><p className={styles.eyebrow}>{c.eyebrow}</p><h1>{c.title}</h1><p className={styles.intro}>{c.intro}</p></div>
+    <header className={styles.pageHead}>
+      <div className={styles.pageHeadCopy}>
+        <p className={styles.eyebrow}>{c.eyebrow}</p>
+        <h1>{c.title}</h1>
+        <p className={styles.intro}>{c.intro}</p>
+      </div>
       <ol className={styles.steps} aria-label={c.progress} data-active-step={activeStep}>
         {[c.stepCart, c.stepDetails, c.stepPayment].map((label, index) => {
           const step = index + 1;
           const state = step < activeStep ? "complete" : step === activeStep ? "current" : "upcoming";
+          const stateLabel = state === "complete" ? c.completed : state === "current" ? c.current : c.upcoming;
           return <li key={label} data-state={state} aria-current={state === "current" ? "step" : undefined}>
-            <span className={styles.stepMarker} aria-hidden="true">{state === "complete" ? <DesignIcon name="check" /> : step}</span>
-            <span className={styles.stepLabel}><small>{state === "complete" ? c.completed : state === "current" ? c.current : c.upcoming}</small><strong>{label}</strong></span>
-            <span className="sr-only">{state === "complete" ? c.completed : state === "current" ? c.current : c.upcoming}</span>
+            <span className={styles.stepIndex} aria-hidden="true">{state === "complete" ? <DesignIcon name="check" /> : step}</span>
+            <span className={styles.stepLabel}>{label}</span>
+            <span className="sr-only">{stateLabel}</span>
           </li>;
         })}
       </ol>
     </header>
-    {!items.length ? <section className={styles.empty}><span className={styles.emptyIcon}><DesignIcon name="layers" /></span><h2>{c.empty}</h2><p>{c.emptyHint}</p><Link href={`/${locale}/products`}>{c.shop}<DesignIcon name="arrow" /></Link></section> : <form className={styles.layout} onSubmit={submit} aria-busy={busy}>
-      <section className={styles.cartColumn} aria-labelledby="cart-items-title">
-        <div className={styles.sectionHeading}><div><p id="cart-items-title">{number.format(itemCount)} {itemCount === 1 ? c.item : c.items}</p><h2>{c.stepCart}</h2></div><Link href={`/${locale}/products`}>{c.continueShopping}<DesignIcon name="arrow" /></Link></div>
-        <div className={styles.items}>{items.map((cartItem) => {
-          const item = pricedOffers.get(cartItem.offerId);
-          const group = offerGroups.get(cartItem.offerId);
-          const productType = item?.productType ?? "digital";
-          return <article className={styles.item} key={cartItem.offerId}>
-            <div className={styles.artwork} data-type={productType} data-has-image={Boolean(item?.image)}>
-              {item?.image ? <Image src={item.image.url} alt="" width={item.image.width} height={item.image.height} unoptimized /> : <DesignIcon name={productType === "digital" ? "file" : productType === "service" ? "headphones" : "layers"} />}
-              <span>{c[productType]}</span>
-            </div>
-            <div className={styles.itemBody}>
-              <div className={styles.itemTop}><div><p>{group ? `${c.seller} ${group.seller.shopName}` : c[productType]}</p><h3>{item?.title ?? cartItem.productName ?? (quoteIssue ? c.productUnavailable : c.loading)}</h3></div><button className={styles.remove} type="button" aria-label={`${c.remove}: ${item?.title ?? cartItem.productName ?? c.productUnavailable}`} title={c.removeHint} onClick={() => removeOffers([cartItem.offerId])}><DesignIcon name="trash" /></button></div>
-              <div className={styles.itemBottom}><div className={styles.price}><strong>{item ? `${formatCurrencyAmount(item.totalAmount, quote?.currency ?? "TOMAN", locale)} ${currencyLabel(quote?.currency ?? "TOMAN")}` : "—"}</strong>{item ? <small>{c.each}: {formatCurrencyAmount(item.unitPrice, quote?.currency ?? "TOMAN", locale)} {currencyLabel(quote?.currency ?? "TOMAN")}</small> : null}</div><div className={styles.quantity}><span>{c.quantity}</span><div><button type="button" aria-label={`${c.quantity} −`} disabled={cartItem.quantity <= 1 && !quantityDrafts[cartItem.offerId]} onClick={() => adjustQuantity(cartItem.offerId, -1)}>−</button><input aria-label={c.quantity} type="number" inputMode="numeric" min={1} max={100} value={quantityDrafts[cartItem.offerId] ?? String(cartItem.quantity)} onChange={(event) => { if (/^\d{0,3}$/.test(event.target.value)) setQuantityDrafts((current) => ({ ...current, [cartItem.offerId]: event.target.value })); }} onBlur={() => commitQuantity(cartItem.offerId)} onKeyDown={(event) => handleQuantityKeyDown(event, cartItem.offerId)} /><button type="button" aria-label={`${c.quantity} +`} disabled={cartItem.quantity >= 100 && !quantityDrafts[cartItem.offerId]} onClick={() => adjustQuantity(cartItem.offerId, 1)}>+</button></div></div></div>
-              {item?.productType === "service" ? <section className={styles.serviceDetails} aria-label={c.serviceDetails}>{item.serviceInputs.length ? <><header><strong>{c.serviceDetails}</strong><small>{c.secretHint}</small></header><div>{item.serviceInputs.map((field) => <label key={field.key}><span>{field.label}{field.required ? " *" : ""}</span>{field.type === "textarea" ? <textarea required={field.required} minLength={field.minimumLength} maxLength={field.maximumLength} placeholder={field.placeholder} value={serviceAnswers[cartItem.offerId]?.[field.key] ?? ""} onChange={(event) => updateServiceAnswer(cartItem.offerId, field.key, event.target.value)} /> : <input type={field.type === "password" ? "password" : "text"} autoComplete={field.type === "password" ? "off" : undefined} required={field.required} minLength={field.minimumLength} maxLength={field.maximumLength} placeholder={field.placeholder} value={serviceAnswers[cartItem.offerId]?.[field.key] ?? ""} onChange={(event) => updateServiceAnswer(cartItem.offerId, field.key, event.target.value)} />}{field.helpText ? <small>{field.helpText}</small> : null}</label>)}</div></> : null}<label className={styles.note}><span>{c.serviceNote}</span><textarea maxLength={2000} value={cartItem.serviceNote ?? ""} placeholder={c.serviceNoteHint} onChange={(event) => updateNote(cartItem.offerId, event.target.value)} /></label></section> : null}
-            </div>
-          </article>;
-        })}</div>
+
+    {!items.length ? (
+      <section className={styles.empty}>
+        <span className={styles.emptyMark} aria-hidden="true"><DesignIcon name="bag" /></span>
+        <div className={styles.emptyCopy}>
+          <h2>{c.empty}</h2>
+          <p>{c.emptyHint}</p>
+        </div>
+        <Link className={styles.primaryLink} href={`/${locale}/products`}>{c.shop}<DesignIcon name="arrow" /></Link>
       </section>
-      <aside className={styles.summary}>
-        <div className={styles.summaryPurchase}>
-          <div className={styles.summaryTitle}><div><p>{c.summary}</p><span>{number.format(itemCount)} {itemCount === 1 ? c.item : c.items}</span></div>{quote ? <><strong>{formatCurrencyAmount(quote.totalAmount, quote.currency, locale)} <small>{currencyLabel(quote.currency)}</small></strong>{quoteUpdating ? <span className={styles.updating} role="status">{c.updating}</span> : null}</> : <span className={styles.pricePlaceholder}>{c.loading}</span>}</div>
-          <button className={`${styles.primary} ${styles.desktopAction}`} type="submit" disabled={actionDisabled}>{actionLabel}<DesignIcon name="arrow" /></button>
+    ) : (
+      <form className={styles.layout} onSubmit={submit} aria-busy={busy}>
+        <section className={styles.cartColumn} aria-labelledby="cart-items-title">
+          <div className={styles.sectionHeading}>
+            <h2 id="cart-items-title">{number.format(itemCount)} {itemCount === 1 ? c.item : c.items}</h2>
+            <Link href={`/${locale}/products`}>{c.continueShopping}<DesignIcon name="arrow" /></Link>
+          </div>
+
+          <div className={styles.items}>
+            {items.map((cartItem) => {
+              const item = pricedOffers.get(cartItem.offerId);
+              const group = offerGroups.get(cartItem.offerId);
+              const productType = item?.productType ?? "digital";
+              return <article className={styles.item} key={cartItem.offerId} data-unavailable={quoteIssue?.offerIds.includes(cartItem.offerId) ? "true" : undefined}>
+                <div className={styles.artwork} data-type={productType} data-has-image={Boolean(item?.image)}>
+                  {item?.image
+                    ? <Image src={item.image.url} alt="" width={item.image.width} height={item.image.height} unoptimized />
+                    : <DesignIcon name={productType === "digital" ? "file" : productType === "service" ? "headphones" : "layers"} />}
+                </div>
+                <div className={styles.itemMeta}>
+                  <p>
+                    <span className={styles.typeChip}>{c[productType]}</span>
+                    {group ? <span>{c.seller} {group.seller.shopName}</span> : null}
+                  </p>
+                  <h3>{item?.title ?? cartItem.productName ?? (quoteIssue ? c.productUnavailable : c.loading)}</h3>
+                </div>
+                <div className={styles.itemControls}>
+                  <div className={styles.quantity}>
+                    <span className="sr-only">{c.quantity}</span>
+                    <div>
+                      <button type="button" aria-label={`${c.quantity} −`} disabled={cartItem.quantity <= 1 && !quantityDrafts[cartItem.offerId]} onClick={() => adjustQuantity(cartItem.offerId, -1)}>−</button>
+                      <input
+                        aria-label={c.quantity}
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        max={100}
+                        value={quantityDrafts[cartItem.offerId] ?? String(cartItem.quantity)}
+                        onChange={(event) => { if (/^\d{0,3}$/.test(event.target.value)) setQuantityDrafts((current) => ({ ...current, [cartItem.offerId]: event.target.value })); }}
+                        onBlur={() => commitQuantity(cartItem.offerId)}
+                        onKeyDown={(event) => handleQuantityKeyDown(event, cartItem.offerId)}
+                      />
+                      <button type="button" aria-label={`${c.quantity} +`} disabled={cartItem.quantity >= 100 && !quantityDrafts[cartItem.offerId]} onClick={() => adjustQuantity(cartItem.offerId, 1)}>+</button>
+                    </div>
+                  </div>
+                  <div className={styles.price}>
+                    <strong>{item ? `${formatCurrencyAmount(item.totalAmount, quote?.currency ?? "TOMAN", locale)} ${currencyLabel(quote?.currency ?? "TOMAN")}` : "—"}</strong>
+                    {item && cartItem.quantity > 1 ? <small>{c.each}: {formatCurrencyAmount(item.unitPrice, quote?.currency ?? "TOMAN", locale)} {currencyLabel(quote?.currency ?? "TOMAN")}</small> : null}
+                  </div>
+                  <button
+                    className={styles.remove}
+                    type="button"
+                    aria-label={`${c.remove}: ${item?.title ?? cartItem.productName ?? c.productUnavailable}`}
+                    title={c.removeHint}
+                    onClick={() => removeOffers([cartItem.offerId])}
+                  >
+                    <DesignIcon name="trash" />
+                  </button>
+                </div>
+                {item?.productType === "service" ? (
+                    <section className={styles.serviceDetails} aria-label={c.serviceDetails}>
+                      {item.serviceInputs.length ? (
+                        <>
+                          <header><strong>{c.serviceDetails}</strong><small>{c.secretHint}</small></header>
+                          <div>
+                            {item.serviceInputs.map((field) => (
+                              <label key={field.key}>
+                                <span>{field.label}{field.required ? " *" : ""}</span>
+                                {field.type === "textarea"
+                                  ? <textarea required={field.required} minLength={field.minimumLength} maxLength={field.maximumLength} placeholder={field.placeholder} value={serviceAnswers[cartItem.offerId]?.[field.key] ?? ""} onChange={(event) => updateServiceAnswer(cartItem.offerId, field.key, event.target.value)} />
+                                  : <input type={field.type === "password" ? "password" : "text"} autoComplete={field.type === "password" ? "off" : undefined} required={field.required} minLength={field.minimumLength} maxLength={field.maximumLength} placeholder={field.placeholder} value={serviceAnswers[cartItem.offerId]?.[field.key] ?? ""} onChange={(event) => updateServiceAnswer(cartItem.offerId, field.key, event.target.value)} />}
+                                {field.helpText ? <small>{field.helpText}</small> : null}
+                              </label>
+                            ))}
+                          </div>
+                        </>
+                      ) : null}
+                      <label className={styles.note}>
+                        <span>{c.serviceNote}</span>
+                        <textarea maxLength={2000} value={cartItem.serviceNote ?? ""} placeholder={c.serviceNoteHint} onChange={(event) => updateNote(cartItem.offerId, event.target.value)} />
+                      </label>
+                    </section>
+                  ) : null}
+              </article>;
+            })}
+          </div>
+        </section>
+
+        <aside className={styles.summary}>
+          <div className={styles.summaryRail}>
+            <div className={styles.summaryTitle}>
+              <div>
+                <p>{c.summary}</p>
+                <span>{number.format(itemCount)} {itemCount === 1 ? c.item : c.items}</span>
+              </div>
+              {quote ? (
+                <>
+                  <strong>{formatCurrencyAmount(quote.totalAmount, quote.currency, locale)} <small>{currencyLabel(quote.currency)}</small></strong>
+                  {quoteUpdating ? <span className={styles.updating} role="status">{c.updating}</span> : null}
+                </>
+              ) : (
+                <span className={styles.pricePlaceholder}>{c.loading}</span>
+              )}
+            </div>
+
+            <div className={styles.summaryBody}>
+              {quoteIssue ? (
+                <div className={styles.quoteError} role="alert">
+                  <p>{quoteIssue.message}</p>
+                  <div>
+                    <button type="button" onClick={() => void refresh(items)} disabled={quoteUpdating}>{c.retry}</button>
+                    {quoteIssue.offerIds.length ? <button type="button" onClick={() => removeOffers(quoteIssue.offerIds)}>{c.removeUnavailable}</button> : null}
+                    {appliedCouponCode ? <button type="button" onClick={() => { checkoutKey.current = crypto.randomUUID(); setAppliedCouponCode(""); setCouponDraft(""); }}>{c.removeCoupon}</button> : null}
+                  </div>
+                </div>
+              ) : null}
+              {error ? <p className={styles.error} role="alert">{error}</p> : null}
+
+              {!authenticated ? (
+                <fieldset>
+                  <legend>{c.signin}</legend>
+                  <p className={styles.fieldHint}>{c.signinHint}</p>
+                  <label>
+                    <span>{c.phone}</span>
+                    <input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} inputMode="tel" autoComplete="tel" pattern="(?:\+98|0098|98|0)?9[0-9]{9}" disabled={Boolean(challenge)} required />
+                  </label>
+                  {challenge ? (
+                    <>
+                      <div className={styles.otpMeta}>
+                        <p>{c.otpSent} <b dir="ltr">{challenge.requestedPhone}</b></p>
+                        <button type="button" onClick={changePhone}>{c.changePhone}</button>
+                      </div>
+                      <p className={otpRemaining === 0 ? styles.otpExpired : styles.otpTimer} role={otpRemaining === 0 ? "status" : undefined}>
+                        {otpRemaining === 0 ? c.otpExpired : `${c.otpExpires} ${formatCountdown(otpRemaining, locale)}`}
+                      </p>
+                      {otpRemaining > 0 ? (
+                        <label>
+                          <span>{c.code}</span>
+                          <input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" autoFocus required />
+                        </label>
+                      ) : null}
+                      <p className={styles.fieldHint}>{c.newBuyerHint}</p>
+                      <label>
+                        <span>{c.fullName}</span>
+                        <input name="fullName" autoComplete="name" minLength={2} maxLength={120} />
+                      </label>
+                      <button className={styles.resend} type="button" disabled={busy || resendRemaining > 0} onClick={() => void resendOtp()}>
+                        {resendRemaining > 0 ? `${c.resendIn} ${formatCountdown(resendRemaining, locale)}` : c.resend}
+                      </button>
+                    </>
+                  ) : null}
+                </fieldset>
+              ) : null}
+
+              {quote?.requiresShippingAddress ? (
+                <fieldset>
+                  <legend>{c.address}</legend>
+                  <label><span>{c.recipient}</span><input name="recipientName" autoComplete="name" minLength={2} maxLength={120} required /></label>
+                  <label><span>{c.phone}</span><input name="shippingPhone" type="tel" inputMode="tel" autoComplete="tel" pattern="(?:\+98|0098|98|0)?9[0-9]{9}" required /></label>
+                  <div><CheckoutPlaceSelects locale={locale} offerIds={physicalOfferIds} /></div>
+                  <label><span>{c.postal}</span><input name="postalCode" autoComplete="postal-code" pattern="[0-9]{10}" inputMode="numeric" required /></label>
+                  <label><span>{c.street}</span><textarea name="addressLine" autoComplete="street-address" minLength={10} maxLength={1000} required /></label>
+                </fieldset>
+              ) : null}
+
+              {quote?.groups.map((group) => (
+                <div className={styles.paymentGroup} key={group.key}>
+                  <div>
+                    <span>
+                      {group.seller.shopName}
+                      {group.productType === "physical" ? (
+                        <small> · {group.shippingFee !== "0" ? `${c.postalFee}: ${formatCurrencyAmount(group.shippingFee, quote.currency, locale)}` : c.freePostal}</small>
+                      ) : null}
+                    </span>
+                    <strong>{formatCurrencyAmount(group.totalAmount, quote.currency, locale)} {currencyLabel(quote.currency)}</strong>
+                  </div>
+                  <label>
+                    <span>{c.payment}</span>
+                    <select value={selections[group.key] ?? ""} onChange={(event) => setSelections((current) => ({ ...current, [group.key]: event.target.value }))}>
+                      {group.paymentMethods.map((method) => <option key={method.code} value={method.code}>{method.name}</option>)}
+                    </select>
+                  </label>
+                </div>
+              ))}
+
+              <div className={styles.couponControl}>
+                <label>
+                  <span>{c.coupon}</span>
+                  <input value={couponDraft} maxLength={32} pattern="[A-Za-z0-9][A-Za-z0-9_-]{2,31}" onChange={(event) => setCouponDraft(event.target.value.toUpperCase())} />
+                </label>
+                <button type="button" disabled={!couponDraft.trim() || quoteUpdating} onClick={() => { checkoutKey.current = crypto.randomUUID(); setQuoteUpdating(true); const code = couponDraft.trim(); if (code === appliedCouponCode) void refresh(items); else setAppliedCouponCode(code); }}>{c.applyCoupon}</button>
+                {appliedCouponCode ? <button type="button" onClick={() => { checkoutKey.current = crypto.randomUUID(); setQuoteUpdating(true); setAppliedCouponCode(""); setCouponDraft(""); }}>{c.removeCoupon}</button> : null}
+              </div>
+
+              {authenticated && clubEnabled ? (
+                <details className={styles.extras}>
+                  <summary>{locale === "fa" ? "امتیاز باشگاه" : locale === "ar" ? "نقاط النادي" : "Club points"} · {number.format(clubBalance)}</summary>
+                  <div className={styles.couponControl}>
+                    <label>
+                      <span>{locale === "fa" ? "امتیاز برای این سفارش" : locale === "ar" ? "نقاط لهذا الطلب" : "Points for this order"}</span>
+                      <input type="number" min="0" max={Math.min(clubBalance - selectedRewardCost, clubLimits?.maxPoints ?? clubBalance)} step="1" inputMode="numeric" value={clubDraft} onChange={(event) => setClubDraft(event.target.value)} />
+                      {clubLimits ? <small>{locale === "fa" ? "حداقل / حداکثر" : locale === "ar" ? "الحد الأدنى / الأعلى" : "Minimum / maximum"}: {number.format(clubLimits.minPoints)} / {number.format(clubLimits.maxPoints)}</small> : null}
+                    </label>
+                    <button type="button" disabled={quoteUpdating || !clubDraftValid} onClick={() => { checkoutKey.current = crypto.randomUUID(); setClubPoints(clubDraftAmount); }}>{locale === "fa" ? "اعمال" : locale === "ar" ? "تطبيق" : "Apply"}</button>
+                    <label>
+                      <span>{locale === "fa" ? "جایزه تخفیف" : locale === "ar" ? "مكافأة الخصم" : "Discount reward"}</span>
+                      <select value={clubRewardId} onChange={(event) => { checkoutKey.current = crypto.randomUUID(); setClubRewardId(event.target.value); }}>
+                        <option value="">{locale === "fa" ? "بدون جایزه" : locale === "ar" ? "دون مكافأة" : "No reward"}</option>
+                        {clubRewards.map((reward) => (
+                          <option key={reward.id} value={reward.id} disabled={reward.points_cost + clubPoints > clubBalance}>
+                            {locale === "fa" ? reward.name_fa : locale === "ar" ? reward.name_ar : reward.name_en} · {number.format(reward.points_cost)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                </details>
+              ) : null}
+
+              {quote && quote.couponCode && quote.discountAmount !== "0" ? (
+                <p className={styles.discountLine}>
+                  <span>{c.discount} ({quote.couponCode})</span>
+                  <strong>−{formatCurrencyAmount((BigInt(quote.discountAmount) - BigInt(quote.clubDiscountAmount)).toString(), quote.currency, locale)} {currencyLabel(quote.currency)}</strong>
+                </p>
+              ) : null}
+              {quote && quote.clubDiscountAmount !== "0" ? (
+                <p className={styles.discountLine}>
+                  <span>{locale === "fa" ? "تخفیف باشگاه" : locale === "ar" ? "خصم النادي" : "Club discount"}</span>
+                  <strong>−{formatCurrencyAmount(quote.clubDiscountAmount, quote.currency, locale)} {currencyLabel(quote.currency)}</strong>
+                </p>
+              ) : null}
+              {quote?.usdToTomanRate ? (
+                <p className={styles.rateNote}>
+                  {c.usdRate} <bdi>{formatCurrencyAmount(quote.usdToTomanRate, "TOMAN", locale)} {currencyLabel("TOMAN")}</bdi>. {locale === "fa" ? "مبلغ نهایی هنگام ثبت سفارش دوباره محاسبه می‌شود." : locale === "ar" ? "يُعاد حساب المبلغ النهائي عند إنشاء الطلب." : "The final amount is recalculated when you place the order."}
+                </p>
+              ) : null}
+
+              {authenticated && BigInt(walletBalance) > 0n && quote?.groups.every((group) => selections[group.key] !== "wallet") ? (
+                <label className={styles.walletContribution}>
+                  <span>{locale === "fa" ? "پرداخت بخشی از خرید با کیف پول" : locale === "ar" ? "دفع جزء من الشراء بالمحفظة" : "Pay part with wallet"} · {formatCurrencyAmount(walletBalance, "TOMAN", locale)} {currencyLabel("TOMAN")}</span>
+                  <input type="text" inputMode="numeric" pattern="[0-9]+" value={walletAmount} onChange={(event) => setWalletAmount(event.target.value)} />
+                </label>
+              ) : null}
+
+              <div className={styles.secureNote}>
+                <DesignIcon name="check" />
+                <p>{c.secure}{hasDigital ? <small>{c.external}</small> : null}</p>
+              </div>
+            </div>
+
+            <button className={`${styles.primary} ${styles.desktopAction}`} type="submit" disabled={actionDisabled}>
+              {actionLabel}<DesignIcon name="arrow" />
+            </button>
+          </div>
+        </aside>
+
+        <div className={styles.mobileAction}>
+          <div className={styles.mobileActionTotal}>
+            <span>{quoteUpdating ? c.updating : c.summary}</span>
+            <strong>{quote ? `${formatCurrencyAmount(quote.totalAmount, quote.currency, locale)} ${currencyLabel(quote.currency)}` : c.loading}</strong>
+          </div>
+          <button className={styles.primary} type="submit" disabled={actionDisabled}>{actionLabel}<DesignIcon name="arrow" /></button>
         </div>
-        <div className={styles.summaryDetails}>
-        <div className={styles.couponControl}><label><span>{c.coupon}</span><input value={couponDraft} maxLength={32} pattern="[A-Za-z0-9][A-Za-z0-9_-]{2,31}" onChange={(event) => setCouponDraft(event.target.value.toUpperCase())} /></label><button type="button" disabled={!couponDraft.trim() || quoteUpdating} onClick={() => { checkoutKey.current = crypto.randomUUID(); setQuoteUpdating(true); const code = couponDraft.trim(); if (code === appliedCouponCode) void refresh(items); else setAppliedCouponCode(code); }}>{c.applyCoupon}</button>{appliedCouponCode ? <button type="button" onClick={() => { checkoutKey.current = crypto.randomUUID(); setQuoteUpdating(true); setAppliedCouponCode(""); setCouponDraft(""); }}>{c.removeCoupon}</button> : null}</div>
-        {authenticated && clubEnabled ? <div className={styles.couponControl}><label><span>{locale === "fa" ? "امتیاز باشگاه" : locale === "ar" ? "نقاط النادي" : "Club points"} · {number.format(clubBalance)}</span><input type="number" min="0" max={Math.min(clubBalance - selectedRewardCost, clubLimits?.maxPoints ?? clubBalance)} step="1" inputMode="numeric" value={clubDraft} onChange={(event) => setClubDraft(event.target.value)} />{clubLimits ? <small>{locale === "fa" ? "حداقل / حداکثر" : locale === "ar" ? "الحد الأدنى / الأعلى" : "Minimum / maximum"}: {number.format(clubLimits.minPoints)} / {number.format(clubLimits.maxPoints)}</small> : null}</label><button type="button" disabled={quoteUpdating || !clubDraftValid} onClick={() => { checkoutKey.current = crypto.randomUUID(); setClubPoints(clubDraftAmount); }}>{locale === "fa" ? "اعمال" : locale === "ar" ? "تطبيق" : "Apply"}</button><label><span>{locale === "fa" ? "جایزه تخفیف" : locale === "ar" ? "مكافأة الخصم" : "Discount reward"}</span><select value={clubRewardId} onChange={(event) => { checkoutKey.current = crypto.randomUUID(); setClubRewardId(event.target.value); }}><option value="">{locale === "fa" ? "بدون جایزه" : locale === "ar" ? "دون مكافأة" : "No reward"}</option>{clubRewards.map((reward) => <option key={reward.id} value={reward.id} disabled={reward.points_cost + clubPoints > clubBalance}>{locale === "fa" ? reward.name_fa : locale === "ar" ? reward.name_ar : reward.name_en} · {number.format(reward.points_cost)}</option>)}</select></label></div> : null}
-        {quote && quote.couponCode && quote.discountAmount !== "0" ? <p className={styles.discountLine}><span>{c.discount} ({quote.couponCode})</span><strong>−{formatCurrencyAmount((BigInt(quote.discountAmount) - BigInt(quote.clubDiscountAmount)).toString(), quote.currency, locale)} {currencyLabel(quote.currency)}</strong></p> : null}
-        {quote && quote.clubDiscountAmount !== "0" ? <p className={styles.discountLine}><span>{locale === "fa" ? "تخفیف باشگاه" : locale === "ar" ? "خصم النادي" : "Club discount"}</span><strong>−{formatCurrencyAmount(quote.clubDiscountAmount, quote.currency, locale)} {currencyLabel(quote.currency)}</strong></p> : null}
-        {quote?.usdToTomanRate ? <p className={styles.rateNote}>{c.usdRate} <bdi>{formatCurrencyAmount(quote.usdToTomanRate, "TOMAN", locale)} {currencyLabel("TOMAN")}</bdi>. {locale === "fa" ? "مبلغ نهایی هنگام ثبت سفارش دوباره محاسبه می‌شود." : locale === "ar" ? "يُعاد حساب المبلغ النهائي عند إنشاء الطلب." : "The final amount is recalculated when you place the order."}</p> : null}
-        {quote?.groups.map((group) => <div className={styles.paymentGroup} key={group.key}><div><span>{group.seller.shopName}{group.productType === "physical" ? <small> · {group.shippingFee !== "0" ? `${c.postalFee}: ${formatCurrencyAmount(group.shippingFee, quote.currency, locale)}` : c.freePostal}</small> : null}</span><strong>{formatCurrencyAmount(group.totalAmount, quote.currency, locale)} {currencyLabel(quote.currency)}</strong></div><label><span>{c.payment}</span><select value={selections[group.key] ?? ""} onChange={(event) => setSelections((current) => ({ ...current, [group.key]: event.target.value }))}>{group.paymentMethods.map((method) => <option key={method.code} value={method.code}>{method.name}</option>)}</select></label></div>)}
-        {authenticated && BigInt(walletBalance) > 0n && quote?.groups.every((group) => selections[group.key] !== "wallet") ? <label className={styles.walletContribution}><span>{locale === "fa" ? "پرداخت بخشی از خرید با کیف پول" : locale === "ar" ? "دفع جزء من الشراء بالمحفظة" : "Pay part with wallet"} · {formatCurrencyAmount(walletBalance, "TOMAN", locale)} {currencyLabel("TOMAN")}</span><input type="text" inputMode="numeric" pattern="[0-9]+" value={walletAmount} onChange={(event) => setWalletAmount(event.target.value)} /></label> : null}
-        {quote?.requiresShippingAddress ? <fieldset><legend>{c.address}</legend><label><span>{c.recipient}</span><input name="recipientName" autoComplete="name" minLength={2} maxLength={120} required /></label><label><span>{c.phone}</span><input name="shippingPhone" type="tel" inputMode="tel" autoComplete="tel" pattern="(?:\+98|0098|98|0)?9[0-9]{9}" required /></label><div><CheckoutPlaceSelects locale={locale} offerIds={physicalOfferIds} /></div><label><span>{c.postal}</span><input name="postalCode" autoComplete="postal-code" pattern="[0-9]{10}" inputMode="numeric" required /></label><label><span>{c.street}</span><textarea name="addressLine" autoComplete="street-address" minLength={10} maxLength={1000} required /></label></fieldset> : null}
-        {!authenticated ? <fieldset><legend>{c.signin}</legend><p className={styles.fieldHint}>{c.signinHint}</p><label><span>{c.phone}</span><input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} inputMode="tel" autoComplete="tel" pattern="(?:\+98|0098|98|0)?9[0-9]{9}" disabled={Boolean(challenge)} required /></label>{challenge ? <><div className={styles.otpMeta}><p>{c.otpSent} <b dir="ltr">{challenge.requestedPhone}</b></p><button type="button" onClick={changePhone}>{c.changePhone}</button></div><p className={otpRemaining === 0 ? styles.otpExpired : styles.otpTimer} role={otpRemaining === 0 ? "status" : undefined}>{otpRemaining === 0 ? c.otpExpired : `${c.otpExpires} ${formatCountdown(otpRemaining, locale)}`}</p>{otpRemaining > 0 ? <label><span>{c.code}</span><input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" autoFocus required /></label> : null}<p className={styles.fieldHint}>{c.newBuyerHint}</p><label><span>{c.fullName}</span><input name="fullName" autoComplete="name" minLength={2} maxLength={120} /></label><button className={styles.resend} type="button" disabled={busy || resendRemaining > 0} onClick={() => void resendOtp()}>{resendRemaining > 0 ? `${c.resendIn} ${formatCountdown(resendRemaining, locale)}` : c.resend}</button></> : null}</fieldset> : null}
-        {quoteIssue ? <div className={styles.quoteError} role="alert"><p>{quoteIssue.message}</p><div><button type="button" onClick={() => void refresh(items)} disabled={quoteUpdating}>{c.retry}</button>{quoteIssue.offerIds.length ? <button type="button" onClick={() => removeOffers(quoteIssue.offerIds)}>{c.removeUnavailable}</button> : null}{appliedCouponCode ? <button type="button" onClick={() => { checkoutKey.current = crypto.randomUUID(); setAppliedCouponCode(""); setCouponDraft(""); }}>{c.removeCoupon}</button> : null}</div></div> : null}
-        {error ? <p className={styles.error} role="alert">{error}</p> : null}
-        <div className={styles.secureNote}><DesignIcon name="check" /><p>{c.secure}<small>{c.external}</small></p></div>
-        </div>
-      </aside>
-      <div className={styles.mobileAction}>
-        <div className={styles.mobileActionTotal}><span>{quoteUpdating ? c.updating : c.summary}</span><strong>{quote ? `${formatCurrencyAmount(quote.totalAmount, quote.currency, locale)} ${currencyLabel(quote.currency)}` : c.loading}</strong></div>
-        <button className={styles.primary} type="submit" disabled={actionDisabled}>{actionLabel}<DesignIcon name="arrow" /></button>
+      </form>
+    )}
+
+    {removedBatches.length ? (
+      <div
+        className={styles.undoNotice}
+        role="status"
+        aria-live="polite"
+        onMouseEnter={pauseUndoExpiry}
+        onMouseLeave={(event) => { if (!event.currentTarget.contains(document.activeElement)) scheduleUndoExpiry(); }}
+        onFocusCapture={pauseUndoExpiry}
+        onBlurCapture={(event) => { if (!event.currentTarget.matches(":hover") && !event.currentTarget.contains(event.relatedTarget as Node | null)) scheduleUndoExpiry(); }}
+      >
+        <span>{removedBatches.reduce((count, batch) => count + batch.length, 0) > 1 ? c.removedMany : c.removed}</span>
+        <button type="button" onClick={undoRemove}>{c.undo}</button>
       </div>
-    </form>}
-    {removedBatches.length ? <div className={styles.undoNotice} role="status" aria-live="polite" onMouseEnter={pauseUndoExpiry} onMouseLeave={(event) => { if (!event.currentTarget.contains(document.activeElement)) scheduleUndoExpiry(); }} onFocusCapture={pauseUndoExpiry} onBlurCapture={(event) => { if (!event.currentTarget.matches(":hover") && !event.currentTarget.contains(event.relatedTarget as Node | null)) scheduleUndoExpiry(); }}><span>{removedBatches.reduce((count, batch) => count + batch.length, 0) > 1 ? c.removedMany : c.removed}</span><button type="button" onClick={undoRemove}>{c.undo}</button></div> : null}
+    ) : null}
   </main>;
 }

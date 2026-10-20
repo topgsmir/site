@@ -1,12 +1,25 @@
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const schemaPath = resolve(root, "apps/api/src/prisma/schema/schema.prisma");
+const clientPath = resolve(root, "apps/api/src/generated/prisma/client.ts");
 const stampPath = resolve(root, "apps/api/src/generated/prisma/.schema.sha256");
+const force = process.argv.includes("--force") || process.env.TOPGSM_PRISMA_FORCE_GENERATE === "1";
+const schemaHash = normalizedSha256(schemaPath);
+
+if (
+  !force &&
+  existsSync(clientPath) &&
+  existsSync(stampPath) &&
+  readFileSync(stampPath, "utf8").trim() === schemaHash
+) {
+  console.log("Prisma client is up to date; skipping generate.");
+  process.exit(0);
+}
 
 const result = spawnSync(
   process.execPath,
@@ -39,7 +52,7 @@ if (result.error) {
 }
 if (result.status !== 0) process.exit(result.status ?? 1);
 
-writeFileSync(stampPath, `${normalizedSha256(schemaPath)}\n`, "utf8");
+writeFileSync(stampPath, `${schemaHash}\n`, "utf8");
 
 function normalizedSha256(path) {
   const normalized = readFileSync(path, "utf8").replace(/\r\n/g, "\n").trim();
