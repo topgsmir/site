@@ -133,6 +133,13 @@ export class DigitalFulfillmentDto {
   @Min(0)
   @Max(2_147_483_647)
   maxDownloads!: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(36500)
+  accessDays?: number;
 }
 
 export class PhysicalFulfillmentDto {

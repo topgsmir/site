@@ -156,7 +156,7 @@ export function SellerOrders({ locale, onOrderUpdated }: { locale: Locale; onOrd
         const count = order.items.reduce((total, item) => total + item.quantity, 0);
         const isExpanded = expanded === order.id;
         return <Fragment key={order.id}><tr className={styles.orderRow}>
-          <td data-label={c.order}><strong dir="ltr">#{order.id.slice(0, 8)}</strong></td>
+          <td data-label={c.order}><strong dir="ltr">#{order.id}</strong></td>
           <td data-label={c.customer}><strong>{order.buyer?.fullName ?? "—"}</strong><small dir="ltr">{order.buyer?.phoneNumber ?? order.buyer?.email ?? "—"}</small></td>
           <td data-label={c.source}>{displaySource(order.trafficSource, locale)}</td>
           <td data-label={c.items}>{count.toLocaleString(locale)} · {order.items[0]?.productTitle ?? "—"}{order.items.length > 1 ? ` +${order.items.length - 1}` : ""}</td>

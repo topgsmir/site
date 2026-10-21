@@ -102,7 +102,7 @@ const sellerListingSelect = {
         }
       },
       digital: {
-        select: { file_reference: true, file_references: true, file_titles: true, max_downloads: true }
+        select: { file_reference: true, file_references: true, file_titles: true, access_days: true, max_downloads: true }
       },
       physical: { select: { stock: true, weight_grams: true, length_cm: true, width_cm: true, height_cm: true } },
       service: {
@@ -644,7 +644,7 @@ export class ProductService {
                     seller: { select: { id: true, shop_name: true } }
                   }
                 },
-                digital: { select: { max_downloads: true, file_references: true } },
+                digital: { select: { access_days: true, max_downloads: true, file_references: true } },
                 physical: { select: { stock: true, weight_grams: true, length_cm: true, width_cm: true, height_cm: true } },
                 service: {
                   select: { service_type: true, estimated_hours: true, input_schema: true }
@@ -702,7 +702,7 @@ export class ProductService {
             shopName: offer.listing.seller.shop_name
           },
           ...(offer.digital
-            ? { digital: { maxDownloads: offer.digital.max_downloads, fileCount: Math.max(1, offer.digital.file_references.length) } }
+            ? { digital: { accessDays: offer.digital.access_days, maxDownloads: offer.digital.max_downloads, fileCount: Math.max(1, offer.digital.file_references.length) } }
             : {}),
           ...(offer.physical
             ? {
@@ -1192,7 +1192,7 @@ export class ProductService {
           await transaction.seller_offer_digital.update({
             where: { offer_id: offer.id },
             data: {
-              max_downloads: input.digital.maxDownloads
+              access_days: input.digital.accessDays, max_downloads: input.digital.maxDownloads
             }
           });
         }
@@ -1674,7 +1674,7 @@ export class ProductService {
           await transaction.seller_offer_digital.update({
             where: { offer_id: offer.id },
             data: {
-              max_downloads: input.digital.maxDownloads
+              access_days: input.digital.accessDays, max_downloads: input.digital.maxDownloads
             }
           });
         }
@@ -1891,7 +1891,7 @@ export class ProductService {
           file_reference: (input.digital.fileReferences ?? [input.digital.fileReference!])[0]!,
           file_references: input.digital.fileReferences ?? [input.digital.fileReference!],
           file_titles: this.downloadTitles(input.digital),
-          max_downloads: input.digital.maxDownloads
+          access_days: input.digital.accessDays, max_downloads: input.digital.maxDownloads
         }
       });
     } else if (input.physical) {
@@ -2051,7 +2051,7 @@ export class ProductService {
                 fileReference: offer.digital.file_reference,
                 fileReferences: offer.digital.file_references.length ? offer.digital.file_references : [offer.digital.file_reference],
                 fileTitles: offer.digital.file_titles,
-                maxDownloads: offer.digital.max_downloads
+                accessDays: offer.digital.access_days, maxDownloads: offer.digital.max_downloads
               }
             }
           : {}),
@@ -2192,7 +2192,7 @@ export class ProductService {
           if (!hosts || !urls.every((url) => isAllowedUnsignedFileUrl(url, hosts))) {
             throw new BadRequestException("Download links must be unsigned HTTPS file URLs on a configured upload host");
           }
-          await tx.seller_offer_digital.create({ data: { offer_id: offer.id, file_reference: urls[0]!, file_references: urls, file_titles: this.downloadTitles(input.typeChangeDigital), max_downloads: input.typeChangeDigital.maxDownloads } });
+          await tx.seller_offer_digital.create({ data: { offer_id: offer.id, file_reference: urls[0]!, file_references: urls, file_titles: this.downloadTitles(input.typeChangeDigital), access_days: input.typeChangeDigital.accessDays ?? 0, max_downloads: input.typeChangeDigital.maxDownloads } });
         }
         if (nextType === "physical" && input.typeChangePhysical) await tx.seller_offer_physical.create({ data: { offer_id: offer.id, stock: input.typeChangePhysical.stock, weight_grams: input.typeChangePhysical.weightGrams } });
         if (nextType === "service" && input.typeChangeService) await tx.seller_offer_service.create({ data: { offer_id: offer.id, service_type: this.clean(input.typeChangeService.serviceType), estimated_hours: input.typeChangeService.estimatedHours, instructions: this.cleanOptional(input.typeChangeService.instructions), input_schema: this.serviceInputSchema(input.typeChangeService.inputs) } });
@@ -2284,7 +2284,7 @@ export class ProductService {
                   fileReference: offer.digital.file_reference,
                   fileReferences: offer.digital.file_references.length ? offer.digital.file_references : [offer.digital.file_reference],
                   fileTitles: offer.digital.file_titles,
-                  maxDownloads: offer.digital.max_downloads
+                  accessDays: offer.digital.access_days, maxDownloads: offer.digital.max_downloads
                 }
               }
             : {}),

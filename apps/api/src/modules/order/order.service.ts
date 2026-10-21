@@ -1,3 +1,5 @@
+import { parseOrderNumber } from "./order-number";
+import { remainingAccessDays } from "./digital-access-days";
 import { mapDigitalDeliveries, digitalFileReferences, digitalFileTitles } from "../order/digital-delivery";
 import {
   BadRequestException,
@@ -31,8 +33,7 @@ import { signUploadDownloadLink } from "./upload-download-link";
 import { buildOrderCsv } from "./order-export";
 import { sellerCommissionRate } from "../seller/seller-commission";
 
-const orderSelect = {
-  id: true,
+const orderSelect = { id: true,
   traffic_source: true,
   buyer_id: true,
   seller_id: true,
@@ -73,8 +74,7 @@ const orderSelect = {
   }
 } satisfies Prisma.ordersSelect;
 
-const buyerOrderSummarySelect = {
-  id: true,
+const buyerOrderSummarySelect = { id: true,
   status: true,
   currency: true,
   total_amount: true,
@@ -95,8 +95,7 @@ type PurchaseOrderSummary = {
   payment?: never;
 };
 
-const adminOrderDirectorySelect = {
-  id: true, status: true, trashed_at: true, currency: true, total_amount: true, traffic_source: true, created_at: true,
+const adminOrderDirectorySelect = { id: true, status: true, trashed_at: true, currency: true, total_amount: true, traffic_source: true, created_at: true,
   seller: { select: { shop_name: true } },
   buyer: { select: { full_name: true, email: true, phone_number: true } },
   shipping_address: { select: { recipient_name: true, province: true, city: true, address_line: true, postal_code: true } },
@@ -105,8 +104,7 @@ const adminOrderDirectorySelect = {
   items: { select: { id: true, product_title: true, product_type: true, quantity: true } }
 } satisfies Prisma.ordersSelect;
 
-const adminOrderExportSelect = {
-  id: true, created_at: true, status: true, total_amount: true, currency: true, traffic_source: true,
+const adminOrderExportSelect = { id: true, created_at: true, status: true, total_amount: true, currency: true, traffic_source: true,
   buyer: { select: { full_name: true, email: true, phone_number: true } },
   seller: { select: { shop_name: true } },
   items: { select: { product_title: true, quantity: true } },
@@ -300,6 +298,7 @@ export class OrderService {
           OR: [
             { product_title: { contains: term, mode: "insensitive" } },
             { order: { id: { contains: term, mode: "insensitive" } } },
+            ...(parseOrderNumber(term) !== null ? [{ order: { id: parseOrderNumber(term)!.toString() } }] : []),
             { order: { seller: { shop_name: { contains: term, mode: "insensitive" } } } }
           ]
         } : {})
@@ -327,6 +326,7 @@ export class OrderService {
           select: {
             id: true,
             product_title: true,
+            digital_access_days: true,
             digital_delivery_titles: true,
             offer: { select: { listing: { select: { product_id: true } } } },
             order: { select: { id: true, status: true, seller: { select: { shop_name: true } } } }
@@ -354,6 +354,7 @@ export class OrderService {
           shopName: row.order_item.order.seller.shop_name,
           createdAt: row.created_at.toISOString(),
           lastAccessedAt: row.last_accessed_at?.toISOString() ?? null,
+          remainingDays: remainingAccessDays(row.order_item.digital_access_days, row.created_at),
           file: delivery
         };
       }),
@@ -424,6 +425,7 @@ export class OrderService {
       ...(from || toExclusive ? { created_at: { ...(from ? { gte: from } : {}), ...(toExclusive ? { lt: toExclusive } : {}) } } : {}),
       ...(term ? { OR: [
         { id: { contains: term, mode: "insensitive" } },
+        ...(parseOrderNumber(term) !== null ? [{ id: parseOrderNumber(term)!.toString() }] : []),
         { buyer: { full_name: { contains: term, mode: "insensitive" } } },
         { buyer: { email: { contains: term, mode: "insensitive" } } },
         { buyer: { phone_number: { contains: term } } },
@@ -502,7 +504,7 @@ export class OrderService {
             id: true,
             price: true,
             currency: true,
-            digital: { select: { file_reference: true, file_references: true, file_titles: true, max_downloads: true } },
+            digital: { select: { file_reference: true, file_references: true, file_titles: true, access_days: true, max_downloads: true } },
             physical: { select: { stock: true } },
             listing: {
               select: {
@@ -613,7 +615,7 @@ export class OrderService {
                 unit_price: unitPrice,
                 total_amount: gross,
                 ...(offer.listing.product.type === "digital" && offer.digital && this.isHttpsUrl(offer.digital.file_reference)
-                  ? { digital_delivery_url: offer.digital.file_reference, digital_delivery_urls: digitalFileReferences(offer.digital), digital_delivery_titles: digitalFileTitles(offer.digital), digital_max_downloads: offer.digital.max_downloads }
+                  ? { digital_delivery_url: offer.digital.file_reference, digital_delivery_urls: digitalFileReferences(offer.digital), digital_delivery_titles: digitalFileTitles(offer.digital), digital_access_days: offer.digital.access_days, digital_max_downloads: offer.digital.max_downloads }
                   : {}),
                 ...(bridgePlan
                   ? {
@@ -935,9 +937,10 @@ export class OrderService {
     return this.prisma.$transaction(async (tx) => {
       const entitlement = await tx.digital_entitlements.findFirst({
         where: { order_item_id: itemId, file_index: fileIndex, buyer_id: actor.id, order_item: { order_id: orderId, order: { buyer_id: actor.id, status: { in: ["paid", "processing", "awaiting_confirmation", "delivered"] } } } },
-        select: { id: true, delivery_url: true, max_downloads: true, download_count: true }
+        select: { id: true, delivery_url: true, max_downloads: true, download_count: true, created_at: true, order_item: { select: { digital_access_days: true } } }
       });
       if (!entitlement) throw new NotFoundException("Digital delivery was not found");
+      if (remainingAccessDays(entitlement.order_item?.digital_access_days, entitlement.created_at) === 0) throw new ConflictException("The download access period has expired");
       if (entitlement.max_downloads > 0 && entitlement.download_count >= entitlement.max_downloads) throw new ConflictException("The download limit has been reached");
       let signedUrl: string;
       try {
@@ -945,7 +948,11 @@ export class OrderService {
           entitlement.delivery_url,
           clientIp,
           this.config?.get<string>("UPLOAD_DOWNLOAD_HOSTS") ?? "",
-          this.config?.get<string>("UPLOAD_DOWNLOAD_SECRET") ?? ""
+          this.config?.get<string>("UPLOAD_DOWNLOAD_SECRET") ?? "",
+          Date.now(),
+          entitlement.order_item?.digital_access_days
+            ? entitlement.created_at.getTime() + entitlement.order_item.digital_access_days * 86_400_000
+            : undefined
         );
       } catch {
         throw new ServiceUnavailableException("Digital delivery is not configured");

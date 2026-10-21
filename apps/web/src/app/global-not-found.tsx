@@ -1,4 +1,4 @@
-import { GlobalSiteHeader } from "@/components/SiteHeader";
+import { GlobalSiteHeader } from "@/components/navigation/public";
 import { getTemplateConfiguration } from "@/lib/template-settings-server";
 import { getCurrentUser } from "@/lib/auth/server";
 import "@fontsource-variable/outfit";

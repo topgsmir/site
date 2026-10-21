@@ -1,19 +1,21 @@
 "use client";
+
+import { useMenuFeedback } from "../../dashboard/useMenuFeedback";
 import Image from "next/image";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import type { TemplateConfiguration } from "@topgsm/shared-types";
-import { useTemplateConfiguration } from "./TemplateSettingsProvider";
+import { useTemplateConfiguration } from "../../TemplateSettingsProvider";
 import Link from "next/link";
 import type { Route } from "next";
 import { getDirection, type Locale } from "@/lib/i18n";
-import { DesignIcon } from "./DesignIcon";
+import { DesignIcon } from "../../DesignIcon";
 import { HeaderAccountMenu } from "./HeaderAccountMenu";
 import styles from "./PublicHeader.module.css";
-import { CartLink } from "./CartLink";
+import { CartLink } from "../../CartLink";
 import { HeaderSearch } from "./HeaderSearch";
 import { HeaderCategories } from "./HeaderCategories";
-import { LanguageSwitcher } from "./LanguageSwitcher";
+import { LanguageSwitcher } from "../../LanguageSwitcher";
 import { ContactNavMenu } from "./ContactNavMenu";
 
 const copy = {
@@ -35,11 +37,13 @@ function subscribeToHeaderScroll(update: () => void) {
 const headerMenuHidden = () => Math.max(window.scrollY, document.body.scrollTop, document.documentElement.scrollTop) > 24;
 const headerMenuHiddenOnServer = () => false;
 
-export function PublicHeader({ locale, accountHref, current, languageHrefs, configuration }: { configuration?: TemplateConfiguration; locale: Locale; accountHref?: string | null; current?: "shop" | "journal" | "cart" | "contact" | "complaints"; languageHrefs?: Record<Locale, string> }) {
+export function PublicHeader({ locale, accountHref, current, languageHrefs, configuration, appearance }: { configuration?: TemplateConfiguration; locale: Locale; accountHref?: string | null; current?: "shop" | "journal" | "cart" | "contact" | "complaints"; languageHrefs?: Record<Locale, string>; appearance?: "seller-glass" }) {
   const c = copy[locale];
   const menuHidden = useSyncExternalStore(subscribeToHeaderScroll, headerMenuHidden, headerMenuHiddenOnServer);
   const menu = useRef<HTMLDivElement>(null);
   const main = useRef<HTMLDivElement>(null);
+  useMenuFeedback(menu);
+  useMenuFeedback(main);
   useEffect(() => {
     if (!menuHidden || !menu.current) return;
     // Close popovers before their row leaves the viewport.
@@ -51,7 +55,7 @@ export function PublicHeader({ locale, accountHref, current, languageHrefs, conf
   const currentPath = current === "shop" ? "/products" : current === "journal" ? "/blog" : current === "cart" ? "/cart" : current === "contact" ? "/contact-us" : current === "complaints" ? "/complaints" : "";
 
   return (
-    <header className={styles.header} dir={getDirection(locale)}>
+    <header className={styles.header} dir={getDirection(locale)} data-appearance={appearance}>
       {settings.banner.enabled && <Link className={styles.announcement} data-image={Boolean(settings.banner.image)} href={settings.banner.href as Route}>
         {settings.banner.image ? <Image unoptimized className={styles.bannerImage} src={settings.banner.image} alt={settings.banner.imageAlt} width={1600} height={72} /> : <><span>{settings.banner.text}</span>{settings.banner.linkLabel && <span className={styles.announcementAction}>{settings.banner.linkLabel}<DesignIcon name="arrow" /></span>}</>}
       </Link>}

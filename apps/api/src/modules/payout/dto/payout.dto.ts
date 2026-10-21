@@ -1,3 +1,5 @@
+import { Matches as MatchesOrderId } from "class-validator";
+import { ORDER_ID_PATTERN } from "../../../common/order-id.pipe";
 import { Type } from "class-transformer";
 import { IsIn, IsInt, IsOptional, IsUUID, Max, Min } from "class-validator";
 
@@ -19,7 +21,7 @@ export class ListPayoutsQueryDto {
 }
 
 export class RequestPayoutDto {
-  @IsUUID("4")
+  @MatchesOrderId(ORDER_ID_PATTERN)
   orderId!: string;
 }
 

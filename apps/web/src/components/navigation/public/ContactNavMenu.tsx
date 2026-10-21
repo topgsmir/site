@@ -5,7 +5,8 @@ import type { Route } from "next";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { Locale } from "@/lib/i18n";
 import type { TemplateIcon } from "@topgsm/shared-types";
-import { DesignIcon } from "./DesignIcon";
+import { DesignIcon } from "../../DesignIcon";
+import { sideMenuPosition } from "../../dashboard/menu-position";
 import styles from "./PublicHeader.module.css";
 
 const copy = {
@@ -28,6 +29,8 @@ export function ContactNavMenu({
   const c = copy[locale];
   const rootRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (leaveTimer.current) clearTimeout(leaveTimer.current); }, []);
   const [open, setOpen] = useState(false);
   const contactHref = `/${locale}/contact-us`;
   const complaintsHref = `/${locale}/complaints`;
@@ -40,11 +43,12 @@ export function ContactNavMenu({
     if (!trigger) return;
     const anchor = trigger.getBoundingClientRect();
     const width = Math.min(220, window.innerWidth - 32);
-    const left = locale === "en" ? anchor.left : anchor.right - width;
-    root.style.setProperty("--contact-menu-left", `${Math.max(16, Math.min(left, window.innerWidth - width - 16))}px`);
-    root.style.setProperty("--contact-menu-top", `${anchor.bottom + 4}px`);
+    const height = root.querySelector<HTMLElement>("nav")?.scrollHeight || 100;
+    const point = sideMenuPosition(anchor, width, height, window.innerWidth, window.innerHeight);
+    root.style.setProperty("--contact-menu-left", `${point.left}px`);
+    root.style.setProperty("--contact-menu-top", `${point.top}px`);
     root.style.setProperty("--contact-menu-width", `${width}px`);
-  }, [locale, open]);
+  }, [open]);
 
   useLayoutEffect(() => {
     if (open) position();
@@ -72,8 +76,8 @@ export function ContactNavMenu({
       className={styles.contactNav}
       data-open={open || undefined}
       data-header-contact
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onMouseEnter={() => { if (leaveTimer.current) clearTimeout(leaveTimer.current); }}
+      onMouseLeave={() => { leaveTimer.current = setTimeout(() => setOpen(false), 180); }}
       onBlur={(event) => {
         if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setOpen(false);
       }}

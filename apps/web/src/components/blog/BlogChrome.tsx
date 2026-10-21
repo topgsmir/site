@@ -1,4 +1,4 @@
-import { HeaderLanguageLinks } from "@/components/SiteHeader";
+import { HeaderLanguageLinks } from "@/components/navigation/public";
 import { PublicFooter } from "@/components/PublicFooter";
 import type { Locale } from "@/lib/i18n";
 

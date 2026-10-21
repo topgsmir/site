@@ -9,7 +9,7 @@ import { plainToInstance } from "class-transformer";
 import { validateSync } from "class-validator";
 
 const order = {
-  id: "02f49ca0-44af-44de-bdf6-ff55d5a3b839",
+  id: "100001",
   created_at: new Date("2026-09-29T20:35:12.000Z"),
   status: "paid",
   total_amount: { toString: () => "1234567890123.45" },
@@ -42,6 +42,8 @@ test("export intersects selected IDs with active filters and requires platform o
   const input = { locale: "fa" as const, columns: ["id", "totalAmount"] as ("id" | "totalAmount")[], selectedIds: [order.id], statusGroup: "processing" as const, dateFrom: "2026-09-29", dateTo: "2026-09-30", sort: "oldest" as const };
   const csv = await service.exportCsv(admin, input);
   assert.match(csv, /1234567890123\.45/);
+  assert.match(csv, /"100001"/);
+  assert.equal(csv.includes(order.id), true);
   assert.deepEqual(query?.where.id, { in: [order.id] });
   assert.deepEqual(query?.where.status, { in: ["paid", "processing", "shipped", "awaiting_confirmation"] });
   assert.deepEqual(query?.where.created_at, { gte: new Date("2026-09-28T20:30:00.000Z"), lt: new Date("2026-09-30T20:30:00.000Z") });

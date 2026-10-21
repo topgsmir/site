@@ -12,5 +12,5 @@ export class SellerCustomerIdDto { @Matches(USER_REFERENCE_PATTERN) id!: string;
 
 export class SellerCustomerDetailQueryDto {
   @IsOptional() @IsUUID("4") notesCursor?: string;
-  @IsOptional() @IsUUID("4") ordersCursor?: string;
+  @IsOptional() @Matches(/^[1-9][0-9]{0,18}$/) ordersCursor?: string;
 }

@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import type { TemplateConfiguration } from "@topgsm/shared-types";
-import { TemplateSettingsProvider } from "./TemplateSettingsProvider";
+import { TemplateSettingsProvider } from "../../TemplateSettingsProvider";
 import type { Locale } from "@/lib/i18n";
 import { PublicHeader } from "./PublicHeader";
 import styles from "./SiteHeader.module.css";
@@ -50,7 +50,7 @@ export function SiteHeader({ locale, accountHref, children }: { locale: Locale; 
   const skip = locale === "fa" ? "رفتن به محتوای صفحه" : locale === "ar" ? "انتقل إلى محتوى الصفحة" : "Skip to page content";
   return <HeaderLinksContext.Provider value={register}>
     <a className="skip-link" href="#site-content">{skip}</a>
-    {path !== "/login" && <div ref={header} className={styles.header} data-site-header><PublicHeader locale={locale} accountHref={accountHref} current={current} languageHrefs={languageHrefs} /></div>}
+    {path !== "/login" && <div ref={header} className={styles.header} data-site-header><PublicHeader locale={locale} accountHref={accountHref} current={current} languageHrefs={languageHrefs} appearance={path.startsWith("/seller-dashboard") ? "seller-glass" : undefined} /></div>}
     <div id="site-content" tabIndex={-1}>{children}</div>
   </HeaderLinksContext.Provider>;
 }

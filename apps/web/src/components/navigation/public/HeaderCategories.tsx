@@ -7,7 +7,8 @@ import type { Locale } from "@/lib/i18n";
 import type { TemplateConfiguration } from "@topgsm/shared-types";
 import { api } from "@/lib/api/client";
 import { listingHref } from "@/lib/seo";
-import { DesignIcon } from "./DesignIcon";
+import { DesignIcon } from "../../DesignIcon";
+import { sideMenuPosition } from "../../dashboard/menu-position";
 import styles from "./PublicHeader.module.css";
 
 type Category = { id: string; name: string; translations: { locale: string; name: string }[] };
@@ -29,10 +30,12 @@ export function HeaderCategories({ locale, configuration }: { locale: Locale; co
     if (!details?.open) return;
     const anchor = details.querySelector("summary")!.getBoundingClientRect();
     const width = Math.min(880, window.innerWidth - 32);
-    const left = locale === "en" ? anchor.left : anchor.right - width;
-    details.style.setProperty("--category-menu-left", Math.max(16, Math.min(left, window.innerWidth - width - 16)) + "px");
-    details.style.setProperty("--category-menu-top", anchor.bottom + 4 + "px");
-  }, [locale]);
+    const height = Math.min(details.querySelector<HTMLElement>("[role=region]")?.scrollHeight || 360, window.innerHeight - 24);
+    const point = sideMenuPosition(anchor, width, height, window.innerWidth, window.innerHeight);
+    details.style.setProperty("--category-menu-left", point.left + "px");
+    details.style.setProperty("--category-menu-top", point.top + "px");
+    details.style.setProperty("--category-menu-height", (window.innerHeight - point.top - 12) + "px");
+  }, []);
   async function load(more = false) {
     if (busy.current) return;
     busy.current = true; setStatus("loading");

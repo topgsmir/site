@@ -9,7 +9,7 @@ import type { PublicProductSummary } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
 import { API_BASE } from "@/lib/api/client";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
-import { DesignIcon } from "./DesignIcon";
+import { DesignIcon } from "../../DesignIcon";
 import styles from "./HeaderSearch.module.css";
 
 const copy = {

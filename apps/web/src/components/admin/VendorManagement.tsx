@@ -1,7 +1,6 @@
 "use client";
 
 import type { Route } from "next";
-import { BrandLogo } from "@/components/BrandLogo";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -20,7 +19,6 @@ import type {
 } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
-import { LogoutButton } from "@/components/auth/LogoutButton";
 import { ProductPublicUrl } from "@/components/product/ProductPublicUrl";
 import { AdminBridgeWorkspace } from "@/components/bridge/AdminBridgeWorkspace";
 import { StaffWorkspace } from "@/components/admin/StaffWorkspace";
@@ -55,7 +53,7 @@ import { HomepageContentWorkspace } from "@/components/admin/HomepageContentWork
 import { BlogSidebarWorkspace } from "@/components/admin/BlogSidebarWorkspace";
 import { AdminCommentsWorkspace } from "@/components/comments/AdminCommentsWorkspace";
 import type { AdminSection } from "@/components/admin/AdminPanelRoute";
-import navigationStyles from "@/components/dashboard/DashboardNavigation.module.css";
+import { AdminNavigation } from "./AdminNavigation";
 import { AnalyticsOverview } from "@/components/analytics/AnalyticsOverview";
 import { PanelOverview } from "@/components/dashboard/PanelOverview";
 import { PanelTopbar } from "@/components/dashboard/PanelTopbar";
@@ -69,7 +67,6 @@ import { AdminNotificationsWorkspace } from "@/components/admin/AdminNotificatio
 import type { AdminNotificationCounts } from "@/components/admin/AdminNotificationsWorkspace";
 import { BackupRestoreWorkspace } from "@/components/admin/BackupRestoreWorkspace";
 import { UploadCenterSettingsWorkspace } from "@/components/admin/UploadCenterSettingsWorkspace";
-import { UploadCenterNavigation } from "@/components/dashboard/UploadCenterNavigation";
 import { VendorPictureControl } from "@/components/admin/VendorPictureControl";
 import { SellerAvatar } from "@/components/seller/SellerAvatar";
 import { useAdminBoxDisclosures } from "@/components/admin/useAdminBoxDisclosures";
@@ -832,13 +829,13 @@ export function VendorManagement({
     ownerNavigation || platformPermissions.includes("uploads_manage");
   const isUsersSection =
     section === "vendors" || section === "staff" || section === "users" || section === "seller-statistics";
-  const usersExpanded = isUsersSection || usersOpen;
+  const usersExpanded = usersOpen;
   const isProductServiceSection =
     section === "products" ||
     section === "product-categories" ||
     section === "product-templates" ||
     section === "product-changes";
-  const productServiceExpanded = isProductServiceSection || productServiceOpen;
+  const productServiceExpanded = productServiceOpen;
   const isSalesServiceSection =
     section === "statistics" ||
     section === "coupons" ||
@@ -848,14 +845,14 @@ export function VendorManagement({
     section === "settings-shipping" ||
     section === "orders" ||
     section === "order-detail";
-  const salesServiceExpanded = isSalesServiceSection || salesServiceOpen;
+  const salesServiceExpanded = salesServiceOpen;
   const isPaymentServiceSection =
     section === "payment-transactions" ||
     section === "payment-methods" ||
     section === "settings-usd";
-  const paymentServiceExpanded = isPaymentServiceSection || paymentServiceOpen;
+  const paymentServiceExpanded = paymentServiceOpen;
   const isAiSection = section === "ai-models" || section === "ai-assistant";
-  const aiExpanded = isAiSection || aiOpen;
+  const aiExpanded = aiOpen;
   const isWebsiteSection =
     section === "settings-seo" ||
     section === "settings-homepage" ||
@@ -864,25 +861,25 @@ export function VendorManagement({
     section === "settings-complaints" ||
     section === "settings-stories" ||
     section === "settings-blog-sidebar";
-  const websiteExpanded = isWebsiteSection || websiteOpen;
+  const websiteExpanded = websiteOpen;
   const isContentSection =
     section === "uploads" ||
     section === "editorial" ||
     section === "blog-categories" ||
     section === "blog-tags" ||
     section === "settings-comments";
-  const contentExpanded = isContentSection || contentOpen;
+  const contentExpanded = contentOpen;
   const isIntegrationsSection =
     section === "settings-sms" ||
     section === "settings-goghdi" ||
     section === "bridge";
-  const integrationsExpanded = isIntegrationsSection || integrationsOpen;
+  const integrationsExpanded = integrationsOpen;
   const isSecuritySection =
     section === "security-rate-limit" ||
     section === "security-login" ||
     section === "security-captcha" ||
     section === "settings-backup";
-  const securityExpanded = isSecuritySection || securityOpen;
+  const securityExpanded = securityOpen;
   const currentSectionLabel = (
     {
       overview: c.overview,
@@ -1280,7 +1277,7 @@ export function VendorManagement({
   }
 
   return (
-    <div className={`admin-dashboard-shell ${panelStyles.shell}`}>
+    <div className={`admin-dashboard-shell ${panelStyles.shell} ${panelStyles.compactAdminShell}`}>
       <a className="skip-link" href="#admin-content">
         {c.skip}
       </a>
@@ -1336,732 +1333,46 @@ export function VendorManagement({
               ]
         }
       >
-        <aside
-          className={`admin-rail ${panelStyles.rail}`}
-          data-navigation-surface
-          data-mobile-open={true}
-        >
-          <Link
-            className="admin-brand"
-            href={`/${locale}`}
-            aria-label="Top GSM"
-          >
-            <BrandLogo tone="inverse" />
-          </Link>
-          <nav
-            id="admin-panel-navigation"
-            className={navigationStyles.navigation}
-            aria-label={c.navigation}
-            data-mobile-open={true}
-          >
-            {ownerNavigation ? (
-              <>
-                <Link
-                  className={navigationStyles.item}
-                  href={`/${locale}/admin`}
-                  aria-current={section === "overview" ? "page" : undefined}
-                >
-                  <OverviewIcon />
-                  <span>{c.overview}</span>
-                </Link>
-                <Link
-                  className={navigationStyles.item}
-                  href={`/${locale}/admin/notifications` as Route}
-                  aria-current={
-                    section === "notifications" ? "page" : undefined
-                  }
-                >
-                  <NotificationsIcon />
-                  <span>{c.notifications}</span>
-                  {notificationCount !== null ? (
-                    <strong className={navigationStyles.count} aria-label={`${notificationCount.toLocaleString(locale)} ${c.notifications}`}>
-                      {notificationCount.toLocaleString(locale)}
-                    </strong>
-                  ) : null}
-                </Link>
-                <div
-                  className={navigationStyles.group}
-                  data-active={isUsersSection}
-                  data-open={usersExpanded}
-                >
-                  <button
-                    className={navigationStyles.groupTrigger}
-                    type="button"
-                    aria-expanded={usersExpanded}
-                    aria-controls="admin-users-navigation"
-                    onClick={() => setUsersOpen((current) => !current)}
-                  >
-                    <UsersGroupIcon />
-                    <span>{c.users}</span>
-                    <span
-                      className={navigationStyles.chevron}
-                      aria-hidden="true"
-                    >
-                      ⌄
-                    </span>
-                  </button>
-                  <div
-                    className={navigationStyles.subNavigation}
-                    id="admin-users-navigation"
-                  >
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/vendors` as Route}
-                      aria-current={section === "vendors" ? "page" : undefined}
-                    >
-                      <VendorsIcon />
-                      <span>{c.vendors}</span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/staff` as Route}
-                      aria-current={section === "staff" ? "page" : undefined}
-                    >
-                      <StaffIcon />
-                      <span>{c.staff}</span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/users` as Route}
-                      aria-current={section === "users" ? "page" : undefined}
-                    >
-                      <CustomersIcon />
-                      <span>{c.users}</span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/seller-statistics` as Route}
-                      aria-current={section === "seller-statistics" ? "page" : undefined}
-                    >
-                      <StatisticsIcon />
-                      <span>{c.sellerStatistics}</span>
-                    </Link>
-                  </div>
-                </div>
-                <div
-                  className={navigationStyles.group}
-                  data-active={isProductServiceSection}
-                  data-open={productServiceExpanded}
-                >
-                  <button
-                    className={navigationStyles.groupTrigger}
-                    type="button"
-                    aria-expanded={productServiceExpanded}
-                    aria-controls="admin-product-service-navigation"
-                    onClick={() => setProductServiceOpen((current) => !current)}
-                  >
-                    <ProductsIcon />
-                    <span>{c.productService}</span>
-                    <span
-                      className={navigationStyles.chevron}
-                      aria-hidden="true"
-                    >
-                      ⌄
-                    </span>
-                  </button>
-                  <div
-                    className={navigationStyles.subNavigation}
-                    id="admin-product-service-navigation"
-                  >
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/products` as Route}
-                      aria-current={section === "products" ? "page" : undefined}
-                    >
-                      <ProductsIcon />
-                      <span>{c.products}</span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/product-categories` as Route}
-                      aria-current={
-                        section === "product-categories" ? "page" : undefined
-                      }
-                    >
-                      <ProductsIcon />
-                      <span>{c.productCategories}</span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/product-templates` as Route}
-                      aria-current={section === "product-templates" ? "page" : undefined}
-                    >
-                      <ProductsIcon />
-                      <span>{c.productTemplates}</span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/product-changes` as Route}
-                      aria-current={
-                        section === "product-changes" ? "page" : undefined
-                      }
-                    >
-                      <ProductChangesIcon />
-                      <span>{c.productChanges}</span>
-                    </Link>
-                  </div>
-                </div>
-                <div
-                  className={navigationStyles.group}
-                  data-active={isSalesServiceSection}
-                  data-open={salesServiceExpanded}
-                >
-                  <button
-                    className={navigationStyles.groupTrigger}
-                    type="button"
-                    aria-expanded={salesServiceExpanded}
-                    aria-controls="admin-sales-service-navigation"
-                    onClick={() => setSalesServiceOpen((current) => !current)}
-                  >
-                    <SalesServiceIcon />
-                    <span>{c.sellService}</span>
-                    <span
-                      className={navigationStyles.chevron}
-                      aria-hidden="true"
-                    >
-                      ⌄
-                    </span>
-                  </button>
-                  <div
-                    className={navigationStyles.subNavigation}
-                    id="admin-sales-service-navigation"
-                  >
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/orders` as Route}
-                      aria-current={
-                        section === "orders" || section === "order-detail"
-                          ? "page"
-                          : undefined
-                      }
-                    >
-                      <OrdersIcon />
-                      <span>{c.orders}</span>
-                      <strong
-                        className={navigationStyles.count}
-                        aria-label={`${newOrderCount.toLocaleString(locale)} ${c.newOrders}`}
-                        title={`${newOrderCount.toLocaleString(locale)} ${c.newOrders}`}
-                      >
-                        {newOrderCount.toLocaleString(locale)}
-                      </strong>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/coupons` as Route}
-                      aria-current={section === "coupons" ? "page" : undefined}
-                    >
-                      <CouponIcon />
-                      <span>{c.coupons}</span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/marketing` as Route}
-                      aria-current={section === "marketing" ? "page" : undefined}
-                    >
-                      <CouponIcon />
-                      <span>{c.marketing}</span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/statistics` as Route}
-                      aria-current={section === "statistics" ? "page" : undefined}
-                    >
-                      <StatisticsIcon />
-                      <span>{c.reports}</span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/sales/configuration` as Route}
-                      aria-current={section === "sales-configuration" || section === "club" || section === "settings-shipping" ? "page" : undefined}
-                    >
-                      <SalesServiceIcon />
-                      <span>{c.salesConfiguration}</span>
-                    </Link>
-                  </div>
-                </div>
-                <div
-                  className={navigationStyles.group}
-                  data-active={isPaymentServiceSection}
-                  data-open={paymentServiceExpanded}
-                >
-                  <button
-                    className={navigationStyles.groupTrigger}
-                    type="button"
-                    aria-expanded={paymentServiceExpanded}
-                    aria-controls="admin-payment-service-navigation"
-                    onClick={() => setPaymentServiceOpen((current) => !current)}
-                  >
-                    <PaymentServiceIcon />
-                    <span>{c.paymentService}</span>
-                    <span
-                      className={navigationStyles.chevron}
-                      aria-hidden="true"
-                    >
-                      ⌄
-                    </span>
-                  </button>
-                  <div
-                    className={navigationStyles.subNavigation}
-                    id="admin-payment-service-navigation"
-                  >
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/payments/transactions` as Route}
-                      aria-current={
-                        section === "payment-transactions" ? "page" : undefined
-                      }
-                    >
-                      <TransactionsIcon />
-                      <span>{c.paymentTransactions}</span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/payments/methods` as Route}
-                      aria-current={
-                        section === "payment-methods" ? "page" : undefined
-                      }
-                    >
-                      <PaymentMethodsIcon />
-                      <span>{c.paymentMethods}</span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/settings/usd` as Route}
-                      aria-current={
-                        section === "settings-usd" ? "page" : undefined
-                      }
-                      data-alert={usdRateFailed}
-                    >
-                      <UsdIcon />
-                      <span>{c.usd}</span>
-                      {usdRateFailed ? (
-                        <strong
-                          className={navigationStyles.alert}
-                          aria-label={c.usdAlert}
-                          title={c.usdAlert}
-                        >
-                          !
-                        </strong>
-                      ) : null}
-                    </Link>
-                  </div>
-                </div>
-              </>
-            ) : null}
-            {canManageUploads || canManageBlog ? (
-              <div
-                className={navigationStyles.group}
-                data-active={isContentSection}
-                data-open={contentExpanded}
-              >
-                <button
-                  className={navigationStyles.groupTrigger}
-                  type="button"
-                  aria-expanded={contentExpanded}
-                  aria-controls="admin-content-navigation"
-                  onClick={() => setContentOpen((current) => !current)}
-                >
-                  <EditorialIcon />
-                  <span>{c.content}</span>
-                  <span className={navigationStyles.chevron} aria-hidden="true">
-                    ⌄
-                  </span>
-                </button>
-                <div
-                  className={navigationStyles.subNavigation}
-                  id="admin-content-navigation"
-                >
-                  {canManageUploads ? (
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/uploads` as Route}
-                      aria-current={section === "uploads" ? "page" : undefined}
-                    >
-                      <UploadsIcon />
-                      <span>{c.uploads}</span>
-                    </Link>
-                  ) : null}
-                  {canManageBlog ? (
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/blog` as Route}
-                      aria-current={
-                        section === "editorial" ? "page" : undefined
-                      }
-                    >
-                      <EditorialIcon />
-                      <span>{c.editorial}</span>
-                    </Link>
-                  ) : null}
-                  {canManageBlog ? (
-                    <Link
-                      className={`${navigationStyles.item} ${navigationStyles.nestedItem}`}
-                      href={`/${locale}/admin/blog/categories` as Route}
-                      aria-current={
-                        section === "blog-categories" ? "page" : undefined
-                      }
-                    >
-                      <span>
-                        {locale === "fa"
-                          ? "دسته‌بندی‌ها"
-                          : locale === "ar"
-                            ? "التصنيفات"
-                            : "Categories"}
-                      </span>
-                    </Link>
-                  ) : null}
-                  {canManageBlog ? (
-                    <Link
-                      className={`${navigationStyles.item} ${navigationStyles.nestedItem}`}
-                      href={`/${locale}/admin/blog/tags` as Route}
-                      aria-current={
-                        section === "blog-tags" ? "page" : undefined
-                      }
-                    >
-                      <span>
-                        {locale === "fa"
-                          ? "برچسب‌ها"
-                          : locale === "ar"
-                            ? "الوسوم"
-                            : "Tags"}
-                      </span>
-                    </Link>
-                  ) : null}
-                  {ownerNavigation ? (
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/settings/comments` as Route}
-                      aria-current={
-                        section === "settings-comments" ? "page" : undefined
-                      }
-                    >
-                      <EditorialIcon />
-                      <span>{c.comments}</span>
-                    </Link>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
-            {ownerNavigation ? (
-              <>
-                <div
-                  className={navigationStyles.group}
-                  data-active={isAiSection}
-                  data-open={aiExpanded}
-                >
-                  <button
-                    className={navigationStyles.groupTrigger}
-                    type="button"
-                    aria-expanded={aiExpanded}
-                    aria-controls="admin-ai-navigation"
-                    onClick={() => setAiOpen((current) => !current)}
-                  >
-                    <AiServiceIcon />
-                    <span>{c.ai}</span>
-                    <span
-                      className={navigationStyles.chevron}
-                      aria-hidden="true"
-                    >
-                      ⌄
-                    </span>
-                  </button>
-                  <div
-                    className={navigationStyles.subNavigation}
-                    id="admin-ai-navigation"
-                  >
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/ai/models` as Route}
-                      aria-current={
-                        section === "ai-models" ? "page" : undefined
-                      }
-                    >
-                      <AiModelsIcon />
-                      <span>{c.aiModels}</span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/ai/assistant` as Route}
-                      aria-current={
-                        section === "ai-assistant" ? "page" : undefined
-                      }
-                    >
-                      <AiAssistantIcon />
-                      <span>{c.aiAssistant}</span>
-                    </Link>
-                  </div>
-                </div>
-                <div
-                  className={navigationStyles.group}
-                  data-active={isWebsiteSection}
-                  data-open={websiteExpanded}
-                >
-                  <button
-                    className={navigationStyles.groupTrigger}
-                    type="button"
-                    aria-expanded={websiteExpanded}
-                    aria-controls="admin-website-navigation"
-                    onClick={() => setWebsiteOpen((current) => !current)}
-                  >
-                    <EditorialIcon />
-                    <span>{c.website}</span>
-                    <span
-                      className={navigationStyles.chevron}
-                      aria-hidden="true"
-                    >
-                      ⌄
-                    </span>
-                  </button>
-                  <div
-                    className={navigationStyles.subNavigation}
-                    id="admin-website-navigation"
-                  >
-                    <Link className={navigationStyles.item} href={`/${locale}/admin/settings/template` as Route} aria-current={section === "settings-template" ? "page" : undefined}>
-                      <EditorialIcon /><span>{locale === "fa" ? "تنظیمات قالب" : locale === "ar" ? "إعدادات القالب" : "Template settings"}</span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/settings/seo` as Route}
-                      aria-current={
-                        section === "settings-seo" ? "page" : undefined
-                      }
-                    >
-                      <EditorialIcon />
-                      <span>
-                        {locale === "fa"
-                          ? "سئو"
-                          : locale === "ar"
-                            ? "تحسين البحث"
-                            : "SEO"}
-                      </span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/settings/homepage` as Route}
-                      aria-current={
-                        section === "settings-homepage" ? "page" : undefined
-                      }
-                    >
-                      <EditorialIcon />
-                      <span>
-                        {locale === "fa"
-                          ? "صفحه اصلی"
-                          : locale === "ar"
-                            ? "الصفحة الرئيسية"
-                            : "Homepage"}
-                      </span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/settings/notice` as Route}
-                      aria-current={
-                        section === "settings-notice" ? "page" : undefined
-                      }
-                    >
-                      <EditorialIcon />
-                      <span>
-                        {locale === "fa"
-                          ? "اطلاعیه"
-                          : locale === "ar"
-                            ? "الإشعار"
-                            : "Notice"}
-                      </span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/settings/complaints` as Route}
-                      aria-current={
-                        section === "settings-complaints" ? "page" : undefined
-                      }
-                    >
-                      <EditorialIcon />
-                      <span>
-                        {locale === "fa"
-                          ? "ثبت شکایات"
-                          : locale === "ar"
-                            ? "الشكاوى"
-                            : "Complaints"}
-                      </span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/settings/stories` as Route}
-                      aria-current={
-                        section === "settings-stories" ? "page" : undefined
-                      }
-                    >
-                      <EditorialIcon />
-                      <span>
-                        {locale === "fa"
-                          ? "استوری‌ها"
-                          : locale === "ar"
-                            ? "القصص"
-                            : "Stories"}
-                      </span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/settings/blog-sidebar` as Route}
-                      aria-current={
-                        section === "settings-blog-sidebar" ? "page" : undefined
-                      }
-                    >
-                      <EditorialIcon />
-                      <span>
-                        {locale === "fa"
-                          ? "تبلیغ کنار مقاله"
-                          : locale === "ar"
-                            ? "إعلان جانب المقال"
-                            : "Article sidebar"}
-                      </span>
-                    </Link>
-                  </div>
-                </div>
-                <div
-                  className={navigationStyles.group}
-                  data-active={isIntegrationsSection}
-                  data-open={integrationsExpanded}
-                >
-                  <button
-                    className={navigationStyles.groupTrigger}
-                    type="button"
-                    aria-expanded={integrationsExpanded}
-                    aria-controls="admin-integrations-navigation"
-                    onClick={() => setIntegrationsOpen((current) => !current)}
-                  >
-                    <SettingsIcon />
-                    <span>{c.integrations}</span>
-                    <span
-                      className={navigationStyles.chevron}
-                      aria-hidden="true"
-                    >
-                      ⌄
-                    </span>
-                  </button>
-                  <div
-                    className={navigationStyles.subNavigation}
-                    id="admin-integrations-navigation"
-                  >
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/settings/sms` as Route}
-                      aria-current={
-                        section === "settings-sms" ? "page" : undefined
-                      }
-                    >
-                      <SmsIcon />
-                      <span>{c.sms}</span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/settings/goghdi` as Route}
-                      aria-current={
-                        section === "settings-goghdi" ? "page" : undefined
-                      }
-                    >
-                      <SmsIcon />
-                      <span>{c.goghdi}</span>
-                    </Link>
-                    {process.env.NEXT_PUBLIC_BRIDGE_FEATURE_ENABLED ===
-                    "true" ? (
-                      <Link
-                        className={navigationStyles.item}
-                        href={`/${locale}/admin/bridge` as Route}
-                        aria-current={section === "bridge" ? "page" : undefined}
-                      >
-                        <BridgeIcon />
-                        <span>Bridge</span>
-                      </Link>
-                    ) : null}
-                  </div>
-                </div>
-                <div
-                  className={navigationStyles.group}
-                  data-active={isSecuritySection}
-                  data-open={securityExpanded}
-                >
-                  <button
-                    className={navigationStyles.groupTrigger}
-                    type="button"
-                    aria-expanded={securityExpanded}
-                    aria-controls="admin-security-navigation"
-                    onClick={() => setSecurityOpen((current) => !current)}
-                  >
-                    <SettingsIcon />
-                    <span>{c.security}</span>
-                    <span
-                      className={navigationStyles.chevron}
-                      aria-hidden="true"
-                    >
-                      ⌄
-                    </span>
-                  </button>
-                  <div
-                    className={navigationStyles.subNavigation}
-                    id="admin-security-navigation"
-                  >
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/security/rate-limit` as Route}
-                      aria-current={
-                        section === "security-rate-limit" ? "page" : undefined
-                      }
-                    >
-                      <SettingsIcon />
-                      <span>{c.rateLimit}</span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/security/login` as Route}
-                      aria-current={
-                        section === "security-login" ? "page" : undefined
-                      }
-                    >
-                      <SettingsIcon />
-                      <span>{c.auth}</span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/security/captcha` as Route}
-                      aria-current={
-                        section === "security-captcha" ? "page" : undefined
-                      }
-                    >
-                      <SettingsIcon />
-                      <span>{c.captcha}</span>
-                    </Link>
-                    <Link
-                      className={navigationStyles.item}
-                      href={`/${locale}/admin/settings/backup` as Route}
-                      aria-current={
-                        section === "settings-backup" ? "page" : undefined
-                      }
-                    >
-                      <SettingsIcon />
-                      <span>{c.backupRestore}</span>
-                    </Link>
-                  </div>
-                </div>
-              </>
-            ) : null}
-            <UploadCenterNavigation
-              locale={locale}
-              settingsHref={ownerNavigation ? `/${locale}/admin/settings/upload-centers` : undefined}
-              active={section === "settings-upload-centers"}
-            />
-          </nav>
-          <div className="admin-rail-account" data-mobile-open={true}>
-            <span>{c.account}</span>
-            <div className="admin-identity">
-              <span>{ownerNavigation ? c.admin : c.staff}</span>
-              <strong>{adminName}</strong>
-            </div>
-            <Link className={navigationStyles.item} href={`/${locale}/account` as Route}>
-              <span>{locale === "fa" ? "حساب شخصی و خریدها" : locale === "ar" ? "حسابي ومشترياتي" : "My account and purchases"}</span>
-            </Link>
-            <LogoutButton locale={locale} />
-          </div>
-        </aside>
+        <AdminNavigation
+          locale={locale}
+          adminName={adminName}
+          ownerNavigation={ownerNavigation}
+          section={section}
+          copy={c}
+          icons={{ overview: OverviewIcon, notifications: NotificationsIcon, users: UsersGroupIcon, vendors: VendorsIcon, staff: StaffIcon, customers: CustomersIcon, statistics: StatisticsIcon, products: ProductsIcon, productChanges: ProductChangesIcon, sales: SalesServiceIcon, orders: OrdersIcon, coupons: CouponIcon, payments: PaymentServiceIcon, transactions: TransactionsIcon, paymentMethods: PaymentMethodsIcon, usd: UsdIcon, editorial: EditorialIcon, uploads: UploadsIcon, ai: AiServiceIcon, aiModels: AiModelsIcon, aiAssistant: AiAssistantIcon, settings: SettingsIcon, sms: SmsIcon, bridge: BridgeIcon }}
+          notificationCount={notificationCount}
+          newOrderCount={newOrderCount}
+          usdRateFailed={usdRateFailed}
+          canManageUploads={canManageUploads}
+          canManageBlog={canManageBlog}
+          isUsersSection={isUsersSection}
+          usersExpanded={usersExpanded}
+          setUsersOpen={setUsersOpen}
+          isProductServiceSection={isProductServiceSection}
+          productServiceExpanded={productServiceExpanded}
+          setProductServiceOpen={setProductServiceOpen}
+          isSalesServiceSection={isSalesServiceSection}
+          salesServiceExpanded={salesServiceExpanded}
+          setSalesServiceOpen={setSalesServiceOpen}
+          isPaymentServiceSection={isPaymentServiceSection}
+          paymentServiceExpanded={paymentServiceExpanded}
+          setPaymentServiceOpen={setPaymentServiceOpen}
+          isContentSection={isContentSection}
+          contentExpanded={contentExpanded}
+          setContentOpen={setContentOpen}
+          isAiSection={isAiSection}
+          aiExpanded={aiExpanded}
+          setAiOpen={setAiOpen}
+          isWebsiteSection={isWebsiteSection}
+          websiteExpanded={websiteExpanded}
+          setWebsiteOpen={setWebsiteOpen}
+          isIntegrationsSection={isIntegrationsSection}
+          integrationsExpanded={integrationsExpanded}
+          setIntegrationsOpen={setIntegrationsOpen}
+          isSecuritySection={isSecuritySection}
+          securityExpanded={securityExpanded}
+          setSecurityOpen={setSecurityOpen}
+        />
       </DashboardMobileNavigation>
 
       <main className={`admin-shell ${panelStyles.main}`} id="admin-content" ref={root}>

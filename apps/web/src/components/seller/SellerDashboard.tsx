@@ -1,4 +1,5 @@
 "use client";
+
 import { scheduleEffectTask } from "@/lib/effect-task";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ProductAiPanel } from "@/components/ai/ProductAiPanel";
@@ -34,7 +35,6 @@ import {
 import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
-import { LogoutButton } from "@/components/auth/LogoutButton";
 import { ProductPublicUrl } from "@/components/product/ProductPublicUrl";
 import { ProductSlugEditor, normalizeProductSlug } from "@/components/product/ProductSlugEditor";
 import { SellerBridgeWorkspace } from "@/components/bridge/SellerBridgeWorkspace";
@@ -50,17 +50,15 @@ import { DesignIcon } from "@/components/DesignIcon";
 import { PRODUCT_CREATION_COPY } from "./ProductCreationCopy";
 import styles from "./SellerDashboard.module.css";
 import creation from "./ProductCreation.module.css";
-import navigationStyles from "@/components/dashboard/DashboardNavigation.module.css";
 import { AnalyticsOverview } from "@/components/analytics/AnalyticsOverview";
 import { PanelOverview } from "@/components/dashboard/PanelOverview";
 import { PanelTopbar } from "@/components/dashboard/PanelTopbar";
 import panelStyles from "@/components/dashboard/PanelShell.module.css";
 import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
 import { useNewOrderCount } from "@/components/dashboard/useNewOrderCount";
-import { DashboardMobileNavigation } from "@/components/dashboard/DashboardMobileNavigation";
-import { UploadCenterNavigation } from "@/components/dashboard/UploadCenterNavigation";
+import { SellerNavigation, type SellerDashboardIconName, type SellerDashboardSection } from "./SellerNavigation";
 
-type DashboardSection = "overview" | "statistics" | "products" | "uploads" | "profile" | "blog" | "coupons" | "marketing" | "orders" | "customers" | "shipping" | "payouts" | "bridge" | "sales-configuration";
+type DashboardSection = SellerDashboardSection;
 type RequestState = "idle" | "loading" | "error" | "success";
 
 const FILTER_COPY = {
@@ -100,6 +98,7 @@ type OfferDraft = {
   sellerSku: string;
   downloadLinks: DownloadLink[];
   maxDownloads: string;
+  accessDays: string;
   stock: string;
   weightGrams: string;
   lengthCm: string;
@@ -613,6 +612,7 @@ function makeOffer(id: string): OfferDraft {
     sellerSku: "",
     downloadLinks: [{ url: "", title: "" }],
     maxDownloads: "1",
+    accessDays: "0",
     stock: "0",
     weightGrams: "0",
     lengthCm: "", widthCm: "", heightCm: "",
@@ -638,7 +638,7 @@ function makeDraft(physicalGranted: boolean): ProductDraft {
   };
 }
 
-function Icon({ name }: { name: DashboardSection | "sales" | "plus" | "search" | "close" | "box" }) {
+function Icon({ name }: { name: SellerDashboardIconName }) {
   const paths = {
     overview: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
     statistics: <><path d="M4 20V11M10 20V5M16 20v-8M22 20V8"/><path d="M2 20h20"/></>,
@@ -687,7 +687,7 @@ function validateDraft(draft: ProductDraft) {
     if (draft.currency === "TOMAN" && !/^\d+$/.test(offer.price.trim())) return false;
     if (draft.kind === "variable" && !offer.optionValue.trim()) return false;
     if (draft.type === "digital") {
-      return validDownloadLinks(offer.downloadLinks) && Number.isInteger(Number(offer.maxDownloads)) && Number(offer.maxDownloads) >= 0;
+      return validDownloadLinks(offer.downloadLinks) && Number.isInteger(Number(offer.maxDownloads)) && Number(offer.maxDownloads) >= 0 && Number.isInteger(Number(offer.accessDays)) && Number(offer.accessDays) >= 0 && Number(offer.accessDays) <= 36500;
     }
     if (draft.type === "physical") {
       return Number.isInteger(Number(offer.stock)) && Number(offer.stock) >= 0 && Number.isInteger(Number(offer.weightGrams)) && Number(offer.weightGrams) >= 0;
@@ -720,7 +720,7 @@ function buildOffer(draft: ProductDraft, offer: OfferDraft) {
       digital: {
         fileReferences: offer.downloadLinks.map((link) => link.url.trim()),
         fileTitles: offer.downloadLinks.map((link) => link.title.trim()),
-        maxDownloads: Number(offer.maxDownloads)
+        accessDays: Number(offer.accessDays), maxDownloads: Number(offer.maxDownloads)
       }
     };
   }
@@ -810,10 +810,11 @@ function OfferFields({
           <input maxLength={100} value={offer.sellerSku} onChange={(event) => update(offer.id, "sellerSku", event.target.value)} />
         </label>
         {draft.type === "digital" ? (
+          <> <label className={styles.field}><span>{locale === "fa" ? "مدت دسترسی (روز؛ صفر = نامحدود)" : "Access days (0 = unlimited)"}</span><input required type="number" min="0" max="36500" value={offer.accessDays} onChange={(event) => update(offer.id, "accessDays", event.target.value)} /></label>
           <label className={styles.field}>
             <span>{copy.maxDownloads}</span>
             <input required type="number" min="0" step="1" value={offer.maxDownloads} onChange={(event) => update(offer.id, "maxDownloads", event.target.value)} />
-          </label>
+          </label></>
         ) : null}
         {draft.type === "physical" ? (
           <>
@@ -1095,157 +1096,26 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
     }
   }
 
-  const sellServiceNavigation: Array<{ id: DashboardSection; label: string }> = [
-    ...(canManageOrders
-      ? [{ id: "orders" as const, label: copy.orders }]
-      : []),
-    ...(user.permissions?.includes("coupons_manage")
-      ? [{ id: "coupons" as const, label: copy.coupons }]
-      : []),
-    ...(user.permissions?.includes("products_manage")
-      ? [{ id: "marketing" as const, label: copy.marketing }]
-      : []),
-    ...(hasAnalytics
-      ? [{ id: "statistics" as const, label: copy.reports }]
-      : []),
-    { id: "sales-configuration", label: copy.salesConfiguration }
-  ];
-  const productServiceExpanded = section === "products" || productServiceOpen;
-  const secondaryNavigation: Array<{ id: DashboardSection; label: string }> = [
-    { id: "uploads", label: copy.uploads },
-    ...(user.role === "seller-admin" || user.role === "platform-admin"
-      ? [{ id: "profile" as const, label: copy.profile }]
-      : []),
-    ...(user.permissions?.includes("blog_manage")
-      ? [{ id: "blog" as const, label: copy.blog }]
-      : []),
-    { id: "payouts", label: copy.payouts }
-  ];
-  const isSellServiceSection = sellServiceNavigation.some((item) => item.id === section) || section === "customers" || section === "shipping" || section === "bridge";
-  const sellServiceExpanded = isSellServiceSection || sellServiceOpen;
   const sectionLabel = section === "sales-configuration" ? copy.salesConfiguration : section === "statistics" ? copy.reports : copy[section];
 
   return (
-    <div className={`${styles.shell} ${panelStyles.shell}`}>
-      <DashboardMobileNavigation locale={locale} title={copy.workspace} currentLabel={sectionLabel} shortcuts={[
-        { label: copy.overview, icon: <Icon name="overview" />, active: section === "overview", onClick: () => selectSection("overview") },
-        ...(canManageOrders ? [{ label: copy.orders, icon: <Icon name="orders" />, active: section === "orders", count: newOrderCount, onClick: () => selectSection("orders") }] : []),
-        { label: copy.products, icon: <Icon name="products" />, active: section === "products", onClick: () => selectSection("products") }
-      ]}>
-      <aside className={`${styles.rail} ${panelStyles.rail}`} data-navigation-surface data-mobile-open={true}>
-        <div className={styles.brandBlock}>
-          <span className={styles.brandIdentity}>
-            <BrandLogo variant="wordmark" tone="inverse" />
-            <span>{copy.workspace}</span>
-          </span>
-        </div>
-        <nav id="seller-panel-navigation" className={navigationStyles.navigation} aria-label={copy.workspace} data-mobile-open={true}>
-          <button
-            className={navigationStyles.item}
-            type="button"
-            aria-current={section === "overview" ? "page" : undefined}
-            onClick={() => selectSection("overview")}
-            data-state="default"
-          >
-            <Icon name="overview" />
-            <span>{copy.overview}</span>
-          </button>
-          <div
-            className={navigationStyles.group}
-            data-active={section === "products"}
-            data-open={productServiceExpanded}
-          >
-            <button
-              className={navigationStyles.groupTrigger}
-              type="button"
-              aria-expanded={productServiceExpanded}
-              aria-controls="product-service-navigation"
-              onClick={() => setProductServiceOpen((current) => !current)}
-            >
-              <Icon name="products" />
-              <span>{copy.productService}</span>
-              <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
-            </button>
-            <div className={navigationStyles.subNavigation} id="product-service-navigation">
-              <button className={navigationStyles.item} type="button" aria-current={section === "products" ? "page" : undefined} onClick={() => selectSection("products")} data-state="default">
-                <Icon name="products" />
-                <span>{copy.products}</span>
-              </button>
-            </div>
-          </div>
-          {sellServiceNavigation.length > 0 ? <div
-            className={navigationStyles.group}
-            data-active={isSellServiceSection}
-            data-open={sellServiceExpanded}
-          >
-            <button
-              className={navigationStyles.groupTrigger}
-              type="button"
-              aria-expanded={sellServiceExpanded}
-              aria-controls="sell-service-navigation"
-              onClick={() => setSellServiceOpen((current) => !current)}
-            >
-              <Icon name="sales" />
-              <span>{copy.sellService}</span>
-              <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
-            </button>
-            <div className={navigationStyles.subNavigation} id="sell-service-navigation">
-              {sellServiceNavigation.map((item) => (
-                <button
-                  className={navigationStyles.item}
-                  type="button"
-                  key={item.id}
-                  aria-current={section === item.id || (item.id === "orders" && section === "customers") || (item.id === "sales-configuration" && (section === "shipping" || section === "bridge")) ? "page" : undefined}
-                  onClick={() => selectSection(item.id)}
-                  data-state="default"
-                >
-                  <Icon name={item.id} />
-                  <span>{item.label}</span>
-                  {item.id === "orders" ? (
-                    <strong
-                      className={navigationStyles.count}
-                      aria-label={`${newOrderCount.toLocaleString(locale)} ${copy.newOrders}`}
-                      title={`${newOrderCount.toLocaleString(locale)} ${copy.newOrders}`}
-                    >
-                      {newOrderCount.toLocaleString(locale)}
-                    </strong>
-                  ) : null}
-                </button>
-              ))}
-            </div>
-          </div> : null}
-          {secondaryNavigation.map((item) => (
-            <button
-              className={navigationStyles.item}
-              type="button"
-              key={item.id}
-              aria-current={section === item.id ? "page" : undefined}
-              onClick={() => selectSection(item.id)}
-              data-state="default"
-            >
-              <Icon name={item.id} />
-              <span>{item.label}</span>
-            </button>
-          ))}
-          <Link className={navigationStyles.item} href={`/${locale}/seller-dashboard/comments` as Route}>
-            <Icon name="blog" />
-            <span>{locale === "fa" ? "دیدگاه‌ها" : locale === "ar" ? "التعليقات" : "Comments"}</span>
-          </Link>
-          <Link className={navigationStyles.item} href={`/${locale}/account` as Route}>
-            <Icon name="overview" />
-            <span>{locale === "fa" ? "حساب شخصی و خریدها" : locale === "ar" ? "حسابي ومشترياتي" : "My account and purchases"}</span>
-          </Link>
-          <UploadCenterNavigation locale={locale} />
-        </nav>
-        <div className={styles.accountBlock} data-mobile-open={true}>
-          <span>{copy.account}</span>
-          <strong>{user.fullName}</strong>
-          <small>{user.email}</small>
-          <small>{copy.sellerRole}</small>
-          <LogoutButton locale={locale} />
-        </div>
-      </aside>
-      </DashboardMobileNavigation>
+    <div className={`${styles.shell} ${panelStyles.shell} ${panelStyles.compactSellerShell}`}>
+      <SellerNavigation
+        locale={locale}
+        section={section}
+        currentLabel={sectionLabel}
+        user={user}
+        copy={copy}
+        newOrderCount={newOrderCount}
+        canManageOrders={canManageOrders}
+        hasAnalytics={hasAnalytics}
+        onSelect={selectSection}
+        Icon={Icon}
+        productServiceOpen={productServiceOpen}
+        setProductServiceOpen={setProductServiceOpen}
+        sellServiceOpen={sellServiceOpen}
+        setSellServiceOpen={setSellServiceOpen}
+      />
 
       <main className={`${styles.main} ${panelStyles.main}`} tabIndex={-1}>
         <PanelTopbar locale={locale} name={user.fullName} audience="seller" canSwitchWorkspace={user.role === "platform-admin"} />

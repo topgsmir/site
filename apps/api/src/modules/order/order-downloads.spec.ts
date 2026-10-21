@@ -44,7 +44,20 @@ test("listDownloads scopes entitlements to the authenticated buyer and settled o
   assert.equal(result.items[0]?.file.title, "Guide ZIP");
   assert.equal(result.items[0]?.file.downloadUrl, "/orders/order-1/items/item-1/download?fileIndex=0");
   assert.equal(result.items[0]?.file.downloadCount, 1);
+  assert.equal(result.items[0]?.remainingDays, null);
   assert.equal(result.nextCursor, null);
+});
+
+test("expired digital access is rejected before claiming a download", async () => {
+  let claimed = false;
+  const tx = { digital_entitlements: {
+    findFirst: async () => ({ id: "expired", delivery_url: "https://files.example/guide.zip", max_downloads: 3, download_count: 0,
+      created_at: new Date(Date.now() - 4 * 86400000), order_item: { digital_access_days: 3 } }),
+    updateMany: async () => { claimed = true; return { count: 1 }; }
+  } };
+  const prisma = { $transaction: async (work: (value: typeof tx) => Promise<unknown>) => work(tx) } as unknown as PrismaService;
+  await assert.rejects(() => new OrderService(prisma).claimDigitalDownload(buyer, "order", "item", "127.0.0.1"), /access period has expired/);
+  assert.equal(claimed, false);
 });
 
 test("listDownloads rejects short search terms and missing cursors", async () => {

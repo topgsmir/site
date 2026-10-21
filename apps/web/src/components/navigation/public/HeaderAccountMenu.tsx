@@ -4,9 +4,10 @@ import Link from "next/link";
 import type { Route } from "next";
 import { useCallback, useEffect, useRef } from "react";
 import type { Locale } from "@/lib/i18n";
-import { DesignIcon } from "./DesignIcon";
-import { AccountIcon } from "./account/AccountIcon";
-import { LogoutButton } from "./auth/LogoutButton";
+import { DesignIcon } from "../../DesignIcon";
+import { AccountIcon } from "../../account/AccountIcon";
+import { LogoutButton } from "../../auth/LogoutButton";
+import { sideMenuPosition } from "../../dashboard/menu-position";
 import styles from "./HeaderAccountMenu.module.css";
 
 const copy = {
@@ -26,11 +27,12 @@ export function HeaderAccountMenu({ locale, accountHref }: { locale: Locale; acc
     const scale = anchor.width / summary.offsetWidth;
     const viewportWidth = window.innerWidth / scale;
     const width = Math.min(224, viewportWidth - 32);
-    const left = locale === "en" ? anchor.right / scale - width : anchor.left / scale;
-    details.style.setProperty("--account-menu-left", Math.max(16, Math.min(left, viewportWidth - width - 16)) + "px");
-    details.style.setProperty("--account-menu-top", anchor.bottom / scale + 8 + "px");
-    details.style.setProperty("--account-menu-height", Math.max(44, window.innerHeight / scale - anchor.bottom / scale - 24) + "px");
-  }, [locale]);
+    const height = Math.min(details.querySelector<HTMLElement>("nav")?.scrollHeight || 320, window.innerHeight / scale - 24);
+    const point = sideMenuPosition({left: anchor.left / scale, right: anchor.right / scale, top: anchor.top / scale}, width, height, viewportWidth, window.innerHeight / scale);
+    details.style.setProperty("--account-menu-left", point.left + "px");
+    details.style.setProperty("--account-menu-top", point.top + "px");
+    details.style.setProperty("--account-menu-height", (window.innerHeight / scale - point.top - 12) + "px");
+  }, []);
   useEffect(() => {
     const dismiss = (event: PointerEvent) => { if (detailsRef.current && !detailsRef.current.contains(event.target as Node)) detailsRef.current.open = false; };
     document.addEventListener("pointerdown", dismiss);

@@ -26,8 +26,7 @@ export class GoghdiService {
     const order = await this.prisma.orders.findFirst({
       where: { id: orderId, buyer_id: buyerUserId, ...(orderItemId ? { items: { some: { id: orderItemId } } } : {}) },
       select: {
-        id: true,
-        seller: { select: { id: true, shop_name: true, goghdi_agent_id: true } },
+        id: true, seller: { select: { id: true, shop_name: true, goghdi_agent_id: true } },
         items: { where: orderItemId ? { id: orderItemId } : undefined, select: { id: true, product_title: true }, take: 20 }
       }
     });
@@ -60,7 +59,7 @@ export class GoghdiService {
   }
 
   private ticketTitle(orderId: string, shopName: string) {
-    const title = `Order ${orderId.slice(-8)} · ${shopName.trim()}`;
+    const title = `Order ${orderId} · ${shopName.trim()}`;
     return title.length <= 100 ? title : `${title.slice(0, 99).trimEnd()}…`;
   }
 }

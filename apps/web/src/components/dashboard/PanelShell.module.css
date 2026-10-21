@@ -34,6 +34,70 @@
   overflow-x: visible;
 }
 
+.shell .monochromeRail {
+  --paper: #111;
+  --ink: #fff;
+  --ink-soft: #eee;
+  --muted: #bdbdbd;
+  --line: #333;
+  --signal: #fff;
+  --signal-soft: #333;
+  --color-dashboard-scrollbar-track: #111;
+  --color-dashboard-scrollbar-thumb: #777;
+  --color-dashboard-scrollbar-thumb-hover: #aaa;
+  --color-navigation-paper: #111;
+  --color-navigation-raised: #222;
+  --color-navigation-ink: #fff;
+  --color-navigation-muted: #bdbdbd;
+  --color-navigation-selected: #fff;
+  --color-navigation-selected-ink: #111;
+  --color-dashboard-ink: #fff;
+  --color-dashboard-ink-soft: #eee;
+  --color-dashboard-muted: #bdbdbd;
+  --color-dashboard-rule: #333;
+  --color-dashboard-rule-strong: #777;
+  --color-dashboard-accent: #fff;
+  --color-dashboard-accent-strong: #fff;
+  --color-dashboard-accent-soft: #333;
+  --color-dashboard-surface: #111;
+  --color-dashboard-surface-raised: #252525;
+  --color-dashboard-focus: #fff;
+  --color-dashboard-error: #fff;
+  --color-dashboard-error-soft: #333;
+  gap: .5rem;
+  padding: .625rem;
+  color: #fff;
+  background: #111;
+  scrollbar-color: #777 #111;
+}
+
+
+.monochromeRail :global(.admin-rail-account) {
+  gap: .375rem;
+  margin-block-start: .5rem;
+  padding-block-start: .5rem;
+  padding: .5rem;
+  color: #fff;
+  background: #1c1c1c;
+  font-size: .75rem;
+}
+
+.monochromeRail :global(.logout-button) {
+  min-height: 2.25rem;
+  padding: .375rem .625rem;
+  border: 1px solid #777;
+  color: #fff;
+  background: #222;
+  font-size: .75rem;
+}
+
+.monochromeRail :global(.logout-button:hover) { background: #333; }
+.monochromeRail :global(.logout-button:focus-visible) { outline: 2px solid #fff; outline-offset: 2px; }
+
+@media (min-width: 60rem) {
+  .shell.compactAdminShell { grid-template-columns: 13rem minmax(0, 1fr); }
+}
+
 .topbar {
   display: flex;
   align-items: center;
@@ -77,6 +141,65 @@
 }
 
 .topbarActions { display: flex; align-items: center; flex-wrap: wrap; gap: .625rem; }
+
+/* Seller navigation: a neutral glass surface with blue reserved for interaction. */
+.shell .glassRail {
+  --seller-glass: var(--seller-page-glass-panel, color-mix(in srgb, var(--color-brand-navy) 88%, transparent));
+  --seller-glass-edge: var(--seller-page-glass-edge, color-mix(in srgb, var(--color-brand-off-white) 28%, transparent));
+  --seller-glass-highlight: var(--seller-page-glass-highlight, color-mix(in srgb, var(--color-brand-off-white) 16%, transparent));
+  --color-dashboard-ink: var(--color-brand-off-white);
+  --color-dashboard-ink-soft: var(--color-brand-off-white);
+  --color-dashboard-muted: var(--seller-glass-muted, color-mix(in srgb, var(--color-brand-off-white) 72%, transparent));
+  --color-dashboard-accent: var(--color-brand-blue);
+  --color-dashboard-accent-strong: var(--color-brand-blue);
+  --color-dashboard-accent-soft: color-mix(in srgb, var(--color-brand-blue) 16%, transparent);
+  --color-dashboard-surface-raised: color-mix(in srgb, var(--color-brand-off-white) 10%, transparent);
+  --color-dashboard-rule: color-mix(in srgb, var(--color-brand-off-white) 12%, transparent);
+  --color-dashboard-rule-strong: var(--seller-glass-edge);
+  --color-dashboard-focus: var(--color-brand-blue);
+  --color-dashboard-paper: transparent;
+  --color-navigation-ink: var(--color-brand-off-white);
+  --color-navigation-paper: var(--seller-glass);
+  --color-navigation-raised: var(--seller-page-glass-raised, color-mix(in srgb, var(--color-brand-navy) 78%, transparent));
+  --color-navigation-rule: var(--seller-page-glass-edge, color-mix(in srgb, var(--color-brand-off-white) 16%, transparent));
+  --color-navigation-rule-strong: var(--seller-page-glass-edge, color-mix(in srgb, var(--color-brand-off-white) 28%, transparent));
+  --color-navigation-muted: var(--color-dashboard-muted);
+  --color-navigation-selected: var(--color-brand-blue);
+  --color-navigation-selected-ink: var(--color-brand-navy);
+  --color-dashboard-scrollbar-track: transparent;
+  --color-dashboard-scrollbar-thumb: var(--seller-glass-edge);
+  --color-dashboard-scrollbar-thumb-hover: var(--color-brand-blue);
+  gap: .5rem;
+  padding: .625rem;
+  position: relative;
+  isolation: isolate;
+  color: var(--color-dashboard-ink);
+  border: 0;
+  border-radius: 1.125rem;
+  background: transparent;
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--color-brand-navy) 18%, transparent);
+  scrollbar-color: var(--color-dashboard-scrollbar-thumb) transparent;
+}
+.glassRail::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border: 1px solid var(--seller-glass-edge);
+  border-radius: inherit;
+  background: linear-gradient(145deg, var(--seller-glass-highlight), color-mix(in srgb, var(--seller-glass) 28%, transparent) 62%, color-mix(in srgb, var(--seller-glass) 48%, transparent));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-brand-off-white) 18%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--color-brand-navy) 14%, transparent);
+}
+@supports (backdrop-filter: blur(1px)) {
+  .glassRail::before {
+    backdrop-filter: blur(var(--seller-glass-blur, 24px)) saturate(125%);
+  }
+}
+.glassRail > :not(.railSparkles) { position: relative; z-index: 1; }
+.railSparkles { display: none; }
+@media (prefers-reduced-transparency: reduce) { .glassRail::before { background: var(--seller-glass-solid, color-mix(in srgb, var(--color-brand-navy) 94%, var(--color-brand-off-white))); backdrop-filter: none; } }
+@media (min-width: 60rem) { .shell.compactSellerShell { grid-template-columns: 13rem minmax(0, 1fr); } }
 .workspaceLink { display: inline-flex; min-height: 2.75rem; align-items: center; padding: .5rem .625rem; color: var(--color-dashboard-accent); border: 1px solid var(--color-dashboard-rule); border-radius: .5rem; }
 .workspaceLink:focus-visible { outline: 2px solid var(--color-dashboard-focus); outline-offset: 3px; }
 .accountLink { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: .75rem; color: var(--color-dashboard-error); background: var(--color-dashboard-error-soft); }

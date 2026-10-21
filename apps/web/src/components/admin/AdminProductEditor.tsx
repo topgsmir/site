@@ -94,6 +94,7 @@ type OfferDraft = {
   status: SellerListingStatus;
   fileReference: string;
   maxDownloads: string;
+  accessDays: string;
   stock: string;
   weightGrams: string;
   lengthCm: string;
@@ -111,7 +112,7 @@ function coreDraft(product: AdminProductDetails): CoreDraft {
 function offerDraft(offer: SellerProductOffer): OfferDraft {
   return {
     price: offer.price, currency: offer.currency, sellerSku: offer.sellerSku ?? "", status: offer.status,
-    fileReference: (offer.digital?.fileReferences ?? (offer.digital ? [offer.digital.fileReference] : [])).join("\n"), maxDownloads: String(offer.digital?.maxDownloads ?? 0),
+    fileReference: (offer.digital?.fileReferences ?? (offer.digital ? [offer.digital.fileReference] : [])).join("\n"), accessDays: String(offer.digital?.accessDays ?? 0), maxDownloads: String(offer.digital?.maxDownloads ?? 0),
     stock: String(offer.physical?.stock ?? 0), weightGrams: String(offer.physical?.weightGrams ?? 0),
     lengthCm: String(offer.physical?.lengthCm ?? ""), widthCm: String(offer.physical?.widthCm ?? ""), heightCm: String(offer.physical?.heightCm ?? ""),
     serviceType: offer.service?.serviceType ?? "", estimatedHours: String(offer.service?.estimatedHours ?? 1), instructions: offer.service?.instructions ?? ""
@@ -289,7 +290,7 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
       sellerSku: current.sellerSku.trim() || null, status: current.status,
       ...(offer.digital ? { digital: { fileReferences: splitDownloadUrls(current.fileReference),
         ...(offer.digital.fileTitles.length === offer.digital.fileReferences.length && offer.digital.fileTitles.every((title) => title.trim()) ? { fileTitles: offer.digital.fileTitles } : {}),
-        maxDownloads: Number(current.maxDownloads) } } : {}),
+        accessDays: Number(current.accessDays), maxDownloads: Number(current.maxDownloads) } } : {}),
       ...(offer.physical ? { physical: { stock: Number(current.stock), weightGrams: Number(current.weightGrams),
         lengthCm: current.lengthCm ? Number(current.lengthCm) : null, widthCm: current.widthCm ? Number(current.widthCm) : null, heightCm: current.heightCm ? Number(current.heightCm) : null } } : {}),
       ...(offer.service ? { service: { serviceType: current.serviceType.trim(), estimatedHours: Number(current.estimatedHours), instructions: current.instructions.trim() } } : {})
@@ -381,7 +382,7 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
                         {offer.digital ? <><div className={styles.wide}><DownloadLinkManager locale={locale} offer={offer} mode="admin" onUpdated={(links) => {
                           setProduct((current) => current ? { ...current, listings: current.listings.map((entry) => ({ ...entry, offers: entry.offers.map((item) => item.id === offer.id && item.digital ? { ...item, digital: { ...item.digital, fileReference: links[0]!.url, fileReferences: links.map((link) => link.url), fileTitles: links.map((link) => link.title) } } : item) })) } : current);
                           setOffers((current) => ({ ...current, [offer.id]: { ...current[offer.id], fileReference: links.map((link) => link.url).join("\n") } }));
-                        }} /></div><label><span>{c.downloads}</span><input required type="number" min={0} max={2147483647} value={value.maxDownloads} onChange={(event) => update("maxDownloads", event.target.value)} /></label></> : null}
+                        }} /></div><label><span>{locale === "fa" ? "مدت دسترسی (روز؛ صفر = نامحدود)" : "Access days (0 = unlimited)"}</span><input required type="number" min={0} max={36500} value={value.accessDays} onChange={(event) => update("accessDays", event.target.value)} /></label><label><span>{c.downloads}</span><input required type="number" min={0} max={2147483647} value={value.maxDownloads} onChange={(event) => update("maxDownloads", event.target.value)} /></label></> : null}
                         {offer.physical ? <><label><span>{c.stock}</span><input required type="number" min={0} max={2147483647} value={value.stock} onChange={(event) => update("stock", event.target.value)} /></label><label><span>{c.weight}</span><input required type="number" min={0} max={2147483647} value={value.weightGrams} onChange={(event) => update("weightGrams", event.target.value)} /></label>{(["lengthCm", "widthCm", "heightCm"] as const).map((field) => <label key={field}><span>{({ en: { lengthCm: "Length", widthCm: "Width", heightCm: "Height" }, fa: { lengthCm: "طول", widthCm: "عرض", heightCm: "ارتفاع" }, ar: { lengthCm: "الطول", widthCm: "العرض", heightCm: "الارتفاع" } })[locale][field]} (cm)</span><input type="number" min={1} max={1000} value={value[field]} onChange={(event) => update(field, event.target.value)} /></label>)}</> : null}
                         {offer.service ? <><label><span>{c.serviceType}</span><input required maxLength={100} value={value.serviceType} onChange={(event) => update("serviceType", event.target.value)} /></label><label><span>{c.hours}</span><input required type="number" min={1} max={10000} value={value.estimatedHours} onChange={(event) => update("estimatedHours", event.target.value)} /></label><label className={styles.wide}><span>{c.instructions}</span><textarea maxLength={5000} value={value.instructions} onChange={(event) => update("instructions", event.target.value)} /></label></> : null}
                       </div>

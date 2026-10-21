@@ -16,7 +16,7 @@ const labels = {
 
 export function UploadCenterNavigation({ locale, settingsHref, active = false }: { locale: Locale; settingsHref?: string; active?: boolean }) {
   const [settings, setSettings] = useState<UploadCenterSettings | null>(null);
-  const [open, setOpen] = useState(active);
+  const [open, setOpen] = useState(false);
   useEffect(() => {
     let active = true;
     const load = () => void api.get<UploadCenterSettings>("/upload-centers")

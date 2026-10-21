@@ -19,7 +19,8 @@ export function signUploadDownloadLink(
   clientIp: string,
   hosts: string,
   secret: string,
-  now = Date.now()
+  now = Date.now(),
+  accessExpiresAt?: number
 ): string {
   if (Buffer.byteLength(secret, "utf8") < 32 || !hosts || !isIP(clientIp)) {
     throw new Error("Upload download signing is not configured");
@@ -37,7 +38,8 @@ export function signUploadDownloadLink(
   } catch {
     throw new Error("Upload download path is invalid");
   }
-  const expires = Math.floor(now / 1000) + 24 * 60 * 60;
+  const expires = Math.min(Math.floor(now / 1000) + 24 * 60 * 60, accessExpiresAt === undefined ? Infinity : Math.floor(accessExpiresAt / 1000));
+  if (expires <= Math.floor(now / 1000)) throw new Error("Download access has expired");
   const md5 = createHash("md5")
     .update(`${expires}${decodedPath}${clientIp} ${secret}`, "utf8")
     .digest("base64url");

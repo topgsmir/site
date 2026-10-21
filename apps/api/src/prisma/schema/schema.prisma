@@ -1722,6 +1722,7 @@ model download_link_change_events {
   file_reference String        @map("file_reference") @db.VarChar(2048)
     file_references String[] @default([])
     file_titles     String[] @default([])
+  access_days Int @default(0)
   max_downloads  Int           @default(0) @map("max_downloads")
   offer          seller_offers @relation(fields: [offer_id], references: [id], onDelete: Cascade)
 
@@ -1762,7 +1763,7 @@ model seller_offer_bridge {
 
 model orders {
   marketing_earnings marketing_earnings[]
-  id               String                          @id @default(uuid()) @map("id")
+  id               String                          @id @default(dbgenerated("(nextval('orders_id_seq'::regclass))::text")) @map("id")
   traffic_source   String?                         @map("traffic_source") @db.VarChar(100)
   buyer_id         String                          @map("buyer_id")
   seller_id        String                          @map("seller_id")
@@ -1860,6 +1861,7 @@ model order_items {
   digital_delivery_url  String?                 @map("digital_delivery_url") @db.VarChar(2048)
   digital_delivery_urls String[] @default([])
   digital_delivery_titles String[] @default([])
+  digital_access_days Int @default(0)
   digital_max_downloads Int?                    @map("digital_max_downloads")
   order                 orders                  @relation(fields: [order_id], references: [id], onDelete: Restrict)
   offer                 seller_offers           @relation(fields: [offer_id], references: [id], onDelete: Restrict)

@@ -63,15 +63,13 @@ export function AccountPanel({
       <aside className={styles.sidebar} aria-label={w.profile} data-account-enter>
         <section
           className={styles.profile}
-          aria-labelledby="profile-card-title"
+          aria-label={w.profile}
         >
           <div className={styles.profileTop}>
                   <UserAvatar className={styles.avatar} name={profile.fullName} url={profile.profilePictureUrl} />
             <span>
               <span className={styles.greeting}>{w.member}</span>
-              <h2 id="profile-card-title">
-                <bdi>{profile.fullName}</bdi>
-              </h2>
+
             </span>
           </div>
           <dl>
@@ -125,7 +123,7 @@ export function AccountPanel({
         </section>
         <div className={styles.navbar}>
           <nav className={styles.navigation} aria-label={c.account}>
-            {(["overview", "orders", "downloads", "wallet", "club", "settings"] as const).map((item) => (
+            {(["overview", "orders", "downloads", "club", "settings"] as const).map((item) => (
               <Link
                 key={item}
                 href={
@@ -141,8 +139,6 @@ export function AccountPanel({
                       ? c.orders
                       : item === "downloads"
                         ? c.downloads
-                      : item === "wallet"
-                      ? (locale === "fa" ? "کیف پول" : locale === "ar" ? "المحفظة" : "Wallet")
                       : item === "club"
                         ? (locale === "fa" ? "باشگاه مشتریان" : locale === "ar" ? "نادي العملاء" : "Customer club")
                         : w.settings}
@@ -150,6 +146,8 @@ export function AccountPanel({
                 <AccountIcon className={styles.navChevron} name="chevron" />
               </Link>
             ))}
+            {profile.role === "platform-admin" ? <Link href={`/${locale}/admin` as Route}><AccountIcon name="overview" /><span>{locale === "fa" ? "داشبورد مدیریت" : locale === "ar" ? "لوحة الإدارة" : "Admin dashboard"}</span><AccountIcon className={styles.navChevron} name="chevron" /></Link> : null}
+            {profile.role === "platform-admin" || profile.role === "seller-admin" || profile.role === "seller-staff" ? <Link href={`/${locale}/seller-dashboard` as Route}><AccountIcon name="orders" /><span>{locale === "fa" ? "داشبورد فروش" : locale === "ar" ? "لوحة المبيعات" : "Sales dashboard"}</span><AccountIcon className={styles.navChevron} name="chevron" /></Link> : null}
           </nav>
           <div className={styles.sidebarActions}>
             <Link href={("/" + locale) as Route} className={styles.homeLink}>

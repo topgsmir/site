@@ -102,7 +102,16 @@ export function PanelOverview({ locale, audience, analytics = true, canManageOrd
     ...(seller ? [{ key: "payouts" as const, label: c.payouts, hint: c.payoutsHint, icon: "payouts" }] : []),
   ];
 
-  return <section className={styles.overview} aria-labelledby="panel-overview-title" data-admin-box-ignore>
+  const metricCards = (<div className={styles.metrics}>{metrics.map(({ label, metric, monetary }, index) => <article key={label}>
+            <span className={styles.metricIcon} data-tone={index} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{index === 0 ? <><rect x="4" y="3" width="16" height="18" rx="4" /><path d="M15 8h-4a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4H9m3-10v2m0 8v2" /></> : index === 1 ? <><path d="M3 4h2l3 12h11l2-9H6" /><circle cx="9" cy="20" r="1" /><circle cx="18" cy="20" r="1" /></> : <><path d="M4 19V9m8 10V4m8 15v-7M2 21h20" /></>}</svg></span>
+            <h3>{label}</h3><strong>{monetary ? money(metric.value) : number(metric.value)}{monetary ? <small>{unit}</small> : null}</strong>{change(metric)}
+          </article>)}</div>);
+  const reportControls = analytics ? <div className={styles.toolbar}>
+      <div className={styles.periods} role="group" aria-label={c.period}>{((seller ? ["month", "week"] : ["month", "week", "90d"]) as OverviewPeriod[]).map((value) => <button type="button" key={value} aria-pressed={period === value} onClick={() => setPeriod(value)}>{value === "week" ? c.thisWeek : value === "month" ? c.thisMonth : c.days90}</button>)}</div>
+      <div className={styles.tools}><span className={styles.dateLabel}><PanelIcon name="clock" />{c.timezone}</span><button className={styles.refresh} type="button" disabled={loading} onClick={() => setRefresh((value) => value + 1)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1" /></svg>{loading ? c.updating : c.refresh}</button></div>
+    </div> : null;
+
+  return <section className={styles.overview} aria-labelledby="panel-overview-title" data-audience={seller ? "seller-glass" : "admin"} data-admin-box-ignore>
     <header className={styles.heading}>
       <div className={styles.headingIdentity}><span className={styles.welcomeIcon}><PanelIcon name="store" /></span><div><h1 id="panel-overview-title">{seller ? c.seller : c.admin}</h1><p>{seller ? c.sellerIntro : c.adminIntro}</p></div></div>
       <div className={styles.headingActions}>
@@ -111,10 +120,9 @@ export function PanelOverview({ locale, audience, analytics = true, canManageOrd
       </div>
     </header>
 
-    {analytics ? <div className={styles.toolbar}>
-      <div className={styles.periods} role="group" aria-label={c.period}>{((seller ? ["month", "week"] : ["month", "week", "90d"]) as OverviewPeriod[]).map((value) => <button type="button" key={value} aria-pressed={period === value} onClick={() => setPeriod(value)}>{value === "week" ? c.thisWeek : value === "month" ? c.thisMonth : c.days90}</button>)}</div>
-      <div className={styles.tools}><span className={styles.dateLabel}><PanelIcon name="clock" />{c.timezone}</span><button className={styles.refresh} type="button" disabled={loading} onClick={() => setRefresh((value) => value + 1)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1" /></svg>{loading ? c.updating : c.refresh}</button></div>
-    </div> : null}
+    {seller && data ? metricCards : null}
+
+    {!seller || !data ? reportControls : null}
 
     {error ? <div className={styles.error} role="alert"><span>{data ? c.stale : c.error}</span><button type="button" disabled={loading} onClick={() => setRefresh((value) => value + 1)}>{c.retry}</button></div> : null}
 
@@ -124,21 +132,22 @@ export function PanelOverview({ locale, audience, analytics = true, canManageOrd
         {analytics && data ? <>
           <article className={styles.hero}>
             <div className={styles.heroTop}><h2><span className={styles.sectionIcon} data-tone="blue"><PanelIcon name="chart" /></span>{c.sales}</h2><span className={styles.dateLabel}><PanelIcon name="calendar" />{date(data.range.from)} — {date(data.range.to)}</span></div>
-            <div className={styles.total}><strong>{money(data.summary.grossSales.value)}</strong><span>{unit}</span></div>
-            {change(data.summary.grossSales)}
+            {seller ? reportControls : null}
+            <div className={styles.salesSummary}>
+              <div className={styles.total}><strong>{money(data.summary.grossSales.value)}</strong><span>{unit}</span></div>
+              {change(data.summary.grossSales)}
+            </div>
           <div className={styles.chartCard}>
-            {maximum > 0n ? <>
-              <div className={styles.chartScale}><span>{money(maximum.toString())} {unit}</span><span>{c.sales}</span></div>
-              <svg className={styles.chart} viewBox="0 0 640 190" role="img" aria-label={c.trend} preserveAspectRatio="none"><defs><linearGradient id={chartGradient} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--color-brand-blue)" stopOpacity=".38" /><stop offset="100%" stopColor="var(--color-brand-teal)" stopOpacity=".04" /></linearGradient></defs><path className={styles.gridline} d="M8 24H632M8 74H632M8 124H632M8 174H632" /><polygon className={styles.area} fill={`url(#${chartGradient})`} points={`${points.split(" ")[0]?.split(",")[0]},174 ${points} ${points.split(" ").at(-1)?.split(",")[0]},174`} /><polyline points={points} />{points.split(" ").filter((_, index) => index % Math.max(1, Math.ceil(series.length / 10)) === 0 || index === series.length - 1).map((point) => { const [cx, cy] = point.split(","); return <circle key={point} cx={cx} cy={cy} r="3.5" />; })}</svg>
+            {maximum > 0n || (seller && series.length > 0) ? <>
+              {!seller || maximum > 0n ? <div className={styles.chartScale}><span>{money(maximum.toString())} {unit}</span><span>{c.sales}</span></div> : null}
+              <svg className={styles.chart} viewBox="0 0 640 190" role="img" aria-label={c.trend} preserveAspectRatio="none"><defs><linearGradient id={chartGradient} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--overview-chart-line, var(--color-brand-blue))" stopOpacity=".38" /><stop offset="100%" stopColor="var(--overview-chart-area, var(--color-brand-teal))" stopOpacity=".04" /></linearGradient></defs><path className={styles.gridline} d="M8 24H632M8 74H632M8 124H632M8 174H632" /><polygon className={styles.area} fill={`url(#${chartGradient})`} points={`${points.split(" ")[0]?.split(",")[0]},174 ${points} ${points.split(" ").at(-1)?.split(",")[0]},174`} /><polyline points={points} />{points.split(" ").filter((_, index) => index % Math.max(1, Math.ceil(series.length / 10)) === 0 || index === series.length - 1).map((point) => { const [cx, cy] = point.split(","); return <circle key={point} cx={cx} cy={cy} r="3.5" />; })}</svg>
               <div className={styles.chartDates} dir="ltr"><span>{date(data.range.from)}</span><span>{date(data.range.to)}</span></div>
+              {seller && maximum === 0n ? <p className={styles.noSales}>{c.empty}</p> : null}
               <details className={styles.daily}><summary>{c.details}</summary><div className={styles.dailyRows}>{series.map((point) => <div key={point.bucket}><span>{date(point.bucket)}</span><strong>{money(point.grossSales)} {unit}</strong></div>)}</div></details>
             </> : <div className={styles.empty}><strong>{c.empty}</strong><p>{c.emptyHint}</p>{canManageProducts ? destination("products", c.products) : null}</div>}
           </div>
           </article>
-          <div className={styles.metrics}>{metrics.map(({ label, metric, monetary }, index) => <article key={label}>
-            <span className={styles.metricIcon} data-tone={index} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{index === 0 ? <><rect x="4" y="3" width="16" height="18" rx="4" /><path d="M15 8h-4a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4H9m3-10v2m0 8v2" /></> : index === 1 ? <><path d="M3 4h2l3 12h11l2-9H6" /><circle cx="9" cy="20" r="1" /><circle cx="18" cy="20" r="1" /></> : <><path d="M4 19V9m8 10V4m8 15v-7M2 21h20" /></>}</svg></span>
-            <h3>{label}</h3><strong>{monetary ? money(metric.value) : number(metric.value)}{monetary ? <small>{unit}</small> : null}</strong>{change(metric)}
-          </article>)}</div>
+          {!seller ? metricCards : null}
         </> : !analytics ? <div className={styles.welcome}><h2>{c.access}</h2><p>{c.accessHint}</p>{canManageProducts ? destination("products", c.products, styles.primary) : null}</div> : null}
         {!seller && canManageOrders ? <UserHistoryLookup locale={locale} audience={audience} wide /> : null}
       </div>
