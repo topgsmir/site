@@ -15,7 +15,7 @@ export function normalizeSeoPath(value: string): string {
   try { decoded = decodeURIComponent(value.trim()); } catch { throw new BadRequestException("Invalid URL encoding"); }
   if (/[.\\\s<>?#%]/u.test(decoded) || [...decoded].some((char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127) || decoded.includes("//")) throw new BadRequestException("Use an exact public path without dots, a query or fragment");
   decoded = decoded.replace(/\/$/, "");
-  if (!/^\/(fa|en|ar)(?:\/(?:contact-us|complaints|rules|products(?:\/[^/]+)?|blog(?:\/[^/]+|\/(?:category|tag|seller)\/[^/]+)?))?$/.test(decoded)) throw new BadRequestException("Only localized home, catalog, product, blog, contact, complaints and rules paths are supported");
+  if (!/^\/(fa|en|ar)(?:\/(?:contact-us|about-us|complaints|rules|products(?:\/[^/]+)?|blog(?:\/[^/]+|\/(?:category|tag|seller)\/[^/]+)?))?$/.test(decoded)) throw new BadRequestException("Only localized home, catalog, product, blog, contact, about, complaints and rules paths are supported");
   const normalized = decoded.split("/").map(encodeURIComponent).join("/");
   if (normalized.length > 500) throw new BadRequestException("Encoded paths must be at most 500 characters");
   return normalized;

@@ -37,7 +37,7 @@ function subscribeToHeaderScroll(update: () => void) {
 const headerMenuHidden = () => Math.max(window.scrollY, document.body.scrollTop, document.documentElement.scrollTop) > 24;
 const headerMenuHiddenOnServer = () => false;
 
-export function PublicHeader({ locale, accountHref, current, languageHrefs, configuration, appearance }: { configuration?: TemplateConfiguration; locale: Locale; accountHref?: string | null; current?: "shop" | "journal" | "cart" | "contact" | "complaints"; languageHrefs?: Record<Locale, string>; appearance?: "seller-glass" }) {
+export function PublicHeader({ locale, accountHref, current, languageHrefs, configuration, appearance }: { configuration?: TemplateConfiguration; locale: Locale; accountHref?: string | null; current?: "shop" | "journal" | "cart" | "contact" | "about" | "complaints"; languageHrefs?: Record<Locale, string>; appearance?: "seller-glass" }) {
   const c = copy[locale];
   const menuHidden = useSyncExternalStore(subscribeToHeaderScroll, headerMenuHidden, headerMenuHiddenOnServer);
   const menu = useRef<HTMLDivElement>(null);
@@ -52,7 +52,7 @@ export function PublicHeader({ locale, accountHref, current, languageHrefs, conf
   }, [menuHidden]);
   const storedConfiguration = useTemplateConfiguration(locale);
   const settings = configuration ?? storedConfiguration;
-  const currentPath = current === "shop" ? "/products" : current === "journal" ? "/blog" : current === "cart" ? "/cart" : current === "contact" ? "/contact-us" : current === "complaints" ? "/complaints" : "";
+  const currentPath = current === "shop" ? "/products" : current === "journal" ? "/blog" : current === "cart" ? "/cart" : current === "contact" ? "/contact-us" : current === "about" ? "/about-us" : current === "complaints" ? "/complaints" : "";
 
   return (
     <header className={styles.header} dir={getDirection(locale)} data-appearance={appearance}>

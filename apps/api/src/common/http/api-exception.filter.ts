@@ -67,13 +67,21 @@ export class ApiExceptionFilter implements ExceptionFilter {
       response.setHeader("Retry-After", String(sourceBody.retryAfterSeconds));
     }
     if (status >= 500) {
+      const prisma = exception instanceof Prisma.PrismaClientKnownRequestError
+        ? { code: exception.code, meta: exception.meta, message: exception.message }
+        : exception instanceof Prisma.PrismaClientValidationError
+          ? { message: exception.message }
+          : exception instanceof Error
+            ? { message: exception.message, stack: exception.stack }
+            : undefined;
       this.logger.error(JSON.stringify({
         event: "http.request.failed",
         requestId,
         method: request.method ?? "UNKNOWN",
         path: request.originalUrl ?? request.url ?? "UNKNOWN",
         status,
-        exception: exception instanceof Error ? exception.name : "UnknownError"
+        exception: exception instanceof Error ? exception.name : "UnknownError",
+        ...(prisma ? { detail: prisma } : {})
       }));
     }
 

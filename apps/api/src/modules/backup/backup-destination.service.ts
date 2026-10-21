@@ -10,14 +10,30 @@ import { Readable, Transform } from "node:stream";
 import { createWriteStream } from "node:fs";
 import { rm } from "node:fs/promises";
 import { pipeline } from "node:stream/promises";
-import SftpClient from "ssh2-sftp-client";
+import type SftpClient from "ssh2-sftp-client";
 import { CredentialCryptoService } from "../../common/security/credential-crypto.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import type { CreateBackupDestinationDto, UpdateBackupDestinationDto } from "./dto/backup.dto";
 import { assertStagingFreeSpace, backupMinFreeBytes } from "./backup-staging-space";
 
 type StoredDestination = Awaited<ReturnType<PrismaService["backup_destinations"]["findUniqueOrThrow"]>>;
+type SftpClientConstructor = new (name?: string) => SftpClient;
 const SPACE_CHECK_BYTES = 16 * 1024 ** 2;
+
+async function loadSftpClient(): Promise<SftpClientConstructor> {
+  try {
+    const loaded = await import("ssh2-sftp-client");
+    const ctor = (loaded as { default?: SftpClientConstructor }).default ?? (loaded as unknown as SftpClientConstructor);
+    if (typeof ctor !== "function") {
+      throw new Error("ssh2-sftp-client export is not a constructor");
+    }
+    return ctor;
+  } catch (error) {
+    if (error instanceof ServiceUnavailableException) throw error;
+    const detail = error instanceof Error ? error.message : "unknown load error";
+    throw new ServiceUnavailableException(`SFTP support is unavailable: ${detail}`);
+  }
+}
 
 @Injectable()
 export class BackupDestinationService {
@@ -279,6 +295,7 @@ export class BackupDestinationService {
       ? this.crypto.decrypt(destination.encrypted_password, destination.encryption_key_id, `backup-destination:${destination.id}:password`, "BACKUP_DESTINATION") : undefined;
     this.assertSafeCommandValue(password);
     if (destination.protocol === "sftp") {
+      const SftpClient = await loadSftpClient();
       const client = new SftpClient(`topgsm-backup-${destination.id}`);
       const privateKey = destination.encrypted_private_key && destination.encryption_key_id
         ? this.crypto.decrypt(destination.encrypted_private_key, destination.encryption_key_id, `backup-destination:${destination.id}:private-key`, "BACKUP_DESTINATION") : undefined;

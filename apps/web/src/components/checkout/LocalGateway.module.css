@@ -1,15 +1,130 @@
-.page { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--color-dashboard-paper); color: var(--color-dashboard-ink); }
-.panel { width: min(100%, 440px); padding: 32px; background: var(--color-dashboard-surface); border: 1px solid var(--color-dashboard-rule); border-radius: 18px; display: grid; gap: 16px; }
-.panel h1, .panel p { margin: 0; }
-.badge { width: fit-content; padding: 4px 9px; border-radius: 5px; background: var(--color-dashboard-warning-soft); color: var(--color-dashboard-warning); font-size: 12px; font-weight: 800; letter-spacing: .08em; }
-.amount { font-size: 28px; }
-.actions { display: flex; gap: 10px; flex-wrap: wrap; }
-.actions button { border: 1px solid var(--color-dashboard-ink); border-radius: 8px; padding: 12px 16px; color: var(--color-dashboard-ink); background: var(--color-dashboard-surface); cursor: pointer; font: inherit; }
-.actions button:first-child { background: var(--color-dashboard-accent); color: var(--color-dashboard-accent-ink); }
-.actions button:disabled { opacity: .55; cursor: wait; }
-.panel a { color: inherit; }
-.error { color: var(--color-dashboard-error); }
+/* Local gateway · same-theme elevated panel · light + dark */
 
-.panel { padding: 24px; border-top: 4px solid var(--color-customer-blue); background: var(--color-customer-header-wash); box-shadow: var(--shadow-dashboard-card); }
-.actions button { min-height: 44px; }
-.actions button:focus-visible, .panel a:focus-visible { outline: 3px solid var(--color-dashboard-focus); outline-offset: 3px; }
+.page {
+  --rail-bg: var(--color-dashboard-surface);
+  --rail-ink: var(--color-dashboard-ink);
+  --rail-muted: var(--color-dashboard-muted);
+  --rail-rule: var(--color-dashboard-rule);
+  --rail-error: var(--color-dashboard-error);
+  --rail-shadow: var(--shadow-dashboard-card);
+
+  min-height: calc(100svh - 104px);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: var(--color-dashboard-paper);
+  color: var(--color-dashboard-ink);
+}
+
+:global(html[data-theme="dark"]) .page {
+  --rail-bg: var(--color-dashboard-surface-raised);
+  --rail-shadow: var(--shadow-dashboard-float);
+}
+
+.panel {
+  width: min(100%, 400px);
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--rail-rule);
+  border-top: 3px solid var(--color-dashboard-accent);
+  border-radius: 16px;
+  background: var(--rail-bg);
+  color: var(--rail-ink);
+  box-shadow: var(--rail-shadow);
+}
+
+.panel h1,
+.panel p {
+  margin: 0;
+}
+
+.panel h1 {
+  font-size: 1.2rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.panel p {
+  color: var(--rail-muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.badge {
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--color-dashboard-warning-soft);
+  color: var(--color-dashboard-warning);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.amount {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.actions button {
+  min-height: 44px;
+  border: 1px solid var(--rail-rule);
+  border-radius: 10px;
+  padding: 0 14px;
+  color: var(--rail-ink);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
+}
+
+.actions button:first-child {
+  color: var(--color-dashboard-accent-ink);
+  background: var(--color-dashboard-accent);
+  border-color: var(--color-dashboard-accent);
+}
+
+.actions button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.panel a {
+  color: var(--color-dashboard-accent);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.error {
+  margin: 0;
+  color: var(--rail-error);
+  font-size: 0.78rem;
+}
+
+.actions button:focus-visible,
+.panel a:focus-visible {
+  outline: 3px solid var(--color-dashboard-focus);
+  outline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .actions button:first-child:hover:not(:disabled) {
+    background: var(--signal-bright);
+  }
+
+  .actions button:not(:first-child):hover:not(:disabled) {
+    border-color: var(--color-dashboard-accent);
+    color: var(--color-dashboard-accent);
+  }
+
+  .panel a:hover {
+    color: var(--color-brand-blue);
+  }
+}

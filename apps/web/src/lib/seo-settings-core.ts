@@ -6,7 +6,7 @@ export function seoPath(path: string) {
   catch { return path; }
 }
 export function isPublicSeoPath(path: string) {
-  return /^\/(fa|en|ar)(?:\/(?:contact-us|complaints|rules|products(?:\/[^/]+)?|blog(?:\/[^/]+|\/(?:category|tag|seller)\/[^/]+)?))?\/?$/.test(path);
+  return /^\/(fa|en|ar)(?:\/(?:contact-us|about-us|complaints|rules|products(?:\/[^/]+)?|blog(?:\/[^/]+|\/(?:category|tag|seller)\/[^/]+)?))?\/?$/.test(path);
 }
 export function seoExcluded(configuration: SeoConfiguration, path: string) {
   const normalized = seoPath(path);

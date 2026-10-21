@@ -1,0 +1,26 @@
+.page { color: var(--ink); background: var(--paper); }
+.page :is(a, button):focus-visible { outline: 3px solid var(--signal); outline-offset: 5px; }
+.main { width: min(960px, calc(100% - 48px)); margin-inline: auto; padding-block: 8px 32px; }
+.breadcrumb { display: flex; gap: 12px; align-items: center; padding-block: 6px 0; color: var(--muted); font-size: .76rem; }
+.breadcrumb a { display: inline-flex; min-height: 44px; align-items: center; }
+.hero { display: grid; gap: 10px; padding: 20px; border: 1px solid var(--color-customer-blue-rule); border-radius: 16px; background: var(--color-customer-header-wash); }
+.eyebrow { color: var(--signal-dark); font-size: .82rem; font-weight: 600; }
+.hero h1 { font-size: clamp(1.5rem, 2.5vw, 2rem); line-height: 1.35; font-weight: 580; letter-spacing: -.04em; }
+.hero h1 span { color: var(--signal); }
+.description { max-width: 42rem; color: var(--muted); font-size: .88rem; line-height: 1.8; }
+.mission, .offer, .contact { margin-top: 16px; padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper-bright); }
+.mission h2, .offer h2, .contact h2 { font-size: 1.15rem; font-weight: 560; }
+.mission > p, .contact > p { margin-top: 4px; color: var(--muted); font-size: .88rem; line-height: 1.8; }
+.offerList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; padding: 0; list-style: none; }
+.offerList li { display: grid; gap: 4px; min-width: 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
+.offerList h3 { font-size: .92rem; font-weight: 600; line-height: 1.6; }
+.offerList p { color: var(--muted); font-size: .82rem; line-height: 1.75; }
+.contactLink { display: inline-flex; align-items: center; min-height: 44px; margin-top: 8px; color: var(--signal-dark); font-size: .88rem; font-weight: 600; }
+@media (hover: hover) and (pointer: fine) {
+  .breadcrumb a:hover, .contactLink:hover { color: var(--signal-dark); text-decoration: underline; text-underline-offset: 5px; }
+}
+@media (max-width: 700px) {
+  .main { width: calc(100% - 32px); }
+  .offerList { grid-template-columns: 1fr; }
+  .hero, .mission, .offer, .contact { padding: 16px; }
+}
