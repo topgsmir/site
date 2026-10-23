@@ -1,3 +1,4 @@
+import { OrderIdPipe } from "../../common/order-id.pipe";
 import { Body, Controller, Get, Ip, Param, ParseUUIDPipe, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { AuthenticatedGuard } from "../auth/authenticated.guard";
 import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
@@ -63,7 +64,7 @@ export class WalletController {
 
   @Post("admin/users/:userId/orders/:orderId/refund")
   @UseGuards(PlatformAdminGuard)
-  async refund(@Req() request: AuthenticatedRequest, @Ip() ip: string, @Param("userId", new ParseUUIDPipe({ version: "4" })) userId: string, @Param("orderId", new ParseUUIDPipe({ version: "4" })) orderId: string, @Body() body: WalletRefundDto, @IdempotencyKey() key: string) {
+  async refund(@Req() request: AuthenticatedRequest, @Ip() ip: string, @Param("userId", new ParseUUIDPipe({ version: "4" })) userId: string, @Param("orderId", new OrderIdPipe()) orderId: string, @Body() body: WalletRefundDto, @IdempotencyKey() key: string) {
     await this.rateLimits.consumePaymentRefund(request.authenticatedUser!.id, ip);
     return this.wallet.refundOrder(request.authenticatedUser!, userId, orderId, body.reason, key);
   }

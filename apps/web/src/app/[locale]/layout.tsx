@@ -1,4 +1,4 @@
-import { SiteHeader } from "@/components/SiteHeader";
+import { SiteHeader } from "@/components/navigation/public";
 import { getCurrentUser } from "@/lib/auth/server";
 import { dashboardFor } from "@/lib/auth/dashboard-destination";
 import { TemplateSettingsProvider } from "@/components/TemplateSettingsProvider";
@@ -18,6 +18,7 @@ import { PlatformNotice } from "@/components/PlatformNotice";
 import { MaintenanceGate } from "@/components/MaintenanceGate";
 import { SITE_URL } from "@/lib/seo";
 import { getSeoConfiguration } from "@/lib/seo-settings-server";
+import { PublicAdminBar } from "@/components/navigation/public/PublicAdminBar";
 
 type LocaleLayoutProps = Readonly<{
   children: React.ReactNode;
@@ -101,7 +102,12 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
         <TrafficSourceCapture />
         <PlatformNotice />
         <TemplateSettingsProvider locale={locale} configuration={configuration}>
+<<<<<<< HEAD
           <SiteHeader locale={locale} accountHref={user ? `/${locale}/account` : null} dashboardHref={user && user.role !== "buyer" ? dashboardFor(user, locale) : null}>{children}</SiteHeader>
+=======
+          <PublicAdminBar locale={locale} user={user} />
+          <SiteHeader locale={locale} accountHref={user ? `/${locale}/account` : null}>{children}</SiteHeader>
+>>>>>>> 920ecff94aef64f18e97fd31dde238dd77b4d4a6
         </TemplateSettingsProvider>
         <GoghdiWidget />
         <ThemeToggle locale={locale} />

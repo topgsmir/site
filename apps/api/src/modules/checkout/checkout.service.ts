@@ -43,8 +43,7 @@ const checkoutSelect = {
   orders: {
     orderBy: [{ created_at: "asc" }, { id: "asc" }],
     select: {
-      id: true,
-      status: true,
+      id: true, status: true,
       seller_id: true,
       total_amount: true,
       shipping_cost: true,
@@ -107,7 +106,7 @@ type InternalQuoteLine = {
   image: { url: string; width: number; height: number } | null;
   unitPrice: string; totalAmount: string; availableStock: number | null; serviceNote: string | null;
   serviceInputs: ServiceInputDefinition[]; serviceAnswers: Array<{ key: string; value: string }>;
-  digitalDeliveryUrl: string | null; digitalDeliveryUrls: string[]; digitalDeliveryTitles: string[]; digitalMaxDownloads: number | null;
+  digitalDeliveryUrl: string | null; digitalDeliveryUrls: string[]; digitalDeliveryTitles: string[]; digitalMaxDownloads: number | null; digitalAccessDays: number;
   parcel: { weightGrams: number; lengthCm: number | null; widthCm: number | null; heightCm: number | null } | null;
 };
 
@@ -177,7 +176,7 @@ export class CheckoutService {
       requiresShippingAddress: quote.requiresShippingAddress,
       groups: quote.groups.map(({ commissionRate: _commission, total: _total, ...group }) => ({
         ...group,
-        items: group.items.map(({ digitalDeliveryUrl: _url, digitalDeliveryUrls: _urls, digitalDeliveryTitles: _titles, digitalMaxDownloads: _limit, serviceAnswers: _answers, parcel: _parcel, ...item }) => item)
+        items: group.items.map(({ digitalDeliveryUrl: _url, digitalDeliveryUrls: _urls, digitalDeliveryTitles: _titles, digitalMaxDownloads: _limit, digitalAccessDays: _days, serviceAnswers: _answers, parcel: _parcel, ...item }) => item)
       }))
     };
   }
@@ -301,7 +300,7 @@ export class CheckoutService {
               service_input_schema: line.serviceInputs as unknown as Prisma.InputJsonValue,
               encrypted_service_answers: encryptedAnswers?.ciphertext ?? null,
               service_answers_key_id: encryptedAnswers?.keyId ?? null,
-              digital_delivery_url: line.digitalDeliveryUrl, digital_delivery_urls: line.digitalDeliveryUrls, digital_delivery_titles: line.digitalDeliveryTitles, digital_max_downloads: line.digitalMaxDownloads
+              digital_delivery_url: line.digitalDeliveryUrl, digital_delivery_urls: line.digitalDeliveryUrls, digital_delivery_titles: line.digitalDeliveryTitles, digital_access_days: line.digitalAccessDays, digital_max_downloads: line.digitalMaxDownloads
             };
           });
           await tx.order_items.createMany({ data: createdItems });
@@ -390,7 +389,7 @@ export class CheckoutService {
       },
       select: {
         id: true, price: true, currency: true,
-        digital: { select: { file_reference: true, file_references: true, file_titles: true, max_downloads: true } },
+        digital: { select: { file_reference: true, file_references: true, file_titles: true, access_days: true, max_downloads: true } },
         physical: { select: { stock: true, weight_grams: true, length_cm: true, width_cm: true, height_cm: true } },
         service: { select: { input_schema: true } },
         listing: {
@@ -511,6 +510,7 @@ export class CheckoutService {
         digitalDeliveryUrls: offer.digital ? digitalFileReferences(offer.digital) : [],
         digitalDeliveryTitles: offer.digital ? digitalFileTitles(offer.digital) : [],
         digitalMaxDownloads: offer.digital?.max_downloads ?? null,
+        digitalAccessDays: offer.digital?.access_days ?? 0,
         parcel: offer.physical ? { weightGrams: offer.physical.weight_grams, lengthCm: offer.physical.length_cm, widthCm: offer.physical.width_cm, heightCm: offer.physical.height_cm } : null
       });
       group.total = group.total.add(total);

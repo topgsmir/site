@@ -334,7 +334,7 @@ export function CheckoutStatus({ locale, checkoutId, paymentReturn = "" }: { loc
                 })}</div>
                 {order.shippingFee !== "0" ? <div className={styles.postalLine}><span>{c.postalFee}</span><strong>{money(order.shippingFee, checkout.currency, locale)}</strong></div> : null}
                 <div className={styles.orderBottom}>
-                  <span>{c.order} <bdi>#{order.id.slice(0, 8)}</bdi><span className="sr-only"> {order.id}</span></span>
+                  <span>{c.order} <bdi>#{order.id}</bdi><span className="sr-only"> {order.id}</span></span>
                   {order.discountAmount !== "0" ? <span>{discountLabel}: −{money(order.discountAmount, checkout.currency, locale)}</span> : null}
                   <strong>{money(order.totalAmount, checkout.currency, locale)}</strong>
                   {canConfirm ? <button className={styles.confirm} type="button" disabled={busy === order.id} onClick={() => void confirm(order.id)}>{busy === order.id ? c.confirming : c.confirm}</button> : null}

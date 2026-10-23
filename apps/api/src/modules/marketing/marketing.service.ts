@@ -160,7 +160,7 @@ export class MarketingService {
     const link = await this.prisma.marketing_links.findFirst({ where: { id: linkId, ...(sellerId ? { seller_id: sellerId } : {}) }, select: { id: true } });
     if (!link) throw new NotFoundException("Referral link not found");
     const rows = await this.prisma.marketing_earnings.findMany({ where: { link_id: linkId }, orderBy: [{ created_at: "desc" }, { id: "desc" }], take: 21,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}), select: { id: true, order_id: true, base_amount: true, amount: true, status: true, funding_source: true, created_at: true, paid_at: true, order: { select: { status: true } } } });
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}), select: { id: true, order_id: true, base_amount: true, amount: true, status: true, funding_source: true, created_at: true, paid_at: true, order: { select: { status: true, } } } });
     return { items: rows.slice(0, 20).map((row) => ({ id: row.id, orderId: row.order_id, baseAmount: row.base_amount.toString(), amount: row.amount.toString(), status: row.status,
       fundingSource: row.funding_source, orderStatus: row.order.status, createdAt: row.created_at.toISOString(), paidAt: row.paid_at?.toISOString() ?? null })), nextCursor: rows.length > 20 ? rows[19].id : null };
   }

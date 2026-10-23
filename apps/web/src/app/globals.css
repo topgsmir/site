@@ -169,8 +169,6 @@ html[data-theme="dark"] .theme-icon-moon { opacity: 1; transform: rotate(0); }
   box-shadow: 0 8px 28px var(--shadow-color);
   backdrop-filter: blur(16px) saturate(140%);
 }
-.admin-brand { display: inline-flex; align-items: center; gap: 9px; font-size: 0.76rem; font-weight: 600; letter-spacing: 0.1em; }
-.admin-brand img { width: 38px; height: 38px; border-radius: var(--radius-xs); object-fit: cover; }
 .admin-account { display: flex; align-items: center; gap: 8px; }
 .admin-identity { display: grid; min-width: 0; gap: 3px; }
 .admin-identity span { color: var(--muted); font-size: 0.67rem; }
@@ -254,7 +252,6 @@ html[data-theme="dark"] .theme-icon-moon { opacity: 1; transform: rotate(0); }
 .vendor-manage-button:focus-visible,
 .vendor-disclosure:focus-visible,
 .vendor-panel-close:focus-visible,
-.admin-brand:focus-visible { outline: 3px solid var(--signal-soft); outline-offset: 3px; }
 .admin-metrics {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -468,7 +465,6 @@ html[data-theme="dark"] .theme-icon-moon { opacity: 1; transform: rotate(0); }
     border-block-end: 0;
     border-inline-end: 1px solid var(--line);
   }
-  .admin-brand img { width: 42px; height: 42px; }
   .admin-rail-account { grid-template-columns: minmax(0, 1fr); }
   .admin-rail-account .logout-control { margin-block-start: 8px; }
   .admin-rail-account .logout-button { width: 100%; }
@@ -511,7 +507,6 @@ html[data-theme="dark"] .theme-icon-moon { opacity: 1; transform: rotate(0); }
   .admin-rail-account .logout-button span { display: inline; }
   .admin-shell { width: min(100% - 24px, 1280px); padding-top: 8px; }
   .admin-topbar { top: 6px; min-height: 52px; }
-  .admin-brand img { width: 36px; height: 36px; }
   .admin-identity span { display: none; }
   .admin-identity { display: none; }
   .logout-button span { display: none; }
@@ -553,12 +548,11 @@ html[data-theme="dark"] .theme-icon-moon { opacity: 1; transform: rotate(0); }
 
 /* Workspace layout: floating navigation and independent content surfaces. */
 .admin-topbar { min-height: 64px; padding-inline: 18px; border: 0; background: var(--header-surface); box-shadow: none; }
-.admin-brand { font-size: 1rem; letter-spacing: -.025em; font-weight: 600; }
 .admin-hero { padding-block: 24px 20px; }
 .admin-hero h1 { font-size: clamp(1.5rem, 2.2vw, 2rem); font-weight: 550; line-height: 1.4; letter-spacing: -.03em; }
 .admin-hero-copy { max-width: 54ch; font-size: .9rem; line-height: 1.9; }
 .admin-primary-button, .admin-secondary-button { min-height: 46px; padding-inline: 20px; border-radius: 999px; font-size: .82rem; font-weight: 550; box-shadow: none; }
-.admin-primary-button:focus-visible, .admin-secondary-button:focus-visible, .vendor-manage-button:focus-visible, .vendor-disclosure:focus-visible, .vendor-panel-close:focus-visible, .admin-brand:focus-visible { outline-color: var(--signal); }
+.admin-primary-button:focus-visible, .admin-secondary-button:focus-visible, .vendor-manage-button:focus-visible, .vendor-disclosure:focus-visible, .vendor-panel-close:focus-visible { outline-color: var(--signal); }
 .admin-metrics { gap: 18px; border: 0; border-radius: 0; background: transparent; box-shadow: none; overflow: visible; }
 .admin-metrics article { min-height: 96px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 16px; padding: 24px; border: 1px solid var(--line); border-radius: 22px; background: var(--paper-bright); box-shadow: var(--shadow-dashboard-card); }
 .admin-metrics article:last-child { border-inline-end: 1px solid var(--line); }
@@ -631,17 +625,12 @@ html[data-theme="dark"] .theme-icon-moon { opacity: 1; transform: rotate(0); }
 .auth-brand { font-size: 1.7rem; }
 .auth-art { align-self: center; min-height: 0; aspect-ratio: .9; }
 .auth-art img { object-fit: contain; object-position: center 30%; }
-.admin-brand { font-family: var(--font-outfit), sans-serif; font-size: 1.7rem; letter-spacing: -.06em; }
-.admin-brand-symbol { display: grid; width: 40px; height: 40px; flex-shrink: 0; place-items: center; border-radius: 14px; color: var(--signal); background: var(--signal-soft); }
-.admin-brand-symbol svg { width: 22px; height: 22px; }
 @media (min-width: 1024px) {
   .auth-shell { gap: 40px; width: min(1120px, calc(100% - 64px)); }
   .auth-panel { padding-block: 48px 24px; }
   .auth-heading h1 { font-size: clamp(1.75rem, 2.5vw, 2.125rem); }
   .auth-art { max-height: 620px; }
   .admin-topbar { min-height: 44px; padding-inline: 14px; }
-  .admin-brand { font-size: 1.45rem; }
-  .admin-brand-symbol { width: 34px; height: 34px; }
   .admin-hero { padding-block: 20px 16px; }
   .admin-hero h1 { font-size: clamp(1.5rem, 2.2vw, 1.875rem); }
   .admin-primary-button, .admin-secondary-button { min-height: 42px; padding-inline: 16px; }
@@ -689,9 +678,6 @@ html[data-theme="dark"] .theme-icon-moon { opacity: 1; transform: rotate(0); }
     border-radius: .875rem;
   }
 
-  .admin-rail .admin-brand { gap: .5rem; font-size: 1.25rem; }
-  .admin-rail .admin-brand-symbol { width: 1.75rem; height: 1.75rem; border-radius: .625rem; }
-  .admin-rail .admin-brand-symbol svg { width: 1.125rem; height: 1.125rem; }
   .admin-rail-account { padding: .75rem; border-radius: .75rem; }
   .admin-shell { min-width: 0; width: calc(100% - 2rem); min-height: calc(100svh - 1.5rem); padding-top: .625rem; }
   .admin-hero { gap: 1.5rem; padding-block: 1rem .875rem; }

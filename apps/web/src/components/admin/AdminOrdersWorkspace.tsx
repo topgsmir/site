@@ -217,7 +217,7 @@ function OrderRow({ order, locale, c, selected, selectionDisabled, onSelect }: {
   const count = order.items.reduce((total, item) => total + item.quantity, 0);
   return <tr className={styles.orderRow}>
     <td><input type="checkbox" aria-label={`${EXPORT_COPY[locale].selected} #${order.id}`} checked={selected} disabled={selectionDisabled} onChange={onSelect} /></td>
-    <td data-label={c.order}><strong dir="ltr">#{order.id.slice(0, 8)}</strong></td>
+    <td data-label={c.order}><strong dir="ltr">#{order.id}</strong></td>
     <td data-label={c.customer}><strong>{order.buyer.fullName}</strong><small dir="ltr">{order.buyer.email}</small></td>
     <td data-label={c.source}>{order.trafficSource || "—"}</td>
     <td data-label={c.seller}>{order.seller.shopName}</td>

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/i18n";
 import { requireUser } from "@/lib/auth/server";
-import { SellerProductCreation } from "@/components/seller/SellerDashboard";
+import { SellerProductCreation } from "@/components/seller/seller-dashboard";
 import { BridgeProductForm } from "@/components/bridge/BridgeProductForm";
 
 export const metadata: Metadata = {

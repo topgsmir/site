@@ -36,7 +36,7 @@ export class CreateOrderDto {
 
 export class ListOrdersQueryDto {
   @IsOptional()
-  @IsUUID("4")
+  @Matches(/^[1-9][0-9]{0,18}$/)
   cursor?: string;
 
   @IsOptional()
@@ -88,7 +88,7 @@ export class ExportOrdersDto {
   columns!: OrderExportColumn[];
 
   @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(100)
-  @ArrayUnique() @IsUUID("4", { each: true })
+  @ArrayUnique() @Matches(/^[1-9][0-9]{0,18}$/, { each: true })
   selectedIds?: string[];
 }
 

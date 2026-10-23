@@ -7,7 +7,7 @@ import { OrderService } from "./order.service";
 const buyer: AppUser = { id: "buyer-1", fullName: "Buyer", email: "buyer@example.com", role: "buyer" };
 const createdAt = new Date("2026-09-19T10:00:00.000Z");
 const summary = {
-  id: "order-1", status: "paid", currency: "TOMAN", total_amount: { toString: () => "120000" }, created_at: createdAt,
+  id: "100001", status: "paid", currency: "TOMAN", total_amount: { toString: () => "120000" }, created_at: createdAt,
   seller: { shop_name: "Example seller", goghdi_agent_id: null },
   items: [{ id: "item-1", product_title: "Repair file", product_type: "digital", quantity: 1,
     offer: { listing: { product_id: "product-1" } } }]
@@ -21,6 +21,7 @@ describe("buyer order reads", () => {
     assert.deepEqual((selected as { where: unknown }).where, { buyer_id: buyer.id });
     const item = page.items[0]!;
     assert.deepEqual(Object.keys(item).sort(), ["chatAvailable", "createdAt", "currency", "id", "items", "seller", "status", "totalAmount"]);
+    assert.equal(item.id, "100001");
     assert.equal("chatAvailable" in item && item.chatAvailable, false);
     assert.equal("commissionRate" in page.items[0]!, false);
     assert.equal("holdbackRate" in page.items[0]!, false);

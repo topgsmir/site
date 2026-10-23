@@ -85,17 +85,18 @@ try {
     const buyerId = await createUser("buyer-" + (buyerIndex + 1), fullName, "buyer");
     for (let purchaseIndex = 0; purchaseIndex < 2; purchaseIndex++) {
       const label = "purchase-" + buyerIndex + "-" + purchaseIndex;
-      const orderId = fixtureId(label);
+      let orderId;
       const amount = amounts[buyerIndex];
       const commission = (BigInt(amount) / 10n).toString();
       const payable = (BigInt(amount) - BigInt(commission)).toString();
       const createdAt = new Date(timestamp.getTime() - (buyerIndex * 2 + purchaseIndex + 1) * 86400000);
       const requestHash = createHash("sha256").update(label).digest("hex");
-      const existing = await database.query("SELECT buyer_id, traffic_source FROM orders WHERE id = $1", [orderId]);
+      const existing = await database.query("SELECT buyer_id, traffic_source FROM orders WHERE idempotency_key = $1", [fixtureId(label + "-order-key")]);
       if (existing.rowCount) {
         if (existing.rows[0].buyer_id !== buyerId || existing.rows[0].traffic_source !== marker) throw new Error("Fixture order identity collision");
         continue;
       }
+      orderId = (await database.query("SELECT nextval('orders_id_seq')::text AS id")).rows[0].id;
       await database.query(
         "INSERT INTO orders (id, buyer_id, seller_id, status, currency, total_amount, commission_rate, holdback_rate, idempotency_key, request_hash, traffic_source, created_at, updated_at) VALUES ($1, $2, $3, 'delivered', 'TOMAN', $4, 0.1, 0, $5, $6, $7, $8, $8)",
         [orderId, buyerId, sellerId, amount, fixtureId(label + "-order-key"), requestHash, marker, createdAt],

@@ -1,3 +1,5 @@
+import { Matches as MatchesOrderId } from "class-validator";
+import { ORDER_ID_PATTERN } from "../../../common/order-id.pipe";
 import { Type } from "class-transformer";
 import {
   ArrayMaxSize,
@@ -27,7 +29,7 @@ export class PaymentProviderParamDto {
 }
 
 export class InitiatePaymentDto {
-  @IsUUID("4")
+  @MatchesOrderId(ORDER_ID_PATTERN)
   orderId!: string;
 }
 

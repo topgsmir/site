@@ -8,6 +8,13 @@ describe("upload download link signing", () => {
   const secret = "an-independent-deployment-secret-of-32-plus-bytes";
   const hosts = "uploads.example.com";
 
+  it("caps signed links at the purchased access deadline", () => {
+    const deadline = now + 3600000;
+    const result = new URL(signUploadDownloadLink("https://uploads.example.com/file.zip", "192.0.2.10", hosts, secret, now, deadline));
+    assert.equal(result.searchParams.get("expires"), String(deadline / 1000));
+    assert.throws(() => signUploadDownloadLink("https://uploads.example.com/file.zip", "192.0.2.10", hosts, secret, now, now), /expired/);
+  });
+
   it("matches the legacy md5 format, binds the IP, and expires after 24 hours", () => {
     const url = new URL(signUploadDownloadLink("https://uploads.example.com/files/a%20b.zip", "192.0.2.10", hosts, secret, now));
     const expires = Math.floor(now / 1000) + 86400;

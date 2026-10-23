@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { AccountPanel } from "@/components/account/AccountPanel";
+import { AccountPanel } from "@/components/account/account";
 import { requireAuthenticatedUser } from "@/lib/auth/server";
 import { isLocale } from "@/lib/i18n";
 

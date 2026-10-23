@@ -1,3 +1,4 @@
+import { OrderIdPipe } from "../../common/order-id.pipe";
 import {
   Body,
   Controller,
@@ -102,7 +103,7 @@ export class OrderController {
 
   @Get("purchases/:id")
   @Header("Cache-Control", "private, no-store")
-  getPurchase(@Req() request: AuthenticatedRequest, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string) {
+  getPurchase(@Req() request: AuthenticatedRequest, @Param("id", new OrderIdPipe()) id: string) {
     return this.orders.getPurchase(request.authenticatedUser!, id);
   }
 
@@ -110,7 +111,7 @@ export class OrderController {
   async updatePurchaseStatus(
     @Req() request: AuthenticatedRequest,
     @Ip() clientIp: string,
-    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
+    @Param("id", new OrderIdPipe()) id: string,
     @Body() body: UpdatePurchaseStatusDto,
     @IdempotencyKey() idempotencyKey: string
   ) {
@@ -139,7 +140,7 @@ export class OrderController {
 
   @Get(":id")
   @Header("Cache-Control", "private, no-store")
-  get(@Req() request: AuthenticatedRequest, @Param("id", new ParseUUIDPipe({ version: "4" })) id: string) {
+  get(@Req() request: AuthenticatedRequest, @Param("id", new OrderIdPipe()) id: string) {
     return this.orders.get(request.authenticatedUser!, id);
   }
 
@@ -161,7 +162,7 @@ export class OrderController {
   async updateStatus(
     @Req() request: AuthenticatedRequest,
     @Ip() clientIp: string,
-    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
+    @Param("id", new OrderIdPipe()) id: string,
     @Body() body: UpdateOrderStatusDto,
     @IdempotencyKey() idempotencyKey: string
   ) {
@@ -182,7 +183,7 @@ export class OrderController {
   async getAdminDetails(
     @Req() request: AuthenticatedRequest,
     @Ip() clientIp: string,
-    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string
+    @Param("id", new OrderIdPipe()) id: string
   ) {
     await this.rateLimits.consumeAnalyticsRead(request.authenticatedUser!.id, clientIp);
     return this.adminDetails.get(request.authenticatedUser!, id);
@@ -192,7 +193,7 @@ export class OrderController {
   async setTrash(
     @Req() request: AuthenticatedRequest,
     @Ip() clientIp: string,
-    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
+    @Param("id", new OrderIdPipe()) id: string,
     @Body() body: SetOrderTrashDto,
     @IdempotencyKey() idempotencyKey: string
   ) {
@@ -204,7 +205,7 @@ export class OrderController {
   async updateShipping(
     @Req() request: AuthenticatedRequest,
     @Ip() clientIp: string,
-    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
+    @Param("id", new OrderIdPipe()) id: string,
     @Body() body: UpdateOrderShippingDto,
     @IdempotencyKey() idempotencyKey: string
   ) {
@@ -216,7 +217,7 @@ export class OrderController {
   async registerProviderShipping(
     @Req() request: AuthenticatedRequest,
     @Ip() clientIp: string,
-    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
+    @Param("id", new OrderIdPipe()) id: string,
     @IdempotencyKey() idempotencyKey: string
   ) {
     await this.rateLimits.consumeShippingMutation(request.authenticatedUser!.id, clientIp);
@@ -227,7 +228,7 @@ export class OrderController {
   async syncProviderShipping(
     @Req() request: AuthenticatedRequest,
     @Ip() clientIp: string,
-    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
+    @Param("id", new OrderIdPipe()) id: string,
     @IdempotencyKey() idempotencyKey: string
   ) {
     await this.rateLimits.consumeShippingMutation(request.authenticatedUser!.id, clientIp);
@@ -240,7 +241,7 @@ export class OrderController {
     @Query() query: DigitalDownloadQueryDto,
     @Req() request: AuthenticatedRequest,
     @Ip() clientIp: string,
-    @Param("orderId", new ParseUUIDPipe({ version: "4" })) orderId: string,
+    @Param("orderId", new OrderIdPipe()) orderId: string,
     @Param("itemId", new ParseUUIDPipe({ version: "4" })) itemId: string
   ) {
     await this.rateLimits.consumeDigitalDownload(request.authenticatedUser!.id, clientIp);

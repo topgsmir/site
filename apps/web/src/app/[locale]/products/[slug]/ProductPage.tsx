@@ -18,7 +18,7 @@ import { marketingVisitFor, rememberMarketingVisit } from "@/lib/marketing-attri
 import { ProductComments } from "@/components/comments/ProductComments";
 import { OfferPicker } from "@/components/product/OfferPicker";
 import { DigitalOfferTable } from "@/components/product/DigitalOfferTable";
-import { HeaderLanguageLinks } from "@/components/SiteHeader";
+import { HeaderLanguageLinks } from "@/components/navigation/public";
 import { PublicFooter } from "@/components/PublicFooter";
 import { productPageCopy } from "./product-copy";
 import { DigitalProductHeading, DigitalProductDescription } from "@/components/product/DigitalProductDetails";
@@ -57,7 +57,6 @@ function flattenOffers(product: PublicProduct, copy: ProductCopy): SelectableOff
     }))
   );
 }
-
 function formatPrice(price: string, currency: string, locale: Locale) {
   const numberLocale = locale === "fa" ? "fa-IR" : locale === "ar" ? "ar" : "en";
   return `${formatCurrencyAmount(price, currency, numberLocale)} ${currencyLabel(currency)}`;
@@ -378,11 +377,28 @@ export function ProductPage({
           </Link> : null}
         </nav>
 
+<<<<<<< HEAD
         {isDigital ? <DigitalProductHeading product={product} locale={locale} /> : null}
 
         <section className={styles.hero} aria-labelledby="product-title">
           <div className={styles.productIntro}>
             {isDigital ? <DigitalProductDescription description={product.description} locale={locale} /> : isPhysical ? <figure className={styles.mediaStage}>
+=======
+
+        {isPhysical ? <header className={styles.physicalHeading}>
+          <p className={styles.eyebrow}>{c.equipment} <span> / {category}</span></p>
+          <h1 id="product-title">{product.title}</h1>
+          <p>{c.physicalIntro}</p>
+        </header> : null}
+
+        <section className={styles.hero} aria-labelledby="product-title">
+          <div className={styles.productIntro}>
+            {isDigital ? <div className={styles.digitalOverview}>
+              <div className={styles.digitalCopy}><DigitalProductHeading product={product} locale={locale} /><DigitalProductDescription description={product.description} locale={locale} /></div>
+              {productImage ? <figure className={styles.digitalPreview}><Image unoptimized src={productImage.url} alt={product.title} width={productImage.width} height={productImage.height} priority /><figcaption>{d.preview}</figcaption></figure> : <div className={styles.digitalPreviewEmpty}><DesignIcon name="file" /><span>{d.noPreview}</span></div>}
+            </div> : isPhysical ? <figure className={styles.mediaStage}>
+              <span className={styles.mediaCategory}>{category}</span>
+>>>>>>> 920ecff94aef64f18e97fd31dde238dd77b4d4a6
               {productImage ? <Image className={styles.equipmentImage} unoptimized src={productImage.url} alt={product.title} width={productImage.width} height={productImage.height} priority /> : <div className={styles.imagePlaceholder}><DesignIcon name="layers" /><p>{c.noImage}</p></div>}
             </figure> : isService ? <header className={styles.serviceIntro}>
               <p className={styles.eyebrow}>

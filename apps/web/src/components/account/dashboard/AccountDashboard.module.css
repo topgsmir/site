@@ -1,46 +1,50 @@
 .dashboard { --navy: #061e59; --blue: #087bff; --muted: #526989; display: grid; gap: 14px; color: var(--navy); min-width: 0; font-size: .875rem; }
 .dashboard h2 { margin: 0; font-size: 1.1rem; font-weight: 800; line-height: 1.5; }
 .dashboard :is(a, button):focus-visible { outline: 3px solid #0065d9; outline-offset: 3px; }
-.notice { padding: 12px 16px; border: 1px solid #ffc68d; border-radius: 11px; background: linear-gradient(110deg, #fffaf5, #fff5e9); }
-.notice p { color: #445574; font-size: .875rem; line-height: 1.9; }
-.topRow { display: grid; grid-template-columns: minmax(180px, .9fr) minmax(0, 2.3fr) minmax(200px, 1fr); gap: 14px; align-items: stretch; }
+.notice { padding: 8px 12px; border: 1px solid #f3d6b7; border-radius: 9px; background: #fff9f2; }
+.notice p { color: #445574; font-size: .875rem; line-height: 1.8; }
+.topRow { display: grid; grid-template-columns: minmax(180px, .9fr) minmax(0, 2.3fr) minmax(200px, 1fr); gap: 12px; align-items: stretch; }
 .services, .wallet, .board, .points { min-width: 0; background: #fff; border-radius: 13px; box-shadow: 0 3px 20px #0474ff06; }
-.services { padding: 10px; }
+.services { padding: 8px; border-radius: 11px; }
 .panelHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 38px; padding: 6px 12px; border-radius: 9px; background: linear-gradient(100deg, #eef7ff, #e8f2ff); }
 .panelHeading > a { display: flex; align-items: center; gap: 8px; color: #0068e7; font-size: .72rem; font-weight: 700; }
 .panelHeading > a svg { width: 15px; height: 15px; }
-.serviceGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding-top: 12px; }
-.serviceGrid > a { display: flex; align-items: center; text-align: center; flex-direction: column; gap: 4px; padding: 9px 4px; min-width: 0; border-radius: 10px; }
+.services .panelHeading { min-height: 32px; padding: 4px 10px; border-radius: 7px; background: #f0f6fd; }
+.services h2 { font-size: 1rem; font-weight: 700; }
+.services .panelHeading > a { font-weight: 600; }
+.serviceGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding-top: 8px; }
+.serviceGrid > a { display: flex; align-items: center; text-align: center; flex-direction: column; gap: 3px; padding: 7px 4px; min-width: 0; border-radius: 8px; }
 .serviceGrid > a:hover { background: #f2f8ff; }
-.serviceIcon { display: grid; place-items: center; width: 56px; height: 46px; margin-bottom: 8px; border-radius: 11px; color: #0575d1; background: linear-gradient(130deg, #e5f3ff, #edf8ff); }
-.serviceIcon svg { width: 28px; height: 28px; }
-.serviceGrid strong { font-size: .9rem; font-weight: 800; line-height: 1.7; }
+.serviceIcon { display: grid; place-items: center; width: 44px; height: 38px; margin-bottom: 4px; border-radius: 9px; color: #0575d1; background: #edf6fe; }
+.serviceIcon svg { width: 22px; height: 22px; }
+.serviceGrid strong { font-size: .875rem; font-weight: 650; line-height: 1.7; }
 .serviceGrid small { color: var(--muted); font-size: .72rem; line-height: 1.7; }
-.serviceGrid > a > svg { width: 16px; height: 16px; color: var(--blue); margin-top: 10px; }
-.shortcuts { display: grid; gap: 12px; }
-.shortcuts > a { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 16px; border-inline-start: 6px solid #087bff; border-radius: 13px; background: #fff; }
+.serviceGrid > a > svg { width: 14px; height: 14px; color: var(--blue); margin-top: 6px; }
+.shortcuts { display: grid; gap: 10px; }
+.shortcuts > a { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px; border-inline-start: 3px solid #087bff; border-radius: 10px; background: #fff; }
 .shortcuts > a:first-child { border-color: #2ec4b6; }
 .shortcuts > a:first-child .shortcutIcon { color: #2ec4b6; background: #e6f8f5; }
 .shortcuts > a:nth-child(2) { border-color: #1399ff; }
 .shortcuts > a:hover { background: #f5faff; }
-.shortcuts > a > div { display: grid; gap: 6px; min-width: 0; }
-.shortcuts strong { font-size: 1rem; font-weight: 800; }
+.shortcuts > a > div { display: grid; gap: 4px; min-width: 0; }
+.shortcuts strong { font-size: .9rem; font-weight: 650; }
 .shortcuts > a > div > span { color: var(--muted); font-size: .74rem; line-height: 1.6; }
-.shortcutIcon { display: grid; place-items: center; flex: none; width: 55px; height: 58px; border-radius: 12px; background: #e8f2ff; color: var(--blue); }
-.shortcutIcon svg { width: 32px; height: 32px; }
-.wallet { padding: 10px; }
-.wallet > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 2px 8px; }
-.wallet h2 { font-size: .95rem; }
-.wallet > header > span { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: #e8f2ff; color: var(--blue); }
-.walletBalance { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1fr) 52px; gap: 9px 2px; padding: 18px 12px 12px; min-height: 150px; border-radius: 10px; color: #fff; background: radial-gradient(ellipse at 100% 0%, #0965bf 0%, transparent 60%), linear-gradient(135deg, #003373, #052354); }
+.shortcutIcon { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 10px; background: #edf5ff; color: var(--blue); }
+.shortcutIcon svg { width: 24px; height: 24px; }
+.wallet { padding: 8px; border-radius: 11px; }
+.wallet > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 2px 6px; }
+.wallet h2 { font-size: .875rem; font-weight: 700; }
+.wallet > header > span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; background: #edf5ff; color: var(--blue); }
+.wallet > header svg { width: 18px; height: 18px; }
+.walletBalance { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1fr) 42px; gap: 7px 2px; padding: 12px 10px 10px; min-height: 132px; border-radius: 8px; color: #fff; background: radial-gradient(ellipse at 100% 0%, #0965bf 0%, transparent 60%), linear-gradient(135deg, #003373, #052354); }
 .walletBalance::before { content: ""; position: absolute; z-index: -1; inset: 0; border-radius: inherit; background: linear-gradient(135deg, #118bea25 20%, transparent 20% 75%, #008dff20 75%); }
 .balanceText { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; text-align: center; }
 .balanceText > span { font-size: .78rem; }
-.balanceText > strong { font-size: clamp(1.2rem, 1.8vw, 1.8rem); line-height: 1.5; font-weight: 900; overflow-wrap: anywhere; }
+.balanceText > strong { font-size: clamp(1.1rem, 1.6vw, 1.5rem); line-height: 1.5; font-weight: 750; overflow-wrap: anywhere; }
 .balanceText > small { font-size: .76rem; }
-.coins { width: 52px; height: 68px; align-self: center; filter: drop-shadow(0 3px 4px #001c45); }
-.walletBalance > a { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; padding: 5px 8px; border-radius: 8px; color: var(--navy); background: #fff; font-size: .82rem; font-weight: 800; }
-.walletBalance > a > svg { color: var(--blue); width: 21px; height: 21px; }
+.coins { width: 42px; height: 54px; align-self: center; filter: drop-shadow(0 2px 3px #001c45); }
+.walletBalance > a { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 5px 8px; border-radius: 6px; color: var(--navy); background: #fff; font-size: .78rem; font-weight: 650; }
+.walletBalance > a > svg { color: var(--blue); width: 18px; height: 18px; }
 .middleRow { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 14px; align-items: stretch; }
 .board { padding: 12px; }
 .boardHeading { display: flex; gap: 9px; align-items: start; margin-bottom: 10px; }
@@ -139,12 +143,13 @@
 }
 @media (max-width: 600px) {
   .dashboard { gap: 12px; }
-  .notice { padding: 12px; }
+  .notice { padding: 8px 10px; }
   .topRow { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .wallet { grid-column: 1; grid-row: 1; }
   .services { grid-column: 1; grid-row: 3; }
-  .walletBalance { grid-template-columns: minmax(0, 1fr) 72px; min-height: 140px; }
-  .balanceText > strong { font-size: 1.8rem; }
+  .walletBalance { grid-template-columns: minmax(0, 1fr) 48px; min-height: 132px; }
+  .walletBalance > a, .walletBalance .resourceNotice button { min-height: 44px; }
+  .balanceText > strong { font-size: 1.5rem; }
   .shortcuts { grid-column: 1; grid-row: 2; gap: 10px; }
   .shortcuts > a { flex-direction: column-reverse; align-items: start; padding: 12px; }
   .shortcuts strong { font-size: .9rem; }

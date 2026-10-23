@@ -1,0 +1,13 @@
+.spark {
+  position: absolute;
+  z-index: 3;
+  width: 34px;
+  height: 34px;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, currentColor 0 5%, transparent 16%), linear-gradient(transparent 46%, currentColor 50%, transparent 54%), linear-gradient(90deg, transparent 46%, currentColor 50%, transparent 54%);
+  color: var(--menu-spark-color, currentColor);
+  filter: drop-shadow(0 0 5px currentColor);
+}
+
+:global([data-menu-feedback]) :is(a, button, summary) { position: relative; }

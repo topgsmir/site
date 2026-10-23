@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/server";
 import { isLocale } from "@/lib/i18n";
-import { VendorManagement } from "@/components/admin/VendorManagement";
+import { AdminDashboard } from "@/components/admin/admin";
 
 export type AdminSection =
   | "overview"
@@ -78,7 +78,7 @@ export async function AdminPanelRoute({ params, section, orderId, userId }: Admi
   }
 
   return (
-    <VendorManagement
+    <AdminDashboard
       locale={locale}
       adminName={user.fullName}
       adminUserId={user.id}

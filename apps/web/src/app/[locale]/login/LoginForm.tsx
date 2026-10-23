@@ -7,7 +7,6 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { DesignIcon } from "@/components/DesignIcon";
 import styles from "./LoginForm.module.css";
 import { useRouter } from "next/navigation";
-import { safeInternalPath } from "@/lib/safe-navigation";
 import type { Locale } from "@/lib/i18n";
 import type { AuthLoginMethods, PlatformPermission } from "@topgsm/shared-types";
 import { CaptchaWidget } from "@/components/CaptchaWidget";
@@ -83,33 +82,11 @@ type LoginFormProps = {
   nextPath?: string;
 };
 
-function destinationFor(user: AuthUser, locale: Locale, nextPath?: string) {
-  const fallback =
-    user.role === "platform-admin"
-      ? `/${locale}/admin`
-      : user.role === "platform-staff"
-        ? user.platformPermissions?.includes("blog_manage")
-          ? `/${locale}/admin/blog`
-          : `/${locale}/admin`
-      : user.role === "seller-admin" || user.role === "seller-staff"
-        ? `/${locale}/seller-dashboard`
-        : `/${locale}/account`;
-
-  const safeNextPath = safeInternalPath(nextPath, `/${locale}/`);
-  if (!safeNextPath) return fallback;
-  if (safeNextPath.startsWith(`/${locale}/admin`) && !["platform-admin", "platform-staff"].includes(user.role)) {
-    return fallback;
-  }
-  if (
-    safeNextPath.startsWith(`/${locale}/seller-dashboard`) &&
-    !["platform-admin", "platform-staff", "seller-admin", "seller-staff"].includes(user.role)
-  ) {
-    return fallback;
-  }
-  return safeNextPath;
+function destinationFor(locale: Locale) {
+  return `/${locale}/account`;
 }
 
-export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
+export function LoginForm({ locale, copy }: LoginFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -251,7 +228,7 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
             return;
           }
           if (!response.ok || !data?.user) throw new Error(data?.message || copy.genericError);
-          router.push(destinationFor(data.user, locale, nextPath) as Route); router.refresh();
+          router.push(destinationFor(locale) as Route); router.refresh();
         }
       } catch (requestError) { setError(requestError instanceof Error ? requestError.message : copy.genericError); }
       finally { setIsSubmitting(false); }
@@ -272,7 +249,7 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
         const registered = await registration.json().catch(() => null) as { user?: AuthUser; message?: string | string[] } | null;
         if (registration.status === 409) throw new Error(copy.invalidCredentials);
         if (!registration.ok || !registered?.user) throw new Error((Array.isArray(registered?.message) ? registered.message[0] : registered?.message) || copy.genericError);
-        router.push(destinationFor(registered.user, locale, nextPath) as Route); router.refresh(); return;
+        router.push(destinationFor(locale) as Route); router.refresh(); return;
       }
       const response = await fetch(
         `${API_BASE}/auth/login`,
@@ -298,7 +275,7 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
         throw new Error(response.status === 401 ? copy.invalidCredentials : message || copy.genericError);
       }
 
-      router.push(destinationFor(data.user, locale, nextPath) as Route);
+      router.push(destinationFor(locale) as Route);
       router.refresh();
     } catch (requestError) {
       setError(
@@ -309,7 +286,7 @@ export function LoginForm({ locale, copy, nextPath }: LoginFormProps) {
       setCaptchaToken(null);
       setCaptchaReset((value) => value + 1);
     }
-  }, [canSubmit, isSubmitting, captchaPolicies, captchaToken, challengeId, codeExpiresAt, copy.genericError, copy.invalidCredentials, fullName, locale, needsName, nextPath, normalizedPhone, otpDigits, phoneMode, requestCode, requestedPhone, router, trimmedIdentifier]);
+  }, [canSubmit, isSubmitting, captchaPolicies, captchaToken, challengeId, codeExpiresAt, copy.genericError, copy.invalidCredentials, fullName, locale, needsName, normalizedPhone, otpDigits, phoneMode, requestCode, requestedPhone, router, trimmedIdentifier]);
 
 
 

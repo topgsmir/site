@@ -21,6 +21,7 @@ type DownloadItem = {
   shopName: string;
   createdAt: string;
   lastAccessedAt: string | null;
+  remainingDays: number | null;
   file: {
     downloadUrl: string;
     destinationHost: string;
@@ -111,7 +112,7 @@ const COPY = {
 } as const;
 
 function canClaim(item: DownloadItem) {
-  return ["paid", "processing", "awaiting_confirmation", "delivered"].includes(item.orderStatus)
+  return item.remainingDays !== 0 && ["paid", "processing", "awaiting_confirmation", "delivered"].includes(item.orderStatus)
     && (item.file.maxDownloads <= 0 || item.file.downloadCount < item.file.maxDownloads);
 }
 
@@ -220,7 +221,9 @@ export function AccountDownloads({ locale }: { locale: Locale }) {
                 <span aria-hidden="true"> · </span>
                 {remaining === null ? c.unlimited : `${c.remaining}: ${remaining.toLocaleString(locale)}`}
                 <span aria-hidden="true"> · </span>
-                <Link href={`/${locale}/orders/${item.orderId}` as Route}>{c.order} #{item.orderId.slice(-8)}</Link>
+                <span className={styles.remainingDays}>{locale === "fa" ? "روزهای باقی مانده" : locale === "ar" ? "الأيام المتبقية" : "Days remaining"}: {item.remainingDays == null ? c.unlimited : item.remainingDays.toLocaleString(locale)}</span>
+                <span aria-hidden="true"> · </span>
+                <Link href={`/${locale}/orders/${item.orderId}` as Route}>{c.order} #{item.orderId}</Link>
               </p>
             </div>
           </div>

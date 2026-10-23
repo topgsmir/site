@@ -132,6 +132,7 @@ export interface SellerProductOffer {
     fileReference: string;
     fileReferences: string[];
     fileTitles: string[];
+    accessDays?: number;
     maxDownloads: number;
   };
   physical?: {

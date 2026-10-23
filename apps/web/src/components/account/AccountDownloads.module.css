@@ -420,3 +420,5 @@
     transform: none;
   }
 }
+
+.remainingDays { color: var(--color-danger, #c62828); font-weight: 600; }

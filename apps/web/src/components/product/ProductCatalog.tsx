@@ -5,7 +5,7 @@ import type { PublicProductSummary } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
 import { currencyLabel, formatCurrencyAmount } from "@/lib/currency";
 import { DesignIcon } from "@/components/DesignIcon";
-import { HeaderLanguageLinks } from "@/components/SiteHeader";
+import { HeaderLanguageLinks } from "@/components/navigation/public";
 import { ListingPagination } from "@/components/ListingPagination";
 import { listingHref, catalogCopy } from "@/lib/seo";
 import styles from "./ProductCatalog.module.css";

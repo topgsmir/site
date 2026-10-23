@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { SellerDashboard } from "@/components/seller/SellerDashboard";
+import { SellerDashboard } from "@/components/seller/seller-dashboard";
 import { requireUser } from "@/lib/auth/server";
 import { isLocale } from "@/lib/i18n";
 

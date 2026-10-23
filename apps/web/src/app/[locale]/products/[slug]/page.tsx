@@ -182,7 +182,7 @@ export default async function ProductRoute({ params, searchParams }: ProductRout
   const sellerCanEdit = (user?.role === "seller-admin" || user?.role === "seller-staff") && user.permissions?.includes("products_manage")
     ? await canSellerEditProduct(product.id, product.slug)
     : false;
-  const editHref = user?.role === "platform-admin"
+  const editHref = user?.role === "platform-admin" || user?.role === "platform-staff" && (user.isPlatformOwner || user.platformPermissions?.includes("catalog_view"))
     ? (`/${localeParam}/admin/products/${product.id}` as Route)
     : sellerCanEdit
       ? (`/${localeParam}/seller-dashboard?section=products&editProduct=${encodeURIComponent(product.id)}&productTitle=${encodeURIComponent(product.title)}` as Route)
