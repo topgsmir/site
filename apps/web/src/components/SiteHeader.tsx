@@ -24,7 +24,7 @@ export function HeaderLanguageLinks({ hrefs }: { hrefs?: LanguageLinks }) {
   return null;
 }
 
-export function SiteHeader({ locale, accountHref, children }: { locale: Locale; accountHref: string | null; children: ReactNode }) {
+export function SiteHeader({ locale, accountHref, dashboardHref, children }: { locale: Locale; accountHref: string | null; dashboardHref?: string | null; children: ReactNode }) {
   const pathname = usePathname();
   const header = useRef<HTMLDivElement>(null);
   const [routeLinks, setRouteLinks] = useState<RouteLinks | null>(null);
@@ -33,7 +33,7 @@ export function SiteHeader({ locale, accountHref, children }: { locale: Locale; 
     return () => setRouteLinks((current) => current === links ? null : current);
   }, []);
   const path = pathname.replace(/^\/(fa|en|ar)(?=\/|$)/, "");
-  const current = path === "/cart" ? "cart" : path.startsWith("/products") ? "shop" : path.startsWith("/blog") ? "journal" : path === "/contact-us" ? "contact" : path === "/about-us" ? "about" : path === "/complaints" ? "complaints" : undefined;
+  const current = path === "/cart" ? "cart" : path.startsWith("/products") ? "shop" : path.startsWith("/blog") ? "journal" : path === "/contact-us" ? "contact" : path === "/about-us" ? "about" : path === "/complaints" ? "complaints" : path.startsWith("/experts") ? "experts" : path === "/remote" ? "remote" : undefined;
   const languageHrefs = routeLinks?.pathname === pathname ? routeLinks.hrefs : { fa: "/fa" + path, en: "/en" + path, ar: "/ar" + path };
   useLayoutEffect(() => {
     const surface = header.current?.querySelector<HTMLElement>("[data-site-header-main]");
@@ -50,15 +50,15 @@ export function SiteHeader({ locale, accountHref, children }: { locale: Locale; 
   const skip = locale === "fa" ? "رفتن به محتوای صفحه" : locale === "ar" ? "انتقل إلى محتوى الصفحة" : "Skip to page content";
   return <HeaderLinksContext.Provider value={register}>
     <a className="skip-link" href="#site-content">{skip}</a>
-    {path !== "/login" && <div ref={header} className={styles.header} data-site-header><PublicHeader locale={locale} accountHref={accountHref} current={current} languageHrefs={languageHrefs} /></div>}
+    {path !== "/login" && <div ref={header} className={styles.header} data-site-header><PublicHeader locale={locale} accountHref={accountHref} dashboardHref={dashboardHref} current={current} languageHrefs={languageHrefs} /></div>}
     <div id="site-content" tabIndex={-1}>{children}</div>
   </HeaderLinksContext.Provider>;
 }
 
 // Next's global 404 bypasses the locale layout, but still shares the site's chrome.
-export function GlobalSiteHeader({ configurations, signedIn, children }: { configurations: Record<Locale, TemplateConfiguration>; signedIn: boolean; children: ReactNode }) {
+export function GlobalSiteHeader({ configurations, signedIn, dashboardPath, children }: { configurations: Record<Locale, TemplateConfiguration>; signedIn: boolean; dashboardPath?: string | null; children: ReactNode }) {
   const pathname = usePathname();
   const code = pathname.split("/")[1];
   const locale = code === "en" || code === "ar" ? code : "fa";
-  return <TemplateSettingsProvider locale={locale} configuration={configurations[locale]}><SiteHeader locale={locale} accountHref={signedIn ? "/" + locale + "/account" : null}>{children}</SiteHeader></TemplateSettingsProvider>;
+  return <TemplateSettingsProvider locale={locale} configuration={configurations[locale]}><SiteHeader locale={locale} accountHref={signedIn ? "/" + locale + "/account" : null} dashboardHref={dashboardPath ? `/${locale}${dashboardPath}` : null}>{children}</SiteHeader></TemplateSettingsProvider>;
 }

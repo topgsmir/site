@@ -1,8 +1,22 @@
 import { BadRequestException, ConflictException, Injectable } from "@nestjs/common";
-import { defaultTemplateConfiguration, type TemplateConfiguration, type TemplateLocale, type TemplateSettingsDocument } from "@topgsm/shared-types";
+import { defaultTemplateConfiguration, migrateLegacyTemplateNavigation, type TemplateConfiguration, type TemplateLocale, type TemplateSettingsDocument } from "@topgsm/shared-types";
 import { Prisma } from "../../prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import type { SaveTemplateSettingsDto } from "./template.dto";
+
+/** @deprecated Prefer migrateLegacyTemplateNavigation from shared-types. Kept for existing tests. */
+export function migrateExpertsNavigation(configuration: TemplateConfiguration, locale: TemplateLocale): TemplateConfiguration {
+  return migrateLegacyTemplateNavigation(configuration, locale);
+}
+
+/** @deprecated Prefer migrateLegacyTemplateNavigation from shared-types. Kept for existing tests. */
+export function migrateRemoteNavigation(configuration: TemplateConfiguration, locale: TemplateLocale): TemplateConfiguration {
+  return migrateLegacyTemplateNavigation(configuration, locale);
+}
+
+function migrateTemplateNavigation(configuration: TemplateConfiguration, locale: TemplateLocale): TemplateConfiguration {
+  return migrateLegacyTemplateNavigation(configuration, locale);
+}
 
 export function validateTemplateConfiguration(configuration: TemplateConfiguration): TemplateConfiguration {
   const value = structuredClone(configuration);
@@ -34,10 +48,14 @@ export class TemplateSettingsService {
   constructor(private readonly prisma: PrismaService) {}
   async get(locale: TemplateLocale): Promise<TemplateSettingsDocument> {
     const row = await this.prisma.template_settings.findUnique({ where: { locale }, select });
-    return { locale, version: row?.version ?? 0, configuration: row ? row.configuration as unknown as TemplateConfiguration : defaultTemplateConfiguration(locale), updatedAt: row?.updated_at.toISOString() ?? null };
+    const configuration = migrateTemplateNavigation(
+      row ? row.configuration as unknown as TemplateConfiguration : defaultTemplateConfiguration(locale),
+      locale
+    );
+    return { locale, version: row?.version ?? 0, configuration, updatedAt: row?.updated_at.toISOString() ?? null };
   }
   async save(locale: TemplateLocale, input: SaveTemplateSettingsDto, actorId: string): Promise<TemplateSettingsDocument> {
-    const configuration = validateTemplateConfiguration(input.configuration);
+    const configuration = validateTemplateConfiguration(migrateTemplateNavigation(input.configuration, locale));
     const json = configuration as unknown as Prisma.InputJsonValue;
     const conflict = () => new ConflictException("Template settings changed in another session. Reload before saving.");
     try {

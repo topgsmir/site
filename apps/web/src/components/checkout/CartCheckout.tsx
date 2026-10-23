@@ -72,9 +72,16 @@ type OtpChallenge = { id: string; requestedPhone: string; expiresAt: number; res
 type QuoteIssue = { message: string; offerIds: string[] };
 type RemovedLine = { item: CartItem; index: number };
 
-function apiErrorData(error: unknown): { code?: string; offerIds?: unknown; message?: string } {
+const CART_QUANTITY_CAP = 100;
+
+function apiErrorData(error: unknown): { code?: string; offerIds?: unknown; message?: string; availableStock?: unknown } {
   if (!axios.isAxiosError(error) || typeof error.response?.data !== "object" || error.response.data === null) return {};
-  return error.response.data as { code?: string; offerIds?: unknown; message?: string };
+  return error.response.data as { code?: string; offerIds?: unknown; message?: string; availableStock?: unknown };
+}
+
+function stockCap(value: number | null | undefined) {
+  if (value == null || !Number.isInteger(value) || value < 0) return CART_QUANTITY_CAP;
+  return Math.min(CART_QUANTITY_CAP, value);
 }
 
 function formatCountdown(seconds: number, locale: Locale) {
@@ -109,6 +116,7 @@ export function CartCheckout({ locale, signedInUser }: { locale: Locale; signedI
   const [error, setError] = useState("");
   const [clock, setClock] = useState(() => Date.now());
   const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>({});
+  const [stockCaps, setStockCaps] = useState<Record<string, number>>({});
   const [serviceAnswers, setServiceAnswers] = useState<Record<string, Record<string, string>>>({});
   const [removedBatches, setRemovedBatches] = useState<RemovedLine[][]>([]);
   const checkoutKey = useRef(crypto.randomUUID());
@@ -126,6 +134,13 @@ export function CartCheckout({ locale, signedInUser }: { locale: Locale; signedI
       const response = await api.post<CheckoutQuote>("/checkouts/quote", { items: cart.map(({ offerId, quantity, serviceNote }) => ({ offerId, quantity, ...(serviceNote ? { serviceNote } : {}) })), ...(appliedCouponCode ? { couponCode: appliedCouponCode } : {}), ...(clubPoints ? { clubPoints } : {}), ...(clubRewardId ? { clubRewardId } : {}) });
       if (request !== quoteRequest.current) return;
       setQuote(response.data);
+      setStockCaps((current) => {
+        const next = { ...current };
+        for (const item of response.data.groups.flatMap((group) => group.items)) {
+          if (item.availableStock != null) next[item.offerId] = item.availableStock;
+        }
+        return next;
+      });
       const productNames = new Map(response.data.groups.flatMap((group) => group.items.map((item) => [item.offerId, item.title])));
       const migratedCart = cart.map((item) => {
         const productName = productNames.get(item.offerId);
@@ -149,6 +164,33 @@ export function CartCheckout({ locale, signedInUser }: { locale: Locale; signedI
       if (request !== quoteRequest.current) return;
       const payload = apiErrorData(requestError);
       const offerIds = Array.isArray(payload.offerIds) ? payload.offerIds.filter((value): value is string => typeof value === "string") : [];
+      const availableStock = typeof payload.availableStock === "number" && Number.isInteger(payload.availableStock) && payload.availableStock >= 0
+        ? payload.availableStock
+        : null;
+      if (payload.code === "CART_STOCK_INSUFFICIENT" && offerIds[0] && availableStock != null) {
+        const offerId = offerIds[0];
+        setStockCaps((current) => ({ ...current, [offerId]: availableStock }));
+        if (availableStock >= 1) {
+          const cap = stockCap(availableStock);
+          const next = cart.map((item) => item.offerId === offerId && item.quantity > cap ? { ...item, quantity: Math.max(1, cap) } : item);
+          if (next.some((item, index) => item.quantity !== cart[index]!.quantity)) {
+            try {
+              writeCart(next);
+              setItems(next);
+              setQuantityDrafts((current) => {
+                if (!(offerId in current)) return current;
+                const drafts = { ...current };
+                delete drafts[offerId];
+                return drafts;
+              });
+              void refresh(next);
+              return;
+            } catch {
+              setError(c.cartSaveFailed);
+            }
+          }
+        }
+      }
       setQuoteIssue({
         message: payload.code === "CART_ITEMS_UNAVAILABLE" ? c.unavailable : payload.code === "CART_STOCK_INSUFFICIENT" ? c.stockChanged : appliedCouponCode ? c.couponInvalid : c.quoteFailed,
         offerIds
@@ -156,7 +198,7 @@ export function CartCheckout({ locale, signedInUser }: { locale: Locale; signedI
     } finally {
       if (request === quoteRequest.current) setQuoteUpdating(false);
     }
-  }, [appliedCouponCode, clubPoints, clubRewardId, c.couponInvalid, c.quoteFailed, c.stockChanged, c.unavailable]);
+  }, [appliedCouponCode, clubPoints, clubRewardId, c.cartSaveFailed, c.couponInvalid, c.quoteFailed, c.stockChanged, c.unavailable]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -218,8 +260,13 @@ export function CartCheckout({ locale, signedInUser }: { locale: Locale; signedI
     }
   }
 
+  function maxQuantityFor(offerId: string) {
+    return stockCap(pricedOffers.get(offerId)?.availableStock ?? stockCaps[offerId]);
+  }
+
   function updateQuantity(offerId: string, quantity: number, mode: "immediate" | "debounced" = "immediate") {
-    const nextQuantity = Math.max(1, Math.min(100, quantity || 1));
+    const max = Math.max(1, maxQuantityFor(offerId));
+    const nextQuantity = Math.max(1, Math.min(max, quantity || 1));
     setQuantityDrafts((current) => {
       const next = { ...current };
       delete next[offerId];
@@ -438,6 +485,7 @@ export function CartCheckout({ locale, signedInUser }: { locale: Locale; signedI
               const item = pricedOffers.get(cartItem.offerId);
               const group = offerGroups.get(cartItem.offerId);
               const productType = item?.productType ?? "digital";
+              const quantityMax = Math.max(1, maxQuantityFor(cartItem.offerId));
               return <article className={styles.item} key={cartItem.offerId} data-unavailable={quoteIssue?.offerIds.includes(cartItem.offerId) ? "true" : undefined}>
                 <div className={styles.artwork} data-type={productType} data-has-image={Boolean(item?.image)}>
                   {item?.image
@@ -461,13 +509,13 @@ export function CartCheckout({ locale, signedInUser }: { locale: Locale; signedI
                         type="number"
                         inputMode="numeric"
                         min={1}
-                        max={100}
+                        max={quantityMax}
                         value={quantityDrafts[cartItem.offerId] ?? String(cartItem.quantity)}
                         onChange={(event) => { if (/^\d{0,3}$/.test(event.target.value)) setQuantityDrafts((current) => ({ ...current, [cartItem.offerId]: event.target.value })); }}
                         onBlur={() => commitQuantity(cartItem.offerId)}
                         onKeyDown={(event) => handleQuantityKeyDown(event, cartItem.offerId)}
                       />
-                      <button type="button" aria-label={`${c.quantity} +`} disabled={cartItem.quantity >= 100 && !quantityDrafts[cartItem.offerId]} onClick={() => adjustQuantity(cartItem.offerId, 1)}>+</button>
+                      <button type="button" aria-label={`${c.quantity} +`} disabled={cartItem.quantity >= quantityMax && !quantityDrafts[cartItem.offerId]} onClick={() => adjustQuantity(cartItem.offerId, 1)}>+</button>
                     </div>
                   </div>
                   <div className={styles.price}>

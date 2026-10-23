@@ -21,7 +21,30 @@ export function defaultTemplateConfiguration(locale: TemplateLocale): TemplateCo
   return {
     tagline: c.tagline,
     banner: { enabled: true, text: c.banner, linkLabel: c.shop, href: base + "/products", image: "", imageAlt: "" },
-    navigation: [item(c.shop, base + "/products", "bag"), item(c.services, base + "#services", "settings"), item(c.experts, base + "#agents", "headphones"), item(c.journal, base + "/blog", "file"), item(c.contact, base + "/contact-us", "headphones")],
+    navigation: [item(c.shop, base + "/products", "bag"), item(c.services, base + "/remote", "settings"), item(c.experts, base + "/experts", "headphones"), item(c.journal, base + "/blog", "file"), item(c.contact, base + "/contact-us", "headphones")],
     categories: { enabled: true, title: c.categories, items: [item(c.digital, base + "/products?type=digital", "file"), item(c.physical, base + "/products?type=physical", "layers"), item(c.service, base + "/products?type=service", "headphones"), item(c.bridge, base + "/products?type=bridge", "bag")] }
   };
+}
+
+/** Rewrite retired homepage anchors to dedicated public routes. */
+export function migrateLegacyTemplateNavigation(
+  configuration: TemplateConfiguration,
+  locale: TemplateLocale
+): TemplateConfiguration {
+  const rewrites = new Map<string, string>([
+    ["#agents", `/${locale}/experts`],
+    [`/${locale}#agents`, `/${locale}/experts`],
+    [`/${locale}/#agents`, `/${locale}/experts`],
+    ["#services", `/${locale}/remote`],
+    [`/${locale}#services`, `/${locale}/remote`],
+    [`/${locale}/#services`, `/${locale}/remote`]
+  ]);
+  let changed = false;
+  const navigation = configuration.navigation.map((item) => {
+    const href = rewrites.get(item.href);
+    if (!href) return item;
+    changed = true;
+    return { ...item, href };
+  });
+  return changed ? { ...configuration, navigation } : configuration;
 }

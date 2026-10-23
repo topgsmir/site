@@ -23,7 +23,7 @@ export function ContactNavMenu({
   locale: Locale;
   label: string;
   icon: TemplateIcon;
-  current?: "shop" | "journal" | "cart" | "contact" | "about" | "complaints";
+  current?: "shop" | "journal" | "cart" | "contact" | "about" | "complaints" | "experts";
 }) {
   const c = copy[locale];
   const rootRef = useRef<HTMLDivElement>(null);

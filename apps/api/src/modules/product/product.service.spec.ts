@@ -183,24 +183,30 @@ describe("admin product editing", () => {
             title: "Old title",
             slug: "old-catalog-product",
             description: null,
+            shipping_note: null,
+            compatibility_note: null,
             tags: ["old"],
-            category: null,
+            category_record: null,
             status: "draft"
           }),
           update: async (input: unknown) => {
             updateInput = input;
             return {
               id: PRODUCT_ID,
+              price_currency: "TOMAN",
               title: "Clean title",
               slug: "catalog-product",
               description: "Clean description",
+              shipping_note: null,
+              compatibility_note: null,
               tags: ["new"],
-              category: null,
+              category_record: null,
               kind: "simple",
               type: "service",
               status: "active",
               created_at: new Date("2026-09-01T08:00:00.000Z"),
               updated_at: updatedAt,
+              media: null,
               created_by: { id: "00000000-0000-4000-8000-000000000012", shop_name: "Creator" },
               _count: { listings: 3 }
             };
@@ -238,6 +244,8 @@ describe("admin product editing", () => {
         title: true,
         slug: true,
         description: true,
+        shipping_note: true,
+        compatibility_note: true,
         tags: true,
         category_record: { select: productCategorySelect },
         kind: true,
@@ -271,8 +279,11 @@ describe("admin product editing", () => {
           title: "Old title",
           slug: "old-catalog-product",
           description: null,
+          shippingNote: null,
+          compatibilityNote: null,
           tags: ["old"],
           category: null,
+          categoryId: null,
           status: "draft"
         },
         after_snapshot: {
@@ -280,8 +291,11 @@ describe("admin product editing", () => {
           type: "service",
           slug: "catalog-product",
           description: "Clean description",
+          shippingNote: null,
+          compatibilityNote: null,
           tags: ["new"],
           category: null,
+          categoryId: null,
           status: "active"
         }
       }
@@ -293,15 +307,20 @@ describe("admin product editing", () => {
     let auditData: unknown;
     const summary = {
       id: PRODUCT_ID,
+      price_currency: "TOMAN",
       title: "Earlier title",
       slug: "catalog-product",
       description: null,
+      shipping_note: null,
+      compatibility_note: null,
+      tags: [],
       category_record: { id: CATEGORY_ID, name: "Tools", translations: [] },
       kind: "simple",
       type: "service",
       status: "draft",
       created_at: new Date("2026-09-01T08:00:00.000Z"),
       updated_at: new Date("2026-09-09T08:00:00.000Z"),
+      media: null,
       created_by: { id: "00000000-0000-4000-8000-000000000012", shop_name: "Creator" },
       _count: { listings: 2 }
     };
@@ -494,7 +513,7 @@ describe("admin product editing", () => {
     const offerId = "00000000-0000-4000-8000-000000000020";
     const sellerId = "00000000-0000-4000-8000-000000000021";
     const calls: string[] = [];
-    const current = { title: "Product", slug: "product", description: null, category_record: null, type: "digital", status: "active", bridge_binding: null };
+    const current = { title: "Product", slug: "product", description: null, shipping_note: null, compatibility_note: null, category_record: null, type: "digital", status: "active", bridge_binding: null };
     const service = serviceWith({
       $transaction: async (callback: (tx: unknown) => unknown) => callback({
         products: {
@@ -553,15 +572,20 @@ describe("admin product editing", () => {
     let listingQuery: { take?: number } | undefined;
     const productRecord = {
       id: PRODUCT_ID,
+      price_currency: "TOMAN",
       title: "Catalog product",
       slug: "catalog-product",
       description: null,
-      category: "Tools",
+      shipping_note: null,
+      compatibility_note: null,
+      tags: [],
+      category_record: null,
       kind: "simple",
       type: "bridge",
       status: "active",
       created_at: new Date("2026-09-01T08:00:00.000Z"),
       updated_at: new Date("2026-09-09T08:00:00.000Z"),
+      media: null,
       _count: { listings: 2 },
       bridge_binding: { minimum_quantity: 2, maximum_quantity: 8 },
       created_by: { id: "00000000-0000-4000-8000-000000000012", shop_name: "Creator" },

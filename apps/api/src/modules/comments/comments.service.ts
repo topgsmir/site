@@ -65,7 +65,7 @@ export class CommentsService {
     const items = rows.slice(0, query.limit).map((row) => ({
       id: row.id,
       body: row.body,
-      authorName: row.author?.full_name ?? row.guest_name ?? "Guest",
+      authorName: row.guest_name ?? row.author?.full_name ?? "Guest",
       createdAt: row.created_at.toISOString(),
       replies: row.assignments.map((reply) => {
         const authorName = reply.seller?.shop_name ?? "Top GSM Editorial";
@@ -83,13 +83,18 @@ export class CommentsService {
 
   async create(targetType: CommentTargetType, targetId: string, body: CreateCommentDto, user: AppUser | null) {
     const settings = await this.getSettings();
+    const isPlatformAdmin = user?.role === "platform-admin";
     if (!user && settings.postingPolicy !== "guests") throw new ForbiddenException("Sign in to comment");
-    if (user && body.guestName !== undefined) throw new BadRequestException("Guest name is not allowed for signed-in comments");
+    if (user && body.guestName !== undefined && !isPlatformAdmin) throw new BadRequestException("Guest name is not allowed for signed-in comments");
     if (!user && !body.guestName?.trim()) throw new BadRequestException("Guest name is required");
     const content = cleanText(body.body);
-    const guestName = user ? null : cleanText(body.guestName!);
+    // comments_author_check is XOR: either author_user_id or guest_name, never both.
+    // Admin "as customer" posts use guest_name only and record the actor in comment_events.
+    const asCustomer = Boolean(isPlatformAdmin && body.guestName?.trim());
+    const guestName = !user || asCustomer ? cleanText(body.guestName!) : null;
+    const authorUserId = asCustomer ? null : (user?.id ?? null);
 
-    if (targetType === "product" && settings.postingPolicy === "purchasers") {
+    if (targetType === "product" && settings.postingPolicy === "purchasers" && !isPlatformAdmin) {
       if (!user) throw new ForbiddenException("A purchase is required");
       const purchase = await this.prisma.order_items.findFirst({
         where: { order: { buyer_id: user.id, status: { in: ["paid", "processing", "shipped", "delivered"] } }, offer: { listing: { product_id: targetId } } },
@@ -98,7 +103,7 @@ export class CommentsService {
       if (!purchase) throw new ForbiddenException("A completed purchase is required to comment");
     }
 
-    const approved = Boolean(user && settings.publicationPolicy === "immediate");
+    const approved = Boolean(user && (settings.publicationPolicy === "immediate" || isPlatformAdmin));
     return this.prisma.$transaction(async (tx) => {
       const target = await this.resolveTarget(tx, targetType, targetId);
       const assignments = approved ? await this.assignmentRows(tx, target) : [];
@@ -106,13 +111,16 @@ export class CommentsService {
       const row = await tx.comments.create({ data: {
         product_id: targetType === "product" ? targetId : null,
         blog_post_id: targetType === "blog" ? targetId : null,
-        author_user_id: user?.id ?? null,
+        author_user_id: authorUserId,
         guest_name: guestName,
         body: content,
         status: approved ? VISIBLE : "pending",
         published_at: approved ? new Date() : null,
         assignments: assignments.length ? { create: assignments } : undefined
       }, select: { id: true, status: true } });
+      if (asCustomer && user) {
+        await tx.comment_events.create({ data: { comment_id: row.id, actor_user_id: user.id, action: "admin_as_customer" } });
+      }
       return { id: row.id, status: row.status };
     });
   }
@@ -178,7 +186,7 @@ export class CommentsService {
       const target = this.mapTarget(row.comment);
       return {
         id: row.comment.id, body: row.comment.body,
-        authorName: row.comment.author?.full_name ?? row.comment.guest_name ?? "Guest",
+        authorName: row.comment.guest_name ?? row.comment.author?.full_name ?? "Guest",
         createdAt: row.comment.created_at.toISOString(), target,
         productTitle: target.type === "product" ? target.title : null,
         productSlug: target.type === "product" ? target.slug : null,
@@ -279,7 +287,7 @@ export class CommentsService {
       const editorial = row.assignments.find((assignment) => assignment.assignee_kind === "editorial");
       return {
         id: row.id, body: row.body, status: row.status,
-        authorName: row.author?.full_name ?? row.guest_name ?? "Guest",
+        authorName: row.guest_name ?? row.author?.full_name ?? "Guest",
         createdAt: row.created_at.toISOString(), target,
         productTitle: target.type === "product" ? target.title : null,
         productSlug: target.type === "product" ? target.slug : null,

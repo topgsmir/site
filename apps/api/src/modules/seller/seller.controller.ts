@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Ip, Param, ParseUUIDPipe, Patch, Post, Req, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Ip, Param, ParseUUIDPipe, Patch, Post, Put, Query, Req, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
 import { type AuthenticatedRequest } from "../auth/platform-admin.guard";
@@ -8,6 +8,9 @@ import { CreateVendorDto, UpdateVendorDto } from "./dto/vendor.dto";
 import {
   CreateSellerAgentDto,
   CreateSellerInviteDto,
+  PublicSellerQueryDto,
+  SellerPageProductsQueryDto,
+  UpdateSellerPageDto,
   UpdateSellerPublicProfileDto
 } from "./dto/seller-directory.dto";
 import { SellerProfileGuard } from "./seller-profile.guard";
@@ -111,14 +114,44 @@ export class SellerController {
   }
 
   @Get("directory/:id")
-  getPublicSeller(@Param("id", new ParseUUIDPipe({ version: "4" })) id: string) {
-    return this.sellerService.getPublicSeller(id);
+  getPublicSeller(
+    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
+    @Query() query: PublicSellerQueryDto
+  ) {
+    return this.sellerService.getPublicSeller(id, query.locale ?? "fa");
   }
 
   @Get("profile")
   @UseGuards(SellerProfileGuard)
   getOwnProfile(@Req() request: AuthenticatedRequest) {
     return this.sellerService.getOwnProfile(request.sellerContext!.sellerId);
+  }
+
+  @Get("profile/page/products")
+  @UseGuards(SellerProfileGuard)
+  listOwnPageProducts(@Query() query: SellerPageProductsQueryDto, @Req() request: AuthenticatedRequest) {
+    return this.sellerService.listOwnPageProducts(request.sellerContext!.sellerId, query);
+  }
+
+  @Get("profile/page")
+  @UseGuards(SellerProfileGuard)
+  getOwnPage(@Req() request: AuthenticatedRequest) {
+    return this.sellerService.getOwnPage(request.sellerContext!.sellerId);
+  }
+
+  @Put("profile/page")
+  @UseGuards(SellerProfileGuard)
+  async updateOwnPage(
+    @Body() body: UpdateSellerPageDto,
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
+  ) {
+    await this.rateLimits.consumeSellerOperation(request.authenticatedUser!.id, clientIp);
+    return this.sellerService.updateOwnPage(
+      request.sellerContext!.sellerId,
+      request.sellerContext!.membershipRole,
+      body
+    );
   }
 
   @Patch("profile")

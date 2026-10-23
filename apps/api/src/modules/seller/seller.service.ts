@@ -7,8 +7,15 @@ import {
 } from "@nestjs/common";
 import { Prisma } from "../../prisma/client";
 import type {
+  ExpertPageBlock,
+  ProductImage,
+  PublicExpertPageBlock,
   PublicExpertProfile,
   PublicExpertSummary,
+  PublicProductSummary,
+  SellerExpertPage,
+  SellerPageProductChoice,
+  SellerPageProductChoices,
   SellerPublicProfileSettings,
   Vendor,
   VendorStatus
@@ -19,11 +26,16 @@ import { assertSellerCommissionRates } from "./seller-commission";
 import type { CreateVendorDto, UpdateVendorDto } from "./dto/vendor.dto";
 import { vendorPermissions } from "./dto/vendor.dto";
 import type { CreateOwnShopDto } from "./dto/own-shop.dto";
+import { categoryLabel, productCategorySelect } from "../product/product-category";
+import { publicProductWhere, publishedTranslationSelect } from "../product/product-visibility";
 import type {
   CreateSellerAgentDto,
   CreateSellerInviteDto,
+  SellerPageProductsQueryDto,
+  UpdateSellerPageDto,
   UpdateSellerPublicProfileDto
 } from "./dto/seller-directory.dto";
+import { normalizeSellerPage, readStoredSellerPage } from "./seller-page";
 
 @Injectable()
 export class SellerService {
@@ -101,6 +113,7 @@ export class SellerService {
         shop_name: true,
         profile_name: true,
         profile_specialty: true,
+        goghdi_agent_id: true,
         profile_media: { select: { id: true, width: true, height: true } },
         _count: {
           select: {
@@ -121,11 +134,12 @@ export class SellerService {
       name: seller.profile_name ?? seller.shop_name,
       specialty: seller.profile_specialty,
       profilePicture: this.toProfilePicture(seller.profile_media),
-      activeProductCount: seller._count.listings
+      activeProductCount: seller._count.listings,
+      chatAvailable: Boolean(seller.goghdi_agent_id)
     }));
   }
 
-  async getPublicSeller(sellerId: string): Promise<PublicExpertProfile> {
+  async getPublicSeller(sellerId: string, locale: "fa" | "en" | "ar" = "fa"): Promise<PublicExpertProfile> {
     const seller = await this.prisma.sellers.findFirst({
       where: {
         id: sellerId,
@@ -139,6 +153,8 @@ export class SellerService {
         profile_name: true,
         profile_specialty: true,
         profile_bio: true,
+        page_blocks: true,
+        goghdi_agent_id: true,
         profile_media: { select: { id: true, width: true, height: true } },
         _count: {
           select: {
@@ -154,6 +170,12 @@ export class SellerService {
       }
     });
     if (!seller) throw new NotFoundException("Expert profile was not found");
+    const blocks = readStoredSellerPage(seller.page_blocks);
+    const products = await this.publicPageProducts(
+      sellerId,
+      blocks.flatMap((block) => block.type === "products" ? block.productIds : []),
+      locale
+    );
 
     return {
       id: seller.id,
@@ -161,8 +183,86 @@ export class SellerService {
       specialty: seller.profile_specialty,
       bio: seller.profile_bio,
       profilePicture: this.toProfilePicture(seller.profile_media),
-      activeProductCount: seller._count.listings
+      activeProductCount: seller._count.listings,
+      chatAvailable: Boolean(seller.goghdi_agent_id),
+      page: blocks.flatMap((block): PublicExpertPageBlock[] => {
+        if (block.type === "text") return [block];
+        const visible = block.productIds.flatMap((id) => {
+          const product = products.get(id);
+          return product ? [product] : [];
+        });
+        return visible.length ? [{ id: block.id, type: "products", title: block.title, products: visible }] : [];
+      })
     };
+  }
+
+  async getOwnPage(sellerId: string): Promise<SellerExpertPage> {
+    const seller = await this.ownedSeller(sellerId);
+    const blocks = readStoredSellerPage(seller.page_blocks);
+    return { blocks, products: await this.ownedPageProducts(sellerId, productIds(blocks)) };
+  }
+
+  async updateOwnPage(
+    sellerId: string,
+    membershipRole: "admin" | "staff",
+    input: UpdateSellerPageDto
+  ): Promise<SellerExpertPage> {
+    if (membershipRole !== "admin") {
+      throw new ForbiddenException("Only a seller administrator can edit the public page");
+    }
+    const blocks = normalizeSellerPage(input.blocks);
+    const ids = productIds(blocks);
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        if (ids.length) {
+          const owned = await tx.products.findMany({
+            where: { id: { in: ids }, created_by_seller_id: sellerId, status: { not: "trashed" } },
+            select: { id: true }
+          });
+          if (owned.length !== ids.length) {
+            throw new BadRequestException("Each product must still belong to your shop");
+          }
+        }
+        await tx.sellers.update({
+          where: { id: sellerId, invited: false, approved: true, suspended_at: null },
+          data: { page_blocks: blocks as unknown as Prisma.InputJsonValue }
+        });
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+        throw new ForbiddenException("The seller page is no longer editable");
+      }
+      throw error;
+    }
+    return this.getOwnPage(sellerId);
+  }
+
+  async listOwnPageProducts(sellerId: string, input: SellerPageProductsQueryDto): Promise<SellerPageProductChoices> {
+    const terms = input.search?.split(/\s+/u).filter(Boolean).slice(0, 4) ?? [];
+    let rows;
+    try {
+      rows = await this.prisma.products.findMany({
+        where: {
+          created_by_seller_id: sellerId,
+          status: { not: "trashed" },
+          ...(terms.length ? { AND: terms.map((term) => ({ OR: [
+            { title: { contains: term, mode: "insensitive" as const } },
+            { slug: { contains: term, mode: "insensitive" as const } }
+          ] })) } : {})
+        },
+        ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+        take: input.limit + 1,
+        orderBy: [{ updated_at: "desc" }, { id: "desc" }],
+        select: pageProductSelect
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+        throw new NotFoundException("Page was not found");
+      }
+      throw error;
+    }
+    const items = rows.slice(0, input.limit).map(toPageProduct);
+    return { items, nextCursor: rows.length > input.limit ? items.at(-1)?.id ?? null : null };
   }
 
   async getOwnProfile(sellerId: string): Promise<SellerPublicProfileSettings> {
@@ -506,6 +606,98 @@ export class SellerService {
     return this.toVendor(seller);
   }
 
+  private async ownedSeller(sellerId: string) {
+    const seller = await this.prisma.sellers.findFirst({
+      where: { id: sellerId, invited: false, approved: true, suspended_at: null },
+      select: { page_blocks: true }
+    });
+    if (!seller) throw new NotFoundException("Seller was not found");
+    return seller;
+  }
+
+  private async ownedPageProducts(sellerId: string, ids: string[]): Promise<SellerPageProductChoice[]> {
+    if (!ids.length) return [];
+    const rows = await this.prisma.products.findMany({
+      where: { id: { in: ids }, created_by_seller_id: sellerId, status: { not: "trashed" } },
+      select: pageProductSelect
+    });
+    const byId = new Map(rows.map((row) => [row.id, toPageProduct(row)]));
+    return ids.flatMap((id) => {
+      const product = byId.get(id);
+      return product ? [product] : [];
+    });
+  }
+
+  private async publicPageProducts(sellerId: string, ids: string[], locale: "fa" | "en" | "ar") {
+    const products = new Map<string, PublicProductSummary>();
+    if (!ids.length) return products;
+    const rows = await this.prisma.products.findMany({
+      where: {
+        ...publicProductWhere(process.env.BRIDGE_FEATURE_ENABLED === "true"),
+        id: { in: ids },
+        created_by_seller_id: sellerId
+      },
+      select: {
+        id: true,
+        title: true,
+        translations: { where: { published_at: { not: null } }, select: publishedTranslationSelect },
+        slug: true,
+        category_record: { select: productCategorySelect },
+        kind: true,
+        type: true,
+        price_currency: true,
+        created_at: true,
+        media: { select: { id: true, variants: { orderBy: { variant: "asc" }, select: { variant: true, width: true, height: true } } } }
+      }
+    });
+    if (!rows.length) return products;
+    const prices = await this.prisma.$queryRaw<Array<{ product_id: string; currency: string; price: Prisma.Decimal }>>(Prisma.sql`
+      SELECT DISTINCT ON (v."product_id", o."currency")
+        v."product_id", o."currency", o."price"
+      FROM "seller_offers" o
+      JOIN "seller_listings" l ON l."id" = o."listing_id"
+      JOIN "products" p ON p."id" = l."product_id"
+      JOIN "sellers" s ON s."id" = l."seller_id"
+      JOIN "product_variants" v ON v."id" = o."variant_id"
+      WHERE v."product_id" IN (${Prisma.join(rows.map((product) => Prisma.sql`${product.id}::uuid`))})
+        AND p."created_by_seller_id" = ${sellerId}
+        AND o."status" = 'active'::"listing_status"
+        AND BTRIM(o."currency") = p."price_currency"
+        AND l."status" = 'active'::"listing_status"
+        AND s."invited" = FALSE
+        AND s."approved" = TRUE
+        AND s."suspended_at" IS NULL
+      ORDER BY v."product_id", o."currency", o."price", o."id"
+    `);
+    const pricesByProduct = new Map<string, Array<{ currency: string; price: string }>>();
+    for (const row of prices) {
+      const current = pricesByProduct.get(row.product_id) ?? [];
+      current.push({ currency: row.currency.trim(), price: row.price.toString() });
+      pricesByProduct.set(row.product_id, current);
+    }
+    for (const product of rows) {
+      if (product.price_currency !== "TOMAN" && product.price_currency !== "USD") continue;
+      const translated = product.translations.find((item) => item.locale === locale);
+      const startingPrices = pricesByProduct.get(product.id) ?? [];
+      products.set(product.id, {
+        id: product.id,
+        availableLocales: [...new Set(["fa" as const, ...product.translations.map((item) => item.locale)])],
+        title: translated?.published_title ?? product.title,
+        slug: product.slug,
+        category: categoryLabel(product.category_record, locale, translated?.published_category),
+        categoryId: product.category_record?.id ?? null,
+        kind: product.kind,
+        type: product.type,
+        currency: product.price_currency,
+        image: mapPageProductImage(product.media),
+        ...(startingPrices.length === 1 ? { price: startingPrices[0].price, currency: startingPrices[0].currency as "TOMAN" | "USD" } : {}),
+        startingPrices,
+        createdAt: product.created_at.toISOString()
+      });
+    }
+    return products;
+  }
+
   private statusData(status: VendorStatus) {
     if (status === "invited") {
       return { invited: true, approved: false, suspended_at: null };
@@ -596,4 +788,32 @@ export class SellerService {
       updatedAt: seller.updated_at.toISOString()
     };
   }
+}
+
+const pageProductSelect = {
+  id: true,
+  title: true,
+  slug: true,
+  status: true,
+  type: true
+} satisfies Prisma.productsSelect;
+
+function productIds(blocks: ExpertPageBlock[]) {
+  return blocks.flatMap((block) => block.type === "products" ? block.productIds : []);
+}
+
+function toPageProduct(row: Prisma.productsGetPayload<{ select: typeof pageProductSelect }>): SellerPageProductChoice {
+  return { id: row.id, title: row.title, slug: row.slug, status: row.status, type: row.type };
+}
+
+function mapPageProductImage(media: { id: string; variants: Array<{ variant: string; width: number; height: number }> } | null): ProductImage | null {
+  if (!media) return null;
+  return {
+    id: media.id,
+    variants: media.variants.flatMap((variant) =>
+      variant.variant === "thumb" || variant.variant === "large"
+        ? [{ name: variant.variant, url: `/media/${media.id}/${variant.variant}.webp`, width: variant.width, height: variant.height }]
+        : []
+    )
+  };
 }

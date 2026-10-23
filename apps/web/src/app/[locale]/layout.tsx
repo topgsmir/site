@@ -1,5 +1,6 @@
 import { SiteHeader } from "@/components/SiteHeader";
 import { getCurrentUser } from "@/lib/auth/server";
+import { dashboardFor } from "@/lib/auth/dashboard-destination";
 import { TemplateSettingsProvider } from "@/components/TemplateSettingsProvider";
 import { getTemplateConfiguration } from "@/lib/template-settings-server";
 import type { Metadata, Viewport } from "next";
@@ -100,7 +101,7 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
         <TrafficSourceCapture />
         <PlatformNotice />
         <TemplateSettingsProvider locale={locale} configuration={configuration}>
-          <SiteHeader locale={locale} accountHref={user ? `/${locale}/account` : null}>{children}</SiteHeader>
+          <SiteHeader locale={locale} accountHref={user ? `/${locale}/account` : null} dashboardHref={user && user.role !== "buyer" ? dashboardFor(user, locale) : null}>{children}</SiteHeader>
         </TemplateSettingsProvider>
         <GoghdiWidget />
         <ThemeToggle locale={locale} />

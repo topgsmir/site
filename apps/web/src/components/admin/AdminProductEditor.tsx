@@ -36,15 +36,15 @@ import styles from "./AdminProductEditor.module.css";
 const COPY = {
   en: {
     back: "Product catalog", title: "Edit product", intro: "Manage the complete catalog record and every seller offer from one workspace.", loadMore: "Load more sellers",
-    catalog: "Catalog details", catalogHint: "These fields are shared by every seller listing.", productTitle: "Product title", slug: "Public slug", category: "Category", description: "Description", status: "Publication state", save: "Save catalog", saving: "Saving…", loading: "Loading product…", saved: "Catalog saved.", loadError: "The product could not be loaded.", saveError: "The product could not be saved.", retry: "Try again", publicPage: "Open public page", structure: "Product structure", kind: "Kind", type: "Type", owner: "Created by", variants: "Variants", immutable: "Type and kind are structural. Create a replacement product if the fulfillment model must change.", sellers: "Seller listings", sellersHint: "Edit listing visibility, pricing, SKU, and fulfillment values.", noListings: "No seller listings are attached to this product.", listingStatus: "Listing state", offer: "Offer", price: "Price", currency: "Currency", sku: "Seller SKU", offerStatus: "Offer state", saveOffer: "Save offer", offerSaved: "Offer saved.", listingSaved: "Listing state saved.", fileReference: "Download URLs (one per line, up to 50)", downloads: "Maximum downloads per file", stock: "Stock", weight: "Weight (grams)", serviceType: "Service type", hours: "Estimated hours", instructions: "Instructions", draft: "Draft", active: "Published", pending_review: "Pending review", archived: "Archived", trashed: "Trash", simple: "Simple", variable: "Variable"
+    catalog: "Catalog details", catalogHint: "These fields are shared by every seller listing.", productTitle: "Product title", slug: "Public slug", category: "Category", description: "Description", buyerNotes: "Know before ordering", buyerNotesHint: "Shown on the public physical product page. Leave blank to use platform defaults.", shippingNote: "Shipping & delivery", compatibilityNote: "Check before buying", status: "Publication state", save: "Save catalog", saving: "Saving…", loading: "Loading product…", saved: "Catalog saved.", loadError: "The product could not be loaded.", saveError: "The product could not be saved.", retry: "Try again", publicPage: "Open public page", structure: "Product structure", kind: "Kind", type: "Type", owner: "Created by", variants: "Variants", immutable: "Type and kind are structural. Create a replacement product if the fulfillment model must change.", sellers: "Seller listings", sellersHint: "Edit listing visibility, pricing, SKU, and fulfillment values.", noListings: "No seller listings are attached to this product.", listingStatus: "Listing state", offer: "Offer", price: "Price", currency: "Currency", sku: "Seller SKU", offerStatus: "Offer state", saveOffer: "Save offer", offerSaved: "Offer saved.", listingSaved: "Listing state saved.", fileReference: "Download URLs (one per line, up to 50)", downloads: "Maximum downloads per file", stock: "Stock", weight: "Weight (grams)", serviceType: "Service type", hours: "Estimated hours", instructions: "Instructions", draft: "Draft", active: "Published", pending_review: "Pending review", archived: "Archived", trashed: "Trash", simple: "Simple", variable: "Variable"
   },
   fa: {
     back: "کاتالوگ محصولات", title: "ویرایش محصول", intro: "اطلاعات کامل کاتالوگ و پیشنهادهای همه فروشنده‌ها را در یک صفحه مدیریت کنید.", loadMore: "فروشنده‌های بیشتر",
-    catalog: "اطلاعات کاتالوگ", catalogHint: "این اطلاعات میان همه فروشنده‌های محصول مشترک است.", productTitle: "عنوان محصول", slug: "نامک عمومی", category: "دسته‌بندی", description: "توضیحات", status: "وضعیت انتشار", save: "ذخیره کاتالوگ", saving: "در حال ذخیره…", loading: "در حال بارگذاری محصول…", saved: "اطلاعات کاتالوگ ذخیره شد.", loadError: "بارگذاری محصول ممکن نبود.", saveError: "ذخیره محصول ممکن نبود.", retry: "تلاش دوباره", publicPage: "مشاهده صفحه عمومی", structure: "ساختار محصول", kind: "ساختار", type: "نوع", owner: "سازنده", variants: "گونه‌ها", immutable: "نوع و ساختار محصول بنیادی هستند. برای تغییر مدل تحویل، محصول جایگزین بسازید.", sellers: "فهرست فروشنده‌ها", sellersHint: "نمایش فهرست، قیمت، شناسه کالا و اطلاعات تحویل را ویرایش کنید.", noListings: "فروشنده‌ای به این محصول متصل نیست.", listingStatus: "وضعیت فهرست", offer: "پیشنهاد", price: "قیمت", currency: "ارز", sku: "شناسه فروشنده", offerStatus: "وضعیت پیشنهاد", saveOffer: "ذخیره پیشنهاد", offerSaved: "پیشنهاد ذخیره شد.", listingSaved: "وضعیت فهرست ذخیره شد.", fileReference: "لینک‌های دانلود (هر خط یک لینک، حداکثر ۵۰)", downloads: "حداکثر دانلود هر فایل", stock: "موجودی", weight: "وزن (گرم)", serviceType: "نوع خدمت", hours: "ساعت تقریبی", instructions: "دستورالعمل", draft: "پیش‌نویس", active: "منتشرشده", pending_review: "در انتظار بررسی", archived: "بایگانی‌شده", trashed: "زباله‌دان", simple: "ساده", variable: "متغیر"
+    catalog: "اطلاعات کاتالوگ", catalogHint: "این اطلاعات میان همه فروشنده‌های محصول مشترک است.", productTitle: "عنوان محصول", slug: "نامک عمومی", category: "دسته‌بندی", description: "توضیحات", buyerNotes: "پیش از سفارش بدانید", buyerNotesHint: "در صفحه عمومی محصول فیزیکی نمایش داده می‌شود. خالی بگذارید تا متن پیش‌فرض سامانه استفاده شود.", shippingNote: "ارسال و تحویل", compatibilityNote: "پیش از خرید بررسی کنید", status: "وضعیت انتشار", save: "ذخیره کاتالوگ", saving: "در حال ذخیره…", loading: "در حال بارگذاری محصول…", saved: "اطلاعات کاتالوگ ذخیره شد.", loadError: "بارگذاری محصول ممکن نبود.", saveError: "ذخیره محصول ممکن نبود.", retry: "تلاش دوباره", publicPage: "مشاهده صفحه عمومی", structure: "ساختار محصول", kind: "ساختار", type: "نوع", owner: "سازنده", variants: "گونه‌ها", immutable: "نوع و ساختار محصول بنیادی هستند. برای تغییر مدل تحویل، محصول جایگزین بسازید.", sellers: "فهرست فروشنده‌ها", sellersHint: "نمایش فهرست، قیمت، شناسه کالا و اطلاعات تحویل را ویرایش کنید.", noListings: "فروشنده‌ای به این محصول متصل نیست.", listingStatus: "وضعیت فهرست", offer: "پیشنهاد", price: "قیمت", currency: "ارز", sku: "شناسه فروشنده", offerStatus: "وضعیت پیشنهاد", saveOffer: "ذخیره پیشنهاد", offerSaved: "پیشنهاد ذخیره شد.", listingSaved: "وضعیت فهرست ذخیره شد.", fileReference: "لینک‌های دانلود (هر خط یک لینک، حداکثر ۵۰)", downloads: "حداکثر دانلود هر فایل", stock: "موجودی", weight: "وزن (گرم)", serviceType: "نوع خدمت", hours: "ساعت تقریبی", instructions: "دستورالعمل", draft: "پیش‌نویس", active: "منتشرشده", pending_review: "در انتظار بررسی", archived: "بایگانی‌شده", trashed: "زباله‌دان", simple: "ساده", variable: "متغیر"
   },
   ar: {
     back: "كتالوج المنتجات", title: "تعديل المنتج", intro: "أدر سجل الكتالوج الكامل وعروض جميع البائعين من مساحة واحدة.", loadMore: "تحميل بائعين إضافيين",
-    catalog: "بيانات الكتالوج", catalogHint: "هذه البيانات مشتركة بين جميع قوائم البائعين.", productTitle: "اسم المنتج", slug: "المعرّف العام", category: "الفئة", description: "الوصف", status: "حالة النشر", save: "حفظ الكتالوج", saving: "جارٍ الحفظ…", loading: "جارٍ تحميل المنتج…", saved: "تم حفظ الكتالوج.", loadError: "تعذر تحميل المنتج.", saveError: "تعذر حفظ المنتج.", retry: "إعادة المحاولة", publicPage: "فتح الصفحة العامة", structure: "بنية المنتج", kind: "البنية", type: "النوع", owner: "أنشأه", variants: "المتغيرات", immutable: "النوع والبنية خصائص أساسية. أنشئ منتجاً بديلاً إذا لزم تغيير نموذج التنفيذ.", sellers: "قوائم البائعين", sellersHint: "عدّل ظهور القائمة والسعر ورمز البائع وبيانات التنفيذ.", noListings: "لا توجد قوائم بائعين مرتبطة بهذا المنتج.", listingStatus: "حالة القائمة", offer: "العرض", price: "السعر", currency: "العملة", sku: "رمز البائع", offerStatus: "حالة العرض", saveOffer: "حفظ العرض", offerSaved: "تم حفظ العرض.", listingSaved: "تم حفظ حالة القائمة.", fileReference: "روابط التنزيل (رابط لكل سطر، حتى ٥٠)", downloads: "الحد الأقصى للتنزيل لكل ملف", stock: "المخزون", weight: "الوزن (غرام)", serviceType: "نوع الخدمة", hours: "الساعات المقدرة", instructions: "التعليمات", draft: "مسودة", active: "منشور", pending_review: "قيد المراجعة", archived: "مؤرشف", trashed: "المهملات", simple: "بسيط", variable: "متغير"
+    catalog: "بيانات الكتالوج", catalogHint: "هذه البيانات مشتركة بين جميع قوائم البائعين.", productTitle: "اسم المنتج", slug: "المعرّف العام", category: "الفئة", description: "الوصف", buyerNotes: "معلومات قبل الطلب", buyerNotesHint: "تظهر في صفحة المنتج المادي العامة. اتركها فارغة لاستخدام النص الافتراضي للمنصة.", shippingNote: "الشحن والتوصيل", compatibilityNote: "تحقق قبل الشراء", status: "حالة النشر", save: "حفظ الكتالوج", saving: "جارٍ الحفظ…", loading: "جارٍ تحميل المنتج…", saved: "تم حفظ الكتالوج.", loadError: "تعذر تحميل المنتج.", saveError: "تعذر حفظ المنتج.", retry: "إعادة المحاولة", publicPage: "فتح الصفحة العامة", structure: "بنية المنتج", kind: "البنية", type: "النوع", owner: "أنشأه", variants: "المتغيرات", immutable: "النوع والبنية خصائص أساسية. أنشئ منتجاً بديلاً إذا لزم تغيير نموذج التنفيذ.", sellers: "قوائم البائعين", sellersHint: "عدّل ظهور القائمة والسعر ورمز البائع وبيانات التنفيذ.", noListings: "لا توجد قوائم بائعين مرتبطة بهذا المنتج.", listingStatus: "حالة القائمة", offer: "العرض", price: "السعر", currency: "العملة", sku: "رمز البائع", offerStatus: "حالة العرض", saveOffer: "حفظ العرض", offerSaved: "تم حفظ العرض.", listingSaved: "تم حفظ حالة القائمة.", fileReference: "روابط التنزيل (رابط لكل سطر، حتى ٥٠)", downloads: "الحد الأقصى للتنزيل لكل ملف", stock: "المخزون", weight: "الوزن (غرام)", serviceType: "نوع الخدمة", hours: "الساعات المقدرة", instructions: "التعليمات", draft: "مسودة", active: "منشور", pending_review: "قيد المراجعة", archived: "مؤرشف", trashed: "المهملات", simple: "بسيط", variable: "متغير"
   }
 } as const;
 
@@ -85,6 +85,8 @@ type CoreDraft = Pick<AdminProductDetails, "title" | "slug" | "status"> & {
   categoryId: string | null | undefined;
   tags: string[];
   description: string;
+  shippingNote: string;
+  compatibilityNote: string;
 };
 
 type OfferDraft = {
@@ -105,7 +107,17 @@ type OfferDraft = {
 };
 
 function coreDraft(product: AdminProductDetails): CoreDraft {
-  return { title: product.title, slug: product.slug, category: product.category ?? "", categoryId: product.categoryId ?? null, tags: product.tags, description: product.description ?? "", status: product.status };
+  return {
+    title: product.title,
+    slug: product.slug,
+    category: product.category ?? "",
+    categoryId: product.categoryId ?? null,
+    tags: product.tags,
+    description: product.description ?? "",
+    shippingNote: product.shippingNote ?? "",
+    compatibilityNote: product.compatibilityNote ?? "",
+    status: product.status
+  };
 }
 
 function offerDraft(offer: SellerProductOffer): OfferDraft {
@@ -200,10 +212,24 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
         title: draft.title.trim(), slug: draft.slug.trim(),
         ...(draft.categoryId === undefined ? { category: draft.category.trim() || null } : { categoryId: draft.categoryId }),
         ...(JSON.stringify(draft.tags) === JSON.stringify(product?.tags ?? []) ? {} : { tags: draft.tags }),
-        description: draft.description.trim() || null, status: draft.status
+        description: draft.description.trim() || null,
+        shippingNote: draft.shippingNote.trim() || null,
+        compatibilityNote: draft.compatibilityNote.trim() || null,
+        status: draft.status
       });
       setProduct((current) => current ? { ...current, ...response.data } : current);
-      setDraft((current) => current ? { ...current, title: response.data.title, slug: response.data.slug, category: response.data.category ?? "", categoryId: response.data.categoryId ?? null, tags: response.data.tags, description: response.data.description ?? "", status: response.data.status } : current);
+      setDraft((current) => current ? {
+        ...current,
+        title: response.data.title,
+        slug: response.data.slug,
+        category: response.data.category ?? "",
+        categoryId: response.data.categoryId ?? null,
+        tags: response.data.tags,
+        description: response.data.description ?? "",
+        shippingNote: response.data.shippingNote ?? "",
+        compatibilityNote: response.data.compatibilityNote ?? "",
+        status: response.data.status
+      } : current);
       setMessage(c.saved);
     } catch (requestError) { setError(requestMessage(requestError, c.saveError)); }
     finally { setBusy(null); }
@@ -348,6 +374,7 @@ export function AdminProductEditor({ locale, productId }: { locale: Locale; prod
                 <ProductDescriptionTemplatePicker locale={locale} title={draft.title} hasDescription={Boolean(draft.description.trim())} disabled={Boolean(busy)} admin onApply={(description) => setDraft((current) => current ? { ...current, description } : current)} />
                 <ProductDescriptionEditor locale={locale} label={c.description} value={draft.description} onChange={(description) => setDraft((current) => current ? { ...current, description } : current)} disabled={Boolean(busy)} />
               </div>
+              {product.type === "physical" ? <fieldset className={styles.wide}><legend>{c.buyerNotes}</legend><p>{c.buyerNotesHint}</p><label><span>{c.shippingNote}</span><textarea maxLength={2000} rows={3} value={draft.shippingNote} onChange={(event) => setDraft((current) => current ? { ...current, shippingNote: event.target.value } : current)} disabled={Boolean(busy)} /></label><label><span>{c.compatibilityNote}</span><textarea maxLength={2000} rows={3} value={draft.compatibilityNote} onChange={(event) => setDraft((current) => current ? { ...current, compatibilityNote: event.target.value } : current)} disabled={Boolean(busy)} /></label></fieldset> : null}
             </div>
           </form>
           <section className={styles.panel} aria-labelledby="product-seo-title">

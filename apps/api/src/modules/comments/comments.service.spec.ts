@@ -10,7 +10,7 @@ const admin = { id: "admin-1", fullName: "Admin", email: "admin@example.com", ro
 
 describe("product comments", () => {
   it("lets every shopper role comment on its own purchased product", async () => {
-    const roles: Role[] = ["buyer", "seller-admin", "seller-staff", "platform-admin", "platform-staff"];
+    const roles: Role[] = ["buyer", "seller-admin", "seller-staff", "platform-staff"];
     for (const role of roles) {
       const actor = { ...buyer, role } as AppUser;
       let checkedBuyer: string | undefined;
@@ -102,6 +102,38 @@ describe("product comments", () => {
       { comment_id: "comment-1", assignee_kind: "seller", assignee_key: "seller:seller-1", seller_id: "seller-1" },
       { comment_id: "comment-1", assignee_kind: "seller", assignee_key: "seller:seller-2", seller_id: "seller-2" }
     ]);
+  });
+
+  it("lets a platform admin comment without a purchase and display a customer name", async () => {
+    let created: Record<string, unknown> | undefined;
+    let audit: Record<string, unknown> | undefined;
+    let purchaseChecked = false;
+    const prisma = {
+      comment_settings: { findUnique: async () => ({ seller_lock_enabled: false, posting_policy: "purchasers", publication_policy: "approval", updated_at: new Date() }) },
+      order_items: { findFirst: async () => { purchaseChecked = true; return null; } },
+      products: { findFirst: async () => ({ id: "product-1" }) },
+      seller_listings: { findMany: async () => [{ seller_id: "seller-1" }] },
+      comments: { create: async ({ data }: { data: Record<string, unknown> }) => { created = data; return { id: "comment-1", status: data.status }; } },
+      comment_events: { create: async ({ data }: { data: Record<string, unknown> }) => { audit = data; return data; } },
+      $transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback(prisma)
+    } as unknown as PrismaService;
+    const result = await new CommentsService(prisma).create("product", "product-1", { body: "Looks solid", guestName: "Sara Customer" }, admin);
+    assert.equal(purchaseChecked, false);
+    assert.equal(result.status, "approved");
+    assert.equal(created?.author_user_id, null);
+    assert.equal(created?.guest_name, "Sara Customer");
+    assert.equal(created?.status, "approved");
+    assert.deepEqual(audit, { comment_id: "comment-1", actor_user_id: admin.id, action: "admin_as_customer" });
+  });
+
+  it("rejects customer display names from non-admin signed-in users", async () => {
+    const prisma = {
+      comment_settings: { findUnique: async () => ({ seller_lock_enabled: false, posting_policy: "buyers", publication_policy: "approval", updated_at: new Date() }) }
+    } as unknown as PrismaService;
+    await assert.rejects(
+      () => new CommentsService(prisma).create("product", "product-1", { body: "Looks solid", guestName: "Imposter" }, buyer),
+      { name: "BadRequestException" }
+    );
   });
 
   it("publishes a signed-in buyer comment on an editorial blog without requiring a purchase", async () => {

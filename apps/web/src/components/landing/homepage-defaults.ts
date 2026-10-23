@@ -33,10 +33,10 @@ export function defaultHomepage(locale: HomepageLocale): HomepageContent {
       image: "/images/repair-studio.png",
       imageAlt: t("نمای نزدیک قطعات گوشی و ابزار دقیق تعمیر", "Disassembled smartphone and precision repair tools", "مكونات هاتف مفككة وأدوات صيانة دقيقة"),
       primary: { label: t("کشف محصولات", "Explore products", "اكتشف المنتجات"), href: shop },
-      secondary: { label: t("ارتباط با کارشناس", "Find an expert", "تواصل مع خبير"), href: "#agents" }
+      secondary: { label: t("ارتباط با کارشناس", "Find an expert", "تواصل مع خبير"), href: `/${locale}/experts` }
     },
     shortcuts: [
-      { title: t("خدمات آنلاین", "Online services", "الخدمات عن بعد"), description: t("کمک تخصصی از راه دور", "Specialist help, remotely", "مساعدة متخصصة عن بعد"), label: "", href: `${shop}?type=service`, image: "/images/home/shortcuts/remote-service.webp" },
+      { title: t("خدمات آنلاین", "Online services", "الخدمات عن بعد"), description: t("کمک تخصصی از راه دور", "Specialist help, remotely", "مساعدة متخصصة عن بعد"), label: "", href: `/${locale}/remote`, image: "/images/home/shortcuts/remote-service.webp" },
       { title: t("آموزشگاه تعمیرات", "Repair academy", "أكاديمية الصيانة"), description: t("آموزش برای تعمیر بعدی", "Learn for your next repair", "تعلّم للصيانة القادمة"), label: "", href: search(t("آموزش", "training", "تدريب")), image: "/images/home/shortcuts/repair-academy.webp" },
       { title: t("لایسنس و اکتیو باکس", "Licenses & activation", "التراخيص والتفعيل"), description: t("فعال‌سازی ابزار تخصصی", "Activate specialist tools", "تفعيل الأدوات المتخصصة"), label: "", href: search(t("لایسنس", "license", "ترخيص")), image: "/images/home/shortcuts/licenses.webp" },
       { title: t("فایل فلش و رام", "Firmware files", "ملفات الفلاش والروم"), description: t("فایل مناسب هر مدل", "Files for the right model", "الملف المناسب لكل موديل"), label: "", href: search(t("فایل فلش", "firmware", "فلاش")), image: "/images/home/shortcuts/firmware.webp" },
@@ -80,7 +80,7 @@ export function defaultHomepage(locale: HomepageLocale): HomepageContent {
       links: [
         { label: t("فروشگاه", "Shop", "المتجر"), href: shop },
         { label: t("مجله تعمیرات", "Repair journal", "مجلة الصيانة"), href: `/${locale}/blog` },
-        { label: t("کارشناسان", "Experts", "الخبراء"), href: "#agents" },
+        { label: t("کارشناسان", "Experts", "الخبراء"), href: `/${locale}/experts` },
         { label: t("تماس با ما", "Contact", "اتصل بنا"), href: `/${locale}/contact-us` },
         { label: t("حساب کاربری", "My account", "حسابي"), href: `/${locale}/login` }
       ]

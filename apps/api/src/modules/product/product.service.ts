@@ -30,7 +30,7 @@ import type {
 } from "./dto/product.dto";
 
 import { activeOfferWhere, publicProductWhere, publishedTranslationSelect } from "./product-visibility";
-import { normalizeProductDescription } from "./product-description";
+import { normalizeProductDescription, normalizeProductNote } from "./product-description";
 import { isAllowedUnsignedFileUrl } from "../order/upload-download-link";
 
 const variantOptionSelect = {
@@ -62,6 +62,8 @@ const sellerListingSelect = {
       title: true,
       slug: true,
       description: true,
+      shipping_note: true,
+      compatibility_note: true,
       category_record: { select: productCategorySelect },
       kind: true,
       type: true,
@@ -123,6 +125,8 @@ const adminProductSelect = {
   title: true,
   slug: true,
   description: true,
+  shipping_note: true,
+  compatibility_note: true,
   tags: true,
   category_record: { select: productCategorySelect },
   kind: true,
@@ -177,6 +181,8 @@ const productSnapshotSelect = {
   title: true,
   slug: true,
   description: true,
+  shipping_note: true,
+  compatibility_note: true,
   tags: true,
   category_record: { select: productCategorySelect },
   type: true,
@@ -209,13 +215,19 @@ type ProductSnapshot = {
   type?: "digital" | "physical" | "service" | "bridge";
   slug?: string;
   description: string | null;
+  shippingNote?: string | null;
+  compatibilityNote?: string | null;
   tags?: string[];
   category: string | null;
   categoryId?: string | null;
   status: "draft" | "pending_review" | "active" | "archived" | "trashed";
 };
 
-type ProductSnapshotRecord = Omit<ProductSnapshot, "category"> & { category_record: ProductCategoryRecord | null };
+type ProductSnapshotRecord = Omit<ProductSnapshot, "category" | "shippingNote" | "compatibilityNote"> & {
+  category_record: ProductCategoryRecord | null;
+  shipping_note: string | null;
+  compatibility_note: string | null;
+};
 
 function searchVariants(term: string) {
   const canonical = term
@@ -234,7 +246,7 @@ function searchVariants(term: string) {
   ])];
 }
 
-const productSnapshotFields = ["title", "slug", "description", "tags", "category", "status", "type"] as const;
+const productSnapshotFields = ["title", "slug", "description", "shippingNote", "compatibilityNote", "tags", "category", "status", "type"] as const;
 
 type AdminProductRecord = Prisma.productsGetPayload<{
   select: typeof adminProductSelect;
@@ -595,6 +607,8 @@ export class ProductService {
         translations: { where: { published_at: { not: null } }, select: publishedTranslationSelect },
         slug: true,
         description: true,
+        shipping_note: true,
+        compatibility_note: true,
         category_record: { select: productCategorySelect },
         kind: true,
         type: true,
@@ -666,6 +680,8 @@ export class ProductService {
       title: translated?.published_title ?? product.title,
       slug: product.slug,
       description: translated?.published_description ?? product.description,
+      shippingNote: product.shipping_note,
+      compatibilityNote: product.compatibility_note,
       category: categoryLabel(product.category_record, locale, translated?.published_category),
       categoryId: product.category_record?.id ?? null,
       kind: product.kind,
@@ -708,6 +724,7 @@ export class ProductService {
             ? {
                 physical: {
                   inStock: offer.physical.stock > 0,
+                  stock: offer.physical.stock,
                   weightGrams: offer.physical.weight_grams,
                   lengthCm: offer.physical.length_cm, widthCm: offer.physical.width_cm, heightCm: offer.physical.height_cm
                 }
@@ -1270,7 +1287,11 @@ export class ProductService {
       const updated = await tx.products.update({
         where: { id: productId },
         data: await this.productFieldsFromSnapshot(tx,target,productSnapshotFields.filter((field) =>
-          field !== "type" && (field !== "slug" || target.slug) && (field !== "tags" || target.tags !== undefined)
+          field !== "type" &&
+          (field !== "slug" || target.slug) &&
+          (field !== "tags" || target.tags !== undefined) &&
+          (field !== "shippingNote" || target.shippingNote !== undefined) &&
+          (field !== "compatibilityNote" || target.compatibilityNote !== undefined)
         )),
         select: adminProductSelect
       });
@@ -1322,6 +1343,8 @@ export class ProductService {
             title: this.clean(input.title),
             slug: plan.slug,
             description: normalizeProductDescription(input.description),
+            shipping_note: normalizeProductNote(input.shippingNote),
+            compatibility_note: normalizeProductNote(input.compatibilityNote),
             category_id: await resolveProductCategory(transaction,input),
             kind: input.kind,
             type: input.type,
@@ -2006,6 +2029,8 @@ export class ProductService {
         title: listing.product.title,
         slug: listing.product.slug,
         description: listing.product.description,
+        shippingNote: listing.product.shipping_note,
+        compatibilityNote: listing.product.compatibility_note,
         category: categoryLabel(listing.product.category_record),
         categoryId: listing.product.category_record?.id ?? null,
         kind: listing.product.kind,
@@ -2107,6 +2132,8 @@ export class ProductService {
       title: product.title,
       slug: product.slug,
       description: product.description,
+      shippingNote: product.shipping_note,
+      compatibilityNote: product.compatibility_note,
       tags: product.tags,
       category: categoryLabel(product.category_record),
       categoryId: product.category_record?.id ?? null,
@@ -2209,6 +2236,12 @@ export class ProductService {
       ...(input.description === undefined
         ? {}
         : { description: normalizeProductDescription(input.description) }),
+      ...(input.shippingNote === undefined
+        ? {}
+        : { shipping_note: normalizeProductNote(input.shippingNote) }),
+      ...(input.compatibilityNote === undefined
+        ? {}
+        : { compatibility_note: normalizeProductNote(input.compatibilityNote) }),
       ...(input.tags === undefined ? {} : { tags: [...new Set(input.tags.map((tag) => tag.trim()).filter(Boolean))] }),
       ...await productCategoryUpdate(tx,input),
       ...(input.type === undefined ? {} : { type: input.type }),
@@ -2399,6 +2432,8 @@ export class ProductService {
       data.slug = snapshot.slug;
     }
     if (selected.has("description")) data.description = snapshot.description;
+    if (selected.has("shippingNote")) data.shipping_note = snapshot.shippingNote;
+    if (selected.has("compatibilityNote")) data.compatibility_note = snapshot.compatibilityNote;
     if (selected.has("tags")) {
       if (!snapshot.tags) throw new ConflictException("The saved product tags are no longer restorable");
       data.tags = snapshot.tags;
@@ -2422,6 +2457,8 @@ export class ProductService {
       (!selected.has("title") || current.title === expected.title) &&
       (!selected.has("slug") || current.slug === expected.slug) &&
       (!selected.has("description") || current.description === expected.description) &&
+      (!selected.has("shippingNote") || current.shippingNote === expected.shippingNote) &&
+      (!selected.has("compatibilityNote") || current.compatibilityNote === expected.compatibilityNote) &&
       (!selected.has("tags") || JSON.stringify(current.tags ?? []) === JSON.stringify(expected.tags ?? [])) &&
       (!selected.has("category") || (expected.categoryId !== undefined
         ? current.categoryId === expected.categoryId
@@ -2431,11 +2468,23 @@ export class ProductService {
   }
 
   private productSnapshot(record: ProductSnapshot | ProductSnapshotRecord): ProductSnapshot {
+    const shippingNote = "shipping_note" in record
+      ? record.shipping_note
+      : "shippingNote" in record
+        ? record.shippingNote
+        : undefined;
+    const compatibilityNote = "compatibility_note" in record
+      ? record.compatibility_note
+      : "compatibilityNote" in record
+        ? record.compatibilityNote
+        : undefined;
     return {
       title: record.title,
       ...(record.type ? { type: record.type } : {}),
       ...(record.slug ? { slug: record.slug } : {}),
       description: record.description,
+      ...(shippingNote !== undefined ? { shippingNote } : {}),
+      ...(compatibilityNote !== undefined ? { compatibilityNote } : {}),
       ...(record.tags !== undefined ? { tags: record.tags } : {}),
       category: "category_record" in record ? categoryLabel(record.category_record) : record.category,
       ...("category_record" in record ? { categoryId: record.category_record?.id ?? null } : record.categoryId !== undefined ? { categoryId: record.categoryId } : {}),
@@ -2457,6 +2506,8 @@ export class ProductService {
           value.slug.length > 200 ||
           !/^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u.test(value.slug))) ||
       (value.description !== null && typeof value.description !== "string") ||
+      (value.shippingNote !== undefined && value.shippingNote !== null && typeof value.shippingNote !== "string") ||
+      (value.compatibilityNote !== undefined && value.compatibilityNote !== null && typeof value.compatibilityNote !== "string") ||
       (value.tags !== undefined && (!Array.isArray(value.tags) || value.tags.length > 500 || !value.tags.every((tag) => typeof tag === "string" && tag.length <= 50))) ||
       (value.type !== undefined && !["digital", "physical", "service", "bridge"].includes(String(value.type))) ||
       (value.category !== null && typeof value.category !== "string") ||
@@ -2469,6 +2520,8 @@ export class ProductService {
       ...(typeof value.type === "string" ? { type: value.type as ProductSnapshot["type"] } : {}),
       ...(typeof value.slug === "string" ? { slug: value.slug } : {}),
       description: value.description as string | null,
+      ...("shippingNote" in value ? { shippingNote: value.shippingNote as string | null } : {}),
+      ...("compatibilityNote" in value ? { compatibilityNote: value.compatibilityNote as string | null } : {}),
       ...(Array.isArray(value.tags) ? { tags: value.tags as string[] } : {}),
       category: value.category as string | null,
       ...(typeof value.categoryId === "string" || value.categoryId === null ? { categoryId: value.categoryId } : {}),

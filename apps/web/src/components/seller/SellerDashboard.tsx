@@ -42,6 +42,7 @@ import { SellerOrders } from "@/components/seller/SellerOrders";
 import { SellerCustomers } from "@/components/seller/SellerCustomers";
 import { SellerShippingProfileWorkspace } from "@/components/seller/SellerShippingProfileWorkspace";
 import { SellerExpertProfileWorkspace } from "@/components/seller/SellerExpertProfileWorkspace";
+import { SellerExpertPageWorkspace } from "@/components/seller/SellerExpertPageWorkspace";
 import { SellerCoupons } from "./SellerCoupons";
 import { MarketingWorkspace } from "@/components/marketing/MarketingWorkspace";
 import { SellerUploads } from "./SellerUploads";
@@ -60,8 +61,33 @@ import { useNewOrderCount } from "@/components/dashboard/useNewOrderCount";
 import { DashboardMobileNavigation } from "@/components/dashboard/DashboardMobileNavigation";
 import { UploadCenterNavigation } from "@/components/dashboard/UploadCenterNavigation";
 
-type DashboardSection = "overview" | "statistics" | "products" | "uploads" | "profile" | "blog" | "coupons" | "marketing" | "orders" | "customers" | "shipping" | "payouts" | "bridge" | "sales-configuration";
+type DashboardSection = "overview" | "statistics" | "products" | "uploads" | "profile" | "page" | "blog" | "coupons" | "marketing" | "orders" | "customers" | "shipping" | "payouts" | "bridge" | "sales-configuration";
+type SellerNavIcon = DashboardSection | "sales" | "comments";
+type SellerNavItem = {
+  key: string;
+  label: string;
+  icon: SellerNavIcon;
+  current: boolean;
+  section?: DashboardSection;
+  href?: Route;
+  count?: number;
+  countLabel?: string;
+};
+type SellerNavGroup = {
+  id: string;
+  label: string;
+  icon: SellerNavIcon;
+  items: SellerNavItem[];
+};
 type RequestState = "idle" | "loading" | "error" | "success";
+
+function sellerNavigationGroupId(section: DashboardSection) {
+  if (section === "orders" || section === "customers" || section === "coupons" || section === "marketing" || section === "statistics") return "seller-sales-navigation";
+  if (section === "products" || section === "uploads") return "seller-products-navigation";
+  if (section === "profile" || section === "page" || section === "blog") return "seller-storefront-navigation";
+  if (section === "payouts" || section === "sales-configuration" || section === "shipping" || section === "bridge") return "seller-settings-navigation";
+  return null;
+}
 
 const FILTER_COPY = {
   en: { filters: "Find and filter", filtersHint: "Narrow the catalog by product details or listing state.", activeFilters: "active filters", clear: "Clear filters", category: "Category", productStatus: "Product status", productType: "Product type", productKind: "Structure", listingStatus: "Listing status", allTypes: "All types", allKinds: "All structures", allListingStatuses: "All listing statuses", sort: "Sort by", updatedDesc: "Recently updated", updatedAsc: "Least recently updated", createdDesc: "Newest created", createdAsc: "Oldest created", titleAsc: "Title A–Z", titleDesc: "Title Z–A", previous: "Previous", next: "Next", page: "Page" },
@@ -116,6 +142,8 @@ type ProductDraft = {
   slug: string;
   category: string;
   description: string;
+  shippingNote: string;
+  compatibilityNote: string;
   kind: ProductKind;
   type: ProductType;
   status: ProductStatus;
@@ -135,6 +163,10 @@ type DashboardCopy = {
   noSalesConfiguration: string;
   productService: string;
   sellService: string;
+  storefront: string;
+  shopSettings: string;
+  comments: string;
+  accountPurchases: string;
   products: string;
   uploads: string;
   blog: string;
@@ -145,6 +177,7 @@ type DashboardCopy = {
   newOrders: string;
   shipping: string;
   profile: string;
+  page: string;
   payouts: string;
   account: string;
   welcome: string;
@@ -195,6 +228,12 @@ type DashboardCopy = {
   title: string;
   category: string;
   description: string;
+  buyerNotes: string;
+  buyerNotesHint: string;
+  shippingNote: string;
+  shippingNoteHint: string;
+  compatibilityNote: string;
+  compatibilityNoteHint: string;
   productKind: string;
   productType: string;
   publishState: string;
@@ -259,6 +298,10 @@ const COPY: Record<Locale, DashboardCopy> = {
     noSalesConfiguration: "No sales settings are available for this account.",
     productService: "Products service",
     sellService: "Sales service",
+    storefront: "Shop",
+    shopSettings: "Settings",
+    comments: "Comments",
+    accountPurchases: "My account and purchases",
     products: "Products",
     uploads: "Uploads",
     blog: "Blog",
@@ -269,6 +312,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     newOrders: "new orders",
     shipping: "Shipping profile",
     profile: "Expert profile",
+    page: "My page",
     payouts: "Payouts",
     account: "Account",
     welcome: "Your selling workspace",
@@ -319,6 +363,12 @@ const COPY: Record<Locale, DashboardCopy> = {
     title: "Product title",
     category: "Category",
     description: "Description",
+    buyerNotes: "Know before ordering",
+    buyerNotesHint: "Shown on the public product page. Leave blank to use the platform defaults.",
+    shippingNote: "Shipping & delivery",
+    shippingNoteHint: "How delivery works for this product.",
+    compatibilityNote: "Check before buying",
+    compatibilityNoteHint: "Compatibility or fit notes buyers should confirm.",
     productKind: "Product structure",
     productType: "Fulfillment type",
     publishState: "Initial status",
@@ -374,6 +424,10 @@ const COPY: Record<Locale, DashboardCopy> = {
     noSalesConfiguration: "تنظیمات فروشی برای این حساب در دسترس نیست.",
     productService: "سرویس محصولات",
     sellService: "سرویس فروش",
+    storefront: "فروشگاه",
+    shopSettings: "تنظیمات",
+    comments: "دیدگاه‌ها",
+    accountPurchases: "حساب شخصی و خریدها",
     products: "محصولات",
     uploads: "بارگذاری‌ها",
     blog: "وبلاگ",
@@ -384,6 +438,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     newOrders: "سفارش جدید",
     shipping: "پروفایل ارسال",
     profile: "پروفایل کارشناس",
+    page: "صفحه من",
     payouts: "تسویه‌ها",
     account: "حساب کاربری",
     welcome: "فضای مدیریت فروش شما",
@@ -434,6 +489,12 @@ const COPY: Record<Locale, DashboardCopy> = {
     title: "عنوان محصول",
     category: "دسته‌بندی",
     description: "توضیحات",
+    buyerNotes: "پیش از سفارش بدانید",
+    buyerNotesHint: "در صفحه عمومی محصول نمایش داده می‌شود. خالی بگذارید تا متن پیش‌فرض سامانه استفاده شود.",
+    shippingNote: "ارسال و تحویل",
+    shippingNoteHint: "نحوه ارسال و تحویل این محصول.",
+    compatibilityNote: "پیش از خرید بررسی کنید",
+    compatibilityNoteHint: "نکات سازگاری یا تناسبی که خریدار باید تأیید کند.",
     productKind: "ساختار محصول",
     productType: "نوع تحویل",
     publishState: "وضعیت اولیه",
@@ -489,6 +550,10 @@ const COPY: Record<Locale, DashboardCopy> = {
     noSalesConfiguration: "لا تتوفر إعدادات مبيعات لهذا الحساب.",
     productService: "خدمة المنتجات",
     sellService: "خدمة المبيعات",
+    storefront: "المتجر",
+    shopSettings: "إعدادات المتجر",
+    comments: "التعليقات",
+    accountPurchases: "حسابي ومشترياتي",
     products: "المنتجات",
     uploads: "الملفات المرفوعة",
     blog: "المدونة",
@@ -499,6 +564,7 @@ const COPY: Record<Locale, DashboardCopy> = {
     newOrders: "طلبات جديدة",
     shipping: "ملف الشحن",
     profile: "ملف الخبير",
+    page: "صفحتي",
     payouts: "الدفعات",
     account: "الحساب",
     welcome: "مساحة إدارة مبيعاتك",
@@ -549,6 +615,12 @@ const COPY: Record<Locale, DashboardCopy> = {
     title: "عنوان المنتج",
     category: "الفئة",
     description: "الوصف",
+    buyerNotes: "معلومات قبل الطلب",
+    buyerNotesHint: "تظهر في صفحة المنتج العامة. اتركها فارغة لاستخدام النص الافتراضي للمنصة.",
+    shippingNote: "الشحن والتوصيل",
+    shippingNoteHint: "كيف يتم الشحن والتوصيل لهذا المنتج.",
+    compatibilityNote: "تحقق قبل الشراء",
+    compatibilityNoteHint: "ملاحظات التوافق أو الملاءمة التي يجب أن يؤكدها المشتري.",
     productKind: "بنية المنتج",
     productType: "نوع التنفيذ",
     publishState: "الحالة الأولية",
@@ -629,6 +701,8 @@ function makeDraft(physicalGranted: boolean): ProductDraft {
     slug: "",
     category: "",
     description: "",
+    shippingNote: "",
+    compatibilityNote: "",
     kind: "simple",
     type: physicalGranted ? "physical" : "digital",
     status: "draft",
@@ -638,7 +712,7 @@ function makeDraft(physicalGranted: boolean): ProductDraft {
   };
 }
 
-function Icon({ name }: { name: DashboardSection | "sales" | "plus" | "search" | "close" | "box" }) {
+function Icon({ name }: { name: DashboardSection | "sales" | "comments" | "plus" | "search" | "close" | "box" }) {
   const paths = {
     overview: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
     statistics: <><path d="M4 20V11M10 20V5M16 20v-8M22 20V8"/><path d="M2 20h20"/></>,
@@ -653,8 +727,10 @@ function Icon({ name }: { name: DashboardSection | "sales" | "plus" | "search" |
     customers: <><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 8a3 3 0 0 1 0 6M18 16a4 4 0 0 1 3 4"/></>,
     shipping: <><path d="M3 6h11v10H3z"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></>,
     profile: <><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></>,
+    page: <><rect x="3" y="4" width="7" height="16" rx="1"/><rect x="14" y="4" width="7" height="7" rx="1"/><rect x="14" y="13" width="7" height="7" rx="1"/></>,
     payouts: <><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 15h2"/></>,
     bridge: <><path d="M8 7H6a4 4 0 0 0 0 8h2M16 7h2a4 4 0 0 1 0 8h-2"/><path d="M8 12h8"/></>,
+    comments: <><path d="M5 5h14v10H8l-3 3z"/><path d="M8 9h8M8 12h5"/></>,
     plus: <path d="M12 5v14M5 12h14"/>,
     search: <><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></>,
     close: <path d="m6 6 12 12M18 6 6 18"/>,
@@ -895,12 +971,11 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
   const [listingStatusFilter, setListingStatusFilter] = useState<"all" | "draft" | "active" | "archived">("all");
   const [sort, setSort] = useState("updated_desc");
   const [editingProduct, setEditingProduct] = useState<SellerListing | null>(null);
-  const [editDraft, setEditDraft] = useState({ title: "", slug: "", category: "", description: "", status: "draft" as ProductStatus });
+  const [editDraft, setEditDraft] = useState({ title: "", slug: "", category: "", description: "", shippingNote: "", compatibilityNote: "", status: "draft" as ProductStatus });
   const [editState, setEditState] = useState<RequestState>("idle");
   const [imageRemovalRequested, setImageRemovalRequested] = useState(false);
   const [editError, setEditError] = useState("");
-  const [productServiceOpen, setProductServiceOpen] = useState(false);
-  const [sellServiceOpen, setSellServiceOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const productEditorRef = useRef<HTMLElement>(null);
   const editProductTarget = useRef(initialEditProductId);
   const listRequestId = useRef(0);
@@ -997,6 +1072,8 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
   }
 
   function selectSection(next: DashboardSection) {
+    const groupId = sellerNavigationGroupId(next);
+    if (groupId) setOpenGroups((current) => ({ ...current, [groupId]: true }));
     if (initialCustomerId) {
       router.push(`/${locale}/seller-dashboard${next === "overview" ? "" : `?section=${next}`}` as Route);
       return;
@@ -1020,6 +1097,8 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
       slug: listing.product.slug,
       category: listing.product.category ?? "",
       description: listing.product.description ?? "",
+      shippingNote: listing.product.shippingNote ?? "",
+      compatibilityNote: listing.product.compatibilityNote ?? "",
       status: listing.product.status
     });
     setEditState("idle"); setEditError(""); setImageRemovalRequested(false);
@@ -1035,6 +1114,8 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
         slug: editDraft.slug.trim(),
         category: editDraft.category.trim() || null,
         description: editDraft.description.trim() || null,
+        shippingNote: editDraft.shippingNote.trim() || null,
+        compatibilityNote: editDraft.compatibilityNote.trim() || null,
         status: editDraft.status
       });
       setListings((current) => current.map((listing) => listing.id === response.data.id ? response.data : listing));
@@ -1051,7 +1132,9 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
       const response = await api.patch<SellerListing>(`/products/${editingProduct.product.id}`, {
         ...payload,
         title: editDraft.title.trim(), slug: editDraft.slug.trim(), category: editDraft.category.trim() || null,
-        description: editDraft.description.trim() || null
+        description: editDraft.description.trim() || null,
+        shippingNote: editDraft.shippingNote.trim() || null,
+        compatibilityNote: editDraft.compatibilityNote.trim() || null
       });
       setListings((current) => current.map((listing) => listing.product.id === response.data.product.id ? response.data : listing));
       setEditingProduct(response.data);
@@ -1095,34 +1178,47 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
     }
   }
 
-  const sellServiceNavigation: Array<{ id: DashboardSection; label: string }> = [
+  const canManageStorefront = user.role === "seller-admin" || user.role === "platform-admin";
+  const salesNavigation: SellerNavItem[] = [
     ...(canManageOrders
-      ? [{ id: "orders" as const, label: copy.orders }]
+      ? [{ key: "orders", label: copy.orders, icon: "orders" as const, section: "orders" as const, current: section === "orders" || section === "customers", count: newOrderCount, countLabel: `${newOrderCount.toLocaleString(locale)} ${copy.newOrders}` }]
       : []),
     ...(user.permissions?.includes("coupons_manage")
-      ? [{ id: "coupons" as const, label: copy.coupons }]
+      ? [{ key: "coupons", label: copy.coupons, icon: "coupons" as const, section: "coupons" as const, current: section === "coupons" }]
       : []),
     ...(user.permissions?.includes("products_manage")
-      ? [{ id: "marketing" as const, label: copy.marketing }]
+      ? [{ key: "marketing", label: copy.marketing, icon: "marketing" as const, section: "marketing" as const, current: section === "marketing" }]
       : []),
     ...(hasAnalytics
-      ? [{ id: "statistics" as const, label: copy.reports }]
-      : []),
-    { id: "sales-configuration", label: copy.salesConfiguration }
+      ? [{ key: "statistics", label: copy.reports, icon: "statistics" as const, section: "statistics" as const, current: section === "statistics" }]
+      : [])
   ];
-  const productServiceExpanded = section === "products" || productServiceOpen;
-  const secondaryNavigation: Array<{ id: DashboardSection; label: string }> = [
-    { id: "uploads", label: copy.uploads },
-    ...(user.role === "seller-admin" || user.role === "platform-admin"
-      ? [{ id: "profile" as const, label: copy.profile }]
+  const productNavigation: SellerNavItem[] = [
+    { key: "products", label: copy.products, icon: "products", section: "products", current: section === "products" },
+    { key: "uploads", label: copy.uploads, icon: "uploads", section: "uploads", current: section === "uploads" },
+    { key: "comments", label: copy.comments, icon: "comments", href: `/${locale}/seller-dashboard/comments` as Route, current: false }
+  ];
+  const storefrontNavigation: SellerNavItem[] = [
+    ...(canManageStorefront
+      ? [
+          { key: "profile", label: copy.profile, icon: "profile" as const, section: "profile" as const, current: section === "profile" },
+          { key: "page", label: copy.page, icon: "page" as const, section: "page" as const, current: section === "page" }
+        ]
       : []),
     ...(user.permissions?.includes("blog_manage")
-      ? [{ id: "blog" as const, label: copy.blog }]
-      : []),
-    { id: "payouts", label: copy.payouts }
+      ? [{ key: "blog", label: copy.blog, icon: "blog" as const, section: "blog" as const, current: section === "blog" }]
+      : [])
   ];
-  const isSellServiceSection = sellServiceNavigation.some((item) => item.id === section) || section === "customers" || section === "shipping" || section === "bridge";
-  const sellServiceExpanded = isSellServiceSection || sellServiceOpen;
+  const settingsNavigation: SellerNavItem[] = [
+    { key: "payouts", label: copy.payouts, icon: "payouts", section: "payouts", current: section === "payouts" },
+    { key: "sales-configuration", label: copy.salesConfiguration, icon: "sales-configuration", section: "sales-configuration", current: section === "sales-configuration" || section === "shipping" || section === "bridge" }
+  ];
+  const navigationGroups: SellerNavGroup[] = [
+    { id: "seller-sales-navigation", label: copy.sellService, icon: "sales", items: salesNavigation },
+    { id: "seller-products-navigation", label: copy.productService, icon: "products", items: productNavigation },
+    { id: "seller-storefront-navigation", label: copy.storefront, icon: "page", items: storefrontNavigation },
+    { id: "seller-settings-navigation", label: copy.shopSettings, icon: "sales-configuration", items: settingsNavigation }
+  ];
   const sectionLabel = section === "sales-configuration" ? copy.salesConfiguration : section === "statistics" ? copy.reports : copy[section];
 
   return (
@@ -1150,90 +1246,54 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
             <Icon name="overview" />
             <span>{copy.overview}</span>
           </button>
-          <div
-            className={navigationStyles.group}
-            data-active={section === "products"}
-            data-open={productServiceExpanded}
-          >
-            <button
-              className={navigationStyles.groupTrigger}
-              type="button"
-              aria-expanded={productServiceExpanded}
-              aria-controls="product-service-navigation"
-              onClick={() => setProductServiceOpen((current) => !current)}
-            >
-              <Icon name="products" />
-              <span>{copy.productService}</span>
-              <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
-            </button>
-            <div className={navigationStyles.subNavigation} id="product-service-navigation">
-              <button className={navigationStyles.item} type="button" aria-current={section === "products" ? "page" : undefined} onClick={() => selectSection("products")} data-state="default">
-                <Icon name="products" />
-                <span>{copy.products}</span>
-              </button>
-            </div>
-          </div>
-          {sellServiceNavigation.length > 0 ? <div
-            className={navigationStyles.group}
-            data-active={isSellServiceSection}
-            data-open={sellServiceExpanded}
-          >
-            <button
-              className={navigationStyles.groupTrigger}
-              type="button"
-              aria-expanded={sellServiceExpanded}
-              aria-controls="sell-service-navigation"
-              onClick={() => setSellServiceOpen((current) => !current)}
-            >
-              <Icon name="sales" />
-              <span>{copy.sellService}</span>
-              <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
-            </button>
-            <div className={navigationStyles.subNavigation} id="sell-service-navigation">
-              {sellServiceNavigation.map((item) => (
+          {navigationGroups.map((group) => {
+            if (group.items.length === 0) return null;
+            const active = group.items.some((item) => item.current);
+            const open = openGroups[group.id] ?? active;
+            return (
+              <div key={group.id} className={navigationStyles.group} data-active={active} data-open={open}>
                 <button
-                  className={navigationStyles.item}
+                  className={navigationStyles.groupTrigger}
                   type="button"
-                  key={item.id}
-                  aria-current={section === item.id || (item.id === "orders" && section === "customers") || (item.id === "sales-configuration" && (section === "shipping" || section === "bridge")) ? "page" : undefined}
-                  onClick={() => selectSection(item.id)}
-                  data-state="default"
+                  aria-expanded={open}
+                  aria-controls={group.id}
+                  onClick={() => setOpenGroups((current) => ({ ...current, [group.id]: !(current[group.id] ?? active) }))}
                 >
-                  <Icon name={item.id} />
-                  <span>{item.label}</span>
-                  {item.id === "orders" ? (
-                    <strong
-                      className={navigationStyles.count}
-                      aria-label={`${newOrderCount.toLocaleString(locale)} ${copy.newOrders}`}
-                      title={`${newOrderCount.toLocaleString(locale)} ${copy.newOrders}`}
-                    >
-                      {newOrderCount.toLocaleString(locale)}
-                    </strong>
-                  ) : null}
+                  <Icon name={group.icon} />
+                  <span>{group.label}</span>
+                  <span className={navigationStyles.chevron} aria-hidden="true">⌄</span>
                 </button>
-              ))}
-            </div>
-          </div> : null}
-          {secondaryNavigation.map((item) => (
-            <button
-              className={navigationStyles.item}
-              type="button"
-              key={item.id}
-              aria-current={section === item.id ? "page" : undefined}
-              onClick={() => selectSection(item.id)}
-              data-state="default"
-            >
-              <Icon name={item.id} />
-              <span>{item.label}</span>
-            </button>
-          ))}
-          <Link className={navigationStyles.item} href={`/${locale}/seller-dashboard/comments` as Route}>
-            <Icon name="blog" />
-            <span>{locale === "fa" ? "دیدگاه‌ها" : locale === "ar" ? "التعليقات" : "Comments"}</span>
-          </Link>
+                <div className={navigationStyles.subNavigation} id={group.id}>
+                  {group.items.map((item) => item.href ? (
+                    <Link key={item.key} className={navigationStyles.item} href={item.href}>
+                      <Icon name={item.icon} />
+                      <span>{item.label}</span>
+                    </Link>
+                  ) : (
+                    <button
+                      key={item.key}
+                      className={navigationStyles.item}
+                      type="button"
+                      aria-current={item.current ? "page" : undefined}
+                      onClick={() => item.section && selectSection(item.section)}
+                      data-state="default"
+                    >
+                      <Icon name={item.icon} />
+                      <span>{item.label}</span>
+                      {item.count !== undefined ? (
+                        <strong className={navigationStyles.count} aria-label={item.countLabel} title={item.countLabel}>
+                          {item.count.toLocaleString(locale)}
+                        </strong>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
           <Link className={navigationStyles.item} href={`/${locale}/account` as Route}>
-            <Icon name="overview" />
-            <span>{locale === "fa" ? "حساب شخصی و خریدها" : locale === "ar" ? "حسابي ومشترياتي" : "My account and purchases"}</span>
+            <Icon name="profile" />
+            <span>{copy.accountPurchases}</span>
           </Link>
           <UploadCenterNavigation locale={locale} />
         </nav>
@@ -1370,6 +1430,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
           {section === "shipping" ? <SellerShippingProfileWorkspace locale={locale} /> : null}
 
           {section === "profile" ? <SellerExpertProfileWorkspace locale={locale} /> : null}
+          {section === "page" ? <SellerExpertPageWorkspace locale={locale} /> : null}
 
           {section === "payouts" ? (
             <section className={styles.unavailable} aria-labelledby="unavailable-title">
@@ -1415,6 +1476,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
               <label className={styles.field}><span>{copy.category}</span><input maxLength={100} value={editDraft.category} onChange={(event) => setEditDraft((current) => ({ ...current, category: event.target.value }))} /></label>
               <div className={styles.field}><span>{copy.description}</span><ProductDescriptionEditor key={editingProduct.product.id} locale={locale} label={copy.description} value={editDraft.description} disabled={editState === "loading"} onChange={(description) => setEditDraft((current) => ({ ...current, description }))} /></div>
               <ProductDescriptionTemplatePicker locale={locale} title={editDraft.title} hasDescription={Boolean(editDraft.description.trim())} disabled={editState === "loading"} onApply={(description) => setEditDraft((current) => ({ ...current, description }))} />
+              {editingProduct.product.type === "physical" ? <fieldset className={styles.field}><legend>{copy.buyerNotes}</legend><p>{copy.buyerNotesHint}</p><label className={styles.field}><span>{copy.shippingNote}</span><textarea maxLength={2000} rows={3} value={editDraft.shippingNote} onChange={(event) => setEditDraft((current) => ({ ...current, shippingNote: event.target.value }))} aria-describedby="edit-shipping-note-hint" /><small id="edit-shipping-note-hint">{copy.shippingNoteHint}</small></label><label className={styles.field}><span>{copy.compatibilityNote}</span><textarea maxLength={2000} rows={3} value={editDraft.compatibilityNote} onChange={(event) => setEditDraft((current) => ({ ...current, compatibilityNote: event.target.value }))} aria-describedby="edit-compatibility-note-hint" /><small id="edit-compatibility-note-hint">{copy.compatibilityNoteHint}</small></label></fieldset> : null}
               <LiveSeoPanel key={editingProduct.product.id} locale={locale} input={{ kind: "product", title: editDraft.title, body: editDraft.description, hasCover: Boolean(editingProduct.product.image) }} />
               <label className={styles.field}><span>{copy.publishState}</span><select value={editDraft.status} onChange={(event) => setEditDraft((current) => ({ ...current, status: event.target.value as ProductStatus }))}><option value="draft">{copy.draft}</option><option value="active">{copy.active}</option><option value="pending_review">{copy.pending_review}</option><option value="archived">{copy.archived}</option></select></label>
               <footer><button className={styles.secondaryButton} type="button" onClick={() => setEditingProduct(null)}>{copy.cancel}</button><button className={styles.primaryButton} type="submit" disabled={editState === "loading"}>{editState === "loading" ? copy.savingChanges : copy.saveChanges}</button></footer>
@@ -1576,6 +1638,8 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
       slug: draft.slug,
       ...(draft.category.trim() ? { category: draft.category.trim() } : {}),
       ...(draft.description.trim() ? { description: draft.description.trim() } : {}),
+      ...(draft.type === "physical" && draft.shippingNote.trim() ? { shippingNote: draft.shippingNote.trim() } : {}),
+      ...(draft.type === "physical" && draft.compatibilityNote.trim() ? { compatibilityNote: draft.compatibilityNote.trim() } : {}),
       kind: draft.kind,
       type: draft.type,
       status: draft.status,
@@ -1642,6 +1706,7 @@ export function SellerProductCreation({ locale, user }: SellerProductCreationPro
               <legend>{formCopy.delivery}</legend>
               <div className={creation.typeOptions}>{productTypes.map((type) => <label key={type} className={creation.typeOption} data-selected={draft.type === type}><input type="radio" name="product-type" value={type} checked={draft.type === type} onChange={() => updateDraft("type", type)} /><DesignIcon name={productIcons[type]} /><strong>{copy[type]}</strong><span>{formCopy[type]}</span><i aria-hidden="true">{draft.type === type ? <DesignIcon name="check" /> : null}</i></label>)}</div>
             </fieldset>
+            {draft.type === "physical" ? <section className={creation.card} aria-labelledby="product-buyer-notes"><header className={creation.sectionHeading}><span><DesignIcon name="file" /></span><div><h2 id="product-buyer-notes">{copy.buyerNotes}</h2><p>{copy.buyerNotesHint}</p></div></header><label className={styles.field}><span>{copy.shippingNote}<small>{formCopy.optional}</small></span><textarea maxLength={2000} rows={3} value={draft.shippingNote} onChange={(event) => updateDraft("shippingNote", event.target.value)} aria-describedby="create-shipping-note-hint" /><small id="create-shipping-note-hint">{copy.shippingNoteHint}</small></label><label className={styles.field}><span>{copy.compatibilityNote}<small>{formCopy.optional}</small></span><textarea maxLength={2000} rows={3} value={draft.compatibilityNote} onChange={(event) => updateDraft("compatibilityNote", event.target.value)} aria-describedby="create-compatibility-note-hint" /><small id="create-compatibility-note-hint">{copy.compatibilityNoteHint}</small></label></section> : null}
             <section className={creation.card} aria-labelledby="product-pricing">
               <header className={creation.sectionHeading}><span><DesignIcon name="layers" /></span><div><h2 id="product-pricing">{formCopy.configuration}</h2><p>{formCopy.configurationHint}</p></div></header>
               <div className={creation.kindOptions} role="group" aria-label={copy.productKind}>{(["simple", "variable"] as const).map((kind) => <button key={kind} type="button" aria-pressed={draft.kind === kind} onClick={() => changeKind(kind)}><strong>{copy[kind]}</strong><span>{formCopy[kind]}</span></button>)}</div>

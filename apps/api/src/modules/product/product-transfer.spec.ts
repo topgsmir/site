@@ -13,7 +13,7 @@ const listingId = "00000000-0000-4000-8000-000000000005";
 
 function product(sold = false) {
   return {
-    title: "Test product", slug: "test-product", description: null, category_record: null,
+    title: "Test product", slug: "test-product", description: null, shipping_note: null, compatibility_note: null, category_record: null,
     status: "active", type: "digital", created_by: { id: sourceId, shop_name: "Source" },
     bridge_binding: null,
     listings: [{ id: listingId, seller_id: sourceId, offers: [{ _count: { order_items: sold ? 1 : 0, inventory_reservations: 0 } }] }]

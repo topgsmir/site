@@ -13,6 +13,7 @@ const copy = {
     explore: "دسترسی سریع",
     products: "محصولات",
     services: "خدمات آنلاین",
+    experts: "کارشناسان",
     blog: "مجله تعمیرات",
     contact: "ارتباط با ما",
     rules: "قوانین و مقررات",
@@ -31,6 +32,7 @@ const copy = {
     explore: "Explore",
     products: "Products",
     services: "Online services",
+    experts: "Experts",
     blog: "Repair journal",
     contact: "Contact us",
     rules: "Rules and regulations",
@@ -49,6 +51,7 @@ const copy = {
     explore: "روابط سريعة",
     products: "المنتجات",
     services: "الخدمات عن بُعد",
+    experts: "الخبراء",
     blog: "مجلة الصيانة",
     contact: "تواصل معنا",
     rules: "القواعد والأحكام",
@@ -79,7 +82,8 @@ export function PublicFooter({ locale, content, editable = false }: PublicFooter
   ];
   const links = [
     { href: `/${locale}/products`, label: c.products },
-    { href: `/${locale}/products?type=service`, label: c.services },
+    { href: `/${locale}/remote`, label: c.services },
+    { href: `/${locale}/experts`, label: c.experts },
     { href: `/${locale}/blog`, label: c.blog },
     { href: `/${locale}/contact-us`, label: c.contact },
     { href: `/${locale}/rules`, label: c.rules }

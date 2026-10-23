@@ -873,6 +873,7 @@ model sellers {
   profile_name         String?                       @map("profile_name") @db.VarChar(120)
   profile_specialty    String?                       @map("profile_specialty") @db.VarChar(160)
   profile_bio          String?                       @map("profile_bio") @db.Text
+  page_blocks          Json                          @default("[]") @map("page_blocks")
   invited              Boolean                       @default(false) @map("invited")
   approved             Boolean                       @default(false) @map("approved")
   commission           Decimal                       @default(0.1) @map("commission") @db.Decimal(9, 6)
@@ -1351,6 +1352,8 @@ model products {
   title                String                   @map("title") @db.VarChar(200)
   slug                 String                   @unique @map("slug") @db.VarChar(200)
   description          String?                  @map("description")
+  shipping_note        String?                  @map("shipping_note") @db.VarChar(2000)
+  compatibility_note   String?                  @map("compatibility_note") @db.VarChar(2000)
   tags                 String[]                 @default([])
   category_id          String?                  @db.Uuid
   category_record      product_categories?      @relation(fields: [category_id], references: [id], onDelete: Restrict)

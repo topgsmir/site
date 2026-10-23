@@ -26,6 +26,31 @@ function createService(result: typeof order | null = order) {
         receivedWhere = query.where;
         return result;
       }
+    },
+    sellers: {
+      findFirst: async () => null
+    }
+  } as unknown as PrismaService;
+  const settings = {
+    ticketCredentials: async () => ({ secret: "test-secret" })
+  } as unknown as GoghdiSettingsService;
+  return { service: new GoghdiService(prisma, settings), where: () => receivedWhere };
+}
+
+function createAgentService(seller: {
+  id: string;
+  shop_name: string;
+  profile_name: string | null;
+  goghdi_agent_id: string | null;
+} | null) {
+  let receivedWhere: unknown;
+  const prisma = {
+    orders: { findFirst: async () => null },
+    sellers: {
+      findFirst: async (query: { where: unknown }) => {
+        receivedWhere = query.where;
+        return seller;
+      }
     }
   } as unknown as PrismaService;
   const settings = {
@@ -110,5 +135,46 @@ describe("GoghdiService", () => {
     const result = await fixture.service.signOrderTicket(order.id, "buyer-1", order.items[0].id);
     assert.deepEqual(result.options.agentIds, [seller.goghdi_agent_id]);
     assert.equal(JSON.parse(result.options.chatInfo).sellerId, seller.id);
+  });
+
+  it("signs a support ticket for a public expert with a Goghdi agent", async () => {
+    const seller = {
+      id: "123e4567-e89b-42d3-a456-426614174099",
+      shop_name: "Repair Lab",
+      profile_name: "مریم رضایی",
+      goghdi_agent_id: "507f1f77bcf86cd799439011"
+    };
+    const fixture = createAgentService(seller);
+    const result = await fixture.service.signAgentTicket(seller.id);
+
+    assert.deepEqual(fixture.where(), {
+      id: seller.id,
+      invited: false,
+      approved: true,
+      suspended_at: null
+    });
+    assert.equal(result.options.productId, `seller:${seller.id}`);
+    assert.equal(result.options.category, "support");
+    assert.deepEqual(result.options.agentIds, [seller.goghdi_agent_id]);
+    assert.deepEqual(JSON.parse(result.options.chatInfo), { sellerId: seller.id, source: "remote" });
+    assert.equal(
+      result.proof.signature,
+      createHmac("sha256", "test-secret")
+        .update(`${result.proof.timestamp}.${result.proof.nonce}.${JSON.stringify(result.options)}`)
+        .digest("hex")
+    );
+  });
+
+  it("rejects unknown or chat-unready experts for agent tickets", async () => {
+    await assert.rejects(() => createAgentService(null).service.signAgentTicket("123e4567-e89b-42d3-a456-426614174099"), /not found/i);
+    await assert.rejects(
+      () => createAgentService({
+        id: "123e4567-e89b-42d3-a456-426614174099",
+        shop_name: "Repair Lab",
+        profile_name: null,
+        goghdi_agent_id: null
+      }).service.signAgentTicket("123e4567-e89b-42d3-a456-426614174099"),
+      /seller is not configured/i
+    );
   });
 });

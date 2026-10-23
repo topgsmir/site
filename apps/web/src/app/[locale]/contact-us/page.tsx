@@ -30,7 +30,8 @@ async function fetchExperts(): Promise<PublicExpertSummary[] | null> {
         typeof expert.profilePicture.url === "string" && typeof expert.profilePicture.width === "number" &&
         typeof expert.profilePicture.height === "number"
       )) &&
-      Number.isSafeInteger(expert.activeProductCount) && expert.activeProductCount >= 0
+      Number.isSafeInteger(expert.activeProductCount) && expert.activeProductCount >= 0 &&
+      typeof expert.chatAvailable === "boolean"
     )) return null;
     return data;
   } catch {

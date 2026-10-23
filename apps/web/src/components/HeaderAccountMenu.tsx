@@ -10,12 +10,12 @@ import { LogoutButton } from "./auth/LogoutButton";
 import styles from "./HeaderAccountMenu.module.css";
 
 const copy = {
-  fa: { account: "حساب من", login: "ورود به حساب", orders: "سفارش‌ها", downloads: "دانلودها", wallet: "کیف پول", settings: "تنظیمات حساب" },
-  en: { account: "My account", login: "Sign in", orders: "Orders", downloads: "Downloads", wallet: "Wallet", settings: "Account settings" },
-  ar: { account: "حسابي", login: "تسجيل الدخول", orders: "الطلبات", downloads: "التنزيلات", wallet: "المحفظة", settings: "إعدادات الحساب" }
+  fa: { account: "حساب من", login: "ورود به حساب", orders: "سفارش‌ها", downloads: "دانلودها", wallet: "کیف پول", settings: "تنظیمات حساب", dashboard: "داشبورد مدیریت" },
+  en: { account: "My account", login: "Sign in", orders: "Orders", downloads: "Downloads", wallet: "Wallet", settings: "Account settings", dashboard: "Management dashboard" },
+  ar: { account: "حسابي", login: "تسجيل الدخول", orders: "الطلبات", downloads: "التنزيلات", wallet: "المحفظة", settings: "إعدادات الحساب", dashboard: "لوحة الإدارة" }
 };
 
-export function HeaderAccountMenu({ locale, accountHref }: { locale: Locale; accountHref?: string | null }) {
+export function HeaderAccountMenu({ locale, accountHref, dashboardHref }: { locale: Locale; accountHref?: string | null; dashboardHref?: string | null }) {
   const c = copy[locale];
   const detailsRef = useRef<HTMLDetailsElement>(null);
   const position = useCallback(() => {
@@ -55,6 +55,7 @@ export function HeaderAccountMenu({ locale, accountHref }: { locale: Locale; acc
         <Link href={`/${locale}/account/downloads` as Route} onClick={close}><AccountIcon name="download" /><span>{c.downloads}</span></Link>
         <Link href={`/${locale}/account/wallet` as Route} onClick={close}><AccountIcon name="wallet" /><span>{c.wallet}</span></Link>
         <Link href={`/${locale}/account/settings` as Route} onClick={close}><DesignIcon name="settings" /><span>{c.settings}</span></Link>
+        {dashboardHref ? <Link href={dashboardHref as Route} onClick={close}><AccountIcon name="overview" /><span>{c.dashboard}</span></Link> : null}
         <LogoutButton locale={locale} />
       </>}
     </nav>

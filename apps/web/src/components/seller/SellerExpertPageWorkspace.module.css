@@ -1,0 +1,118 @@
+.workspace { display: grid; gap: 12px; }
+.header { display: flex; align-items: end; justify-content: space-between; gap: 12px 16px; }
+.header h1 { font-size: 1.25rem; font-weight: 650; line-height: 1.3; }
+.header p { max-width: 62ch; margin-top: 4px; color: var(--color-dashboard-muted); font-size: .875rem; line-height: 1.6; }
+.links { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.links a { color: var(--color-dashboard-focus); font-size: .875rem; font-weight: 700; }
+.form { display: grid; gap: 12px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; }
+.toolbar button, .status button, .picker > button, .addProduct {
+  min-height: 40px;
+  padding-inline: 12px;
+  border: 1px solid var(--color-dashboard-rule);
+  border-radius: 8px;
+  color: var(--color-dashboard-ink);
+  background: var(--color-dashboard-paper);
+  font: inherit;
+  font-size: .875rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.toolbar button:first-child, .toolbar button[type="submit"], .status button {
+  border-color: transparent;
+  color: var(--color-dashboard-accent-ink);
+  background: var(--color-dashboard-accent);
+}
+.toolbar button:disabled, .blockActions button:disabled, .picker button:disabled { cursor: not-allowed; opacity: .55; }
+.feedback { min-height: 1.25rem; color: var(--color-dashboard-success); font-size: .8125rem; }
+.feedback[data-error="true"] { color: var(--color-dashboard-error); }
+.empty, .status, .hint, .picker p { color: var(--color-dashboard-muted); font-size: .875rem; line-height: 1.6; }
+.blocks, .products, .picker ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.block {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--color-dashboard-rule);
+  border-radius: 10px;
+  background: var(--color-dashboard-surface);
+}
+.block[data-dragging="true"] { opacity: .55; }
+.block[data-drop="true"], .products li[data-drop="true"] { outline: 2px solid var(--color-dashboard-focus); outline-offset: 2px; }
+.blockBar, .products li, .picker li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.blockBar > span { font-size: .8125rem; font-weight: 700; }
+.blockActions { display: flex; gap: 4px; margin-inline-start: auto; }
+.blockActions button, .products li > button:last-child, .picker li button {
+  min-width: 40px;
+  min-height: 40px;
+  padding-inline: 8px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--color-dashboard-ink-soft);
+  background: transparent;
+  font: inherit;
+  font-size: .8125rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.products li > button:last-child, .blockActions button:last-child { color: var(--color-dashboard-error); }
+.grip {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+}
+.grip span, .grip span::before, .grip span::after {
+  display: block;
+  width: 14px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-dashboard-muted);
+  content: "";
+}
+.grip span { position: relative; }
+.grip span::before, .grip span::after { position: absolute; inset-inline: 0; }
+.grip span::before { top: -5px; }
+.grip span::after { top: 5px; }
+.grip:active { cursor: grabbing; }
+.form label { color: var(--color-dashboard-ink-soft); font-size: .8125rem; font-weight: 700; }
+.form input, .form textarea {
+  width: 100%;
+  border: 1px solid var(--color-dashboard-rule);
+  border-radius: 8px;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  color: var(--color-dashboard-ink);
+  background: var(--color-dashboard-paper);
+  font: inherit;
+  font-weight: 500;
+}
+.form input { min-height: 40px; padding-inline: 10px; }
+.form textarea { min-height: 6.5rem; padding: 8px 10px; resize: vertical; line-height: 1.7; }
+.form input:focus-visible, .form textarea:focus-visible, .grip:focus-visible, .toolbar button:focus-visible, .blockActions button:focus-visible, .addProduct:focus-visible, .picker button:focus-visible, .links a:focus-visible {
+  outline: 2px solid var(--color-dashboard-focus);
+  outline-offset: 2px;
+}
+.products li {
+  min-height: 40px;
+  padding-inline-end: 4px;
+  border: 1px solid var(--color-dashboard-rule);
+  border-radius: 8px;
+  background: var(--color-dashboard-paper);
+}
+.products li[data-dragging="true"] { opacity: .55; }
+.products strong, .picker li span { min-width: 0; overflow-wrap: anywhere; font-size: .875rem; font-weight: 650; }
+.products em, .picker em { margin-inline-start: 6px; color: var(--color-dashboard-muted); font-size: .75rem; font-style: normal; font-weight: 650; }
+.picker { display: grid; gap: 8px; padding: 10px; border-radius: 8px; background: var(--color-dashboard-surface-raised); }
+.picker li { justify-content: space-between; gap: 10px; }
+.picker li button { flex: 0 0 auto; }
+.status { display: grid; justify-items: start; gap: 10px; }
+@media (max-width: 720px) {
+  .header { align-items: start; flex-direction: column; }
+  .grip, .blockActions button, .products li > button:last-child, .picker li button, .toolbar button { min-width: 44px; min-height: 44px; }
+}

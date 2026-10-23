@@ -2,7 +2,8 @@
 .header { display: flex; align-items: end; justify-content: space-between; gap: 1rem; }
 .header h1 { font-family: var(--font-dashboard-display); font-size: var(--text-dashboard-lg); }
 .header p { max-width: 42rem; margin-top: .45rem; color: var(--color-dashboard-muted); font-size: var(--text-dashboard-sm); line-height: 1.8; }
-.header a { flex: 0 0 auto; color: var(--color-dashboard-focus); font-size: var(--text-dashboard-sm); font-weight: 700; }
+.headerLinks { display: flex; flex-wrap: wrap; gap: .35rem 1rem; }
+.headerLinks a { flex: 0 0 auto; color: var(--color-dashboard-focus); font-size: var(--text-dashboard-sm); font-weight: 700; }
 .form { display: grid; gap: 1rem; padding: 1.25rem; border: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); border-radius: var(--radius-dashboard-lg); background: var(--color-dashboard-surface); }
 .pictureField { min-width: 0; padding: 0 0 1rem; border: 0; border-bottom: var(--rule-dashboard-thin) solid var(--color-dashboard-rule); }
 .pictureField legend { margin-bottom: .65rem; color: var(--color-dashboard-ink-soft); font-size: var(--text-dashboard-sm); font-weight: 700; }

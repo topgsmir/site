@@ -80,7 +80,7 @@ export interface PublicSellerOffer {
   currency: string;
   seller: { id: string; shopName: string };
   digital?: { maxDownloads: number };
-  physical?: { inStock: boolean; weightGrams: number };
+  physical?: { inStock: boolean; stock: number; weightGrams: number };
   service?: { serviceType: string; estimatedHours: number; inputs: ServiceInputDefinition[] };
 }
 
@@ -99,6 +99,8 @@ export interface PublicProduct {
   title: string;
   slug: string;
   description: string | null;
+  shippingNote: string | null;
+  compatibilityNote: string | null;
   category: string | null;
   kind: ProductKind;
   type: ProductType;
@@ -158,6 +160,8 @@ export interface SellerListing {
     title: string;
     slug: string;
     description: string | null;
+    shippingNote: string | null;
+    compatibilityNote: string | null;
     category: string | null;
     kind: ProductKind;
     type: ProductType;
@@ -373,6 +377,8 @@ export interface AdminProductSummary {
   title: string;
   slug: string;
   description: string | null;
+  shippingNote: string | null;
+  compatibilityNote: string | null;
   tags: string[];
   category: string | null;
   kind: ProductKind;
@@ -422,6 +428,8 @@ export interface ProductChangeSnapshot {
   title: string;
   slug?: string;
   description: string | null;
+  shippingNote?: string | null;
+  compatibilityNote?: string | null;
   tags?: string[];
   category: string | null;
   status: ProductStatus;
@@ -737,10 +745,56 @@ export interface PublicExpertSummary {
   specialty: string | null;
   profilePicture: SellerProfilePicture | null;
   activeProductCount: number;
+  /** True when the seller has a Goghdi agent ID and can receive signed support tickets. */
+  chatAvailable: boolean;
 }
+
+export interface ExpertPageTextBlock {
+  id: string;
+  type: "text";
+  title: string;
+  body: string;
+}
+
+export interface ExpertPageProductsBlock {
+  id: string;
+  type: "products";
+  title: string;
+  productIds: string[];
+}
+
+export type ExpertPageBlock = ExpertPageTextBlock | ExpertPageProductsBlock;
+
+export interface SellerPageProductChoice {
+  id: string;
+  title: string;
+  slug: string;
+  status: ProductStatus;
+  type: ProductType;
+}
+
+export interface SellerExpertPage {
+  blocks: ExpertPageBlock[];
+  products: SellerPageProductChoice[];
+}
+
+export interface SellerPageProductChoices {
+  items: SellerPageProductChoice[];
+  nextCursor: string | null;
+}
+
+export interface PublicExpertProductsBlock {
+  id: string;
+  type: "products";
+  title: string;
+  products: PublicProductSummary[];
+}
+
+export type PublicExpertPageBlock = ExpertPageTextBlock | PublicExpertProductsBlock;
 
 export interface PublicExpertProfile extends PublicExpertSummary {
   bio: string | null;
+  page: PublicExpertPageBlock[];
 }
 
 export interface AdminSellerShippingProfile extends SellerShippingProfile {
@@ -1498,4 +1552,4 @@ export interface ContentAiResult {
   draft: ContentAiDraft;
 }
 export type { SeoLocale, SeoLocaleDefaults, SeoPageOverride, SeoRedirect, SeoConfiguration, AdminSeoSettings, SeoHistoryEntry } from "./seo";
-export { defaultTemplateConfiguration, templateIcons, type TemplateLocale, type TemplateIcon, type TemplateMenuItem, type TemplateConfiguration, type TemplateSettingsDocument } from "./template.ts";
+export { defaultTemplateConfiguration, migrateLegacyTemplateNavigation, templateIcons, type TemplateLocale, type TemplateIcon, type TemplateMenuItem, type TemplateConfiguration, type TemplateSettingsDocument } from "./template.ts";

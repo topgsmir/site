@@ -217,7 +217,8 @@ describe("CheckoutService quotes", () => {
         assert.ok(error instanceof Error && "publicDetails" in error);
         assert.deepEqual((error as Error & { publicDetails: unknown }).publicDetails, {
           code: "CART_STOCK_INSUFFICIENT",
-          offerIds: ["00000000-0000-4000-8000-000000000104"]
+          offerIds: ["00000000-0000-4000-8000-000000000104"],
+          availableStock: 1
         });
         return /enough stock/i.test(error.message);
       }

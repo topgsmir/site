@@ -15,7 +15,7 @@ type OfferOption = {
   unavailable?: boolean;
 };
 
-export function OfferPicker({ offers, value, onChange, locale, label, sellerLabel, unavailableLabel }: {
+export function OfferPicker({ offers, value, onChange, locale, label, sellerLabel, unavailableLabel, priceInSummary = false }: {
   offers: OfferOption[];
   value: string;
   onChange: (value: string) => void;
@@ -23,6 +23,8 @@ export function OfferPicker({ offers, value, onChange, locale, label, sellerLabe
   label: string;
   sellerLabel: string;
   unavailableLabel?: string;
+  /** When true, single-offer cards omit the price (shown in the purchase summary instead). */
+  priceInSummary?: boolean;
 }) {
   const name = useId();
   if (!offers.length) return null;
@@ -34,16 +36,16 @@ export function OfferPicker({ offers, value, onChange, locale, label, sellerLabe
         <bdi className={styles.variant}>{offer.variant}</bdi>
         <span className={styles.seller}>{sellerLabel}<span aria-hidden="true"> · </span><bdi>{offer.seller}</bdi></span>
       </span>
-      <span className={styles.amount}>
+      {selectable || !priceInSummary ? <span className={styles.amount}>
         <span className={styles.price} dir="ltr"><bdi>{formatCurrencyAmount(offer.price, offer.currency, locale)}</bdi><bdi className={styles.currency}>{currencyLabel(offer.currency)}</bdi></span>
         {offer.unavailable && unavailableLabel ? <span className={styles.unavailable}>{unavailableLabel}</span> : null}
-      </span>
+      </span> : null}
     </>;
   }
 
   // A single offer is information, not a selection the buyer needs to make.
   if (offers.length === 1) {
-    return <div className={styles.single} aria-label={label}>{content(offers[0]!, true, false)}</div>;
+    return <div className={styles.single} aria-label={label} data-compact={priceInSummary || undefined} data-price-in-summary={priceInSummary || undefined}>{content(offers[0]!, true, false)}</div>;
   }
 
   return <fieldset className={styles.picker}>

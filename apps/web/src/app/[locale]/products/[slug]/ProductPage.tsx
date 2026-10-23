@@ -24,6 +24,8 @@ import { productPageCopy } from "./product-copy";
 import { DigitalProductHeading, DigitalProductDescription } from "@/components/product/DigitalProductDetails";
 import { digitalProductCopy, downloadAllowance } from "@/components/product/digital-product-copy";
 import { ProductDescription } from "@/components/product/ProductDescription";
+import { isColorOptionName, resolveColorSwatch } from "@/lib/product-color";
+import { listingHref } from "@/lib/seo";
 
 type ProductCopy = ReturnType<typeof getDictionary>["product"];
 type ButtonState = "idle" | "loading" | "success" | "error";
@@ -75,6 +77,13 @@ function buttonLabel(state: ButtonState, unavailable: boolean, copy: ProductCopy
   return copy.addToCart;
 }
 
+const CART_QUANTITY_CAP = 100;
+
+function maxPurchasableQuantity(offer: Pick<PublicProductOffer, "physical"> | undefined) {
+  if (!offer?.physical) return CART_QUANTITY_CAP;
+  return Math.max(0, Math.min(CART_QUANTITY_CAP, offer.physical.stock));
+}
+
 export function ProductPage({
   product,
   locale,
@@ -107,7 +116,9 @@ export function ProductPage({
   const [cartError, setCartError] = useState("");
   const [downloadChoices, setDownloadChoices] = useState<Array<{ href: string; available: boolean }>>([]);
   const [accessOrderId, setAccessOrderId] = useState<string | null>(null);
+  const [specsExpanded, setSpecsExpanded] = useState(false);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const colorOption = useMemo(() => product.options.find((option) => isColorOptionName(option.name)), [product.options]);
   useEffect(() => {
     if (!visitId) return;
     rememberMarketingVisit(product.id, visitId);
@@ -117,10 +128,24 @@ export function ProductPage({
     if (changed) writeCart(items);
   }, [product.id, visitId]);
   const selectedOffer = offers.find((offer) => offer.id === selectedOfferId) ?? firstAvailableOffer;
+  const selectedColor = selectedOffer?.variantOptions.find((option) => isColorOptionName(option.name))?.value
+    ?? colorOption?.values[0]?.value
+    ?? "";
+  const colorScopedOffers = colorOption && selectedColor
+    ? offers.filter((offer) => offer.variantOptions.some((option) => isColorOptionName(option.name) && option.value === selectedColor))
+    : offers;
+  const pickerOffers = colorOption ? colorScopedOffers : offers;
   const unavailable = !selectedOffer || selectedOffer.physical?.inStock === false;
+  const maxQuantity = maxPurchasableQuantity(selectedOffer);
+
+  function selectColor(value: string) {
+    const match = offers.find((offer) =>
+      offer.variantOptions.some((option) => isColorOptionName(option.name) && option.value === value) && offer.physical?.inStock !== false
+    ) ?? offers.find((offer) => offer.variantOptions.some((option) => isColorOptionName(option.name) && option.value === value));
+    if (match) selectOffer(match.id);
+  }
   const isFreeDigital = isDigital && Boolean(selectedOffer && /^0(?:\.0+)?$/.test(selectedOffer.price));
   const productImage = product.image?.variants.find((item) => item.name === "large") ?? product.image?.variants[0];
-  const requirements = isBridge ? product.bridge?.fields ?? [] : selectedOffer?.service?.inputs ?? [];
   const total = selectedOffer ? isFreeDigital ? d.free : formatPrice(multiplyCurrencyAmount(selectedOffer.price, quantity), selectedOffer.currency, locale) : "";
   const actionLabel = isDigital ? buttonState === "loading" ? d.checking : d.download : buttonState === "success" ? c.viewCart : buttonState === "idle" && isService
     ? unavailable ? c.unavailable : c.orderService : buttonLabel(buttonState, unavailable, copy);
@@ -128,7 +153,9 @@ export function ProductPage({
   function selectOffer(id: string) {
     if (isDigital && buttonState === "loading") return;
     if (resetTimer.current) clearTimeout(resetTimer.current);
+    const nextOffer = offers.find((offer) => offer.id === id);
     setSelectedOfferId(id);
+    setQuantity((current) => Math.min(current, Math.max(1, maxPurchasableQuantity(nextOffer))));
     setButtonState("idle");
     setCartError("");
     setDownloadChoices([]);
@@ -143,6 +170,11 @@ export function ProductPage({
     if (downloadChoices.length > 1) document.getElementById("download-choices")?.focus();
   }, [downloadChoices]);
 
+  useEffect(() => {
+    if (!isPhysical || maxQuantity < 1) return;
+    setQuantity((current) => (current > maxQuantity ? maxQuantity : current));
+  }, [isPhysical, maxQuantity]);
+
   function addToCart(goToCart = false) {
     if (buttonState === "success") {
       router.push(`/${locale}/cart`);
@@ -155,7 +187,8 @@ export function ProductPage({
     try {
       const items = readCart();
       const existing = items.find((item) => item.offerId === selectedOffer.id);
-      if ((existing?.quantity ?? 0) + (isDigital && existing ? 0 : quantity) > 100) {
+      const nextQuantity = (existing?.quantity ?? 0) + (isDigital && existing ? 0 : quantity);
+      if (nextQuantity > maxPurchasableQuantity(selectedOffer)) {
         setCartError(c.limit);
         setButtonState("error");
         return;
@@ -272,10 +305,10 @@ export function ProductPage({
       value: downloadAllowance(selectedOffer.digital.maxDownloads, locale)
     });
   }
-  if (selectedOffer?.physical) {
+  if (selectedOffer?.physical && selectedOffer.physical.weightGrams > 0) {
     fulfilmentRows.push({
       label: copy.weight,
-      value: `${selectedOffer.physical.weightGrams} ${copy.grams}`
+      value: `${new Intl.NumberFormat(locale).format(selectedOffer.physical.weightGrams)} ${copy.grams}`
     });
   }
   if (selectedOffer?.service) {
@@ -284,6 +317,18 @@ export function ProductPage({
       { label: copy.estimatedTime, value: `${selectedOffer.service.estimatedHours} ${copy.hours}` }
     );
   }
+  const featureRows: Array<{ label: string; value: string }> = [
+    { label: copy.productType, value: typeLabel },
+    { label: copy.category, value: category },
+    { label: copy.fulfilment, value: fulfilmentLabel(product, copy) },
+    ...fulfilmentRows,
+    ...(selectedOffer?.variantOptions
+      .filter((option) => !isColorOptionName(option.name))
+      .map((option) => ({ label: option.name, value: option.value })) ?? [])
+  ];
+  const featurePreviewCount = 4;
+  const visibleFeatures = isPhysical && !specsExpanded ? featureRows.slice(0, featurePreviewCount) : featureRows;
+  const hasMoreFeatures = isPhysical && featureRows.length > featurePreviewCount;
 
   const purchaseAction = <button
     className={styles.addButton}
@@ -334,34 +379,86 @@ export function ProductPage({
         </nav>
 
         {isDigital ? <DigitalProductHeading product={product} locale={locale} /> : null}
-        {isPhysical ? <header className={styles.physicalHeading}>
-          <p className={styles.eyebrow}>{c.equipment} <span> / {category}</span></p>
-          <h1 id="product-title">{product.title}</h1>
-          <p>{c.physicalIntro}</p>
-        </header> : null}
 
         <section className={styles.hero} aria-labelledby="product-title">
           <div className={styles.productIntro}>
             {isDigital ? <DigitalProductDescription description={product.description} locale={locale} /> : isPhysical ? <figure className={styles.mediaStage}>
-              <span className={styles.mediaCategory}>{category}</span>
               {productImage ? <Image className={styles.equipmentImage} unoptimized src={productImage.url} alt={product.title} width={productImage.width} height={productImage.height} priority /> : <div className={styles.imagePlaceholder}><DesignIcon name="layers" /><p>{c.noImage}</p></div>}
-              <figcaption>{c.imageCaption}<span>{typeLabel}</span></figcaption>
-            </figure> : <>
-              <p className={styles.productClass}>{isService ? c.expertise : category} · {typeLabel}</p>
+            </figure> : isService ? <header className={styles.serviceIntro}>
+              <p className={styles.eyebrow}>
+                <Link href={listingHref(`/${locale}/products`, { type: product.type }) as Route}>{c.expertise}</Link>
+                <span aria-hidden="true"> · </span>
+                {product.categoryId ? (
+                  <Link href={listingHref(`/${locale}/products`, { type: product.type, categoryId: product.categoryId }) as Route}>{category}</Link>
+                ) : (
+                  <span>{category}</span>
+                )}
+              </p>
+              <div className={styles.serviceTitleRow}>
+                <h1 id="product-title">{product.title}</h1>
+                {productImage ? <Image className={styles.serviceImage} unoptimized src={productImage.url} alt="" width={productImage.width} height={productImage.height} priority /> : null}
+              </div>
+              <p className={styles.serviceLead}>{c.serviceIntro}</p>
+            </header> : <>
+              <p className={styles.productClass}>{category} · {typeLabel}</p>
               <h1 id="product-title">{product.title}</h1>
-              {isService ? <p className={styles.serviceLead}>{c.serviceIntro}</p> : null}
-              {productImage ? <Image className={isService ? styles.serviceImage : styles.productImage} unoptimized src={productImage.url} alt={product.title} width={productImage.width} height={productImage.height} priority /> : null}
+              {productImage ? <Image className={styles.productImage} unoptimized src={productImage.url} alt={product.title} width={productImage.width} height={productImage.height} priority /> : null}
             </>}
             {isService ? <section className={styles.workflow} aria-labelledby="workflow-title">
               <h2 id="workflow-title">{c.workflow}</h2>
               <ol>{c.steps.map((step, index) => <li key={step}><span className={styles.stepNumber} aria-hidden="true">{new Intl.NumberFormat(locale).format(index + 1).padStart(locale === "en" ? 2 : 1, "0")}</span><div><h3>{step}</h3><p>{c.stepBodies[index]}</p></div></li>)}</ol>
-            </section> : !isDigital ? <div className={styles.identityPlate} aria-label={copy.technicalDetails}>
+            </section> : !isDigital && !isPhysical ? <div className={styles.identityPlate} aria-label={copy.technicalDetails}>
               <div><span>{copy.productType}</span><strong>{typeLabel}</strong></div>
               <div><span>{copy.category}</span><strong>{category}</strong></div>
             </div> : null}
           </div>
 
-          <aside className={styles.purchasePanel} id="purchase" aria-labelledby="purchase-title" tabIndex={-1}>
+          <aside className={styles.purchasePanel} id="purchase" aria-labelledby={isPhysical ? "product-title" : "purchase-title"} tabIndex={-1}>
+            {isPhysical ? <header className={styles.physicalHeading}>
+              <p className={styles.eyebrow}>
+                <Link href={listingHref(`/${locale}/products`, { type: product.type }) as Route}>{c.equipment}</Link>
+                <span aria-hidden="true"> · </span>
+                {product.categoryId ? (
+                  <Link href={listingHref(`/${locale}/products`, { type: product.type, categoryId: product.categoryId }) as Route}>{category}</Link>
+                ) : (
+                  <span>{category}</span>
+                )}
+              </p>
+              <h1 id="product-title">{product.title}</h1>
+            </header> : null}
+            {isPhysical && selectedOffer ? <div className={styles.priceBlock}>
+              <p className={styles.priceHero}>
+                <bdi className={styles.priceAmount} dir="ltr">{formatCurrencyAmount(selectedOffer.price, selectedOffer.currency, locale === "fa" ? "fa-IR" : locale === "ar" ? "ar" : "en")}</bdi>
+                <span className={styles.priceCurrency}>{currencyLabel(selectedOffer.currency)}</span>
+              </p>
+              <span className={styles.stockBadge} data-available={!unavailable}>{unavailable ? c.unavailable : copy.inStock}</span>
+            </div> : null}
+            {isPhysical && colorOption && colorOption.values.length ? <div className={styles.colorPicker} role="group" aria-label={colorOption.name}>
+              <p className={styles.colorLabel}>
+                <span className={styles.colorDot} style={{ background: resolveColorSwatch(selectedColor || colorOption.values[0]!.value).hex }} aria-hidden="true" />
+                <span>{colorOption.name}: <strong>{selectedColor || colorOption.values[0]!.value}</strong></span>
+              </p>
+              <div className={styles.colorSwatches}>
+                {colorOption.values.map((value) => {
+                  const swatch = resolveColorSwatch(value.value);
+                  const selected = value.value === selectedColor;
+                  const valueUnavailable = !offers.some((offer) =>
+                    offer.variantOptions.some((option) => isColorOptionName(option.name) && option.value === value.value) && offer.physical?.inStock !== false
+                  );
+                  return <button
+                    key={value.id}
+                    type="button"
+                    className={styles.colorSwatch}
+                    style={{ background: swatch.hex, color: swatch.ink === "light" ? "#fff" : "#011627" }}
+                    aria-pressed={selected}
+                    aria-label={`${colorOption.name} ${value.value}${valueUnavailable ? ` · ${c.unavailable}` : ""}`}
+                    disabled={buttonState === "loading"}
+                    data-unavailable={valueUnavailable || undefined}
+                    onClick={() => selectColor(value.value)}
+                  >{selected ? <DesignIcon name="check" /> : null}</button>;
+                })}
+              </div>
+            </div> : null}
             {isDigital ? <DigitalOfferTable
               offers={offers}
               optionNames={product.options.map((option) => option.name)}
@@ -371,46 +468,59 @@ export function ProductPage({
               disabled={buttonState === "loading"}
               action={purchaseAction}
             >{purchaseFeedback}</DigitalOfferTable> : <>
-            <h2 id="purchase-title">{isService ? c.orderService : copy.chooseOffer}</h2>
+            {!isPhysical ? <h2 id="purchase-title">{isService ? c.orderService : copy.chooseOffer}</h2> : null}
+            {isService && selectedOffer ? <div className={styles.priceBlock}>
+              <p className={styles.priceHero}>
+                <bdi className={styles.priceAmount} dir="ltr">{formatCurrencyAmount(selectedOffer.price, selectedOffer.currency, locale === "fa" ? "fa-IR" : locale === "ar" ? "ar" : "en")}</bdi>
+                <span className={styles.priceCurrency}>{currencyLabel(selectedOffer.currency)}</span>
+              </p>
+              <span className={styles.stockBadge} data-available={!unavailable}>{unavailable ? c.unavailable : c.ready}</span>
+            </div> : null}
             {isBridge ? bridgeCheckout : <>
-            <p>{copy.offerHelp}</p>
+            {!isPhysical && !isService ? <p>{copy.offerHelp}</p> : null}
             <OfferPicker
-              offers={offers.map((offer) => ({ id: offer.id, variant: offer.variantName, seller: offer.seller.shopName, price: offer.price, currency: offer.currency, unavailable: offer.physical?.inStock === false }))}
+              offers={pickerOffers.map((offer) => ({ id: offer.id, variant: offer.variantName, seller: offer.seller.shopName, price: offer.price, currency: offer.currency, unavailable: offer.physical?.inStock === false }))}
               value={selectedOffer?.id ?? ""}
               onChange={selectOffer}
               locale={locale}
               label={copy.chooseOffer}
               sellerLabel={isService ? c.provider : copy.seller}
               unavailableLabel={c.unavailable}
+              priceInSummary={isPhysical || isService}
             />
-            {selectedOffer ? (
-              <div className={styles.offerSummary}>
-                <div><span>{copy.availability}</span><strong className={styles.availability} data-available={!unavailable}>{unavailable ? c.unavailable : isService ? c.ready : copy.inStock}</strong></div>
+            {selectedOffer && !isPhysical && (!isService || selectedOffer.service) ? (
+              <div className={styles.offerSummary} data-layout={isService ? "meta" : undefined}>
                 {selectedOffer.service ? <div><span>{c.turnaround}</span><strong>{new Intl.NumberFormat(locale).format(selectedOffer.service.estimatedHours)} {copy.hours}</strong></div> : null}
-                <span>{isService ? c.orderPrice : c.unitPrice}</span>
-                <p className={styles.price}>{formatPrice(selectedOffer.price, selectedOffer.currency, locale)}</p>
+                {!isService ? <div><span>{copy.availability}</span><strong className={styles.availability} data-available={!unavailable}>{unavailable ? c.unavailable : copy.inStock}</strong></div> : null}
+                {!isService ? <>
+                  <span>{c.unitPrice}</span>
+                  <p className={styles.price}>{formatPrice(selectedOffer.price, selectedOffer.currency, locale)}</p>
+                </> : null}
               </div>
-            ) : <p className={styles.emptyOffers}>{c.empty}</p>}
+            ) : !selectedOffer ? <p className={styles.emptyOffers}>{c.empty}</p> : null}
 
             {isPhysical && selectedOffer ? <div className={styles.quantityRow}><span id="quantity-label">{c.quantity}</span><div className={styles.quantityControl} role="group" aria-labelledby="quantity-label">
               <button type="button" aria-label={c.decrease} disabled={quantity <= 1 || unavailable} onClick={() => { setQuantity(quantity - 1); setButtonState("idle"); }}>−</button>
               <output aria-live="polite">{new Intl.NumberFormat(locale).format(quantity)}</output>
-              <button type="button" aria-label={c.increase} disabled={quantity >= 100 || unavailable} onClick={() => { setQuantity(quantity + 1); setButtonState("idle"); }}>+</button>
+              <button type="button" aria-label={c.increase} disabled={quantity >= maxQuantity || unavailable} onClick={() => { setQuantity(quantity + 1); setButtonState("idle"); }}>+</button>
             </div></div> : null}
             {isPhysical && quantity > 1 ? <p className={styles.orderTotal}><span>{c.total}</span><strong>{total}</strong></p> : null}
 
             {purchaseAction}
-            {purchaseFeedback}
-            {isPhysical ? <div className={styles.deliveryNote}><DesignIcon name="bag" /><div><strong>{c.shipping}</strong><p>{c.shippingBody}</p></div></div> : selectedOffer?.service ? <p className={styles.purchaseNote}>{c.estimateNote}</p> : null}
+            {isPhysical || isService ? (
+              buttonState === "error" || buttonState === "success"
+                ? purchaseFeedback
+                : isService && selectedOffer?.service
+                  ? <p className={styles.purchaseNote}>{c.estimateNote}</p>
+                  : null
+            ) : <>
+              {purchaseFeedback}
+              {selectedOffer?.service ? <p className={styles.purchaseNote}>{c.estimateNote}</p> : null}
+            </>}
             </>}
             </>}
           </aside>
         </section>
-
-        {isService ? <section className={styles.requirements} aria-labelledby="requirements-title">
-          <div><p className={styles.eyebrow}>{c.requirements}</p><h2 id="requirements-title">{c.preparation}</h2><p>{c.requirementsNote}</p></div>
-          <div>{requirements.length ? <ul>{requirements.map((field) => <li key={field.key}><DesignIcon name="check" /><div><strong>{field.label}</strong>{field.helpText ? <p>{field.helpText}</p> : null}</div><span>{field.required ? c.required : c.optional}</span></li>)}</ul> : <p>{c.noRequirements}</p>}</div>
-        </section> : null}
 
         <section className={styles.details} aria-labelledby={isDigital ? "download-details-title" : "overview-title"}>
           {!isDigital ? <article className={styles.description}>
@@ -418,9 +528,26 @@ export function ProductPage({
             <ProductDescription description={product.description} fallback={copy.noDescription} />
           </article> : null}
 
-          <div className={styles.specification}>
-            <h2 id={isDigital ? "download-details-title" : undefined}>{isDigital ? d.details : isService ? c.details : copy.technicalDetails}</h2>
-            <table>
+          <div className={styles.specification} data-layout={isPhysical ? "sheet" : "table"}>
+            <h2 id={isDigital ? "download-details-title" : isPhysical ? "features-title" : undefined}>{isDigital ? d.details : isService ? c.details : copy.technicalDetails}</h2>
+            {isPhysical ? <>
+              <dl id="product-feature-sheet" className={styles.featureSheet}>
+                {visibleFeatures.map((row) => <div key={row.label} className={styles.featureRow}>
+                  <dt>{row.label}</dt>
+                  <dd>{row.value}</dd>
+                </div>)}
+              </dl>
+              {hasMoreFeatures ? <button
+                type="button"
+                className={styles.viewAllFeatures}
+                aria-expanded={specsExpanded}
+                aria-controls="product-feature-sheet"
+                onClick={() => setSpecsExpanded((open) => !open)}
+              >
+                {specsExpanded ? c.hideFeatures : c.viewAllFeatures}
+                <DesignIcon name="arrow" />
+              </button> : null}
+            </> : <table>
               <tbody>
                 <tr><th scope="row">{copy.productType}</th><td data-label={copy.productType}>{typeLabel}</td></tr>
                 <tr><th scope="row">{copy.category}</th><td data-label={copy.category}>{category}</td></tr>
@@ -430,13 +557,34 @@ export function ProductPage({
                 ))}
                 {selectedOffer?.variantOptions.map((option) => <tr key={option.name}><th scope="row">{option.name}</th><td>{option.value}</td></tr>)}
               </tbody>
-            </table>
+            </table>}
           </div>
         </section>
 
-        {isPhysical || isService ? <section className={styles.questions} aria-labelledby="questions-title"><h2 id="questions-title">{c.questions}</h2>
-          <div><details><summary>{isPhysical ? c.shipping : c.preparation}</summary><p>{isPhysical ? c.shippingBody : c.serviceFaq}</p></details>
-          <details><summary>{isPhysical ? c.compatibility : c.timeFaq}</summary><p>{isPhysical ? c.compatibilityBody : c.timeAnswer}</p></details></div>
+        {isPhysical ? <section className={styles.questions} aria-labelledby="questions-title">
+          <h2 id="questions-title">{c.questions}</h2>
+          <dl className={styles.factList}>
+            <div>
+              <dt>{c.shipping}</dt>
+              <dd>{product.shippingNote?.trim() || c.shippingBody}</dd>
+            </div>
+            <div>
+              <dt>{c.compatibility}</dt>
+              <dd>{product.compatibilityNote?.trim() || c.compatibilityBody}</dd>
+            </div>
+          </dl>
+        </section> : isService ? <section className={styles.questions} aria-labelledby="questions-title">
+          <h2 id="questions-title">{c.questions}</h2>
+          <dl className={styles.factList}>
+            <div>
+              <dt>{c.preparation}</dt>
+              <dd>{c.serviceFaq}</dd>
+            </div>
+            <div>
+              <dt>{c.timeFaq}</dt>
+              <dd>{c.timeAnswer}</dd>
+            </div>
+          </dl>
         </section> : null}
 
         <ProductComments productId={product.id} locale={locale} />

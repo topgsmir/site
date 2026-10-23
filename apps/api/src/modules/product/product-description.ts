@@ -16,3 +16,11 @@ export function normalizeProductDescription(value: string | null | undefined): s
   if (normalized.length > 10_000) throw new BadRequestException("Product description is too long");
   return normalized;
 }
+
+/** Plain-text buyer advisory note; empty input clears the stored value. */
+export function normalizeProductNote(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  if (trimmed.length > 2000) throw new BadRequestException("Product note is too long");
+  return trimmed;
+}

@@ -1,15 +1,21 @@
 import { Transform, Type } from "class-transformer";
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsEmail,
+  IsIn,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Matches,
   Max,
   MaxLength,
   Min,
-  MinLength
+  MinLength,
+  ValidateNested
 } from "class-validator";
 
 const trimText = ({ value }: { value: unknown }) =>
@@ -35,6 +41,64 @@ export class UpdateSellerPublicProfileDto {
   @IsString()
   @MaxLength(1000)
   bio?: string | null;
+}
+
+export class PublicSellerQueryDto {
+  @IsOptional()
+  @IsIn(["fa", "en", "ar"])
+  locale?: "fa" | "en" | "ar";
+}
+
+export class SellerPageBlockDto {
+  @IsUUID("4")
+  id!: string;
+
+  @IsIn(["text", "products"])
+  type!: "text" | "products";
+
+  @Transform(trimText)
+  @IsString()
+  @MaxLength(120)
+  title!: string;
+
+  @IsOptional()
+  @Transform(trimText)
+  @IsString()
+  @MaxLength(2000)
+  body?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(8)
+  @IsUUID("4", { each: true })
+  productIds?: string[];
+}
+
+export class UpdateSellerPageDto {
+  @IsArray()
+  @ArrayMaxSize(12)
+  @ValidateNested({ each: true })
+  @Type(() => SellerPageBlockDto)
+  blocks!: SellerPageBlockDto[];
+}
+
+export class SellerPageProductsQueryDto {
+  @IsOptional()
+  @Transform(trimText)
+  @IsString()
+  @MaxLength(100)
+  search?: string;
+
+  @IsOptional()
+  @IsUUID("4")
+  cursor?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(20)
+  limit = 20;
 }
 
 export class CreateSellerAgentDto {

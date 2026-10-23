@@ -292,6 +292,16 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
+  shippingNote?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  compatibilityNote?: string;
+
+  @IsOptional()
+  @IsString()
   @MinLength(1)
   @MaxLength(100)
   category?: string;
@@ -427,6 +437,16 @@ export class UpdateProductDto {
   @IsString()
   @MaxLength(10_000)
   description?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  shippingNote?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  compatibilityNote?: string | null;
 
   @IsOptional()
   @IsString()

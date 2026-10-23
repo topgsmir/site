@@ -1,6 +1,7 @@
 import { GlobalSiteHeader } from "@/components/SiteHeader";
 import { getTemplateConfiguration } from "@/lib/template-settings-server";
 import { getCurrentUser } from "@/lib/auth/server";
+import { managementDashboardPath } from "@/lib/auth/dashboard-destination";
 import "@fontsource-variable/outfit";
 import "@fontsource-variable/vazirmatn";
 import Link from "next/link";
@@ -38,7 +39,7 @@ export default async function GlobalNotFound() {
       <script dangerouslySetInnerHTML={{ __html: localeScript }} />
     </head>
     <body>
-      <GlobalSiteHeader configurations={{ fa, en, ar }} signedIn={Boolean(user)}>
+      <GlobalSiteHeader configurations={{ fa, en, ar }} signedIn={Boolean(user)} dashboardPath={managementDashboardPath(user)}>
         <GlobalNotFoundTitle />
         <div className={styles.page}>
           <main className={styles.main}>

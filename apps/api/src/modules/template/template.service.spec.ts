@@ -2,7 +2,25 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { BadRequestException } from "@nestjs/common";
 import { defaultTemplateConfiguration } from "@topgsm/shared-types";
-import { validateTemplateConfiguration } from "./template.service";
+import { migrateExpertsNavigation, migrateRemoteNavigation, validateTemplateConfiguration } from "./template.service";
+
+test("migrateExpertsNavigation rewrites legacy #agents destinations", () => {
+  const configuration = defaultTemplateConfiguration("fa");
+  const expertsItem = configuration.navigation.find((item) => item.href === "/fa/experts");
+  assert.ok(expertsItem);
+  expertsItem.href = "/fa#agents";
+  assert.equal(migrateExpertsNavigation(configuration, "fa").navigation.find((item) => item.label === expertsItem.label)?.href, "/fa/experts");
+  assert.equal(migrateExpertsNavigation({ ...configuration, navigation: [{ ...expertsItem, href: "#agents" }] }, "fa").navigation[0]?.href, "/fa/experts");
+});
+
+test("migrateRemoteNavigation rewrites legacy #services destinations", () => {
+  const configuration = defaultTemplateConfiguration("fa");
+  const servicesItem = configuration.navigation.find((item) => item.href === "/fa/remote");
+  assert.ok(servicesItem);
+  servicesItem.href = "/fa#services";
+  assert.equal(migrateRemoteNavigation(configuration, "fa").navigation.find((item) => item.label === servicesItem.label)?.href, "/fa/remote");
+  assert.equal(migrateRemoteNavigation({ ...configuration, navigation: [{ ...servicesItem, href: "#services" }] }, "fa").navigation[0]?.href, "/fa/remote");
+});
 
 function configurationWithLink(href: string, target: "banner" | "navigation" | "categories") {
   const configuration = defaultTemplateConfiguration("fa");

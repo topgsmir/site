@@ -36,6 +36,7 @@ export default async function SellerDashboardPage({ params, searchParams }: Sell
   const requestedSection = query?.section;
   const initialSection = requestedSection === "products" || requestedSection === "uploads" ||
     (requestedSection === "profile" && (user.role === "seller-admin" || user.role === "platform-admin")) ||
+    (requestedSection === "page" && (user.role === "seller-admin" || user.role === "platform-admin")) ||
     (requestedSection === "statistics" && user.permissions?.includes("analytics_view")) ||
     (requestedSection === "orders" && user.permissions?.includes("orders_manage")) ||
     (requestedSection === "customers" && user.permissions?.includes("orders_manage")) ||

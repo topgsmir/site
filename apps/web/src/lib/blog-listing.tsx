@@ -45,6 +45,7 @@ export async function blogListingMetadata(props: BlogListingProps, kind?: Kind):
 export async function BlogListing(props: BlogListingProps & { kind?: Kind }) {
   const { locale, cursor, page, collection, path, pathFor } = await load(props, props.kind);
   return <BlogIndex locale={locale} posts={page.items} kind={props.kind} heading={collection ? `${props.kind === "tags" ? "#" : ""}${collection.name}` : undefined} description={collection?.description || undefined}
+    activeSlug={collection && props.kind === "categories" ? collection.alternateSlugs[locale] : undefined}
     languageHrefs={{ fa: pathFor("fa"), en: pathFor("en"), ar: pathFor("ar") }}
     firstHref={cursor ? path : undefined} nextHref={page.nextCursor ? listingHref(path, { cursor: page.nextCursor }) : undefined} />;
 }

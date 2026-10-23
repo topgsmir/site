@@ -8,7 +8,7 @@ export type PublicProductOffer = {
   currency: string;
   seller: { id: string; shopName: string };
   digital?: { maxDownloads: number; fileCount: number };
-  physical?: { inStock: boolean; weightGrams: number };
+  physical?: { inStock: boolean; stock: number; weightGrams: number };
   service?: {
     serviceType: string;
     estimatedHours: number;
@@ -39,7 +39,10 @@ export type PublicProduct = {
   title: string;
   slug: string;
   description: string | null;
+  shippingNote: string | null;
+  compatibilityNote: string | null;
   category: string | null;
+  categoryId?: string | null;
   kind: "simple" | "variable";
   type: "digital" | "physical" | "service" | "bridge";
   currency: "TOMAN" | "USD";
@@ -125,6 +128,9 @@ function hasValidFulfillment(value: Record<string, unknown>): boolean {
     value.physical !== undefined &&
     (!isRecord(value.physical) ||
       typeof value.physical.inStock !== "boolean" ||
+      !isFiniteNumber(value.physical.stock) ||
+      !Number.isInteger(value.physical.stock) ||
+      value.physical.stock < 0 ||
       !isFiniteNumber(value.physical.weightGrams))
   ) {
     return false;
@@ -195,7 +201,10 @@ function isProductResponse(value: unknown): value is PublicProduct {
     !["fa", "en", "ar"].includes(String(value.contentLocale)) ||
     !isString(value.slug) ||
     !isNullableString(value.description) ||
+    !isNullableString(value.shippingNote) ||
+    !isNullableString(value.compatibilityNote) ||
     !isNullableString(value.category) ||
+    (value.categoryId !== undefined && !isNullableString(value.categoryId)) ||
     !isString(value.createdAt) ||
     !isString(value.updatedAt) ||
     !["simple", "variable"].includes(String(value.kind)) ||

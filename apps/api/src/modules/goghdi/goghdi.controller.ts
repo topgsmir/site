@@ -4,6 +4,7 @@ import { AuthenticatedGuard } from "../auth/authenticated.guard";
 import { AuthRateLimitService } from "../auth/auth-rate-limit.service";
 import { PlatformAdminGuard, type AuthenticatedRequest } from "../auth/platform-admin.guard";
 import { UpdateGoghdiSettingsDto } from "./dto/goghdi-settings.dto";
+import { GoghdiAgentTicketDto } from "./dto/agent-ticket.dto";
 import { GoghdiOrderTicketDto } from "./dto/order-ticket.dto";
 import { GoghdiSettingsService } from "./goghdi-settings.service";
 import { GoghdiService } from "./goghdi.service";
@@ -25,6 +26,18 @@ export class GoghdiController {
   ) {
     await this.rateLimits.consumeSignedTicket(request.authenticatedUser!.id, clientIp);
     return this.goghdi.signOrderTicket(body.orderId, request.authenticatedUser!.id, body.orderItemId);
+  }
+
+  @Post("agent-ticket")
+  @UseGuards(AuthenticatedGuard)
+  @Header("Cache-Control", "no-store")
+  async signAgentTicket(
+    @Body() body: GoghdiAgentTicketDto,
+    @Req() request: AuthenticatedRequest,
+    @Ip() clientIp: string
+  ) {
+    await this.rateLimits.consumeSignedTicket(request.authenticatedUser!.id, clientIp);
+    return this.goghdi.signAgentTicket(body.sellerId);
   }
 }
 

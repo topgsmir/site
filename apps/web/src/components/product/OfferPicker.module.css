@@ -41,8 +41,25 @@
   text-align: start;
 }
 .option.option { cursor: pointer; transition: background-color var(--dur-product-short) var(--ease-product-out); }
-.single { grid-template-columns: minmax(0, 1fr) auto; background: var(--color-product-paper); border-color: var(--color-product-rule); }
-.option[data-selected="true"] { border-color: var(--color-product-ink); background: var(--color-product-paper); }
+.single {
+  grid-template-columns: minmax(0, 1fr) auto;
+  background: color-mix(in srgb, var(--color-brand-blue) 5%, var(--color-product-paper));
+  border-color: color-mix(in srgb, var(--color-brand-blue) 22%, var(--color-product-rule));
+}
+.single[data-compact="true"] {
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+.single[data-compact="true"] .identity { gap: 4px; }
+.single[data-compact="true"] .variant { font-size: .8125rem; line-height: 1.45; font-weight: 550; }
+.single[data-compact="true"] .seller { font-size: .7rem; line-height: 1.5; }
+.option[data-selected="true"] {
+  border-color: var(--color-product-accent);
+  background: var(--color-product-accent-soft);
+}
 .option input {
   position: absolute;
   width: 1px;
@@ -58,7 +75,11 @@
   border: 1px solid var(--color-product-rule-strong);
   border-radius: 50%;
 }
-.option[data-selected="true"] .indicator { color: var(--color-product-paper); background: var(--color-product-ink); border-color: var(--color-product-ink); }
+.option[data-selected="true"] .indicator {
+  color: var(--color-product-accent-ink);
+  background: var(--color-product-accent);
+  border-color: var(--color-product-accent);
+}
 .indicator svg { width: 13px; height: 13px; stroke-width: 2.5; }
 .identity { display: grid; gap: 5px; min-width: 0; }
 .variant { color: var(--color-product-ink); font-size: .95rem; line-height: 1.65; font-weight: 600; overflow-wrap: anywhere; }

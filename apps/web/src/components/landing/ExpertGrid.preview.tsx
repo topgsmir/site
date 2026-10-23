@@ -12,7 +12,8 @@ export const previewExperts: PublicExpertSummary[] = Array.from({ length: 20 }, 
   name: names[index % names.length],
   specialty: specialties[index % specialties.length],
   activeProductCount: index === 0 ? 0 : index + 2,
-  profilePicture: null
+  profilePicture: null,
+  chatAvailable: index % 3 !== 0
 }));
 
 export function ExpertGridPreview({ count = 20, locale = "fa" }: { count?: number; locale?: Locale }) {

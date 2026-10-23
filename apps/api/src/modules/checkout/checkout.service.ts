@@ -460,7 +460,8 @@ export class CheckoutService {
       if (type === "physical" && (offer.physical?.stock ?? 0) < requested.quantity) {
         throw new PublicHttpException(HttpStatus.CONFLICT, `${offer.listing.product.title} does not have enough stock`, {
           code: "CART_STOCK_INSUFFICIENT",
-          offerIds: [offer.id]
+          offerIds: [offer.id],
+          availableStock: offer.physical?.stock ?? 0
         });
       }
       if (type === "physical" && (offer.physical?.weight_grams ?? 0) < 10) {
