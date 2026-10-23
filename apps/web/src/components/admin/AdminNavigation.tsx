@@ -5,10 +5,10 @@ import Link from "next/link";
 import type { Route } from "next";
 import type { Locale } from "@/lib/i18n";
 import { LogoutButton } from "@/components/auth/LogoutButton";
-import { UploadCenterNavigation } from "@/components/dashboard/UploadCenterNavigation";
-import { useSideNavigation } from "@/components/dashboard/useSideNavigation";
-import navigationStyles from "@/components/dashboard/DashboardNavigation.module.css";
-import panelStyles from "@/components/dashboard/PanelShell.module.css";
+import { AdminUploadCenterNavigation } from "./AdminUploadCenterNavigation";
+import { useAdminSideNavigation } from "./useAdminSideNavigation";
+import navigationStyles from "./AdminNavigation.module.css";
+import panelStyles from "./admin.module.css";
 import type { AdminSection } from "./AdminPanelRoute";
 
 export type AdminNavigationIcons = {
@@ -119,7 +119,7 @@ export function AdminNavigation({
   securityExpanded,
   setSecurityOpen
 }: AdminNavigationProps) {
-  const menuNavigation = useSideNavigation();
+  const menuNavigation = useAdminSideNavigation();
   const c = copy;
   const {
     overview: OverviewIcon,
@@ -150,7 +150,7 @@ export function AdminNavigation({
 
   return (
         <aside
-          className={`admin-rail ${panelStyles.rail} ${panelStyles.monochromeRail}`}
+          className={`${panelStyles.rail} ${panelStyles.monochromeRail}`}
           data-navigation-surface
           data-mobile-open={true}
         >
@@ -852,15 +852,15 @@ export function AdminNavigation({
                 </div>
               </>
             ) : null}
-            <UploadCenterNavigation
+            <AdminUploadCenterNavigation
               locale={locale}
               settingsHref={ownerNavigation ? `/${locale}/admin/settings/upload-centers` : undefined}
               active={section === "settings-upload-centers"}
             />
           </nav>
-          <div className="admin-rail-account" data-mobile-open={true}>
+          <div className={panelStyles.accountBlock} data-admin-account data-mobile-open={true}>
             <span>{c.account}</span>
-            <div className="admin-identity">
+            <div className={panelStyles.railIdentity} data-admin-identity>
               <span>{ownerNavigation ? c.admin : c.staff}</span>
               <strong>{adminName}</strong>
             </div>

@@ -6,12 +6,12 @@ import type { Route } from "next";
 import type { AppUser } from "@topgsm/shared-types";
 import type { Locale } from "@/lib/i18n";
 import { LogoutButton } from "@/components/auth/LogoutButton";
-import { DashboardMobileNavigation } from "@/components/dashboard/DashboardMobileNavigation";
-import { UploadCenterNavigation } from "@/components/dashboard/UploadCenterNavigation";
-import { useSideNavigation } from "@/components/dashboard/useSideNavigation";
-import navigationStyles from "@/components/dashboard/DashboardNavigation.module.css";
-import panelStyles from "@/components/dashboard/PanelShell.module.css";
-import styles from "./SellerDashboard.module.css";
+import { SellerMobileNavigation } from "./SellerMobileNavigation";
+import { SellerUploadCenterNavigation } from "./SellerUploadCenterNavigation";
+import { useSellerSideNavigation } from "./useSellerSideNavigation";
+import navigationStyles from "./SellerNavigation.module.css";
+import panelStyles from "./SellerShell.module.css";
+import styles from "./seller-dashboard.module.css";
 
 export type SellerDashboardSection = "overview" | "statistics" | "products" | "uploads" | "profile" | "blog" | "coupons" | "marketing" | "orders" | "customers" | "shipping" | "payouts" | "bridge" | "sales-configuration";
 export type SellerDashboardIconName = SellerDashboardSection | "sales" | "plus" | "search" | "close" | "box";
@@ -70,7 +70,7 @@ export function SellerNavigation({
   sellServiceOpen: boolean;
   setSellServiceOpen: Dispatch<SetStateAction<boolean>>;
 }) {
-  const menuNavigation = useSideNavigation();
+  const menuNavigation = useSellerSideNavigation();
   const sellServiceNavigation: NavigationItem[] = [
     ...(canManageOrders ? [{ id: "orders" as const, label: copy.orders }] : []),
     ...(user.permissions?.includes("coupons_manage") ? [{ id: "coupons" as const, label: copy.coupons }] : []),
@@ -85,7 +85,7 @@ export function SellerNavigation({
     { id: "payouts", label: copy.payouts }
   ];
   const isSellServiceSection = sellServiceNavigation.some((item) => item.id === section) || section === "customers" || section === "shipping" || section === "bridge";
-  return <DashboardMobileNavigation locale={locale} title={copy.workspace} currentLabel={currentLabel} shortcuts={[
+  return <SellerMobileNavigation locale={locale} title={copy.workspace} currentLabel={currentLabel} shortcuts={[
     { label: copy.overview, icon: <Icon name="overview" />, active: section === "overview", onClick: () => onSelect("overview") },
     ...(canManageOrders ? [{ label: copy.orders, icon: <Icon name="orders" />, active: section === "orders", count: newOrderCount, onClick: () => onSelect("orders") }] : []),
     { label: copy.products, icon: <Icon name="products" />, active: section === "products", onClick: () => onSelect("products") }
@@ -138,7 +138,7 @@ export function SellerNavigation({
           <Icon name="overview" />
           <span>{locale === "fa" ? "حساب شخصی و خریدها" : locale === "ar" ? "حسابي ومشترياتي" : "My account and purchases"}</span>
         </Link>
-        <UploadCenterNavigation locale={locale} />
+        <SellerUploadCenterNavigation locale={locale} />
       </nav>
       <div className={styles.accountBlock} data-mobile-open={true}>
         <span>{copy.account}</span>
@@ -148,5 +148,5 @@ export function SellerNavigation({
         <LogoutButton locale={locale} />
       </div>
     </aside>
-  </DashboardMobileNavigation>;
+  </SellerMobileNavigation>;
 }

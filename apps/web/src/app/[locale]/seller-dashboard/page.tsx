@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/i18n";
 import { requireUser } from "@/lib/auth/server";
-import { SellerDashboard } from "@/components/seller/SellerDashboard";
+import { SellerDashboard } from "@/components/seller/seller-dashboard";
 
 export const metadata: Metadata = {
   title: "Seller Dashboard",

@@ -55,13 +55,13 @@ import { AdminCommentsWorkspace } from "@/components/comments/AdminCommentsWorks
 import type { AdminSection } from "@/components/admin/AdminPanelRoute";
 import { AdminNavigation } from "./AdminNavigation";
 import { AnalyticsOverview } from "@/components/analytics/AnalyticsOverview";
-import { PanelOverview } from "@/components/dashboard/PanelOverview";
-import { PanelTopbar } from "@/components/dashboard/PanelTopbar";
-import panelStyles from "@/components/dashboard/PanelShell.module.css";
+import { AdminOverview } from "./AdminOverview";
+import { AdminTopbar } from "./AdminTopbar";
+import panelStyles from "./admin.module.css";
 import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
 import { JalaliDatePicker } from "@/components/dashboard/JalaliDatePicker";
 import { useNewOrderCount } from "@/components/dashboard/useNewOrderCount";
-import { DashboardMobileNavigation } from "@/components/dashboard/DashboardMobileNavigation";
+import { AdminMobileNavigation } from "./AdminMobileNavigation";
 import { UploadsWorkspace } from "@/components/admin/UploadsWorkspace";
 import { AdminNotificationsWorkspace } from "@/components/admin/AdminNotificationsWorkspace";
 import type { AdminNotificationCounts } from "@/components/admin/AdminNotificationsWorkspace";
@@ -713,7 +713,7 @@ function localProductDayBoundary(day: string, nextDay = false) {
   return new Date(year, month - 1, date + Number(nextDay)).toISOString();
 }
 
-export function VendorManagement({
+export function AdminDashboard({
   locale,
   adminName,
   adminUserId,
@@ -1277,11 +1277,11 @@ export function VendorManagement({
   }
 
   return (
-    <div className={`admin-dashboard-shell ${panelStyles.shell} ${panelStyles.compactAdminShell}`}>
+    <div className={`${panelStyles.shell} ${panelStyles.compactAdminShell}`}>
       <a className="skip-link" href="#admin-content">
         {c.skip}
       </a>
-      <DashboardMobileNavigation
+      <AdminMobileNavigation
         locale={locale}
         title={ownerNavigation ? c.admin : c.staff}
         currentLabel={currentSectionLabel}
@@ -1373,14 +1373,13 @@ export function VendorManagement({
           securityExpanded={securityExpanded}
           setSecurityOpen={setSecurityOpen}
         />
-      </DashboardMobileNavigation>
+      </AdminMobileNavigation>
 
-      <main className={`admin-shell ${panelStyles.main}`} id="admin-content" ref={root}>
-        <PanelTopbar locale={locale} name={adminName} audience="admin" canSwitchWorkspace={ownerNavigation} />
+      <main className={`${panelStyles.main}`} id="admin-content" ref={root}>
+        <AdminTopbar locale={locale} name={adminName} canSwitchWorkspace={ownerNavigation} />
         {section === "overview" ? (
-          <PanelOverview
+          <AdminOverview
             locale={locale}
-            audience="admin"
             analytics={ownerNavigation}
             canManageOrders={ownerNavigation}
             canManageProducts={ownerNavigation}

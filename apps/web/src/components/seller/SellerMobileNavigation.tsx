@@ -5,7 +5,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import Link from "next/link";
 import type { Route } from "next";
 import type { Locale } from "@/lib/i18n";
-import styles from "./DashboardMobileNavigation.module.css";
+import styles from "./SellerMobileNavigation.module.css";
 
 const query = "(max-width: 59.999rem)";
 function subscribe(callback: () => void) {
@@ -24,7 +24,7 @@ const copy = {
 type Shortcut = { label: string; icon: ReactNode; active: boolean; count?: number } &
   ({ href: Route; onClick?: never } | { href?: never; onClick: () => void });
 
-export function DashboardMobileNavigation({ locale, title, currentLabel, shortcuts, children }: {
+export function SellerMobileNavigation({ locale, title, currentLabel, shortcuts, children }: {
   locale: Locale;
   title: string;
   currentLabel: string;

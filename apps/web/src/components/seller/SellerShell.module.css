@@ -1,3 +1,4 @@
+/* Seller-only shell; edit independently of administration and account. */
 .shell {
   --color-navigation-paper: var(--color-panel-navigation);
   --color-navigation-raised: var(--color-panel-navigation-raised);
@@ -32,70 +33,6 @@
 .shell .main {
   min-width: 0;
   overflow-x: visible;
-}
-
-.shell .monochromeRail {
-  --paper: #111;
-  --ink: #fff;
-  --ink-soft: #eee;
-  --muted: #bdbdbd;
-  --line: #333;
-  --signal: #fff;
-  --signal-soft: #333;
-  --color-dashboard-scrollbar-track: #111;
-  --color-dashboard-scrollbar-thumb: #777;
-  --color-dashboard-scrollbar-thumb-hover: #aaa;
-  --color-navigation-paper: #111;
-  --color-navigation-raised: #222;
-  --color-navigation-ink: #fff;
-  --color-navigation-muted: #bdbdbd;
-  --color-navigation-selected: #fff;
-  --color-navigation-selected-ink: #111;
-  --color-dashboard-ink: #fff;
-  --color-dashboard-ink-soft: #eee;
-  --color-dashboard-muted: #bdbdbd;
-  --color-dashboard-rule: #333;
-  --color-dashboard-rule-strong: #777;
-  --color-dashboard-accent: #fff;
-  --color-dashboard-accent-strong: #fff;
-  --color-dashboard-accent-soft: #333;
-  --color-dashboard-surface: #111;
-  --color-dashboard-surface-raised: #252525;
-  --color-dashboard-focus: #fff;
-  --color-dashboard-error: #fff;
-  --color-dashboard-error-soft: #333;
-  gap: .5rem;
-  padding: .625rem;
-  color: #fff;
-  background: #111;
-  scrollbar-color: #777 #111;
-}
-
-
-.monochromeRail :global(.admin-rail-account) {
-  gap: .375rem;
-  margin-block-start: .5rem;
-  padding-block-start: .5rem;
-  padding: .5rem;
-  color: #fff;
-  background: #1c1c1c;
-  font-size: .75rem;
-}
-
-.monochromeRail :global(.logout-button) {
-  min-height: 2.25rem;
-  padding: .375rem .625rem;
-  border: 1px solid #777;
-  color: #fff;
-  background: #222;
-  font-size: .75rem;
-}
-
-.monochromeRail :global(.logout-button:hover) { background: #333; }
-.monochromeRail :global(.logout-button:focus-visible) { outline: 2px solid #fff; outline-offset: 2px; }
-
-@media (min-width: 60rem) {
-  .shell.compactAdminShell { grid-template-columns: 13rem minmax(0, 1fr); }
 }
 
 .topbar {

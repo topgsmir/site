@@ -19,7 +19,7 @@ import { UserAvatar } from "./UserAvatar";
 import { ACCOUNT_COPY } from "./AccountCopy";
 import { WORKSPACE_COPY } from "./AccountWorkspaceCopy";
 import { AccountDashboard } from "./dashboard/AccountDashboard";
-import styles from "./AccountPanel.module.css";
+import styles from "./account.module.css";
 
 gsap.registerPlugin(useGSAP);
 

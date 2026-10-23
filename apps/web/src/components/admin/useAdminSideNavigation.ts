@@ -1,15 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { sideMenuPosition } from "./menu-position";
-import { useMenuFeedback } from "./useMenuFeedback";
+import { sideMenuPosition } from "@/components/dashboard/menu-position";
+import { useAdminMenuFeedback } from "./useAdminMenuFeedback";
 
 /** Top-layer panels escape the rail's scrolling region without changing its height. */
-export function useSideNavigation() {
+export function useAdminSideNavigation() {
   const root = useRef<HTMLElement>(null);
   const [navigationElement, setNavigationElement] = useState<HTMLElement | null>(null);
   const attach = useCallback((element: HTMLElement | null) => { root.current = element; setNavigationElement(element); }, []);
-  useMenuFeedback(root, navigationElement);
+  useAdminMenuFeedback(root, navigationElement);
   useEffect(() => {
     const nav = navigationElement;
     if (!nav) return;

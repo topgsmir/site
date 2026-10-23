@@ -3,10 +3,10 @@
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
-import type { AdminUsersPage, SellerCustomersPage } from "@topgsm/shared-types";
+import type { SellerCustomersPage } from "@topgsm/shared-types";
 import { api } from "@/lib/api/client";
 import type { Locale } from "@/lib/i18n";
-import styles from "./UserHistoryLookup.module.css";
+import styles from "./SellerUserHistoryLookup.module.css";
 
 const copy = {
   en: {
@@ -62,15 +62,14 @@ type Result = {
   orderCount: number;
 };
 
-export function UserHistoryLookup({
+export function SellerUserHistoryLookup({
   locale,
-  audience,
   wide = false,
 }: {
   locale: Locale;
-  audience: "admin" | "seller";
   wide?: boolean;
 }) {
+  const audience = "seller";
   const c = copy[locale];
   const router = useRouter();
   const requestId = useRef(0);
@@ -81,10 +80,7 @@ export function UserHistoryLookup({
   const [error, setError] = useState(false);
 
   function open(id: string) {
-    const path =
-      audience === "admin"
-        ? `/${locale}/admin/users/${encodeURIComponent(id)}`
-        : `/${locale}/seller-dashboard/customers/${encodeURIComponent(id)}`;
+    const path = `/${locale}/seller-dashboard/customers/${encodeURIComponent(id)}`;
     router.push(path as Route);
   }
 
@@ -97,42 +93,23 @@ export function UserHistoryLookup({
     setError(false);
     setResults(null);
     try {
-      if (audience === "admin") {
-        const response = await api.get<AdminUsersPage>("/admin/users", {
-          params: { search: term, limit: 8, page: 1 },
-        });
-        if (currentRequest !== requestId.current) return;
-        const matches = response.data.items.map((user) => ({
-          id: user.id,
-          name: user.fullName,
-          contact: user.phoneNumber ?? user.email,
-          orderCount: user.orderCount,
-        }));
-        setHasMore(response.data.total > matches.length);
-        if (matches.length === 1 && response.data.total === 1) {
-          open(matches[0].id);
-          return;
-        }
-        setResults(matches);
-      } else {
-        const response = await api.get<SellerCustomersPage>(
-          "/seller/customers",
-          { params: { search: term, limit: 8 } },
-        );
-        if (currentRequest !== requestId.current) return;
-        const matches = response.data.items.map((user) => ({
-          id: user.id,
-          name: user.fullName,
-          contact: user.phoneNumber ?? user.email,
-          orderCount: user.orderCount,
-        }));
-        setHasMore(Boolean(response.data.nextCursor));
-        if (matches.length === 1 && !response.data.nextCursor) {
-          open(matches[0].id);
-          return;
-        }
-        setResults(matches);
+      const response = await api.get<SellerCustomersPage>(
+        "/seller/customers",
+        { params: { search: term, limit: 8 } },
+      );
+      if (currentRequest !== requestId.current) return;
+      const matches = response.data.items.map((user) => ({
+        id: user.id,
+        name: user.fullName,
+        contact: user.phoneNumber ?? user.email,
+        orderCount: user.orderCount,
+      }));
+      setHasMore(Boolean(response.data.nextCursor));
+      if (matches.length === 1 && !response.data.nextCursor) {
+        open(matches[0].id);
+        return;
       }
+      setResults(matches);
     } catch {
       if (currentRequest === requestId.current) setError(true);
     } finally {
@@ -146,64 +123,64 @@ export function UserHistoryLookup({
       aria-labelledby={`user-history-lookup-${audience}`}
     >
       <div className={styles.heading}>
-        <h2 id={`user-history-lookup-${audience}`}>
-          {audience === "seller" ? sellerTitle[locale] : c.title}
-        </h2>
-        <p className={styles.srOnly} id={`user-history-hint-${audience}`}>{c.hint}</p>
+      <h2 id={`user-history-lookup-${audience}`}>
+        {sellerTitle[locale]}
+      </h2>
+      <p className={styles.srOnly} id={`user-history-hint-${audience}`}>{c.hint}</p>
       </div>
       <form onSubmit={(event) => void search(event)}>
-        <label
-          className={styles.srOnly}
-          htmlFor={`user-history-search-${audience}`}
-        >
-          {c.label}
-        </label>
-        <input
-          id={`user-history-search-${audience}`}
-          aria-describedby={`user-history-hint-${audience}`}
-          type="search"
-          maxLength={100}
-          value={query}
-          placeholder={c.placeholder}
-          onChange={(event) => {
-            requestId.current++;
-            setQuery(event.target.value);
-            setResults(null);
-            setLoading(false);
-          }}
-        />
-        <button type="submit" disabled={loading || query.trim().length < 3}>
-          {loading ? c.loading : c.search}
-        </button>
+      <label
+        className={styles.srOnly}
+        htmlFor={`user-history-search-${audience}`}
+      >
+        {c.label}
+      </label>
+      <input
+        id={`user-history-search-${audience}`}
+        aria-describedby={`user-history-hint-${audience}`}
+        type="search"
+        maxLength={100}
+        value={query}
+        placeholder={c.placeholder}
+        onChange={(event) => {
+          requestId.current++;
+          setQuery(event.target.value);
+          setResults(null);
+          setLoading(false);
+        }}
+      />
+      <button type="submit" disabled={loading || query.trim().length < 3}>
+        {loading ? c.loading : c.search}
+      </button>
       </form>
       {error ? (
-        <p className={styles.error} role="alert">
-          {c.error}
-        </p>
+      <p className={styles.error} role="alert">
+        {c.error}
+      </p>
       ) : null}
       {results?.length === 0 ? (
-        <p className={styles.state} role="status">
-          {c.empty}
-        </p>
+      <p className={styles.state} role="status">
+        {c.empty}
+      </p>
       ) : null}
       {results && results.length > 0 ? (
-        <div className={styles.matches}>
-          <p className={styles.state}>{c.many}</p>
-          <ul>
-            {results.map((user) => (
-              <li key={user.id}>
-                <button type="button" onClick={() => open(user.id)}>
-                  <strong>{user.name}</strong>
-                  <span dir="ltr">{user.contact ?? "—"}</span>
-                  <small>
-                    {user.orderCount.toLocaleString(locale)} {c.orders}
-                  </small>
-                </button>
-              </li>
-            ))}
-          </ul>
-          {hasMore ? <p className={styles.state}>{c.refine}</p> : null}
-        </div>
+      <div className={styles.matches}>
+        <p className={styles.state}>{c.many}</p>
+        <ul>
+          {results.map((user) => (
+            <li key={user.id}>
+              <button type="button" onClick={() => open(user.id)}>
+                <strong>{user.name}</strong>
+                <span dir="ltr">{user.contact ?? "—"}</span>
+                <small>
+                  {user.orderCount.toLocaleString(locale)} {c.orders}
+                </small>
+              </button>
+            </li>
+          ))}
+        </ul>
+        {hasMore ? <p className={styles.state}>{c.refine}</p> : null}
+      </div>
       ) : null}
     </section>
   );

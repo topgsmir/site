@@ -91,7 +91,7 @@
   .sheetBody nav a, .sheetBody nav button { min-height: 2.75rem; }
   .sheetBody nav a > span, .sheetBody nav button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sheetBody nav > div > div { grid-template-columns: minmax(0, 1fr); padding-inline-start: .75rem; }
-  .sheetBody :global(.admin-rail-account) > span, .sheetBody :global(.admin-rail-account .admin-identity) { display: block; }
+  .sheetBody [data-admin-account] > span, .sheetBody [data-admin-identity] { display: block; }
   @media (hover: hover) { .tab:not([aria-current="page"]):not([data-active="true"]):hover { background: var(--color-dashboard-surface-raised); } }
 }
 @keyframes enter { from { opacity: 0; transform: translateY(1.5rem); } to { opacity: 1; transform: none; } }

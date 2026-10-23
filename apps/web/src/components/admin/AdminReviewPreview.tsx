@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
 import type { Locale } from "@/lib/i18n";
-import { OVERVIEW_COPY } from "./overview-copy";
+import { OVERVIEW_COPY } from "./admin-overview-copy";
 import styles from "./AdminReviewPreview.module.css";
-import { PanelIcon } from "./PanelIcon";
+import { PanelIcon } from "@/components/dashboard/PanelIcon";
 
 type Page = { items: unknown[]; nextCursor: string | null };
 type Queue = { key: "comments" | "photos" | "products" | "articles" | "refunds" | "payouts" | "downloadLinks"; count: number; more: boolean; available: boolean };

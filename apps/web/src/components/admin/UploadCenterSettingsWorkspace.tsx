@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/i18n";
 import { api } from "@/lib/api/client";
-import type { UploadCenterSettings } from "@/components/dashboard/UploadCenterNavigation";
+import type { UploadCenterSettings } from "./AdminUploadCenterNavigation";
 import styles from "./UploadCenterSettingsWorkspace.module.css";
 
 const copy = {

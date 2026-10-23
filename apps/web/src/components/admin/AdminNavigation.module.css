@@ -1,3 +1,4 @@
+/* Administration menu only. */
 .navigation {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -121,7 +122,6 @@
 .subNavigation[data-side-menu="true"][popover]:not(:popover-open) { display: none; }
 .subNavigation[data-side-menu="true"] .item { min-height: 36px; }
 .navigation[data-monochrome="true"] .subNavigation[data-side-menu="true"] { background: #111; border-color: #555; }
-.navigation[data-glass="true"] .subNavigation[data-side-menu="true"] { color: var(--color-navigation-ink); background: var(--color-navigation-paper); border-color: var(--color-dashboard-rule-strong); backdrop-filter: blur(24px) saturate(125%); }
 .group:has(.subNavigation[data-side-menu="true"]) .chevron { transform: rotate(90deg); }
 
 .group[data-open="true"] .subNavigation {
@@ -338,32 +338,6 @@
   }
 }
 
-/* Consistent icon tiles across admin, seller, and the mobile section menu. */
-.navigation:not([data-monochrome="true"]):not([data-glass="true"]) :is(.groupTrigger, .item) > svg {
-  box-sizing: content-box;
-  width: 1.125rem;
-  height: 1.125rem;
-  padding: .375rem;
-  border-radius: .625rem;
-  color: var(--color-panel-navigation-accent);
-  background: color-mix(in srgb, var(--color-brand-blue) 16%, transparent);
-}
-.navigation:not([data-monochrome="true"]):not([data-glass="true"]) > :nth-child(3n + 2) > svg,
-.navigation:not([data-monochrome="true"]):not([data-glass="true"]) > .group:nth-child(3n + 2) > .groupTrigger > svg {
-  color: var(--color-brand-teal);
-  background: color-mix(in srgb, var(--color-brand-teal) 16%, transparent);
-}
-.navigation:not([data-monochrome="true"]):not([data-glass="true"]) > :nth-child(3n) > svg,
-.navigation:not([data-monochrome="true"]):not([data-glass="true"]) > .group:nth-child(3n) > .groupTrigger > svg {
-  color: color-mix(in srgb, var(--color-brand-pink) 72%, white);
-  background: color-mix(in srgb, var(--color-brand-pink) 16%, transparent);
-}
-.navigation:not([data-monochrome="true"]):not([data-glass="true"]) .item[aria-current="page"] > svg {
-  color: var(--color-navigation-selected-ink);
-  background: color-mix(in srgb, white 25%, transparent);
-}
-.navigation:not([data-monochrome="true"]):not([data-glass="true"]) .subNavigation .item > svg { padding: .25rem; width: 1rem; height: 1rem; }
-
 /* Compact monochrome menu is specific to the administration rail. */
 .navigation[data-monochrome="true"] { gap: 1px; }
 .navigation[data-monochrome="true"] .group { padding-block: 2px; }
@@ -389,13 +363,3 @@
 @media (max-width: 59.999rem), (pointer: coarse) {
   .navigation[data-monochrome="true"] :is(.groupTrigger, .item) { min-height: 2.75rem; }
 }
-
-.navigation[data-glass="true"] { position: relative; z-index: 1; gap: 2px; }
-.navigation[data-glass="true"] .group { padding-block: 2px; border-color: var(--color-dashboard-rule); }
-.navigation[data-glass="true"] :is(.groupTrigger, .item) { min-height: 2rem; gap: .5rem; padding: .25rem .5rem; font-size: .75rem; line-height: 1.6; }
-.navigation[data-glass="true"] :is(.groupTrigger, .item) > svg { box-sizing: border-box; width: 1rem; height: 1rem; padding: 0; color: currentColor; background: none; }
-.navigation[data-glass="true"] .item[aria-current="page"] { background: var(--color-navigation-selected); color: var(--color-navigation-selected-ink); box-shadow: 0 4px 16px color-mix(in srgb, var(--color-brand-blue) 24%, transparent); }
-.navigation[data-glass="true"] .group[data-open="true"] .groupTrigger { background: var(--color-dashboard-surface-raised); color: var(--color-navigation-ink); }
-.navigation[data-glass="true"] .chevron { font-size: .75rem; }
-@media (hover: hover) and (pointer: fine) { .navigation[data-glass="true"] :is(.groupTrigger, .item):hover { background: color-mix(in srgb, var(--color-brand-blue) 88%, transparent); color: var(--color-brand-navy); box-shadow: 0 4px 16px color-mix(in srgb, var(--color-brand-blue) 24%, transparent); } }
-@media (max-width: 59.999rem), (pointer: coarse) { .navigation[data-glass="true"] :is(.groupTrigger, .item) { min-height: 2.75rem; } }

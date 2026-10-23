@@ -48,12 +48,12 @@ import { SellerUploads } from "./SellerUploads";
 import { SellerBlogPanel } from "./SellerBlogPanel";
 import { DesignIcon } from "@/components/DesignIcon";
 import { PRODUCT_CREATION_COPY } from "./ProductCreationCopy";
-import styles from "./SellerDashboard.module.css";
+import styles from "./seller-dashboard.module.css";
 import creation from "./ProductCreation.module.css";
 import { AnalyticsOverview } from "@/components/analytics/AnalyticsOverview";
-import { PanelOverview } from "@/components/dashboard/PanelOverview";
-import { PanelTopbar } from "@/components/dashboard/PanelTopbar";
-import panelStyles from "@/components/dashboard/PanelShell.module.css";
+import { SellerOverview } from "./SellerOverview";
+import { SellerTopbar } from "./SellerTopbar";
+import panelStyles from "./SellerShell.module.css";
 import { CollapsibleFilters } from "@/components/dashboard/CollapsibleFilters";
 import { useNewOrderCount } from "@/components/dashboard/useNewOrderCount";
 import { SellerNavigation, type SellerDashboardIconName, type SellerDashboardSection } from "./SellerNavigation";
@@ -1118,7 +1118,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
       />
 
       <main className={`${styles.main} ${panelStyles.main}`} tabIndex={-1}>
-        <PanelTopbar locale={locale} name={user.fullName} audience="seller" canSwitchWorkspace={user.role === "platform-admin"} />
+        <SellerTopbar locale={locale} name={user.fullName} canSwitchWorkspace={user.role === "platform-admin"} />
         {(["products", "bridge", "payouts"] as DashboardSection[]).includes(section) ? <header className={styles.pageHeader}>
           <div>
             <h1 id={section === "products" ? "products-title" : undefined}>{sectionLabel}</h1>
@@ -1134,7 +1134,7 @@ export function SellerDashboard({ locale, user, initialSection = "overview", ini
 
         <div className={styles.sectionBody} key={section}>
           {section === "overview" ? (
-            <><PanelOverview locale={locale} audience="seller" analytics={hasAnalytics} canManageOrders={canManageOrders} canManageProducts={Boolean(user.permissions?.includes("products_manage"))} newOrderCount={newOrderCount} onNavigate={selectSection} />{!hasAnalytics ? <section aria-labelledby="catalog-snapshot-title">
+            <><SellerOverview locale={locale} analytics={hasAnalytics} canManageOrders={canManageOrders} canManageProducts={Boolean(user.permissions?.includes("products_manage"))} newOrderCount={newOrderCount} onNavigate={selectSection} />{!hasAnalytics ? <section aria-labelledby="catalog-snapshot-title">
               <div className={styles.introRow}>
                 <p>{copy.overviewDescription}</p>
                 {nextCursor ? <span className={styles.moreNote}>{copy.moreAvailable}</span> : null}
